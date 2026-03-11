@@ -1,0 +1,26 @@
+{
+  "name": "hackj-plugins",
+  "description": "Personal Claude Code Plugin Marketplace by HackJ — Document Fusion, Text Compression, Multi-Agent Pipelines",
+  "version": "1.0.0",
+  "owner": {
+    "name": "HackJ",
+    "url": "https://github.com/blumenkohlbinary"
+  },
+  "metadata": {
+    "homepage": "https://github.com/blumenkohlbinary/hackj-plugins",
+    "repository": "https://github.com/blumenkohlbinary/hackj-plugins",
+    "license": "MIT",
+    "keywords": ["compression", "fusion", "document", "pipeline", "multi-agent"]
+  },
+  "plugins": [
+    {
+      "name": "tdo",
+      "description": "TDO v11.2 — Verlustfreie Dokumentkompression (45-55%) und Multi-Dokument-Fusion mit 8-Stufen Multi-Agent Pipeline. 5 Skills, 9 Agents, CoVe-Verifikation, Protected Registry, DARE-Text Merging.",
+      "version": "11.2.0",
+      "author": { "name": "HackJ" },
+      "category": "utilities",
+      "source": "./plugins/tdo",
+      "homepage": "https://github.com/blumenkohlbinary/hackj-plugins"
+    }
+  ]
+}
