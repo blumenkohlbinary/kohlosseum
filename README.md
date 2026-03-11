@@ -1,6 +1,22 @@
-# blumenkohlbinary-plugins — Claude Code Plugin Marketplace
+# Kohlosseum
 
-Personal plugin marketplace for Claude Code.
+**Die Plugin-Arena fuer Claude Code.**
+
+Hier treten Plugins an, die deinen Claude Code Workflow auf das naechste Level bringen — von Multi-Agent Pipelines ueber Dokumentverarbeitung bis hin zu AI-gesteuerten Entwickler-Tools. Gebaut von [HackJ](https://github.com/blumenkohlbinary).
+
+## Installation
+
+```bash
+# 1. Marketplace registrieren
+/plugin marketplace add https://github.com/blumenkohlbinary/kohlosseum.git
+
+# 2. Plugin installieren (z.B. TDO)
+/plugin install tdo@kohlosseum
+```
+
+Danach in **Anpassen** > **Plugins** aktivieren/deaktivieren.
+
+---
 
 ## Plugins
 
@@ -8,14 +24,14 @@ Personal plugin marketplace for Claude Code.
 
 Verlustfreie Dokumentkompression und Multi-Dokument-Fusion.
 
-**Features:**
-- `/tdo:compress` — Einzeldokument-Kompression (45-55%, verlustfrei)
-- `/tdo:fuse-docs` — Multi-Dokument-Fusion mit 8-Stufen-Pipeline
+| Feature | Beschreibung |
+|---------|-------------|
+| `/tdo:compress` | Einzeldokument-Kompression (45-55%, verlustfrei) |
+| `/tdo:fuse-docs` | Multi-Dokument-Fusion mit 8-Stufen-Pipeline |
 
 **Architektur:**
-- 5 Skills (text-density-optimizer, compress, fuse-docs, dare-text-merger, cove-verifier)
-- 9 Agents (8 Pipeline-Stufen + 1 Orchestrator)
-- Modelle: 2x Opus (Contradiction + Verification), 4x Sonnet, 2x Haiku
+- 5 Skills, 9 Agents (8 Pipeline-Stufen + 1 Orchestrator)
+- Modelle: 2x Opus, 4x Sonnet, 2x Haiku
 - Flache Orchestrierung (Nesting-Tiefe 1)
 - Dateibasierte Kommunikation via `.tdo-pipeline/`
 
@@ -24,27 +40,15 @@ Verlustfreie Dokumentkompression und Multi-Dokument-Fusion.
 - Chain-of-Verification (CoVe) Fact-Check
 - Self-Consistency-Check (3 Versionen, 20+ Fakten)
 - Protected Registry (Zahlen, Daten, Zitate zeichenidentisch)
-- UNIQUE-Tag Schutz fuer dokumentspezifische Inhalte
-- Konflikt-Hierarchie: Datum > Autoritaet > Spezifizitaet > Konsens
-
-## Installation
-
-```bash
-# 1. Marketplace registrieren
-/plugin marketplace add https://github.com/blumenkohlbinary/blumenkohlbinary-plugins.git
-
-# 2. TDO Plugin installieren
-/plugin install tdo@blumenkohlbinary-plugins
-```
-
-Danach in **Anpassen** > **Plugins** aktivieren/deaktivieren.
-
-## Nutzung
 
 ```
 /tdo:compress @dokument.md
 /tdo:fuse-docs @doc1.md @doc2.md @doc3.md
 ```
+
+---
+
+*Mehr Plugins kommen bald. Stay tuned.*
 
 ## Lizenz
 

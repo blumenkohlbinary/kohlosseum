@@ -1,16 +1,16 @@
 {
-  "name": "blumenkohlbinary-plugins",
-  "description": "Personal Claude Code Plugin Marketplace by HackJ — Document Fusion, Text Compression, Multi-Agent Pipelines",
+  "name": "kohlosseum",
+  "description": "Kohlosseum — Claude Code Plugin Arena by HackJ. Multi-Agent Pipelines, Document Fusion, AI-Powered Tooling.",
   "version": "1.0.0",
   "owner": {
     "name": "HackJ",
     "url": "https://github.com/blumenkohlbinary"
   },
   "metadata": {
-    "homepage": "https://github.com/blumenkohlbinary/blumenkohlbinary-plugins",
-    "repository": "https://github.com/blumenkohlbinary/blumenkohlbinary-plugins",
+    "homepage": "https://github.com/blumenkohlbinary/kohlosseum",
+    "repository": "https://github.com/blumenkohlbinary/kohlosseum",
     "license": "MIT",
-    "keywords": ["compression", "fusion", "document", "pipeline", "multi-agent"]
+    "keywords": ["plugins", "multi-agent", "compression", "fusion", "document", "pipeline", "tooling"]
   },
   "plugins": [
     {
@@ -20,7 +20,7 @@
       "author": { "name": "HackJ" },
       "category": "utilities",
       "source": "./plugins/tdo",
-      "homepage": "https://github.com/blumenkohlbinary/blumenkohlbinary-plugins"
+      "homepage": "https://github.com/blumenkohlbinary/kohlosseum"
     }
   ]
 }
