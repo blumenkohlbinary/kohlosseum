@@ -55,6 +55,14 @@ Wende `text-density-optimizer --pipeline` auf den fusionierten Content an:
 - Stufen 3-5 ueberspringen (Pipeline hat eigenen Verification Agent)
 - Protected Registry nach `.tdo-pipeline/protected-registry.json` schreiben
 
+**DYNAMISCHE LOSSLESS-REGELN:**
+- Kompression passt sich dem Waste-Anteil an (KEIN festes Ziel)
+- [UNIQUE:Dn] Inhalte werden NIEMALS komprimiert — nur Formatierung straffen
+- Bei gut geschriebenem Input (Score-1-2 < 10%): Kompression UEBERSPRINGEN
+- Ziel bei Fusion = Redundanz-Eliminierung, NICHT Textkuerzung
+- Die Kompressionsrate ist ein ERGEBNIS, kein ZIEL
+- Bei wenig Redundanz nach Dedup: text-density-optimizer NICHT aufrufen
+
 ### Schritt 5 — Source Attribution
 
 Jeder Satz im Output erhaelt Quellenmarker:

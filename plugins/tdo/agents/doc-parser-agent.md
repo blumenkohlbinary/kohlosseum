@@ -1,7 +1,7 @@
 ---
 name: doc-parser-agent
 description: "Pipeline-Stufe 1. Strukturextraktion aus Dokumenten in JSON: Titel, Abstract, Sektionen, Referenzen, Tabellen, Metadaten."
-model: haiku
+model: sonnet
 tools: Read, Write, Glob
 maxTurns: 10
 disallowedTools: Agent

@@ -10,15 +10,27 @@ user-invocable: false
 
 Interner Skill fuer verlustfreie Textkompression. Wird von `/tdo:compress` (alle 6 Stufen) und `graph-merger-agent` (--pipeline, nur Stufen 0-2) aufgerufen. Nicht direkt vom User nutzbar.
 
-## Kompressionsziel
+## Kompressionsziel — DYNAMISCH
 
-| Domain | Ziel | Begruendung |
-|--------|------|-------------|
-| General | 45-55% | Standard |
-| Medical/Legal | 50-60% | Hoehere Praezisionsanforderung |
-| Financial | 45-55% | Zahlen geschuetzt, Fliesstext komprimierbar |
-| Scientific | 50-60% | Terminologie-sensitiv |
-| Code/Mixed | 55-65% | Code zeichenidentisch, nur Fliesstext |
+Die Kompressionsrate wird NICHT vorab festgelegt sondern ergibt sich aus dem Text:
+
+```
+DYNAMISCHE ANALYSE:
+1. Token-Scoring durchfuehren (Score 1-5)
+2. Waste-Anteil berechnen: Score-1 + Score-2 Tokens / Gesamt-Tokens
+3. Kompressionsrate = Waste-Anteil (± 5%)
+```
+
+| Textqualitaet | Score-1-2 Anteil | Erwartete Kompression |
+|---------------|------------------|-----------------------|
+| Sehr gut optimiert | < 10% | 5-15% (kaum Waste) |
+| Gut geschrieben | 10-25% | 15-30% |
+| Durchschnittlich | 25-40% | 30-45% |
+| Schlecht optimiert | 40-60% | 45-60% |
+| Sehr redundant | > 60% | 60-75% |
+
+**KERNREGEL: Komprimiere NUR was Score 1-2 hat. NIEMALS Score 3+ entfernen.**
+**Die Kompressionsrate ist ein ERGEBNIS, kein ZIEL.**
 
 ## --pipeline Modus
 
@@ -45,6 +57,29 @@ DOMAIN-ERKENNUNG:
    - Code: Syntax-Bloecke, Variablen, Imports
 2. Hoechster Score → Domain-Typ
 3. Passe Kompressionsziel entsprechend an
+```
+
+### 0.1b Vorkomprimierungs-Erkennung
+
+Pruefe ob der Input bereits komprimiert wurde:
+
+```
+ERKENNUNG:
+1. Score-1-2 Anteil messen (nach Token-Scoring in 0.2)
+2. TDO-Metriken-Marker suchen ("Metrics:", "Gates:", "Protected:")
+
+ENTSCHEIDUNG:
+- Score-1-2 < 5% → BEREITS OPTIMAL KOMPRIMIERT
+  → Kompression UEBERSPRINGEN
+  → Dokument UNVERAENDERT zurueckgeben
+  → Meldung: "Input bereits optimal. Waste-Anteil: [X]%. Keine Kompression."
+
+- Score-1-2 5-15% → LEICHT KOMPRIMIERBAR
+  → Nur Score-1 Tokens entfernen
+  → Erwartete Kompression: 5-15%
+
+- Score-1-2 > 15% → NORMAL KOMPRIMIERBAR
+  → Dynamische Kompression (Score-1 und Score-2 entfernen)
 ```
 
 ### 0.2 Token-Scoring
@@ -121,34 +156,30 @@ Der Skeleton dient als Referenz fuer die Kompression — alle Skeleton-Knoten MU
 
 ## Stufe 2 — Enhanced Chain-of-Density (CoD)
 
-5 Iterationen zunehmender Informationsdichte:
+Iterationen passen sich dem Waste-Anteil an:
 
 ```
-ITERATION 1: Basiskompresson (-10-15%)
-  → Fuellwoerter entfernen, Saetze straffen
-  → Score-1-2 Tokens eliminieren
+ITERATION 1: Score-1 Tokens entfernen
+  → Leere Phrasen, Platzhalter, reine Stilistik
   → Protected Elements markieren
+  → STOPP wenn Score-1-2 < 5% (Text bereits optimal)
 
-ITERATION 2: Strukturverdichtung (-15-25%)
-  → Redundante Uebergaenge entfernen
-  → Aufzaehlungen komprimieren
+ITERATION 2: Score-2 Tokens entfernen
+  → Fuellwoerter, Wiederholungen, redundante Uebergaenge
+  → STOPP wenn kein Score-2 Material mehr vorhanden
+
+ITERATION 3: Strukturverdichtung (NUR wenn Score-2 > 10% war)
+  → Redundante Aufzaehlungen komprimieren
   → Nebensaetze in Hauptsaetze integrieren
+  → STOPP wenn Waste erschoepft
 
-ITERATION 3: Semantische Fusion (-25-35%)
-  → Verwandte Saetze zu Einzelsaetzen verschmelzen
-  → Kontextinformationen in Kernaussagen integrieren
-  → Multi-Kategorie-Erhaltung pruefen
-
-ITERATION 4: Tiefenkompression (-35-45%)
-  → Nominalisierungen verwenden
-  → Relative Saetze eliminieren
-  → Appositionen nutzen statt eigener Saetze
-
-ITERATION 5: Feinschliff (-45-55%)
-  → Letzte Redundanzen beseitigen
-  → Zielkompression erreichen
-  → STOPP wenn im Zielbereich
+ITERATION 4-5: NUR wenn Waste-Anteil > 40% war
+  → Nominalisierungen, Appositionen
+  → Verwandte Saetze verschmelzen
+  → STOPP sobald nur noch Score 3+ Material uebrig
 ```
+
+**HARTE STOPPREGEL:** Sobald nur noch Score 3-5 Material uebrig ist → SOFORT STOPPEN. Egal welche Iteration. Kein Score-3+ Material entfernen.
 
 **Multi-Kategorie-Erhaltung:** In JEDER Iteration muessen folgende Kategorien erhalten bleiben:
 - Alle Protected Elements (Score 5)
@@ -157,7 +188,7 @@ ITERATION 5: Feinschliff (-45-55%)
 - Quantitative Aussagen ("12% Steigerung")
 - Qualitative Kernbewertungen ("erfolgreich", "gescheitert")
 
-**STOPP-Bedingung:** Wenn die Kompression den Zielbereich erreicht, NICHT weiter komprimieren. Lieber 48% als uebermaessig komprimiert auf 35%.
+**STOPP-Bedingung:** Kompression endet wenn NUR Score 3-5 Material uebrig ist. Die resultierende Kompressionsrate ist das ERGEBNIS, nicht das ZIEL. Ein Text der nur 10% komprimiert wird ist KORREKT wenn er gut geschrieben war.
 
 ---
 
@@ -256,7 +287,7 @@ Chain-of-Verification Protokoll:
 [Komprimierter Text]
 
 ---
-Metrics: [X] → [Y] chars (-[Z]%) | Target: 45-55%
+Metrics: [X] → [Y] chars (-[Z]%) | Waste-Anteil: [W]% | Dynamisch
 Gates: Faktisch ✅ | Struktur ✅ | Qualitaet ✅ | CoVe ✅
 Protected: [N] elements | Skeleton: [N] claims | Domain: [type]
 ```
@@ -266,7 +297,7 @@ Fuer `--pipeline` Modus:
 [Komprimierter Text]
 
 ---
-Pipeline-Metrics: [X] → [Y] chars (-[Z]%) | Stufen: 0-2
+Pipeline-Metrics: [X] → [Y] chars (-[Z]%) | Waste-Anteil: [W]% | Dynamisch
 Protected Registry: [N] elements → protected-registry.json
 Skeleton: [N] claims | Domain: [type]
 ```
@@ -276,7 +307,7 @@ Skeleton: [N] claims | Domain: [type]
 1. **Kein Informationsverlust**: JEDER Originalfakt muss im Output rekonstruierbar sein
 2. **Protected Elements ZEICHENIDENTISCH**: Zahlen, Daten, Zitate, Code, Tabellen
 3. **Skeleton-Vollstaendigkeit**: Alle Hauptaussagen erhalten
-4. **Zielbereich einhalten**: 45-55% (domainabhaengig), nicht uebermaessig komprimieren
+4. **Dynamischer Zielbereich**: Kompressionsrate ergibt sich aus Waste-Anteil, KEIN festes Ziel
 5. **Keine Halluzinationen**: Nur Fakten aus dem Original, keine Inferenzen
 6. **Lesbarkeit bewahren**: Output muss eigenstaendig verstaendlich sein
 7. **Iterativ arbeiten**: 5 CoD-Iterationen, nicht in einem Schritt

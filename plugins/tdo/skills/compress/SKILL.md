@@ -1,6 +1,6 @@
 ---
 name: compress
-description: "Einzeldokument-Kompression via TDO v11.2. Nutze wenn der User 'komprimiere', 'kuerze Text', 'verdichte', 'compress' sagt. Ziel: 45-55% verlustfrei."
+description: "Einzeldokument-Kompression via TDO v11.2.1. Nutze wenn der User 'komprimiere', 'kuerze Text', 'verdichte', 'compress' sagt. Dynamische Kompression, komplett lossless."
 argument-hint: "[text oder @datei]"
 context: inherit
 allowed-tools: Read, Write
@@ -8,7 +8,7 @@ allowed-tools: Read, Write
 
 # /compress — Einzeldokument-Kompression
 
-Komprimiere ein einzelnes Dokument verlustfrei auf 45-55% der Originallaenge mittels TDO v11.2.
+Komprimiere ein einzelnes Dokument komplett verlustfrei mittels TDO v11.2.1. Die Kompressionsrate ist dynamisch — sie richtet sich nach dem Waste-Anteil des Textes (gut geschrieben = wenig Kompression, schlecht geschrieben = hohe Kompression).
 
 ## Input erkennen
 
@@ -43,14 +43,15 @@ Fuehre alle 6 Stufen des TDO v11.2 aus:
 [Komprimierter Text]
 
 ---
-Metrics: [X] → [Y] chars (-[Z]%) | Target: 45-55%
+Metrics: [X] → [Y] chars (-[Z]%) | Waste-Anteil: [W]% | Dynamisch
 Gates: Faktisch ✅ | Struktur ✅ | Qualitaet ✅ | CoVe ✅
 Protected: [N] elements | Skeleton: [N] claims | Domain: [type]
 ```
 
 ## Edge Cases
 
-- **Sehr kurzer Text** (<100 Woerter): Warnung ausgeben, Kompression trotzdem versuchen
-- **Bereits komprimierter Text** (>6 Fakten/Satz): Konservatives Ziel (-10-15%)
+- **Sehr kurzer Text** (<100 Woerter): Warnung, Kompression versuchen
+- **Bereits komprimierter Text** (Score-1-2 < 5%): Dokument UNVERAENDERT zurueckgeben. Meldung: "Text bereits optimal. Waste-Anteil: [X]%. Keine Kompression noetig."
+- **Gut geschriebener Text** (Score-1-2 10-25%): Leichte Kompression (15-30%). Nur Waste entfernen.
 - **Code/Tabellen-lastiger Text**: Nur Fliesstext komprimieren, Code/Tabellen zeichenidentisch bewahren
 - **PII erkannt**: REJECT mit Erklaerung

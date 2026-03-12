@@ -82,6 +82,25 @@ Referenzen: [N] geprueft, [N] korrigiert
 Kohaerenz: [hoch/mittel/niedrig]
 ```
 
+## Blog-Formatierung
+
+Formatiere das Dokument wie einen professionellen Wissenschafts-Blog:
+
+1. **Abschnitts-Check:** Jeder H2/H3 hat mindestens 3 Saetze
+   - 1-Zeiler unter Ueberschrift → erweitern oder mit Nachbar mergen
+   - Leere oder fast-leere Sektionen → eliminieren und Content umverteilen
+
+2. **Mini-Einleitungen:** Jeder H2 beginnt mit 1-2 Saetzen die den Abschnitt kontextualisieren (was wird behandelt, warum relevant)
+
+3. **Abschnitts-Autonomie:** Jeder Abschnitt muss eigenstaendig lesbar sein
+   - Keine Verweise wie "wie oben erwaehnt" als Ersatz fuer Inhalt
+   - Kontext wird pro Abschnitt gegeben, nicht nur einmal global
+
+4. **Professioneller Stil:**
+   - Klare These → Evidenz → Schlussfolgerung pro Abschnitt
+   - Fachbegriffe beim ersten Auftreten im Abschnitt kurz erklaert
+   - Zahlen/Daten im Kontext (nicht isoliert)
+
 ## Qualitaetsregeln
 
 1. **Kein Informationsverlust**: Kohaerenz-Arbeit darf KEINE Fakten entfernen oder aendern
@@ -91,3 +110,4 @@ Kohaerenz: [hoch/mittel/niedrig]
 5. **Natuerlichkeit > Perfektion**: Uebergaenge sollen natuerlich wirken, nicht gezwungen
 6. **Keine neuen Fakten**: Uebergangssaetze duerfen keine neuen Informationen einfuehren
 7. **Ton-Anpassung ≠ Inhalt-Aenderung**: Nur Formulierung aendern, nie Bedeutung
+8. **Blog-Qualitaet**: Keine Ueberschrift mit < 3 Saetzen darunter, jeder Abschnitt eigenstaendig

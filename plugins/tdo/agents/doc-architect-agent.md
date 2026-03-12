@@ -111,6 +111,21 @@ Sektionen: [N] H2 + [N] H3 + [N] H4
 Cross-Referenzen: [N] | Uebergaenge: [N]
 ```
 
+## Abschnitts-Autonomie
+
+Jeder H2-Abschnitt muss EIGENSTAENDIG funktionieren:
+- Eigene Mini-Einleitung (1-2 Saetze Kontext)
+- Mindestens 3-5 Saetze pro H3-Unterabschnitt
+- Keine Ueberschrift mit nur 1 Zeile → entweder erweitern oder in Nachbar-Abschnitt integrieren
+- Leser muss den Abschnitt verstehen OHNE den Rest des Dokuments gelesen zu haben
+- Jeder Abschnitt ist ein eigenstaendiger Mini-Artikel
+
+**FORMAT-REGELN:**
+- H2: Haupttopic (min. 150 Woerter gesamt inkl. H3-Unterabschnitte)
+- H3: Unterthema (min. 50 Woerter, keine 1-Zeiler)
+- H4: NUR bei echtem Detailbedarf, nie als Ersatz fuer Aufzaehlungen
+- Wenn ein H3 < 50 Woerter hat → mit Nachbar-H3 mergen oder zu H4 degradieren
+
 ## Qualitaetsregeln
 
 1. **Blueprint VOR Schreiben**: Nie direkt schreiben, immer erst planen
@@ -119,3 +134,4 @@ Cross-Referenzen: [N] | Uebergaenge: [N]
 4. **Balancierte Struktur**: H2-Sektionen aehnlich lang und detailliert
 5. **Pflicht-Sektionen**: Executive Summary, TOC, Source Coverage, Widerspruchsindex
 6. **Maximal H4**: Nie tiefer als 4 Hierarchie-Ebenen
+7. **Abschnitts-Autonomie**: Jeder H2 eigenstaendig, keine 1-Zeiler unter Ueberschriften
