@@ -425,3 +425,100 @@ def calculate_cart_total(prices, tax_rate):
 | Dead code | unused | Delete | LOW |
 | Deep call chain | >2 dots | Delegate / Law of Demeter | MEDIUM |
 | Boolean parameter | any | Split into two functions | LOW |
+
+
+---
+
+## 9. Industry Standards for Code Quality
+
+### NASA JPL Power of Ten (applicable rules)
+
+| Rule | Description | Threshold | Refactoring Action |
+|------|-------------|-----------|-------------------|
+| R1 | No unbounded recursion | All recursion must have provable termination | Convert to iteration or add depth counter |
+| R4 | Max function length | 60 lines per function | Extract Method |
+| R5 | Assertion density | >=2 assertions per non-trivial function | Introduce Guard Assertion |
+| R6 | Variable scope | Declare at smallest possible scope | Narrow Variable Scope |
+| R7 | Check all return values | Every non-void return must be checked | Add error handling |
+
+### CERT Secure Coding (applicable rules)
+
+| Rule | Description | Pattern | Refactoring Action |
+|------|-------------|---------|-------------------|
+| ERR33-C | Check return values | Unchecked return from file/network/alloc | Add error checking after every call |
+| DCL30-C | Narrow variable scope | Variable declared broader than needed | Move to smallest enclosing block |
+| MSC12-C | Detect dead code | Unreachable code after return/throw | Delete dead code |
+| ENV33-C | Avoid banned APIs | gets(), strcpy(), sprintf() and equivalents | Replace with safe alternatives |
+
+### MISRA Concepts (transferable to high-level languages)
+
+| Concept | MISRA Rule | High-Level Equivalent |
+|---------|-----------|----------------------|
+| Switch must have default | R16.4 | All switch/match statements need default/else |
+| No implicit type conversion | R10.x | Use === not == in JS; explicit casts in TS |
+| All warnings as errors | R1.1 | Enable strict mode, treat linter warnings as errors |
+| Minimal variable scope | Dir 4.12 | const/let over var; block-scoped declarations |
+
+### Google Engineering Practices (applicable rules)
+
+| Rule | Description | Refactoring Action |
+|------|-------------|-------------------|
+| No unnecessary abstractions | Interface with only 1 implementation | Inline the interface or defer until 2nd impl |
+| Small focused changes | One concept per commit | Split large refactorings into atomic steps |
+| Readability over cleverness | Prefer straightforward code | Simplify over-engineered patterns |
+
+---
+
+## 10. Extended Smell -> Transformation Reference (v2.0)
+
+### Performance Anti-Patterns
+
+| Smell | Threshold/Pattern | Transformation | Priority | CWE |
+|-------|-------------------|----------------|----------|-----|
+| N+1 Query | DB query in loop body | Fix N+1 Query (eager load / batch) | HIGH | CWE-1073 |
+| Blocking I/O in Async | Sync call in async context | Replace Blocking with Async | HIGH | CWE-834 |
+| O(n^2) Nested Loop | Nested loops on same collection | Convert Loop to Batch (Set/Map lookup) | HIGH | CWE-407 |
+| String Concat in Loop | String += in loop | Use StringBuilder/join/array | MEDIUM | CWE-407 |
+| Unbounded Collection | Cache without eviction | Add LRU/TTL/max-size | MEDIUM | CWE-401 |
+| Event Listener Leak | addEventListener without remove | Add cleanup in unmount/destroy | MEDIUM | CWE-401 |
+
+### Concurrency Issues
+
+| Smell | Threshold/Pattern | Transformation | Priority | CWE |
+|-------|-------------------|----------------|----------|-----|
+| TOCTOU Race Condition | Check-then-act without atomicity | Use atomic operation or lock | HIGH | CWE-367 |
+| Shared Mutable State | Non-const global with multi-thread access | Add synchronization or make immutable | HIGH | CWE-362 |
+| Non-Atomic Increment | counter++ on shared variable | Use AtomicInteger/atomic/synchronized | HIGH | CWE-366 |
+| Deadlock Risk | Lock acquisition in different orders | Enforce consistent lock ordering | MEDIUM | CWE-833 |
+
+### Error Handling Smells
+
+| Smell | Threshold/Pattern | Transformation | Priority | CWE |
+|-------|-------------------|----------------|----------|-----|
+| Empty Catch Block | catch/except with empty body | Add logging + rethrow or handle | HIGH | CWE-1069 |
+| Generic Catch-All | catch(Exception)/except: | Replace Generic Catch (specific types) | HIGH | CWE-396 |
+| Swallowed Exception | Logged but not propagated | Add rethrow or return error | MEDIUM | CWE-390 |
+| Resource Leak | Open without close on error path | Fix Resource Leak (using/with/try-with) | HIGH | CWE-772 |
+| Unhandled Promise | .then() without .catch() | Add error handler or await with try-catch | HIGH | CWE-755 |
+| Lost Stack Trace | New exception without cause | Wrap original exception as cause | MEDIUM | -- |
+| Exception as Flow Control | throw where break/return works | Replace with control flow | LOW | CWE-248 |
+
+### Testing Quality
+
+| Smell | Threshold/Pattern | Transformation | Priority |
+|-------|-------------------|----------------|----------|
+| Test without Assertion | Test method with no assert/expect | Add meaningful assertions | HIGH |
+| Assertion Roulette | >5 assertions without messages | Split test or add messages | MEDIUM |
+| Sleepy Test | sleep() in test | Replace with polling/mock/await | MEDIUM |
+| Mystery Guest | Direct I/O in unit test | Extract fixture or add mock | MEDIUM |
+| Conditional Test Logic | if/switch in test body | Split into separate test cases | LOW |
+
+### Architecture Issues
+
+| Smell | Threshold/Pattern | Transformation | Priority | Ref |
+|-------|-------------------|----------------|----------|-----|
+| Circular Dependency | A imports B imports A | Break Circular Dependency | HIGH | CWE-1047 |
+| Excessive Coupling | CBO >20 | Extract interface, reduce dependencies | MEDIUM | CWE-1048 |
+| Layer Violation | DB access from view/controller | Move to service/repository layer | MEDIUM | -- |
+| Unnecessary Abstraction | Interface with 1 impl | Inline or defer until needed | LOW | -- |
+| Unbounded Recursion | Recursion without termination proof | Add depth limit or convert to iteration | MEDIUM | NASA P10 R1 |

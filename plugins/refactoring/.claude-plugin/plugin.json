@@ -1,9 +1,9 @@
 {
   "name": "refactoring",
-  "version": "1.0.0",
-  "description": "Universal code refactoring for all programming languages — code smell detection, SOLID, Clean Code, DRY/KISS/YAGNI, safe transformations with structured verification",
+  "version": "2.0.0",
+  "description": "Universal code refactoring for all programming languages — code smell detection, SOLID, Clean Code, DRY/KISS/YAGNI, performance anti-patterns, concurrency issues, error-handling smells, testing quality, architecture analysis, safe transformations with confidence scoring and structured verification",
   "author": {
     "name": "blumenkohlbinary"
   },
-  "keywords": ["refactoring", "clean-code", "code-smells", "solid", "dry", "kiss", "yagni"]
+  "keywords": ["refactoring", "clean-code", "code-smells", "solid", "dry", "kiss", "yagni", "performance", "concurrency", "error-handling", "testing-quality", "architecture", "confidence-scoring"]
 }
