@@ -87,36 +87,81 @@ The following patterns look like vulnerabilities but are SAFE — reject these f
 6. **textContent vs innerHTML** — `element.textContent = userInput` — NOT XSS (auto-encoded)
 7. **safe_load** — `yaml.safe_load(data)` — NOT insecure deserialization
 8. **subprocess with list** — `subprocess.run(["ls", path])` — NOT command injection
+9. **SSTI with auto-escaping** — Jinja2 `autoescape=True` (default in Flask), Blade `{{ $var }}`, Twig auto-escaping — NOT SSTI (user input as data context, not template source)
+10. **JWT with explicit algorithm** — `jwt.decode(token, key, algorithms=["HS256"])`, `.parseClaimsJws()`, `jwt.WithValidMethods()` — NOT JWT misuse
+11. **Mass Assignment with allowlist** — Django `fields = ['name', 'email']`, Laravel `$fillable`, Rails `.permit()`, DTO classes — NOT mass assignment
+12. **Secure XML parser** — Python `defusedxml`, Java `FEATURE_SECURE_PROCESSING` + entity features disabled, `xml2js`/`fast-xml-parser` (pure JS), Go `encoding/xml`, PHP 8.0+ without LIBXML_NOENT — NOT XXE
+13. **Non-security random** — `random.random()` for UI animations, display shuffling, game logic, test data — NOT insecure randomness (only flag when used for tokens, keys, session IDs, passwords)
+14. **Structured logging with sanitization** — structlog, Pino with `redact` option, slog with `LogValuer`, Log4j2 JSON layout — NOT log injection
+15. **Validated redirect** — `url_has_allowed_host_and_scheme()`, `new URL()` + hostname allowlist, integer ID mapping — NOT open redirect
+16. **Scoped private registry** — `.npmrc` with `@scope:registry=`, pip `--index-url` (single, no extra-index-url), `GOPRIVATE` set — NOT dependency confusion
+17. **Separated LLM messages** — user input placed only in `user` role with proper system/user separation, input validation + output filtering implemented — NOT prompt injection
 
 ### Performance False Positives
-9. **Pre-loaded queryset** — `users = User.objects.select_related('dept').all()` then loop — NOT N+1
-10. **Fixed small collection** — nested loop over 2 lists with max 5 elements each — NOT O(n^2) concern
-11. **join() for string building** — `", ".join(items)` in loop is O(n) — NOT string concat issue
-12. **StringBuilder/join** — already using efficient builder pattern — NOT string concat issue
+18. **Pre-loaded queryset** — `users = User.objects.select_related('dept').all()` then loop — NOT N+1
+19. **Fixed small collection** — nested loop over 2 lists with max 5 elements each — NOT O(n^2) concern
+20. **join() for string building** — `", ".join(items)` in loop is O(n) — NOT string concat issue
+21. **StringBuilder/join** — already using efficient builder pattern — NOT string concat issue
+22. **Memoized component** — `React.memo` with stable props, `useMemo`/`useCallback` already applied — NOT missing memoization
+23. **Indexed model field** — `db_index=True`, `index=True`, `@Index` already present on queried field — NOT missing index
+24. **ESM or deep import** — `lodash-es`, `lodash/debounce`, direct file import bypassing barrel — NOT tree shaking killer
+25. **Pre-loop serialization** — `JSON.stringify` called once before loop, result reused — NOT serialization waste
+26. **Paginated or bounded query** — `.iterator()`, `.yield_per()`, `.limit()`, cursor pagination, or known-small table (enums, config) — NOT unbounded loading
+27. **Reverse proxy compression** — nginx `gzip on`, Caddy auto-compress, CDN/Cloudflare handles compression — NOT missing compression middleware
+28. **ReadOnly transaction set** — `@Transactional(readOnly = true)` already present, or method contains write operations — NOT inefficient transaction
 
 ### Concurrency False Positives
-13. **Type-only import** — TypeScript `import type { X }` — NOT runtime circular dependency
-14. **Immutable global** — `MAX_RETRIES = 3` at module level — NOT shared mutable state (it's a constant)
-15. **Thread-local storage** — variable in `threading.local()` — NOT shared state
-16. **Atomic read of primitive** — reading a bool flag set once at startup in Python (GIL-protected) — LOW risk
+29. **Type-only import** — TypeScript `import type { X }` — NOT runtime circular dependency
+30. **Immutable global** — `MAX_RETRIES = 3` at module level — NOT shared mutable state (it's a constant)
+31. **Thread-local storage** — variable in `threading.local()` — NOT shared state
+32. **Atomic read of primitive** — reading a bool flag set once at startup in Python (GIL-protected) — LOW risk
+33. **Intentional permanent goroutine** — HTTP server listener, background worker with graceful shutdown via `signal.Notify` — NOT goroutine leak
+34. **Void operator on promise** — `void asyncFunction()` is intentional fire-and-forget with explicit suppression — NOT floating promise
+35. **Volatile singleton** — Java `volatile` on instance variable, Go `sync.Once`, C++11 magic statics, Python (GIL) — NOT unsafe DCL
+36. **Dedicated executor** — `CompletableFuture.supplyAsync(task, customExecutor)` or `Executors.newFixedThreadPool()` — NOT thread pool exhaustion
+37. **setImmediate recursion** — `setImmediate()` runs in Check phase AFTER I/O poll, cannot starve I/O — NOT event loop starvation
 
 ### Resilience False Positives
-17. **Top-level error boundary** — Express `app.use((err, req, res, next) => ...)` — correct catch-all location
-18. **Flask global error handler** — `@app.errorhandler(Exception)` at application level — correct
-19. **Main entry point** — `if __name__ == '__main__': try: main() except Exception: sys.exit(1)` — correct catch-all
-20. **Optional operation** — `except Exception: pass` with clear comment: "Optional telemetry — safe to skip" — acceptable
+38. **Top-level error boundary** — Express `app.use((err, req, res, next) => ...)` — correct catch-all location
+39. **Flask global error handler** — `@app.errorhandler(Exception)` at application level — correct
+40. **Main entry point** — `if __name__ == '__main__': try: main() except Exception: sys.exit(1)` — correct catch-all
+41. **Optional operation** — `except Exception: pass` with clear comment: "Optional telemetry — safe to skip" — acceptable
+42. **Internal service call** — Call to localhost, same-cluster service mesh, or local database — NOT missing circuit breaker (CB is for external/cross-network calls)
+43. **Exponential backoff library** — `p-retry` (JS, exponential by default), tenacity `wait_exponential` already used, only 2 attempts — NOT retry without backoff
+44. **Session-level timeout** — `requests.Session()` with timeout configured, `httpx` (5s default), client-level timeout set — NOT missing timeout
+45. **Dependent promises** — Promises in sequence where result A is input for B, all-or-nothing transaction semantics — NOT partial failure (allSettled inappropriate)
+
+### API Design False Positives
+46. **Apollo Server v4 production** — Apollo Server v4 auto-disables introspection when `NODE_ENV=production`, graphql-armor already configured — NOT GraphQL anti-pattern
+47. **API behind rate-limiting gateway** — Cloudflare, AWS API Gateway, nginx `limit_req_zone`, or WAF handles rate limiting at infrastructure level — NOT missing rate limiting
+48. **Admin-only endpoint with RBAC** — Endpoint with proper authorization/role check (`@admin_required`, `IsAdminUser` permission class) before returning sensitive data — NOT sensitive data exposure
+49. **FastAPI with Pydantic BaseModel** — Pydantic BaseModel type hints provide automatic schema validation, GraphQL schema types provide intrinsic validation — NOT missing request validation
 
 ### Testing False Positives
-21. **assertDoesNotThrow** — test verifies no exception is thrown — this IS an assertion
-22. **Mock.assert_called** or `verify()` on mock — counts as assertion
-23. **Integration test accessing DB** — file in `integration/` or `e2e/` directory — expected external access
-24. **pytest.raises** — tests that an exception IS raised — valid assertion
+50. **assertDoesNotThrow** — test verifies no exception is thrown — this IS an assertion
+51. **Mock.assert_called** or `verify()` on mock — counts as assertion
+52. **Integration test accessing DB** — file in `integration/` or `e2e/` directory — expected external access
+53. **pytest.raises** — tests that an exception IS raised — valid assertion
+54. **test.each with conditional expected** — `test.each([[true, 'yes'], [false, 'no']])` with conditional expected values is parametrized testing — NOT conditional test logic
+55. **Shared immutable const state** — `const CONFIG = Object.freeze({...})` or `final static` without mutation across tests — NOT test interdependency
+56. **Correctly mocked non-deterministic source** — `jest.useFakeTimers()`, `jest.spyOn(Date, 'now')`, MSW configured, `@patch('requests.get')` — NOT flaky test pattern
+57. **Small inline snapshot** — `toMatchInlineSnapshot()` <20 lines for API response shape or config object — NOT snapshot misuse
+
+### Quality / Maintainability False Positives
+58. **DTO/Mapper class accessing foreign data** — transformation is the class purpose, not feature envy. Mapper classes, serializers, formatters that exist to convert between representations legitimately access many foreign attributes.
+59. **Constructor with DI dependencies** — many parameters justified by dependency injection pattern. Spring `@Autowired`, Guice `@Inject`, NestJS constructors with injected services are not a long parameter list smell.
+60. **Test data setup repetition** — intentional explicit setup for test clarity per xUnit Patterns. Repeated fixture creation in test files is preferred over shared mutable state.
+61. **Fluent API / Builder / Stream chain** — `builder.setA().setB().build()`, `stream.filter().map().collect()`, `Optional.map().flatMap().orElse()` — NOT message chain / Law of Demeter violation. Each method returns `this` or a new wrapper by design.
 
 ### Architecture False Positives
-25. **Barrel file re-export** — `index.ts` that re-exports from multiple modules — NOT circular dependency
-26. **Type import only** — TypeScript `import type { Foo }` from a module — no runtime cycle
-27. **Configuration import** — `import constants from '../config'` is not a layer violation
-28. **Same-layer import** — two services importing from each other's interface (not implementation) — acceptable coupling
+62. **Barrel file re-export** — `index.ts` that re-exports from multiple modules — NOT circular dependency
+63. **Type import only** — TypeScript `import type { Foo }` from a module — no runtime cycle
+64. **Configuration import** — `import constants from '../config'` is not a layer violation
+65. **Same-layer import** — two services importing from each other's interface (not implementation) — acceptable coupling
+66. **Project without explicit layer directories** — no `domain/`, `infrastructure/`, `core/`, `adapter/` directories recognizable — cannot determine DIP violation without recognized architecture structure → NOT dependency inversion violation
+67. **Composition Root / DI Container** — the ONE place where concrete implementations are wired together (`main.py`, `container.ts`, `AppConfig.java`, `CompositionRoot`) — concrete dependencies are legitimately assembled here → NOT DIP violation
+68. **DTO / Value Object / Event class** — class with only fields and accessors that is explicitly a data carrier by design, often immutable with constructor validation → NOT anemic domain model
+69. **Config file or constants module** — dedicated config location (`settings.py`, `config.ts`, `application.yml`, `.env`, `constants.py`) with hardcoded values is correct pattern → NOT hardcoded configuration
 
 ---
 

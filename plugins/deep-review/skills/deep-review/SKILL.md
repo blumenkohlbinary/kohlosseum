@@ -4,7 +4,7 @@ description: |
   Comprehensive code review using 8 parallel specialist agents and an Opus Critic-Agent with
   confidence scoring. Detects security vulnerabilities (OWASP/CWE), performance anti-patterns,
   concurrency issues, resilience defects, API design problems, testing quality smells, code
-  maintainability issues, and architecture problems. Covers 31 checks across 8 categories.
+  maintainability issues, and architecture problems. Covers 76 checks across 8 categories.
   Works with any programming language. Read-only — never modifies source files.
 
   Use when the user says:
@@ -165,8 +165,9 @@ Show:
 ## Quality Standards Applied
 
 This review uses:
-- **OWASP Top 10** (2021) for security classification
-- **CWE** identifiers for all vulnerability types
+- **OWASP Top 10** (2025) for security classification
+- **OWASP LLM Top 10** (2025) for AI/LLM security
+- **CWE** identifiers for all vulnerability types (including CWE-1427 Prompt Injection)
 - **NASA JPL Power of Ten** (R1 unbounded recursion, R5 assertions, R7 return values)
 - **CERT Secure Coding** standards (ERR33-C, DCL30-C, MSC12-C)
 - **MISRA** concepts for variable scope and dead code

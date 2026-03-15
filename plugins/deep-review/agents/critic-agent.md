@@ -50,6 +50,50 @@ Remove a finding if ANY of these apply:
 - Generic catch-all in a provably correct top-level error boundary (Express global error handler, Flask @app.errorhandler(Exception) at application level, main() entry point)
 - Missing pagination on an endpoint that clearly returns a fixed, small, bounded dataset (enum values, config options, feature flags)
 - Unbounded recursion where the base case is clearly correct and the recursion naturally terminates on the input type
+- SSTI finding where template auto-escaping is enabled and user input is passed as data context (not template source)
+- JWT misuse finding where `algorithms=` parameter is explicitly set, or `.parseClaimsJws()` / `jwt.WithValidMethods()` is used
+- Mass assignment finding where DTO pattern, explicit `$fillable`/`fields=[...]`/`.permit()` allowlist is already applied
+- XXE finding where secure parser is used: `defusedxml`, `FEATURE_SECURE_PROCESSING`, `xml2js`/`fast-xml-parser`, Go `encoding/xml`, PHP 8.0+ without `LIBXML_NOENT`
+- Insecure randomness finding where `random()` is used for non-security purposes (UI shuffling, game logic, test data, display order)
+- Log injection finding where structured logging with automatic sanitization is used (structlog, Pino `redact`, slog `LogValuer`, Log4j2 JSON layout)
+- Open redirect finding where URL validation with hostname allowlist or ID mapping is already implemented
+- Prompt injection finding where user input is placed only in `user` role with proper system/user separation and input/output filtering
+- Missing DB index finding where field is a primary key or foreign key (auto-indexed by ORM)
+- Unbounded data loading finding where table is provably small/bounded (enum table, config table, feature flags)
+- Missing compression finding where reverse proxy (nginx, Caddy, CDN) handles compression upstream
+- Tree shaking finding where `lodash-es` or deep imports (`lodash/debounce`) are already used
+- Missing memoization finding where component has no expensive renders (simple DOM elements, no heavy children)
+- Serialization waste finding where serialization occurs once before the loop (pre-computed)
+- Inefficient transaction finding where the method contains write operations (save, update, delete)
+- Goroutine leak finding where goroutine is intentionally permanent (HTTP server, background worker with graceful shutdown via signal.Notify)
+- Floating promise finding where `void` operator is used intentionally, or TaskGroup/Promise.all/Promise.allSettled context provides structured concurrency
+- Double-checked locking finding where `volatile` (Java), `sync.Once` (Go), Python (GIL), or C++11 magic statics are already used
+- Thread pool exhaustion finding where dedicated `ExecutorService` or `ForkJoinPool.ManagedBlocker` is provided instead of commonPool
+- Event loop starvation finding where `setImmediate()` is used instead of `process.nextTick()` (setImmediate runs after I/O, cannot starve)
+- Missing circuit breaker finding where call targets localhost, same-cluster service mesh, or local database (not external/cross-network)
+- Retry without backoff finding where only 2 attempts (minimal storm risk) or retry is for local/non-network operation (file lock)
+- Missing timeout finding where session-level or client-level timeout is already configured, or library has reasonable default (httpx 5s)
+- Partial failure finding where promises are dependent (result A needed as input for B) or all-or-nothing transaction semantics required
+- GraphQL anti-pattern finding where Apollo Server v4 with `NODE_ENV=production` (auto-disables introspection), DataLoader already used in resolver, or graphql-armor already configured
+- Missing rate limiting finding where API is behind rate-limiting gateway/WAF (Cloudflare, AWS API Gateway, nginx `limit_req`), or endpoint is internal microservice / health-check
+- Sensitive data in response finding where endpoint is admin-only with RBAC authorization check, `write_only=True` correctly set, or internal service-to-service endpoint
+- Inconsistent error format finding where different error formats serve different API versions (intentional), or legacy endpoint has documented deprecation plan
+- Missing request validation finding where Pydantic BaseModel type hints (automatic validation), GraphQL schema types (intrinsic validation), or manual validation code with explicit if/raise patterns is present
+- Conditional test logic finding where `test.each` with conditional expected values (parametrized testing), optional chaining `?.`, `try/finally` without catch (cleanup), or `expect.assertions(N)` guard is present
+- Test interdependency finding where shared state is immutable (`const`/`Object.freeze`), or `beforeAll` for expensive one-time setup (DB connection, server start)
+- Flaky test pattern finding where non-deterministic source is properly mocked (`jest.useFakeTimers`, `jest.spyOn(Date, 'now')`, MSW, `@patch`, `unittest.mock`), or file is in integration/e2e directory
+- Snapshot misuse finding where inline snapshot is <20 lines, property matchers used for dynamic fields, or snapshot tests API response shapes / configuration objects
+- Test double overuse finding where mocking targets external I/O boundaries (HTTP, DB, filesystem), integration test setup file, or orchestrator class with many legitimate collaborators
+- Feature envy finding where class is a DTO/Mapper/Formatter that legitimately transforms foreign data, or Builder pattern that by-design accesses multiple external objects
+- Data clump finding where parameters are standard mathematical triples (x, y, z) in math/physics library, or parameter group appears in fewer than 2 methods
+- Long parameter list finding where constructor uses dependency injection pattern (`@Autowired`, `@Inject`), or method is a mathematical function with inherently many parameters, or framework-mandated signature
+- Code duplication finding where repeated code is test data setup (explicit fixture creation), framework-mandated boilerplate, generated code, or interface implementation matching a contract
+- Message chain finding where chain is a fluent API (`builder.setA().setB().build()`), Stream/LINQ pipeline, Optional chain, jQuery-style chaining, or method chaining returning `this`
+- God package finding where directory is a test directory, generated code directory, monorepo root with sub-packages, or all files share a single cohesive domain
+- DIP violation finding where project has no recognizable layer structure (no domain/, infrastructure/ directories), or import is in a Composition Root / DI container, or is a shared-kernel / standard library / framework import
+- Unstable dependency finding where the "unstable" dependency is a standard library, framework module, or well-established third-party package (these are stable by convention despite potentially high Ce)
+- Anemic domain model finding where class is explicitly a DTO, Value Object, Event, or configuration class, or uses immutable fields with constructor validation (DDD Value Object)
+- Hardcoded configuration finding where value is in a dedicated config file (settings.py, config.ts, application.yml), is a localhost/127.0.0.1/0.0.0.0 default, has environment variable fallback, or is in a test/Docker file
 - Confidence < 50 (too speculative to report)
 - Missing valid file:line reference
 
@@ -107,7 +151,7 @@ Produce the complete structured review report in this exact format:
 - **Evidence:** `[exact code snippet]`
 - **Reasoning:** [combined specialist + critic CoT validation]
 - **Remediation:** [concrete fix with code example]
-- **Standard:** [OWASP A0X:2021 / CWE-XX / NASA P10 RX / CERT rule]
+- **Standard:** [OWASP A0X:2025 / CWE-XX / NASA P10 RX / CERT rule]
 - **Also detected by:** [agent names if cross-validated, or — if single agent]
 
 ---
