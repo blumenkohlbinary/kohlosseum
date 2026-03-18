@@ -22,6 +22,5 @@
     "conflict-detection",
     "progressive-disclosure",
     "compliance-rate"
-  ],
-  "hooks": "hooks/hooks.json"
+  ]
 }
