@@ -39,8 +39,9 @@ Scan these locations using Glob and Read:
 - Enterprise paths: `/Library/Application Support/ClaudeCode/CLAUDE.md` (macOS), check `%PROGRAMDATA%\ClaudeCode\CLAUDE.md` on Windows via Bash
 
 **Rules:**
-- `.claude/rules/*.md` (project rules)
+- `.claude/rules/rules/*.md` (project rules)
 - `~/.claude/rules/*.md` (user rules)
+- `.claude/rules/active-context.md` (auto-generated session context — flag as "auto-managed" if present)
 
 **Memory:**
 - Compute project hash from current directory (replace `/\: ` with `-`)

@@ -46,6 +46,12 @@ for PREFIX in MEMORY CLAUDE; do
   ls -t "$BACKUP_DIR/${PREFIX}-"*.md 2>/dev/null | tail -n +$((KEEP_COUNT + 1)) | xargs rm -f 2>/dev/null
 done
 
+# --- Save active context from transcript ---
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/save-context.sh" ]; then
+  echo "$INPUT" | bash "$SCRIPT_DIR/save-context.sh"
+fi
+
 # --- Report (stdout goes to user transcript) ---
 if [ "$BACKUP_COUNT" -gt 0 ]; then
   echo "[Mind Manager] Pre-compact backup: ${BACKUP_COUNT} file(s) saved (trigger: ${TRIGGER})"

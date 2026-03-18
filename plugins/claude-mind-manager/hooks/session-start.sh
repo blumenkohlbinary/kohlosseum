@@ -62,8 +62,18 @@ if [ -d "$RULES_DIR" ]; then
   fi
 fi
 
+# --- Check active context ---
+ACTIVE_CTX="$PROJECT_DIR/.claude/rules/active-context.md"
+if [ -f "$ACTIVE_CTX" ]; then
+  # Extract timestamp from frontmatter
+  CTX_DATE=$(grep '^# Last updated:' "$ACTIVE_CTX" 2>/dev/null | sed 's/# Last updated: //')
+  if [ -n "$CTX_DATE" ]; then
+    WARNINGS="${WARNINGS}Active context from last session loaded (saved: ${CTX_DATE}). "
+  fi
+fi
+
 # --- Output ---
-if [ "$WARN_COUNT" -gt 0 ]; then
+if [ "$WARN_COUNT" -gt 0 ] || [ -f "$ACTIVE_CTX" ]; then
   # Structured JSON for SessionStart context injection
   ESCAPED_WARNINGS=$(echo "$WARNINGS" | sed 's/"/\\"/g')
   printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"[Mind Manager] %d warning(s): %s"}}' \
