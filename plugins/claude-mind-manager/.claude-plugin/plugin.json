@@ -1,0 +1,27 @@
+{
+  "name": "claude-mind-manager",
+  "version": "1.0.0",
+  "description": "Comprehensive context management for Claude Code. 10 skills for memory hygiene, conflict detection, budget optimization, rules validation, cross-project knowledge transfer, and pre-compaction backup. Solves MEMORY.md overflow, CLAUDE.md compliance degradation, rules silently ignored, contradictions between context files, and cross-project knowledge loss. SessionStart hook with automatic budget warnings. No external dependencies.",
+  "author": {
+    "name": "blumenkohlbinary"
+  },
+  "keywords": [
+    "context-management",
+    "memory",
+    "claude-md",
+    "rules",
+    "optimization",
+    "audit",
+    "cleanup",
+    "budget",
+    "token-optimization",
+    "cross-project",
+    "hooks",
+    "session-start",
+    "pre-compact",
+    "conflict-detection",
+    "progressive-disclosure",
+    "compliance-rate"
+  ],
+  "hooks": "hooks/hooks.json"
+}
