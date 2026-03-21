@@ -41,10 +41,11 @@ Read all context files, identify optimization opportunities, produce actionable 
 ## Step-by-Step Process
 
 1. Read all CLAUDE.md files (global, project, local, subdirectories)
-2. Read MEMORY.md and topic files
+2. Read MEMORY.md (at `~/.claude/projects/<hash>/memory/`) and topic files (at `<cwd>/.claude-mind/`)
 3. Read all rule files in `.claude/rules/` and `~/.claude/rules/`
 4. Check for `.claudeignore` existence
-5. Analyze and generate optimization suggestions
+5. Read [references/token-budget-formulas.md](../references/token-budget-formulas.md) for precise token estimation
+6. Analyze and generate optimization suggestions
 
 ## Optimization Categories
 
@@ -78,9 +79,9 @@ Recommend: keep in ONE file, remove from others
 
 ### Category 5: MEMORY.md Offloading
 When MEMORY.md approaches 200 lines, identify entries for topic files:
-- Debugging history → `memory/debugging.md`
-- API conventions learned → `memory/api-conventions.md`
-- Architecture notes → `memory/architecture.md`
+- Debugging history → `.claude-mind/debugging.md`
+- API conventions learned → `.claude-mind/api-conventions.md`
+- Architecture notes → `.claude-mind/architecture.md`
 
 ### Category 6: Missing .claudeignore
 If no `.claudeignore` exists, recommend creating one:

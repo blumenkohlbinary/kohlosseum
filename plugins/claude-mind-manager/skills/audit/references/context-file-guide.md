@@ -19,7 +19,9 @@ All context files Claude Code loads, organized by load timing and scope.
 | File | Path Pattern | Trigger | Notes |
 |------|-------------|---------|-------|
 | Subdirectory CLAUDE.md | `./subdir/CLAUDE.md` | When Claude reads files in that directory | Powerful for monorepos |
-| Topic Files | `~/.claude/projects/<hash>/memory/*.md` | When Claude needs them | No size limit, but <200 lines recommended |
+| Topic Files (auto) | `~/.claude/projects/<hash>/memory/*.md` | When Claude needs them | No size limit, but <200 lines recommended |
+| Topic Files (plugin) | `<cwd>/.claude-mind/*.md` | On-demand by Mind Manager skills | Plugin-managed, portable |
+| Backups (plugin) | `<cwd>/.claude-mind/backups/` | Pre-compact hook | Rotated, last 5 kept |
 | @Import targets | `@docs/file.md`, `@~/path` | Referenced from CLAUDE.md | Depth 5, relative resolution, codeblocks excluded |
 | Skill bodies | `skills/*/SKILL.md` body | When skill is relevant | Frontmatter always loaded (~100 tokens) |
 

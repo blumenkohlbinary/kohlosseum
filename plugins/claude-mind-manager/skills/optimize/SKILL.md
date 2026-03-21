@@ -1,13 +1,14 @@
 ---
 name: optimize
 description: |
-  Optimize context budget: shorten verbose entries, modularize large CLAUDE.md sections
-  into rules, deduplicate across files, suggest progressive disclosure via @imports,
-  migrate CLAUDE.local.md to @import pattern. Uses SFEIR compliance data to show
-  projected improvement (5 rules x 30 lines = 96% vs 150-line CLAUDE.md = 92%).
+  Optimize context budget and resolve contradictions. Shortens verbose entries, modularizes
+  CLAUDE.md into rules, deduplicates across files, suggests @imports, resolves conflicts
+  between CLAUDE.md/MEMORY.md/rules, migrates CLAUDE.local.md. Uses SFEIR compliance data.
+  Also reads .claude-mind/suggestions.md for pending CLAUDE.md update suggestions.
 
   Use when the user says "optimize context", "reduce tokens", "mind optimize",
-  "CLAUDE.md too long", "budget optimization", "token budget", or "/mind:optimize".
+  "CLAUDE.md too long", "budget optimization", "token budget", "fix contradictions",
+  "resolve conflicts", "sync context", or "/mind:optimize".
 argument-hint: "[--dry-run]"
 context: inherit
 allowed-tools: Read Glob Grep Edit Write Bash Agent
@@ -36,14 +37,30 @@ Launch **context-optimizer** agent:
 
 Read [references/quality-criteria.md](references/quality-criteria.md) for optimization patterns and anti-patterns.
 
-### Step 4: Add Inline Checks
+### Step 4: Detect Contradictions
 
-While agent runs, perform additional checks:
+Launch **claude-md-analyzer** agent with focus on cross-file contradictions:
+"Read all CLAUDE.md files (global, project, local), MEMORY.md, and rule files. Find contradictions: instructions that conflict, version mismatches, and redundant entries expressed differently. Report each with exact file:line references."
+
+Categorize findings:
+- **Direct Contradictions:** Opposite instructions (e.g., "Use jest" vs "Prefer vitest")
+- **Version Mismatches:** Different versions (e.g., "Node 18" vs "Node 20")
+- **Redundant Instructions:** Same meaning, different wording
+- **Scope Conflicts:** Lower scope overrides higher (may be intentional)
+
+### Step 5: Check Pending Suggestions
+
+Read `.claude-mind/suggestions.md` if it exists — these are CLAUDE.md update suggestions
+collected automatically by the SessionEnd hook. Include them in the optimization plan.
+
+### Step 6: Add Inline Checks
+
+While agents run, perform additional checks:
 - **CLAUDE.local.md migration:** If exists, prepare migration plan
 - **Missing .claudeignore:** Generate recommended content
 - **Token estimate:** Calculate current vs projected totals
 
-### Step 5: Present Optimization Plan
+### Step 7: Present Optimization Plan
 
 ```
 === Context Optimization Plan ===
@@ -83,7 +100,24 @@ Compliance: ~89% → ~96% (modularization + compression)
     [Apply / Skip]
 ```
 
-### Step 6: Apply (If Not Dry-Run)
+Add contradiction resolutions to the plan if any were found:
+
+```
+[6] RESOLVE CONFLICT: Test Runner
+    CLAUDE.md:45 → "Test runner: jest"
+    MEMORY.md:23 → "User prefers vitest over jest"
+    Options: [A] Keep CLAUDE.md | [B] Keep MEMORY.md | [C] Keep both | [D] Skip
+```
+
+Add pending suggestions from `.claude-mind/suggestions.md` if any exist:
+
+```
+[7] SUGGESTION (auto-detected): New dependency "prisma" found in package.json
+    Recommendation: Add "ORM: Prisma" to CLAUDE.md architecture section
+    [Apply / Skip]
+```
+
+### Step 8: Apply (If Not Dry-Run)
 
 For each confirmed suggestion:
 - **Modularize:** Write new rule file, Edit CLAUDE.md to remove section
@@ -91,8 +125,10 @@ For each confirmed suggestion:
 - **Progressive Disclosure:** Write new doc file, Edit CLAUDE.md with @import
 - **Migrate:** Write new file, Edit CLAUDE.md with @import, note CLAUDE.local.md for user to delete
 - **Claudeignore:** Write .claudeignore file
+- **Resolve conflict:** Edit the file to remove/update the deprecated entry
+- **Apply suggestion:** Edit CLAUDE.md with suggested content, remove from suggestions.md
 
-### Step 7: Summary
+### Step 9: Summary
 
 ```
 === Optimization Complete ===
@@ -110,3 +146,6 @@ Files modified: 2 | Files created: 3
 - ALWAYS estimate token savings (lines × 10)
 - ALWAYS reference SFEIR compliance data for modularization
 - ALWAYS confirm before creating new files
+- NEVER auto-resolve contradictions — ALWAYS present options to the user
+- Scope conflicts (global vs project) may be intentional — always offer "Keep both" option
+- Clear .claude-mind/suggestions.md entries after they are applied or dismissed

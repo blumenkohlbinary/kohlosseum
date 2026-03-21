@@ -87,7 +87,7 @@ Include anyway? [Y/n — recommended: No]
 ## Topic Files
 
 ### debugging.md
-> Source: ~/.claude/projects/<hash>/memory/debugging.md
+> Source: <cwd>/.claude-mind/debugging.md
 
 [full content]
 

@@ -10,11 +10,20 @@ if [ -z "$PROJECT_DIR" ]; then
   exit 0
 fi
 
-# --- Compute project hash ---
-# Path encoding: / → -, \ → -, : → -, space → -
+# --- Paths ---
 HASH=$(echo "$PROJECT_DIR" | tr '/\\: ' '----' | sed 's/^-*//')
-
 MEMORY_FILE="$HOME/.claude/projects/$HASH/memory/MEMORY.md"
+MIND_DIR="$PROJECT_DIR/.claude-mind"
+
+# --- Auto-migrate old backups to .claude-mind/ (one-time) ---
+if [ ! -d "$MIND_DIR" ]; then
+  mkdir -p "$MIND_DIR/backups"
+  OLD_BACKUP_DIR="$HOME/.claude/projects/$HASH/memory/backups"
+  if [ -d "$OLD_BACKUP_DIR" ]; then
+    cp "$OLD_BACKUP_DIR"/*.md "$MIND_DIR/backups/" 2>/dev/null
+  fi
+fi
+
 WARNINGS=""
 WARN_COUNT=0
 
@@ -83,7 +92,7 @@ fi
 # --- Persist env vars for session ---
 if [ -n "$CLAUDE_ENV_FILE" ]; then
   echo "MIND_MEMORY_LINES=${MEM_LINES}" >> "$CLAUDE_ENV_FILE"
-  echo "MIND_PROJECT_HASH=${HASH}" >> "$CLAUDE_ENV_FILE"
+  echo "MIND_DIR=${MIND_DIR}" >> "$CLAUDE_ENV_FILE"
 fi
 
 exit 0

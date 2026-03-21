@@ -44,8 +44,8 @@ If no project specified in `$ARGUMENTS`, show all:
 
 | # | Project (best-effort decode) | Memory Lines | Topic Files |
 |---|----------------------------|-------------|-------------|
-| 1 | C:\Users\HackJ\APP | 45 lines | 2 files |
-| 2 | C:\Users\HackJ\TEXT DENSITY OPTIMIZER | 120 lines | 0 files |
+| 1 | Z:\APPBASE\CD\KOHLEKTIV\APP - Zustellplan | 45 lines | 2 files |
+| 2 | Z:\APPBASE\CD\KOHLEKTIV\Compress - Dokumente | 120 lines | 0 files |
 | 3 | C:\Users\HackJ\Neuer Ordner (2) | 30 lines | 1 file |
 
 Note: Project paths are decoded from hashes. Paths with hyphens
@@ -93,7 +93,7 @@ Before inserting:
 === Import Plan ===
 
 From: APP
-To: CLAUDE CODE VERSCHIEDENE (current project)
+To: Plugin - Entwicklung (current project)
 
 | Entry | Target | Lines |
 |-------|--------|-------|

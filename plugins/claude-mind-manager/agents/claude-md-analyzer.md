@@ -55,7 +55,8 @@ Read all CLAUDE.md files, assess health, and produce structured findings. NEVER 
    - `./CLAUDE.local.md` (local — check for deprecation)
    - Glob for `**/CLAUDE.md` in subdirectories (limit depth)
 2. Read each file completely
-3. Analyze structure, content, and cross-file consistency
+3. Load quality criteria from `references/` guides if available in the plugin directory
+4. Analyze structure, content, and cross-file consistency
 
 ## Analysis Categories
 

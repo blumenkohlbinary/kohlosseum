@@ -15,10 +15,12 @@ fi
 # --- Configurable ---
 KEEP_COUNT="${MIND_BACKUP_KEEP_COUNT:-5}"
 
-# --- Compute project hash ---
+# --- Paths ---
+MIND_DIR="$PROJECT_DIR/.claude-mind"
+BACKUP_DIR="$MIND_DIR/backups"
+# MEMORY.md stays at Claude Code's default location
 HASH=$(echo "$PROJECT_DIR" | tr '/\\: ' '----' | sed 's/^-*//')
 MEMORY_DIR="$HOME/.claude/projects/$HASH/memory"
-BACKUP_DIR="$MEMORY_DIR/backups"
 
 # --- Create backup directory ---
 mkdir -p "$BACKUP_DIR"
@@ -41,8 +43,15 @@ for CMD_FILE in "$PROJECT_DIR/CLAUDE.md" "$PROJECT_DIR/.claude/CLAUDE.md"; do
   fi
 done
 
+# --- Backup active-context.md ---
+ACTIVE_CTX="$PROJECT_DIR/.claude/rules/active-context.md"
+if [ -f "$ACTIVE_CTX" ]; then
+  cp "$ACTIVE_CTX" "$BACKUP_DIR/active-context-${TIMESTAMP}.md"
+  BACKUP_COUNT=$((BACKUP_COUNT + 1))
+fi
+
 # --- Rotate: keep only last N backups per type ---
-for PREFIX in MEMORY CLAUDE; do
+for PREFIX in MEMORY CLAUDE active-context; do
   ls -t "$BACKUP_DIR/${PREFIX}-"*.md 2>/dev/null | tail -n +$((KEEP_COUNT + 1)) | xargs rm -f 2>/dev/null
 done
 

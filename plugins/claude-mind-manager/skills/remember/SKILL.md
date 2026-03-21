@@ -8,8 +8,9 @@ description: |
   rule). Optionally offers Cline-style Memory Bank templates.
 
   Use when the user says "remember this", "save this", "mind remember", "add to memory",
-  "note this down", or "/mind:remember [fact]". Use with --error when Claude made a
-  mistake that should become a rule.
+  "note this down", "store this", "keep this in mind", "don't forget",
+  or "/mind:remember [fact]". Use with --error when Claude made a mistake that
+  should become a rule.
 argument-hint: "[--error] <what to remember>"
 context: inherit
 allowed-tools: Read Glob Grep Edit Write
@@ -108,7 +109,7 @@ Available templates:
 - techContext.md — Tech stack details
 - progress.md — Status and milestones
 
-These will be created as topic files in memory/ or rules in .claude/rules/.
+These will be created as topic files in .claude-mind/ or rules in .claude/rules/.
 ```
 
 Create selected template files with starter content on confirmation.

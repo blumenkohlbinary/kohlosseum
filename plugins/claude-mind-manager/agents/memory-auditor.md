@@ -49,10 +49,11 @@ Scan all memory files and produce a structured findings report. NEVER modify any
 
 ## Step-by-Step Process
 
-1. Determine the project memory path by reading the current working directory and computing the project hash (path with `-` replacing `/\: ` and spaces)
-2. Read `~/.claude/projects/<hash>/memory/MEMORY.md`
-3. Glob for all `~/.claude/projects/<hash>/memory/*.md` topic files
-4. Read each topic file found
+1. Determine the project memory path by computing the project hash (path with `-` replacing `/\: ` and spaces)
+2. Read `~/.claude/projects/<hash>/memory/MEMORY.md` (Claude Code's auto-memory)
+3. Glob for all `<cwd>/.claude-mind/*.md` topic files (plugin-managed)
+4. Also check `<cwd>/.claude-mind/learnings/*.md` and `<cwd>/.claude-mind/sessions/*.md`
+5. Read each file found
 
 ## Analysis Categories
 

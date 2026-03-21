@@ -35,8 +35,8 @@ Use Grep with case-insensitive matching (`-i`) across:
 - `./CLAUDE.local.md`
 - `.claude/rules/*.md`
 - `~/.claude/rules/*.md`
-- MEMORY.md (compute project hash first)
-- All topic files in memory directory
+- MEMORY.md (at `~/.claude/projects/<hash>/memory/MEMORY.md`)
+- All topic files in `<cwd>/.claude-mind/`
 
 ### Step 3: Present Matches with Context
 

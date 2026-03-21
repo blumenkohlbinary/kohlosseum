@@ -39,14 +39,13 @@ Scan these locations using Glob and Read:
 - Enterprise paths: `/Library/Application Support/ClaudeCode/CLAUDE.md` (macOS), check `%PROGRAMDATA%\ClaudeCode\CLAUDE.md` on Windows via Bash
 
 **Rules:**
-- `.claude/rules/rules/*.md` (project rules)
+- `.claude/rules/*.md` (project rules)
 - `~/.claude/rules/*.md` (user rules)
 - `.claude/rules/active-context.md` (auto-generated session context — flag as "auto-managed" if present)
 
 **Memory:**
-- Compute project hash from current directory (replace `/\: ` with `-`)
-- `~/.claude/projects/<hash>/memory/MEMORY.md`
-- `~/.claude/projects/<hash>/memory/*.md` (topic files, excluding MEMORY.md)
+- `~/.claude/projects/<hash>/memory/MEMORY.md` (auto-memory stays here)
+- `<cwd>/.claude-mind/*.md` (topic files)
 
 **Configuration:**
 - `.claudeignore` (existence check)
@@ -86,16 +85,16 @@ Use the scoring rubric from [references/budget-thresholds.md](../audit/reference
 Health Score: XX/100
 Compliance Prognosis: ~XX% (based on SFEIR data for N total instruction lines)
 
-| File                              | Lines | ~Tokens | Status          |
-|-----------------------------------|-------|---------|-----------------|
-| ~/.claude/CLAUDE.md (global)      | 45    | ~450    | OK              |
-| ./CLAUDE.md (project)             | 120   | ~1200   | OK              |
-| MEMORY.md                         | 185   | ~1388   | WARNING >180    |
-| .claude/rules/typescript.md       | 30    | ~300    | OK (globs:)     |
-| .claude/rules/api.md              | 25    | ~250    | WARNING (paths:)|
-| memory/debugging.md (topic)       | 45    | ~450    | OK              |
-| .claudeignore                     | —     | —       | EXISTS          |
-| .mcp.json (2 servers)             | —     | ~28000  | 2 × ~14K       |
+| File                              | Lines | ~Tokens | Grade | Status          |
+|-----------------------------------|-------|---------|-------|-----------------|
+| ~/.claude/CLAUDE.md (global)      | 45    | ~450    | B     | OK              |
+| ./CLAUDE.md (project)             | 120   | ~1200   | A     | OK              |
+| MEMORY.md                         | 185   | ~1388   | —     | WARNING >180    |
+| .claude/rules/typescript.md       | 30    | ~300    | —     | OK (globs:)     |
+| .claude/rules/api.md              | 25    | ~250    | —     | WARNING (paths:)|
+| .claude-mind/debugging.md (topic) | 45    | ~450    | —     | OK              |
+| .claudeignore                     | —     | —       | —     | EXISTS          |
+| .mcp.json (2 servers)             | —     | ~28000  | —     | 2 × ~14K       |
 
 Total estimated always-loaded context: ~X,XXX tokens
 Estimated on-demand context: ~X,XXX tokens
@@ -114,7 +113,7 @@ If `--verbose`: show first 5 lines of each file as preview.
 
 - NEVER modify any files — this skill is read-only
 - NEVER create any files
-- ALWAYS compute project hash for memory path discovery
+- ALWAYS check `<cwd>/.claude-mind/` for topic files
 - ALWAYS show compliance prognosis based on total line count
 - ALWAYS flag CLAUDE.local.md as deprecated if found
 - ALWAYS flag rules using paths: instead of globs:

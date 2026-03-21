@@ -72,8 +72,8 @@ Present each issue individually:
 
 [3/N] MEMORY.md approaching limit (192/200 lines)
   Suggest offloading to topic files:
-  - Lines 45-67: Debugging notes → memory/debugging.md
-  - Lines 80-95: API patterns → memory/api-conventions.md
+  - Lines 45-67: Debugging notes → .claude-mind/debugging.md
+  - Lines 80-95: API patterns → .claude-mind/api-conventions.md
   [O] Offload suggested entries  [S] Skip
 ```
 
@@ -94,7 +94,7 @@ Skipped: 2 items
 |------|--------|-------|-------|
 | MEMORY.md | 195 lines | 142 lines | 53 lines (~398 tokens) |
 | CLAUDE.md | 182 lines | 180 lines | 2 lines (~20 tokens) |
-| memory/debugging.md | (new) | 22 lines | — |
+| .claude-mind/debugging.md | (new) | 22 lines | — |
 
 Total savings: ~418 tokens
 ```
