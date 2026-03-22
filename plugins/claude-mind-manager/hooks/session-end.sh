@@ -7,14 +7,19 @@
 INPUT=$(cat)
 TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path // empty')
 PROJECT_DIR=$(echo "$INPUT" | jq -r '.cwd // empty')
+SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty')
 
 if [ -z "$PROJECT_DIR" ] || [ -z "$TRANSCRIPT_PATH" ]; then
   exit 0
 fi
 
-# --- Read message count ---
-HASH=$(echo "$PROJECT_DIR" | tr '/\\: ' '----' | sed 's/^-*//')
-COUNTER_FILE="/tmp/mind-session-count-${HASH}"
+# --- Read message count (per-session counter) ---
+if [ -n "$SESSION_ID" ]; then
+  COUNTER_KEY="$SESSION_ID"
+else
+  COUNTER_KEY=$(echo "$PROJECT_DIR" | tr '/\\: ' '----' | sed 's/^-*//')
+fi
+COUNTER_FILE="/tmp/mind-msg-count-${COUNTER_KEY}"
 MSG_COUNT=0
 if [ -f "$COUNTER_FILE" ]; then
   MSG_COUNT=$(cat "$COUNTER_FILE" 2>/dev/null || echo "0")

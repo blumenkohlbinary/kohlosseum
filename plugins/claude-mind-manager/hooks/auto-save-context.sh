@@ -1,43 +1,40 @@
 #!/bin/bash
 # Claude Mind Manager — Stop Hook (Auto-Save + Learnings + Session Summary)
-# Periodically saves active context during conversation (every N messages).
-# Writes to .claude/rules/active-context.md (auto-loaded in project scope).
-# Extracts learnings (corrections, errors, decisions) to .claude-mind/learnings/.
-# Creates session summaries every 2x save interval to .claude-mind/sessions/.
-# Cost: zero API calls — pure file operations.
+# Saves active context on EVERY response (overwrite, no growth).
+# Extracts learnings every N messages, session summaries every 2N messages.
+# Counter is per session_id (not per project) to handle Desktop chat switching.
+# Cost: zero API calls — pure file operations (~50ms).
 
 INPUT=$(cat)
 TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path // empty')
 PROJECT_DIR=$(echo "$INPUT" | jq -r '.cwd // empty')
+SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty')
 
 if [ -z "$PROJECT_DIR" ] || [ -z "$TRANSCRIPT_PATH" ]; then
   exit 0
 fi
 
 # --- Configurable ---
-SAVE_INTERVAL="${MIND_AUTO_SAVE_INTERVAL:-10}"
+LEARNINGS_INTERVAL="${MIND_LEARNINGS_INTERVAL:-10}"
 CONTEXT_MAX_BYTES="${MIND_CONTEXT_MAX_BYTES:-8000}"
 CONTEXT_TAIL_LINES="${MIND_CONTEXT_TAIL_LINES:-150}"
 
-# --- Message counter (per-project, in /tmp) ---
-HASH=$(echo "$PROJECT_DIR" | tr '/\\: ' '----' | sed 's/^-*//')
-COUNTER_FILE="/tmp/mind-msg-count-${HASH}"
+# --- Message counter (per-session, in /tmp) ---
+# Use session_id if available, fall back to project hash
+if [ -n "$SESSION_ID" ]; then
+  COUNTER_KEY="$SESSION_ID"
+else
+  COUNTER_KEY=$(echo "$PROJECT_DIR" | tr '/\\: ' '----' | sed 's/^-*//')
+fi
+COUNTER_FILE="/tmp/mind-msg-count-${COUNTER_KEY}"
 
-# Increment counter
+# Read counter (incremented by session-tracker.sh on UserPromptSubmit)
+COUNT=0
 if [ -f "$COUNTER_FILE" ]; then
   COUNT=$(cat "$COUNTER_FILE" 2>/dev/null || echo "0")
-else
-  COUNT=0
-fi
-COUNT=$((COUNT + 1))
-echo "$COUNT" > "$COUNTER_FILE"
-
-# Only save every N messages
-if [ $((COUNT % SAVE_INTERVAL)) -ne 0 ]; then
-  exit 0
 fi
 
-# --- Extract context from transcript ---
+# --- Extract context from transcript (ALWAYS) ---
 RAW_CONTEXT=""
 if [ -f "$TRANSCRIPT_PATH" ]; then
   RAW_CONTEXT=$(tail -"$CONTEXT_TAIL_LINES" "$TRANSCRIPT_PATH" 2>/dev/null | \
@@ -66,12 +63,11 @@ fi
 LEARNINGS_SRC="$PROJECT_DIR/.claude-mind/learnings"
 RECENT_LEARNINGS=""
 if [ -d "$LEARNINGS_SRC" ]; then
-  # Get last 5 learning entries from most recent files (tail of newest files)
   RECENT_LEARNINGS=$(ls -t "$LEARNINGS_SRC"/session-*.md 2>/dev/null | head -3 | \
     xargs -I{} grep -h '^\- ' {} 2>/dev/null | tail -5)
 fi
 
-# --- Write active-context.md ---
+# --- Write active-context.md (EVERY response — overwrites, no growth) ---
 RULES_DIR="$PROJECT_DIR/.claude/rules"
 mkdir -p "$RULES_DIR"
 CONTEXT_FILE="$RULES_DIR/active-context.md"
@@ -83,7 +79,7 @@ cat > "$CONTEXT_FILE" <<CTXEOF
 # Last updated: ${TIMESTAMP}
 # Trigger: auto-save (message ${COUNT})
 # This file is a rule WITHOUT globs: — it loads at EVERY session start in this project.
-# DO NOT EDIT MANUALLY — overwritten periodically during conversation.
+# DO NOT EDIT MANUALLY — overwritten after every Claude response.
 ---
 
 # Session Context (auto-saved)
@@ -103,9 +99,16 @@ Apply these to avoid repeating past mistakes.
 ${RECENT_LEARNINGS:-No learnings recorded yet.}
 CTXEOF
 
-# --- Session summary (every 2x save interval) ---
+# === Below: periodic tasks (only every N messages) ===
+
+if [ "$COUNT" -lt 1 ]; then
+  exit 0
+fi
+
 MIND_DIR="$PROJECT_DIR/.claude-mind"
-SUMMARY_INTERVAL=$((SAVE_INTERVAL * 2))
+
+# --- Session summary (every 2x learnings interval) ---
+SUMMARY_INTERVAL=$((LEARNINGS_INTERVAL * 2))
 if [ $((COUNT % SUMMARY_INTERVAL)) -eq 0 ]; then
   SESSIONS_DIR="$MIND_DIR/sessions"
   mkdir -p "$SESSIONS_DIR"
@@ -153,55 +156,53 @@ SESSEOF
   fi
 fi
 
-# --- Extract learnings (corrections, errors, decisions) ---
-LEARNINGS_DIR="$MIND_DIR/learnings"
-mkdir -p "$LEARNINGS_DIR"
+# --- Extract learnings (every N messages) ---
+if [ $((COUNT % LEARNINGS_INTERVAL)) -eq 0 ]; then
+  LEARNINGS_DIR="$MIND_DIR/learnings"
+  mkdir -p "$LEARNINGS_DIR"
 
-TODAY=$(date '+%Y-%m-%d')
-LEARNINGS_FILE="$LEARNINGS_DIR/session-${TODAY}.md"
+  TODAY=$(date '+%Y-%m-%d')
+  LEARNINGS_FILE="$LEARNINGS_DIR/session-${TODAY}.md"
 
-# Extract patterns that indicate learnings from transcript
-# Look for: corrections ("not X, use Y"), errors ("failed because"), decisions ("decided to", "chose")
-LEARNINGS=""
-if [ -f "$TRANSCRIPT_PATH" ]; then
-  LEARNINGS=$(tail -"$CONTEXT_TAIL_LINES" "$TRANSCRIPT_PATH" 2>/dev/null | \
-    jq -r '
-      select(.type == "assistant" or .role == "assistant") |
-      if .message then
-        (.message.content // empty) | if type == "array" then
-          map(select(.type == "text") | .text) | join("\n")
-        elif type == "string" then .
+  LEARNINGS=""
+  if [ -f "$TRANSCRIPT_PATH" ]; then
+    LEARNINGS=$(tail -"$CONTEXT_TAIL_LINES" "$TRANSCRIPT_PATH" 2>/dev/null | \
+      jq -r '
+        select(.type == "assistant" or .role == "assistant") |
+        if .message then
+          (.message.content // empty) | if type == "array" then
+            map(select(.type == "text") | .text) | join("\n")
+          elif type == "string" then .
+          else empty end
+        elif .content then
+          if (.content | type) == "array" then
+            .content | map(select(.type == "text") | .text) | join("\n")
+          elif (.content | type) == "string" then .content
+          else empty end
         else empty end
-      elif .content then
-        if (.content | type) == "array" then
-          .content | map(select(.type == "text") | .text) | join("\n")
-        elif (.content | type) == "string" then .content
-        else empty end
-      else empty end
-    ' 2>/dev/null | \
-    grep -iE '(instead of|should have|fix(ed)?:|error:|mistake|correction|NEVER |MUST |ALWAYS |decided to|chose |switched from|changed .* to |the issue was|root cause|workaround)' 2>/dev/null | \
-    head -30 | \
-    sed 's/^[[:space:]]*/- /' 2>/dev/null)
-fi
+      ' 2>/dev/null | \
+      grep -iE '(instead of|should have|fix(ed)?:|error:|mistake|correction|NEVER |MUST |ALWAYS |decided to|chose |switched from|changed .* to |the issue was|root cause|workaround)' 2>/dev/null | \
+      head -30 | \
+      sed 's/^[[:space:]]*/- /' 2>/dev/null)
+  fi
 
-# Only write if learnings were found
-if [ -n "$LEARNINGS" ]; then
-  # Append to today's learnings file (don't overwrite — accumulate per day)
-  if [ ! -f "$LEARNINGS_FILE" ]; then
-    cat > "$LEARNINGS_FILE" <<LEOF
+  if [ -n "$LEARNINGS" ]; then
+    if [ ! -f "$LEARNINGS_FILE" ]; then
+      cat > "$LEARNINGS_FILE" <<LEOF
 # Session Learnings — ${TODAY}
 # Auto-extracted by Claude Mind Manager (Stop hook)
 # Format: Korrektur-Flywheel — corrections and decisions from conversation
 
 LEOF
-  fi
+    fi
 
-  cat >> "$LEARNINGS_FILE" <<LEOF
+    cat >> "$LEARNINGS_FILE" <<LEOF
 ## Extract at $(date '+%H:%M:%S') (message ${COUNT})
 
 ${LEARNINGS}
 
 LEOF
+  fi
 fi
 
 exit 0
