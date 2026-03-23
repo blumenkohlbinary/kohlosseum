@@ -3,6 +3,13 @@
 # Increments a per-session message counter in /tmp for the Stop hook.
 # No stdout — UserPromptSubmit output goes to context and we don't want noise.
 
+LOG_FILE="/tmp/mind-manager-errors.log"
+exec 2>>"$LOG_FILE"
+if ! command -v jq &>/dev/null; then
+  echo "[$(date '+%H:%M:%S')] session-tracker.sh: jq not found" >>"$LOG_FILE"
+  exit 0
+fi
+
 INPUT=$(cat)
 PROJECT_DIR=$(echo "$INPUT" | jq -r '.cwd // empty')
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty')

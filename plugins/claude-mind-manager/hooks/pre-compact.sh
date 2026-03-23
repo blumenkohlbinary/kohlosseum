@@ -3,6 +3,13 @@
 # Backs up MEMORY.md and CLAUDE.md before context compaction.
 # Keeps last N backups (default 5) to prevent unbounded growth.
 
+LOG_FILE="/tmp/mind-manager-errors.log"
+exec 2>>"$LOG_FILE"
+if ! command -v jq &>/dev/null; then
+  echo "[$(date '+%H:%M:%S')] pre-compact.sh: jq not found" >>"$LOG_FILE"
+  exit 0
+fi
+
 INPUT=$(cat)
 TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path // empty')
 TRIGGER=$(echo "$INPUT" | jq -r '.trigger // "unknown"')

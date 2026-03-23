@@ -4,6 +4,13 @@
 # Writes to .claude-mind/sessions/session-YYYY-MM-DD-HHMM.md
 # Appends dependency/command suggestions to .claude-mind/suggestions.md
 
+LOG_FILE="/tmp/mind-manager-errors.log"
+exec 2>>"$LOG_FILE"
+if ! command -v jq &>/dev/null; then
+  echo "[$(date '+%H:%M:%S')] session-end.sh: jq not found" >>"$LOG_FILE"
+  exit 0
+fi
+
 INPUT=$(cat)
 TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path // empty')
 PROJECT_DIR=$(echo "$INPUT" | jq -r '.cwd // empty')

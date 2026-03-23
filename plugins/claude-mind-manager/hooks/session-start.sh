@@ -3,6 +3,13 @@
 # Checks MEMORY.md and CLAUDE.md line counts, rules syntax, outputs context injection.
 # Exit 0 + stdout → injected as Claude context (SessionStart special behavior).
 
+LOG_FILE="/tmp/mind-manager-errors.log"
+exec 2>>"$LOG_FILE"
+if ! command -v jq &>/dev/null; then
+  echo "[$(date '+%H:%M:%S')] session-start.sh: jq not found" >>"$LOG_FILE"
+  exit 0
+fi
+
 INPUT=$(cat)
 PROJECT_DIR=$(echo "$INPUT" | jq -r '.cwd // empty')
 
