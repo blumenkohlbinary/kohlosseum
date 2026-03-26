@@ -88,7 +88,9 @@ Bewerte jedes Token nach Informationsdichte:
 
 ```
 TOKEN-SCORE:
-  Score 5 (KRITISCH): Zahlen, Daten, Eigennamen, Fachbegriffe, Zitate
+  Score 5 (KRITISCH): Zahlen, Daten, Eigennamen, Fachbegriffe, Zitate,
+                       Code-Bloecke (gesamter Inhalt), Tabellen (gesamter Inhalt),
+                       JSON-Beispiele, Shell-Befehle
   Score 4 (HOCH):     Kausale Verben, einzigartige Adjektive, Schluesselwoerter
   Score 3 (MITTEL):   Kontextsaetze, Erklaerungen, Beispiele
   Score 2 (NIEDRIG):  Fuellwoerter, Wiederholungen, redundante Uebergaenge
@@ -102,14 +104,35 @@ Kompression beginnt bei Score 1-2 Tokens und arbeitet sich nur bei Bedarf nach o
 Identifiziere und schuetze ZEICHENIDENTISCH:
 
 ```
-PROTECTED ELEMENTS:
+IMMUTABLE-KLASSIFIZIERUNG:
+
+Jedes Content-Element wird VOR der Kompression klassifiziert:
+
+IMMUTABLE (0% Kompression — NIEMALS aendern):
+  - Code-Bloecke: GESAMTER Inhalt jedes ``` Fence — VOR der Kompression
+    extrahieren, NACH der Kompression unveraendert wieder einfuegen
+  - Tabellen: Markdown-Tabellen vollstaendig (raw_markdown)
   - Zahlen: "247.3 Mio EUR", "12%", "512 Teilnehmer"
   - Daten: "15.03.2024", "Q3 2023", "seit 2020"
   - Eigennamen: "Dr. Thomas Mueller", "Mustermann AG"
   - Zitate: Woertliche Zitate (Anfuehrungszeichen)
-  - Code-Bloecke: Gesamter Inhalt
-  - Tabellen: Markdown-Tabellen vollstaendig
   - Formeln: Mathematische/chemische Formeln
+  - JSON-Beispiele: In ``` Fences → wie Code-Bloecke
+  - Shell-Befehle: In ``` Fences → wie Code-Bloecke
+
+SEMI-IMMUTABLE (max 10% Kompression):
+  - Code-Beschreibungen: Prosa die einen Code-Block erklaert
+  - Tabellenkontext: Saetze direkt vor/nach einer Tabelle
+
+COMPRESSIBLE (15-80% je nach Waste-Anteil):
+  - Prosa-Text zwischen geschuetzten Elementen
+  - Meta-Kommentare, Uebergangssaetze, redundante Einleitungen
+
+EXTRACT-BEFORE-COMPRESS:
+1. Alle IMMUTABLE Elemente extrahieren und als Platzhalter markieren
+2. NUR den COMPRESSIBLE Prosa-Text durch CoD-Kompression schicken
+3. IMMUTABLE Elemente unveraendert an ihren Platzhaltern wieder einfuegen
+4. SEMI-IMMUTABLE Elemente nur minimal straffen (max 10%)
 ```
 
 Diese Elemente werden in der Protected Registry gespeichert und duerfen NIEMALS modifiziert werden.

@@ -53,6 +53,14 @@ Pruefe: Jede Quelle >= 95% Coverage? Alle [UNIQUE:Dn] Tags vorhanden?
 Pruefe: Kernaussagen jedes Originals aus Output rekonstruierbar?
 - FAIL: <90% rekonstruierbar
 
+### Gate 6 — Code-Block-Integritaet
+Pruefe: ALLE Code-Bloecke aus den Originaldokumenten im Output vorhanden und ZEICHENIDENTISCH?
+- Zaehle Code-Bloecke in allen `stage-1-parsed/*.json` (Feld `code_block_count`)
+- Zaehle Code-Bloecke im Output (stage-6-coherent.md)
+- Pruefe Protected Registry: Alle Eintraege mit `type: "code_block"` vorhanden?
+- Stichprobe: Mindestens 3 Code-Bloecke zeichenidentisch vergleichen (erste + letzte Zeile)
+- FAIL: Code-Block fehlt → CRITICAL | Code-Block veraendert → MAJOR
+
 ## CoVe-Verifikation
 
 **MINDESTANFORDERUNG: Verifiziere mindestens 10-15 Claims, davon:**
@@ -120,7 +128,7 @@ Max 3 Retries. Nach 3 Fails: Teilergebnis + detaillierten Fehlerbericht.
 ```
 Stage 7 complete. Status: OK.
 Output: .tdo-pipeline/stage-7-verification.md
-Gates: 1:✅ 2:✅ 3:✅ 4:✅ 5:✅
+Gates: 1:✅ 2:✅ 3:✅ 4:✅ 5:✅ 6:✅
 CoVe: ✅ | Self-Consistency: ✅
 Patches: [N] angewendet
 Coverage: D1=[N]%, D2=[N]%, D3=[N]%

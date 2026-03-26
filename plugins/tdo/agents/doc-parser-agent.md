@@ -85,9 +85,20 @@ Fuer jedes Dokument `doc-N` erstelle `.tdo-pipeline/stage-1-parsed/doc-N.json`:
       "id": "CB1",
       "language": "python",
       "position": {"section": "S3", "line": 40},
-      "content": "def example(): pass"
+      "content": "def example(): pass",
+      "line_count": 1,
+      "immutable": true
     }
   ],
+  "inline_commands": [
+    {
+      "id": "IC1",
+      "command": "rclone rc vfs/refresh recursive=true",
+      "context": "Satz in dem der Befehl vorkommt",
+      "section": "S5"
+    }
+  ],
+  "code_block_count": 1,
   "references": [
     {
       "id": "R1",
@@ -130,6 +141,11 @@ Fuer jedes Dokument `doc-N` erstelle `.tdo-pipeline/stage-1-parsed/doc-N.json`:
 ### Tabellen/Code-Extraktion
 - Markdown-Tabellen: Vollstaendig parsen, `raw_markdown` ZEICHENIDENTISCH beibehalten
 - Code-Bloecke: Sprache erkennen, Inhalt ZEICHENIDENTISCH bewahren, NIEMALS modifizieren
+- Code-Bloecke sind IMMUTABLE: `immutable: true` im Schema setzen
+- Alle ``` Fences zaehlen und `line_count` dokumentieren — dient als Checkpoint fuer Stage 7
+- Shell-Befehle in Prosa (einzeilige `inline code`) separat als `inline_commands` erfassen
+- JSON-Beispiele in Code-Fences zaehlen als Code-Bloecke
+- `code_block_count` im Root-Schema = Gesamtzahl aller Code-Bloecke im Dokument
 
 ### Key Claims
 - Maximal 10-15 Hauptaussagen pro Dokument

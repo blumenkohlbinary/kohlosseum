@@ -62,6 +62,9 @@ Wende `text-density-optimizer --pipeline` auf den fusionierten Content an:
 - Ziel bei Fusion = Redundanz-Eliminierung, NICHT Textkuerzung
 - Die Kompressionsrate ist ein ERGEBNIS, kein ZIEL
 - Bei wenig Redundanz nach Dedup: text-density-optimizer NICHT aufrufen
+- **Code-Bloecke (``` Fences) werden NIEMALS komprimiert** — sie sind Score 5 (KRITISCH) und werden VOR der TDO-Kompression extrahiert und NACH der Kompression unveraendert wieder eingefuegt (Extract-Before-Compress Pattern). Nur der Prosa-Text um Code-Bloecke herum wird komprimiert.
+- **Tabellen werden NIEMALS komprimiert** — `raw_markdown` aus Stage 1 ist die Referenz
+- **JSON-Beispiele in ``` Fences** zaehlen als Code-Bloecke (Score 5)
 
 ### Schritt 5 — Source Attribution
 
@@ -70,6 +73,7 @@ Jeder Satz im Output erhaelt Quellenmarker:
 - Fakt aus mehreren Dokumenten: `[D1,D2]`
 - Fakt nur aus einem Dokument: `[UNIQUE:Dn]`
 - Widerspruch: `[D1; abweichend: D2]`
+- **Code-Block-Attribution**: Source-Marker [D1] werden VOR oder NACH dem Code-Block platziert, NIEMALS innerhalb des ``` Fence. Der Code-Block selbst enthaelt KEINEN [D1]-Marker.
 
 ## Output
 
@@ -84,7 +88,8 @@ Jeder Satz im Output erhaelt Quellenmarker:
     {"id": "P1", "type": "number", "value": "247.3 Mio EUR", "sources": ["D1","D2"]},
     {"id": "P2", "type": "date", "value": "15.03.2024", "sources": ["D1"]},
     {"id": "P3", "type": "quote", "value": "Woertliches Zitat...", "source": "D3"},
-    {"id": "P4", "type": "name", "value": "Dr. Thomas Mueller", "sources": ["D1","D2","D3"]}
+    {"id": "P4", "type": "name", "value": "Dr. Thomas Mueller", "sources": ["D1","D2","D3"]},
+    {"id": "P5", "type": "code_block", "language": "python", "line_count": 95, "first_line": "import os, sys", "sources": ["D1"]}
   ],
   "total": 45
 }
@@ -110,3 +115,4 @@ Protected Registry: [N] Elemente → protected-registry.json
 5. **Protected Registry**: Alle Zahlen/Daten/Zitate/Namen erfasst
 6. **Kompression nur via TDO**: Verwende text-density-optimizer --pipeline
 7. **Graph-Kohaerenz**: Cluster muessen thematisch sinnvoll sein
+8. **Code-Block-Integritaet**: Anzahl Code-Bloecke im Output >= Anzahl im Input (nach Dedup). Jeder Code-Block aus Protected Registry muss zeichenidentisch im Output erscheinen.

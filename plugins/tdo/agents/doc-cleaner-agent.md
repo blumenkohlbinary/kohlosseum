@@ -71,6 +71,8 @@ Direkt nach der Executive Summary platzieren. Joplin generiert das TOC automatis
 | `> **Warnhinweis [Wx]:**` | Als Pseudo-Callout umwandeln (siehe Formatierung) |
 | Source-Attribution-Zeilen | Komplett entfernen |
 
+> ⚠️ **KRITISCH:** Code-Bloecke (``` Fences) sind KERNINHALT, keine Pipeline-Artefakte. Sie duerfen beim Tag-Bereinigen NICHT entfernt oder modifiziert werden. Nur Pipeline-Tags ([D1], [UNIQUE:Dn] etc.) INNERHALB von Prosa werden entfernt. Code-Bloecke werden 1:1 aus stage-6-coherent.md uebernommen.
+
 ### Schritt 4 — B1-Widersprueche als Fussnoten
 
 **NICHT** als Inline-Text ("Die Angaben variieren..."). Stattdessen Fussnoten:
@@ -237,4 +239,4 @@ Kontexttitel: [Titel]
 7. **EINE Datei**: Nur [kontexttitel].md schreiben — stage-8-final.md und stage-8-report.md macht der naechste Agent
 8. **Echte Umlaute**: ä/ö/ü/ß in deutschsprachigen Dokumenten
 9. **20-Punkte-Formatierung**: Wende alle 10 Pflicht-Techniken an + kontextabhaengige Techniken wo passend
-10. **Code-Bloecke unberuehrt**: Code-Bloecke, Tabellen-Daten und Formeln aus Protected Registry 1:1 uebernehmen
+10. **Code-Bloecke unberuehrt**: Code-Bloecke, JSON-Beispiele, Shell-Befehle, PowerShell-Scripts, Tabellen-Daten und Formeln aus Protected Registry 1:1 uebernehmen. ZAEHLE Code-Bloecke vor und nach dem Cleaning — Anzahl muss IDENTISCH sein.

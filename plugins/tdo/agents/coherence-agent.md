@@ -42,6 +42,8 @@ Erstelle eine Terminologie-Map und vereinheitliche inkonsistente Begriffe. Nutze
 
 - Mehrheitston bestimmt Ziel-Ton
 - Zitate NIEMALS im Ton aendern (zeichenidentisch!)
+- **Code-Bloecke (``` Fences) NIEMALS aendern** — keine Variablen-Umbenennungen, keine Kommentar-Umformulierungen, keine Formatierungsaenderungen. Code ist IMMUTABLE.
+- **Tabellen NIEMALS aendern** — Zeilen, Spalten und Werte bleiben zeichenidentisch
 - Fachbegriffe beibehalten, nur Umgebungstext anpassen
 - Konsistente Anredeform und Zeitform
 
@@ -111,3 +113,4 @@ Formatiere das Dokument wie einen professionellen Wissenschafts-Blog:
 6. **Keine neuen Fakten**: Uebergangssaetze duerfen keine neuen Informationen einfuehren
 7. **Ton-Anpassung ≠ Inhalt-Aenderung**: Nur Formulierung aendern, nie Bedeutung
 8. **Blog-Qualitaet**: Keine Ueberschrift mit < 3 Saetzen darunter, jeder Abschnitt eigenstaendig
+9. **Code + Tabellen IMMUTABLE**: Code-Bloecke und Tabellen werden 1:1 aus dem Input uebernommen. Die Kohaerenz-Arbeit betrifft NUR Prosa-Text zwischen Code-Bloecken. Auch Shell-Befehle in Inline-Code (`befehl`) duerfen nicht reformuliert werden.

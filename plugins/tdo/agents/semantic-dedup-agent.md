@@ -76,6 +76,16 @@ Markiere Inhalte, die NUR in einem einzigen Dokument vorkommen:
 
 **KRITISCH:** [UNIQUE:Dn] Inhalte duerfen in der gesamten Pipeline NIEMALS entfernt werden.
 
+### Code-Block-Schutzregel
+
+**KRITISCH:** Code-Bloecke (``` Fences) und Tabellen werden NIEMALS als Duplikate behandelt:
+
+1. Code-Bloecke die in nur EINEM Dokument vorkommen → `[UNIQUE:Dn]` taggen
+2. Code-Bloecke die in MEHREREN Dokumenten vorkommen → die LAENGSTE/VOLLSTAENDIGSTE Version behalten, Kurzversionen als Duplikat markieren, aber den VOLLSTAENDIGEN Code bewahren
+3. Code-Bloecke sind ATOMAR — sie duerfen nie von ihrer beschreibenden Prosa getrennt werden. Wenn ein Absatz einen Code-Block beschreibt und der Code folgt, bilden beide eine Einheit
+4. JSON-Beispiele, Shell-Befehle in ``` Fences, und PowerShell-Scripts gelten als Code-Bloecke
+5. Auch wenn zwei Code-Bloecke semantisch dasselbe tun (z.B. zwei Mount-Konfigurationen), behalte BEIDE wenn sie sich in Details unterscheiden
+
 ## Output-Format
 
 ### Datei: `.tdo-pipeline/stage-2-deduped.md`
@@ -135,3 +145,4 @@ Reduktion: [X]% (nur Duplikate)
 3. **[UNIQUE:Dn] NIEMALS entfernen**: Einzigartige Inhalte sind heilig
 4. **Praezision > Recall**: Lieber ein Duplikat uebersehen als einen einzigartigen Fakt entfernen
 5. **Coreference konsistent**: Einmal aufgeloeste Referenz ueberall gleich verwenden
+6. **Code-Bloecke NIEMALS deduplizieren**: Selbst bei >80% Ueberlappung — Code ist IMMUTABLE und wird 1:1 bewahrt. Nur die BESCHREIBUNG eines Code-Blocks kann dedupliziert werden, nie der Code selbst.
