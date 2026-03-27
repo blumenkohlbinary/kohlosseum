@@ -187,7 +187,7 @@ atomic_append() {
 }
 
 # --- Learnings regex (centralized, refined for fewer false positives) ---
-LEARNINGS_REGEX='(instead of|should have|fix(ed)?:|the error was|mistake was|correction:|NEVER |MUST |ALWAYS |decided to use|chose .* over|switched from|changed .* to |the issue was|root cause was|workaround:)'
+LEARNINGS_REGEX='(statt(dessen)?|instead of|should have|the (error|issue|bug|problem) was|mistake was|correction:|NEVER |MUST NOT |MUST |ALWAYS |decided to use|chose .* over|switched from|changed .* to |root cause|workaround:|nicht mehr|ab jetzt|in zukunft|von jetzt an)'
 
 # --- extract_learnings: Extract correction patterns from transcript ---
 # Args: $1=transcript_path, $2=tail_lines (default 150)
@@ -198,7 +198,8 @@ extract_learnings() {
   tail -"$tail_lines" "$transcript" 2>/dev/null | \
     jq -r "$JQ_ASSISTANT_TEXT" 2>/dev/null | \
     grep -iE "$LEARNINGS_REGEX" 2>/dev/null | \
-    head -30 | \
+    awk 'length > 20 { s=substr($0, 1, 120); print s }' | \
+    head -20 | \
     sed 's/^[[:space:]]*/- /' 2>/dev/null
 }
 
@@ -227,14 +228,21 @@ write_session_summary() {
   fi
 
   local decisions errors file_changes key_commands
-  decisions=$(echo "$context_text" | grep -iE '(decided|chose|using|switched to|went with|selected)' 2>/dev/null | head -5)
-  errors=$(echo "$context_text" | grep -iE '(error|failed|exception|fix|bug)' 2>/dev/null | head -5)
+  decisions=$(echo "$context_text" | grep -iE '(decided|chose|switched to|went with|selected|statt|→)' 2>/dev/null | awk 'length > 15 { print substr($0, 1, 120) }' | head -5)
+  errors=$(echo "$context_text" | grep -iE '(error|failed|exception|bug|kaputt|broken|fix:)' 2>/dev/null | awk 'length > 15 { print substr($0, 1, 120) }' | head -5)
+  # Transcript format: .message.content[] contains tool_use blocks
   file_changes=$(echo "$tail_data" | jq -r '
-    select(.type == "tool_use") | select(.name == "Write" or .name == "Edit") |
+    select(.type == "assistant") |
+    .message.content[]? |
+    select(.type == "tool_use") |
+    select(.name == "Write" or .name == "Edit") |
     "\(.name): \(.input.file_path // "unknown" | tostring | .[0:80])"
   ' 2>/dev/null | sort -u | head -10)
   key_commands=$(echo "$tail_data" | jq -r '
-    select(.type == "tool_use") | select(.name == "Bash") |
+    select(.type == "assistant") |
+    .message.content[]? |
+    select(.type == "tool_use") |
+    select(.name == "Bash") |
     .input.command // empty | .[0:80]
   ' 2>/dev/null | head -8)
 
@@ -260,7 +268,10 @@ SESSEOF
   # Detect new dependencies
   local new_deps=""
   new_deps=$(echo "$tail_data" | jq -r '
-    select(.type == "tool_use") | select(.name == "Bash") |
+    select(.type == "assistant") |
+    .message.content[]? |
+    select(.type == "tool_use") |
+    select(.name == "Bash") |
     .input.command // empty
   ' 2>/dev/null | grep -oE '(npm install|pip install|cargo add) [^ ]+' 2>/dev/null | sort -u)
 

@@ -66,6 +66,29 @@ Categorize findings:
 Read `.claude-mind/suggestions.md` if it exists — these are CLAUDE.md update suggestions
 collected automatically by the Stop hook. Include them in the optimization plan.
 
+### Step 5b: Aktualitäts-Check (Fehlende Informationen erkennen)
+
+This is the key differentiator — don't just optimize what exists, detect what's MISSING.
+
+For the active scope (`claude-md`, `memory`, `rules`, or `all`), check these sources:
+
+| Source | What to check | Action |
+|---|---|---|
+| `.claude-mind/learnings/session-*.md` | Learnings not yet reflected in CLAUDE.md or MEMORY.md | → Suggest: add entry |
+| `.claude-mind/sessions/session-*.md` | Decisions or errors that should be documented | → Suggest: update CLAUDE.md |
+| `/tmp/mind-manager.log` | Recurring ERROR/WARN patterns (grep for ERROR/WARN, count occurrences) | → Suggest: document known bug |
+| `git log --oneline -10` (if in git repo) | Version bumps or feature commits not reflected in CLAUDE.md | → Suggest: update version/feature info |
+| CLAUDE.md content itself | Outdated version numbers, file names, default values that don't match actual code | → Suggest: fix stale data |
+| MEMORY.md entries | Entries that contradict current code or are about removed features | → Suggest: remove or update |
+
+**How to check staleness:** Read each CLAUDE.md section, then verify key claims:
+- Version numbers: compare with `plugin.json` or `package.json`
+- File paths: check if referenced files still exist
+- Default values: compare with actual code (e.g., env var defaults in lib.sh)
+- Feature descriptions: compare with current hook/skill behavior
+
+Present findings as a separate "Missing/Outdated Information" section in the optimization plan.
+
 ### Step 6: Add Inline Checks
 
 While agents run, perform additional checks:
