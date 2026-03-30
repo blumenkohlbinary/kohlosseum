@@ -45,9 +45,24 @@ Pruefe: Heading-Hierarchie stimmt mit Blueprint ueberein? Logischer Fluss intakt
 ### Gate 3 — Qualitaet
 Pruefe: Verstaendlich ohne Originaltexte? Professioneller Ton? Terminologie konsistent? Formatierung korrekt?
 
-### Gate 4 — Source Coverage
-Pruefe: Jede Quelle >= 95% Coverage? Alle [UNIQUE:Dn] Tags vorhanden?
-- FAIL: Coverage <90% → SOURCE-IMBALANCE | [UNIQUE:Dn] fehlt → MAJOR
+### Gate 4 — Source Coverage (erweitert)
+Pruefe IN ZWEI STUFEN:
+
+**Stufe 1 — Registry-Pruefung (wie bisher):**
+Alle [UNIQUE:Dn] Tags vorhanden? Protected Registry Elemente komplett? Alle prompt_templates, boundary_conditions und illustrative_examples aus Stage 1 vorhanden?
+
+**Stufe 2 — Original-Rueckpruefung (KRITISCH):**
+Fuer JEDE Original-Rohdatei (aus `.tdo-pipeline/input/`, NICHT die JSON-Parses):
+1. Lies die Datei Absatz fuer Absatz
+2. Pruefe fuer jeden Absatz: Ist der KERNINHALT im Output repraesentiert?
+3. Fehlende Absaetze auflisten mit Zitat der ersten 50 Zeichen
+4. Coverage = (gefundene Absaetze) / (gesamte Absaetze) * 100%
+
+Die Absatz-Coverage ist die PRIMAERE Metrik. Registry-Coverage ist ergaenzend.
+
+- FAIL: Absatz-Coverage <95% fuer EINE Quelle → SOURCE-IMBALANCE
+- FAIL: >5 fehlende Absaetze gesamt → MAJOR
+- FAIL: [UNIQUE:Dn] fehlt → MAJOR
 
 ### Gate 5 — Reconstruction Test
 Pruefe: Kernaussagen jedes Originals aus Output rekonstruierbar?
@@ -71,6 +86,14 @@ Pruefe: ALLE Code-Bloecke aus den Originaldokumenten im Output vorhanden und ZEI
 - Stichprobe von 3-5 Protected Elements aus der Registry
 
 Rufe den `cove-verifier` Skill auf. Stelle sicher, dass >= 10 Claims verifiziert wurden. Dokumentiere JEDEN verifizierten Claim mit Ergebnis.
+
+### CoVe-Completeness-Check (KRITISCH — zusaetzlich zur Accuracy)
+Die Accuracy-Pruefung oben misst ob VORHANDENE Fakten korrekt sind. Der Completeness-Check misst ob ALLE Fakten vorhanden sind:
+1. Waehle 10 zufaellige Saetze pro Quelldokument (aus Original-Rohdatei in `.tdo-pipeline/input/`)
+2. Fuer jeden Satz: Ist sein Inhalt im Output vertreten? (Ja/Nein)
+3. Completeness-Score = Ja-Antworten / Gesamte Saetze * 100%
+4. FAIL: Completeness < 90%
+5. Dokumentiere die FEHLENDEN Saetze im Report — diese sind die wichtigsten Befunde
 
 ## Self-Consistency-Check
 

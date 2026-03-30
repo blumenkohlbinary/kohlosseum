@@ -135,3 +135,5 @@ Jeder H2-Abschnitt muss EIGENSTAENDIG funktionieren:
 5. **Pflicht-Sektionen**: Executive Summary, TOC, Source Coverage, Widerspruchsindex
 6. **Maximal H4**: Nie tiefer als 4 Hierarchie-Ebenen
 7. **Abschnitts-Autonomie**: Jeder H2 eigenstaendig, keine 1-Zeiler unter Ueberschriften
+8. **Boundary Conditions platzieren**: Negative Abgrenzungen ("wann NICHT X") gehoeren in dieselbe Sektion wie das positive Konzept — nicht weglassen. Wenn eine Sektion beschreibt wann etwas sinnvoll ist, MUSS sie auch beschreiben wann es NICHT sinnvoll ist.
+9. **Illustrative Beispiele**: Pro H2-Sektion mindestens 1 konkretes Beispiel aus den Originalen einplanen (Dateiname, Anekdote, Code-Snippet, konkreter Prompt). Abstrakte Konzepte ohne Beispiele verlieren ihren didaktischen Wert.

@@ -37,6 +37,8 @@ Fuer jedes Dokument `doc-N` erstelle `.tdo-pipeline/stage-1-parsed/doc-N.json`:
     "author": "Autor falls erkennbar",
     "date": "Datum falls vorhanden",
     "language": "de|en|mixed",
+    "raw_file_chars": 12500,
+    "raw_file_words": 1800,
     "word_count": 1234,
     "char_count": 7890,
     "domain": "general|medical|legal|financial|scientific|technical|mixed"
@@ -90,6 +92,24 @@ Fuer jedes Dokument `doc-N` erstelle `.tdo-pipeline/stage-1-parsed/doc-N.json`:
       "immutable": true
     }
   ],
+  "prompt_templates": [
+    {
+      "id": "PT1",
+      "text": "Prove to me this works",
+      "context": "Satz/Absatz in dem der Prompt vorkommt",
+      "section": "S3",
+      "type": "imperative|question|instruction",
+      "immutable": true
+    }
+  ],
+  "illustrative_examples": [
+    {
+      "id": "IE1",
+      "text": "dreamy-orbiting-quokka.md",
+      "illustrates": "Plan-Datei-Benennung",
+      "section": "S1"
+    }
+  ],
   "inline_commands": [
     {
       "id": "IC1",
@@ -138,6 +158,34 @@ Fuer jedes Dokument `doc-N` erstelle `.tdo-pipeline/stage-1-parsed/doc-N.json`:
 - Daten: Alle Datumsformate (DD.MM.YYYY, YYYY-MM-DD, "Maerz 2024", "Q3")
 - Zahlen: Alle numerischen Werte MIT Einheit und Kontext
 
+### Prompt-Template-Extraktion (M1)
+- Text in Anfuehrungszeichen ("..." oder *"..."*) mit Imperativform → `prompt_template`
+- Erkennung: Enthaelt Verben wie "don't", "implement", "review", "write", "analyze", "interview", "plan", "ultrathink", "read", "create", "ask", "search", "compare", "check", "verify"
+- Kursive Zitate (*"text"*) in Tabellenzellen → `prompt_template`
+- Prompt-Templates sind IMMUTABLE (wie Code-Bloecke): `immutable: true`
+- Jeder Prompt EINZELN erfassen — auch wenn mehrere in einer Aufzaehlung stehen
+- Prompt-Templates die in Fliesstext stehen (nicht in ``` Fences) werden BESONDERS haeufig uebersehen — explizit danach suchen
+
+### Aufzaehlungs-Aufspalten (M2)
+- Saetze mit 3+ eigenstaendigen Konzepten → JEDEN Listeneintrag als eigenen Claim erfassen
+- Erkennung: Komma-getrennte Listen, Semikolon-Listen, Bindewort-Listen (und/sowie/oder)
+- Jedes genannte Tool, Framework, Plugin, Feature → eigene Entity
+- Aufzaehlungen in Fliesstext (NICHT als Markdown-Liste formatiert) BESONDERS beachten — diese werden am haeufigsten uebersehen
+- "A externalisiert X und fuegt Y hinzu. B implementiert Z mit W." → 4+ Claims, nicht 1
+
+### Klammer-Fakten-Extraktion (M3)
+- Klammern mit Fakten-Charakter als eigene Entities extrahieren
+- Erkennung: Klammern die (a) Versionsnummern (v1.2.3, ab Version X), (b) Zeitangaben (seit, ab, bis), (c) Eigennamen, oder (d) Warnungen/Bugs enthalten
+- "(bekannter Bug ab v2.1.3)" → Entity mit version + bug-status
+- "(z. B. `/plan Auth-Bug fixen`)" → Entity als inline_example
+- Klammer-Fakten duerfen NICHT als Waste klassifiziert werden
+
+### Illustrative-Beispiel-Extraktion (M8)
+- Konkrete Dateinamen/Pfade im Fliesstext → `illustrative_example`
+- Inline-Code-Beispiele (in Backticks) die ein Konzept verdeutlichen → `illustrative_example`
+- Erzaehlerische Absaetze mit konkreter Person + konkretem Ergebnis (Anekdoten) → `illustrative_example`
+- Pro Konzept/Sektion muss mindestens 1 illustratives Beispiel als Entity erfasst werden
+
 ### Tabellen/Code-Extraktion
 - Markdown-Tabellen: Vollstaendig parsen, `raw_markdown` ZEICHENIDENTISCH beibehalten
 - Code-Bloecke: Sprache erkennen, Inhalt ZEICHENIDENTISCH bewahren, NIEMALS modifizieren
@@ -151,6 +199,13 @@ Fuer jedes Dokument `doc-N` erstelle `.tdo-pipeline/stage-1-parsed/doc-N.json`:
 - Maximal 10-15 Hauptaussagen pro Dokument
 - Jeder Claim mit stuetzender Evidenz
 - Claims bilden die Grundlage fuer spaetere Deduplizierung
+- Aufzaehlungen mit 3+ Items: JEDEN Item als eigenen Claim erfassen
+- "A externalisiert X. B implementiert Y mit Z." → 3+ Claims, nicht 1
+
+### Boundary Conditions (M4)
+- Saetze mit "nicht sinnvoll", "unnoetig", "zu trivial", "ueberspringen", "wann nicht", "Ausnahme", "Overhead" → als Claim mit `type: "boundary_condition"` erfassen
+- Diese definieren den Gueltigkeitsbereich eines Konzepts und duerfen NICHT als nachrangige Prosa behandelt werden
+- Boundary Conditions erhalten erhoehten Schutzstatus (Score 3 in Protected Registry)
 
 ## Edge Cases
 
@@ -180,10 +235,15 @@ Schreibe in `.tdo-pipeline/pipeline-state.json`:
 ```
 
 **WICHTIG — Korrekte Metriken-Zaehlung:**
-- `raw_word_count` = Summe aller `metadata.word_count` aus den doc-N.json Dateien
-- `raw_char_count` = Summe aller `metadata.char_count` aus den doc-N.json Dateien
-- Zaehle NUR den Fliesstext der Originaldokumente
-- NICHT mitzaehlen: JSON-Struktur, Markdown-Syntax-Zeichen (#, |, -, ```)
+
+Es gibt ZWEI Zaehlungen pro Dokument:
+1. `raw_file_chars` / `raw_file_words` = Zeichenlaenge/Woerter der **unverarbeiteten Originaldatei** (vor jeder Extraktion). Ermittelt durch Zaehlen ALLER Zeichen inkl. Markdown-Syntax, Leerzeilen, Code-Fence-Marker.
+2. `word_count` / `char_count` = Fliesstext nach Extraktion (ohne JSON-Struktur, ohne Markdown-Syntax #, |, -, ```)
+
+**Fuer Pipeline-Metriken (Kompressionsrate, Report):**
+- `raw_word_count` = Summe aller `metadata.raw_file_words` (NICHT word_count!)
+- `raw_char_count` = Summe aller `metadata.raw_file_chars` (NICHT char_count!)
+- Die extracted-Werte (`word_count`/`char_count`) sind nur fuer pipeline-interne Waste-Analyse
 
 ### Status-Rueckgabe (kurz!)
 

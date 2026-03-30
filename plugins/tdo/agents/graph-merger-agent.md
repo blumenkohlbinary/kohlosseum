@@ -65,6 +65,9 @@ Wende `text-density-optimizer --pipeline` auf den fusionierten Content an:
 - **Code-Bloecke (``` Fences) werden NIEMALS komprimiert** — sie sind Score 5 (KRITISCH) und werden VOR der TDO-Kompression extrahiert und NACH der Kompression unveraendert wieder eingefuegt (Extract-Before-Compress Pattern). Nur der Prosa-Text um Code-Bloecke herum wird komprimiert.
 - **Tabellen werden NIEMALS komprimiert** — `raw_markdown` aus Stage 1 ist die Referenz
 - **JSON-Beispiele in ``` Fences** zaehlen als Code-Bloecke (Score 5)
+- **Prompt-Templates sind IMMUTABLE** (wie Code-Bloecke): Score 5. Woertlich uebernehmen. Mehrere Prompts in einer Aufzaehlung NICHT zu einer Namensliste zusammenfassen — jeder Prompt einzeln bewahren.
+- **Boundary Conditions**: Score 3. Negative Abgrenzungen ("wann NICHT X") behalten, NICHT als Waste klassifizieren.
+- **Illustrative Beispiele**: Score 3. Pro Sektion mindestens 1 konkretes Beispiel erhalten. Dateinamen, Anekdoten, Inline-Code-Beispiele bewahren.
 
 ### Schritt 5 — Source Attribution
 
@@ -89,7 +92,10 @@ Jeder Satz im Output erhaelt Quellenmarker:
     {"id": "P2", "type": "date", "value": "15.03.2024", "sources": ["D1"]},
     {"id": "P3", "type": "quote", "value": "Woertliches Zitat...", "source": "D3"},
     {"id": "P4", "type": "name", "value": "Dr. Thomas Mueller", "sources": ["D1","D2","D3"]},
-    {"id": "P5", "type": "code_block", "language": "python", "line_count": 95, "first_line": "import os, sys", "sources": ["D1"]}
+    {"id": "P5", "type": "code_block", "language": "python", "line_count": 95, "first_line": "import os, sys", "sources": ["D1"]},
+    {"id": "P6", "type": "prompt_template", "value": "Prove to me this works", "sources": ["D1"]},
+    {"id": "P7", "type": "boundary_condition", "value": "Typo-Fixes, Log-Zeilen...", "sources": ["D1"]},
+    {"id": "P8", "type": "illustrative_example", "value": "dreamy-orbiting-quokka.md", "sources": ["D1"]}
   ],
   "total": 45
 }
@@ -116,3 +122,5 @@ Protected Registry: [N] Elemente → protected-registry.json
 6. **Kompression nur via TDO**: Verwende text-density-optimizer --pipeline
 7. **Graph-Kohaerenz**: Cluster muessen thematisch sinnvoll sein
 8. **Code-Block-Integritaet**: Anzahl Code-Bloecke im Output >= Anzahl im Input (nach Dedup). Jeder Code-Block aus Protected Registry muss zeichenidentisch im Output erscheinen.
+9. **Prompt-Template-Schutz**: Prompt-Templates aus Stage 1 werden 1:1 uebernommen. NIEMALS mehrere Prompts zu einer Namensliste zusammenfassen. Wenn 7 Prompts im Input stehen, muessen 7 Prompts im Output stehen.
+10. **Aufzaehlungs-Vollstaendigkeit**: Wenn Stage 1 eine Aufzaehlung in Einzel-Claims aufgespalten hat, muessen ALLE Claims im Output erscheinen — nicht nur die ersten 1-2.

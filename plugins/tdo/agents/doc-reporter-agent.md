@@ -46,13 +46,26 @@ Du bist der zweite von zwei Finalisierungs-Agents in der Dokument-Fusions-Pipeli
 *Kompressionsmetriken: ~[N] Woerter fusioniertes Dokument (geschaetzt aus [N] Quelldokumenten mit ~[N] Woertern gesamt, [N]% Redundanz in Stage 2 eliminiert) | Pipeline: TDO v11.2 | [Datum]*
 ```
 
-### Schritt 2 — Source Coverage Table
+### Schritt 2 — Source Coverage Table (Dual-Coverage)
 
-Erstelle eine Tabelle die zeigt, welche Quelldokumente welche Sektionen gespeist haben.
+Erstelle ZWEI Coverage-Tabellen:
+
+**Tabelle 2a — Cluster-Abdeckung (wie bisher):**
+Welche Quelldokumente haben welche Sektionen gespeist.
 
 | H2-Sektion | D1 | D2 | ... |
 |------------|----|----|-----|
 | Sektion 1  | Primaer | Ergaenzend | ... |
+
+**Tabelle 2b — Coverage-Zusammenfassung (erweitert):**
+
+| Quelle | Registry-Coverage | Absatz-Coverage (Original-Rueckpruefung) |
+|--------|:-----------------:|:----------------------------------------:|
+| D1     | [N]%              | [N]%                                     |
+
+- **Registry-Coverage:** Basierend auf [UNIQUE:Dn] Tags und Protected Elements (aus Stage 7 Stufe 1)
+- **Absatz-Coverage:** Basierend auf Stage-7 Original-Rueckpruefung (Gate 4 Stufe 2)
+- Die **Absatz-Coverage ist die PRIMAERE Metrik**. Registry-Coverage ist ergaenzend.
 
 ### Schritt 3 — Widerspruchsindex (falls B1 existiert)
 
@@ -62,7 +75,18 @@ Tabelle aller Konflikte aus stage-3-contradictions.md:
 
 ### Schritt 4 — Metriken
 
-Verwende `raw_word_count` und `raw_char_count` aus pipeline-state.json.
+**KRITISCH — Metriken-Quellen:**
+- Input-Woerter: Aus pipeline-state.json → `raw_word_count` (= Summe `raw_file_words` aus Stage 1)
+- Input-Zeichen: Aus pipeline-state.json → `raw_char_count` (= Summe `raw_file_chars` aus Stage 1)
+- Diese Werte messen die UNVERARBEITETEN Originaldateien (inkl. Markdown-Syntax)
+- NICHT die `word_count`/`char_count` Werte verwenden — diese sind nach Markdown-Bereinigung und zeigen systematisch zu niedrige Werte
+
+**Kompressionsrate:**
+```
+Kompressionsrate = ((raw_char_count_total - output_file_chars) / raw_char_count_total) * 100%
+```
+- Positiver Wert = Kompression (weniger Output als Input) → z.B. "-11%"
+- Negativer Wert = Expansion (mehr Output als Input) → z.B. "+15%"
 
 | Metrik | Wert |
 |--------|------|
@@ -98,6 +122,8 @@ Uebernimm Gate-Ergebnisse, CoVe-Report und Self-Consistency aus stage-7-verifica
 | 14 | B1-Widersprueche als natuerliche Saetze | |
 | 15 | Keine Warnhinweis-Bloecke im reinen Dokument | |
 | 16 | Keine Source-Attribution-Zeilen im reinen Dokument | |
+| 17 | Completeness-Score aus CoVe >= 90% | |
+| 18 | Absatz-Coverage >= 95% fuer ALLE Quellen (Gate 4 Stufe 2) | |
 
 ## Output — ZWEI Dateien
 

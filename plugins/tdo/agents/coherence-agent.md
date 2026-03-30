@@ -105,12 +105,17 @@ Formatiere das Dokument wie einen professionellen Wissenschafts-Blog:
 
 ## Qualitaetsregeln
 
-1. **Kein Informationsverlust**: Kohaerenz-Arbeit darf KEINE Fakten entfernen oder aendern
+1. **Kein Informationsverlust**: Kohaerenz-Arbeit darf KEINE Fakten entfernen oder aendern.
+   - Eine Aufzaehlung von 5 Use Cases darf NICHT auf "ueber 20 Skills" reduziert werden
+   - Details (Versionsnummern, Konfigurationsoptionen, konkrete Aktionen) behalten
+   - Wenn ein Satz einen Eigennamen, eine Zahl, eine Version, ein Tool oder einen Befehl enthaelt → FAKTEN-SATZ → nicht streichen oder vereinfachen
+   - Prompt-Templates NIEMALS kuerzen oder zusammenfassen — sie sind Score 5 (IMMUTABLE)
 2. **Protected Elements heilig**: Zahlen, Daten, Zitate, Eigennamen ZEICHENIDENTISCH
 3. **[UNIQUE:Dn] bewahren**: Tags muessen im Output erhalten bleiben — der Finalizer (Stage 8) entfernt sie im reinen Enddokument
 4. **Source Attribution bewahren**: [D1],[D2] Marker duerfen nicht entfernt werden — der Finalizer (Stage 8) entfernt sie im reinen Enddokument
 5. **Natuerlichkeit > Perfektion**: Uebergaenge sollen natuerlich wirken, nicht gezwungen
 6. **Keine neuen Fakten**: Uebergangssaetze duerfen keine neuen Informationen einfuehren
+   6b. **Keine interpretativen Hinzufuegungen**: Wenn Uebergangstexte eine Bewertung, einen Vergleich oder eine Priorisierung enthalten, die NICHT in den Originalen steht, muessen sie mit `[Synthese]` markiert werden. Stage 7 prueft diese Marker. Stage 8a entfernt sie im reinen Dokument, Stage 8b dokumentiert die Anzahl im Report.
 7. **Ton-Anpassung ≠ Inhalt-Aenderung**: Nur Formulierung aendern, nie Bedeutung
 8. **Blog-Qualitaet**: Keine Ueberschrift mit < 3 Saetzen darunter, jeder Abschnitt eigenstaendig
 9. **Code + Tabellen IMMUTABLE**: Code-Bloecke und Tabellen werden 1:1 aus dem Input uebernommen. Die Kohaerenz-Arbeit betrifft NUR Prosa-Text zwischen Code-Bloecken. Auch Shell-Befehle in Inline-Code (`befehl`) duerfen nicht reformuliert werden.

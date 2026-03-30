@@ -76,6 +76,13 @@ Markiere Inhalte, die NUR in einem einzigen Dokument vorkommen:
 
 **KRITISCH:** [UNIQUE:Dn] Inhalte duerfen in der gesamten Pipeline NIEMALS entfernt werden.
 
+**Granularitaets-Regel:**
+- [UNIQUE:Dn] Zaehlung auf ITEM-Ebene, nicht auf Absatz-Ebene
+- Ein Absatz mit 3 Frameworks → 3 Unique-Items (nicht 1)
+- Prompt-Templates: Jeder Prompt einzeln zaehlen
+- Aufzaehlungen: Jedes genannte Tool/Framework/Feature einzeln zaehlen
+- Illustrative Beispiele (Dateinamen, Anekdoten, Code-Snippets) einzeln zaehlen
+
 ### Code-Block-Schutzregel
 
 **KRITISCH:** Code-Bloecke (``` Fences) und Tabellen werden NIEMALS als Duplikate behandelt:

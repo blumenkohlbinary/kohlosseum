@@ -38,8 +38,8 @@
   "plugins": [
     {
       "name": "tdo",
-      "description": "TDO v11.2.4 — Dynamische verlustfreie Dokumentkompression und Multi-Dokument-Fusion mit 8-Stufen Multi-Agent Pipeline. 5 Skills, 10 Agents, Joplin-Formatierung (20 Techniken), CoVe-Verifikation, DARE-Text Merging.",
-      "version": "11.2.4",
+      "description": "TDO v11.3.0 — Dynamische verlustfreie Dokumentkompression und Multi-Dokument-Fusion mit 8-Stufen Multi-Agent Pipeline. 5 Skills, 10 Agents, Joplin-Formatierung (20 Techniken), CoVe-Verifikation + Completeness-Check, DARE-Text Merging, Prompt-Template-Schutz, Original-Rueckpruefung.",
+      "version": "11.3.0",
       "author": {
         "name": "blumenkohlbinary"
       },
