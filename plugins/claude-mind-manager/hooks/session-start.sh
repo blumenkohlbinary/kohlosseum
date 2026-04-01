@@ -37,7 +37,7 @@ CLAUDE_MD_THRESHOLD="${MIND_CLAUDE_MD_MAX_LINES:-200}"
 if [ -f "$MEMORY_FILE" ]; then
   MEM_LINES=$(wc -l < "$MEMORY_FILE" | tr -d ' ')
   if [ "$MEM_LINES" -gt "$MEMORY_THRESHOLD" ]; then
-    WARNINGS="${WARNINGS}MEMORY.md: ${MEM_LINES}/200 lines (threshold: ${MEMORY_THRESHOLD}). Run /mind-cleanup to free space. "
+    WARNINGS="${WARNINGS}MEMORY.md: ${MEM_LINES}/${MEMORY_THRESHOLD} lines (threshold: ${MEMORY_THRESHOLD}). Run /mind-cleanup to free space. "
     WARN_COUNT=$((WARN_COUNT + 1))
   fi
 else
@@ -80,6 +80,19 @@ if [ -f "$ACTIVE_CTX" ]; then
   if [ -n "$CTX_DATE" ]; then
     WARNINGS="${WARNINGS}Active context from last session loaded (saved: ${CTX_DATE}). "
   fi
+fi
+
+# --- Total context budget check ---
+TOTAL_LINES=${MEM_LINES:-0}
+[ -n "$CMD_LINES" ] && TOTAL_LINES=$((TOTAL_LINES + CMD_LINES))
+if [ -d "$RULES_DIR" ]; then
+  RULES_LINES=$(cat "$RULES_DIR"/*.md 2>/dev/null | wc -l | tr -d ' ')
+  TOTAL_LINES=$((TOTAL_LINES + ${RULES_LINES:-0}))
+fi
+TOTAL_THRESHOLD="${MIND_TOTAL_WARN_THRESHOLD:-500}"
+if [ "$TOTAL_LINES" -gt "$TOTAL_THRESHOLD" ]; then
+  WARNINGS="${WARNINGS}Total context: ${TOTAL_LINES} lines (~$((TOTAL_LINES * 10)) tokens). Consider /mind-optimize. "
+  WARN_COUNT=$((WARN_COUNT + 1))
 fi
 
 # --- Output ---

@@ -9,7 +9,7 @@ description: |
   Use when the user says "audit my context", "check context health", "mind audit",
   "find contradictions", "check for duplicates", "context problems", "compliance check",
   or "/mind-audit".
-argument-hint: "[--focus memory|claude-md|rules|paths]"
+argument-hint: "[--focus memory|claude-md|rules|paths] [--quick]"
 context: inherit
 allowed-tools: Read Glob Grep Bash Agent
 ---
@@ -32,6 +32,36 @@ Check `$ARGUMENTS` for `--focus` filter:
 - `rules` — run rules check inline (no agent needed)
 - `paths` — dispatch only path-validator
 - No focus (default) — dispatch ALL 4 agents in parallel
+
+Also check for `--quick` flag (can be combined with `--focus`).
+
+### Step 1b: Quick Mode (if --quick)
+
+If `--quick` flag is set, perform ALL checks INLINE without dispatching agents. This saves ~150-200K tokens compared to the full audit.
+
+1. **CLAUDE.md check:** Read CLAUDE.md (project + global) — count lines, estimate tokens (lines x 10)
+2. **MEMORY.md check:** Count lines, warn if > threshold
+3. **Rules check:** Glob `.claude/rules/*.md` — count files, grep for `^paths:` bug
+4. **active-context.md check:** Count lines, flag if > 50
+5. **Total budget:** Sum all context file lines, warn if > 500
+6. **Health score:** Calculate simplified score (line counts + rules count + modularization)
+7. **Output:** Compact summary table with health score, line counts, and top 3 issues
+
+```
+=== Quick Audit ===
+| File | Lines | Tokens | Status |
+|------|-------|--------|--------|
+| CLAUDE.md | 85 | ~850 | OK |
+| MEMORY.md | 12 | ~120 | OK |
+| Rules (4 files) | 210 | ~2100 | paths: bug in 1 file |
+| active-context.md | 38 | ~380 | OK |
+| TOTAL | 345 | ~3450 | OK |
+
+Health Score: 78/100 (B)
+Issues: 1 rule uses paths: (run /mind-rules migrate)
+```
+
+After outputting the quick report, SKIP Steps 2-5 and jump directly to Step 6 (Pain-Point Checks). Then output the consolidated report and STOP.
 
 ### Step 2: Load Reference Data
 

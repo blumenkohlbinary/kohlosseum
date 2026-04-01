@@ -48,7 +48,7 @@ Scan these locations using Glob and Read:
 - `<cwd>/.claude-mind/*.md` (topic files)
 
 **Configuration:**
-- `.claudeignore` (existence check)
+- `.claudeignore` — count entries, show which directories/patterns are ignored, flag entries that reference non-existent paths (use `test -d` or `test -e`)
 - `.mcp.json` (count MCP servers)
 - `~/.claude/mcp_settings.json` (global MCP)
 

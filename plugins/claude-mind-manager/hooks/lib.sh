@@ -8,6 +8,18 @@ MIND_LOG_FILE="/tmp/mind-manager.log"
 MIND_LOG_MAX_LINES="${MIND_LOG_MAX_LINES:-500}"
 MIND_SCRIPT_NAME="unknown"
 
+# --- _md5: Cross-platform MD5 hash (md5sum/md5/fallback) ---
+# Returns hash of file, or "no-md5" if no tool available.
+_md5() {
+  if command -v md5sum &>/dev/null; then
+    md5sum "$@" 2>/dev/null | cut -d' ' -f1
+  elif command -v md5 &>/dev/null; then
+    md5 -r "$@" 2>/dev/null | cut -d' ' -f1
+  else
+    echo "no-md5"
+  fi
+}
+
 # --- mind_log: Always-on logging with auto-rotation ---
 # Logs everything for continuous debugging. Auto-trims when exceeding max lines.
 # Args: $1 = level (INFO|WARN|ERROR, optional — default INFO), rest = message
@@ -36,6 +48,9 @@ mind_init() {
   MIND_SCRIPT_NAME="${1:-unknown}"
   if ! command -v jq &>/dev/null; then
     mind_log ERROR "jq not found in PATH"
+    if [ "$1" = "session-start" ]; then
+      printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"[Mind Manager] ERROR: jq not found. Install: https://jqlang.github.io/jq/"}}'
+    fi
     exit 0
   fi
   INPUT=$(cat)
@@ -108,7 +123,25 @@ extract_assistant_text() {
   local max_bytes="${3:-8000}"
   tail -"$tail_lines" "$transcript" 2>/dev/null | \
     jq -r "$JQ_ASSISTANT_TEXT" 2>/dev/null | \
-    tail -c "$max_bytes" 2>/dev/null
+    tail -c "$max_bytes" 2>/dev/null | \
+    (iconv -c -f UTF-8 -t UTF-8 2>/dev/null || cat)
+}
+
+# --- _backup_if_changed: Copy file only if content differs from latest backup ---
+# Args: $1=src, $2=dst, $3=prefix, $4=backup_dir
+# Returns: 0 if copied, 1 if skipped (unchanged)
+_backup_if_changed() {
+  local src="$1" dst="$2" prefix="$3" backup_dir="$4"
+  local latest=$(ls -t "$backup_dir/${prefix}-"* 2>/dev/null | head -1)
+  if [ -n "$latest" ]; then
+    local src_hash=$(_md5 "$src")
+    local dst_hash=$(_md5 "$latest")
+    if [ "$src_hash" = "$dst_hash" ] && [ "$src_hash" != "no-md5" ]; then
+      mind_log "backup skipped (${prefix} unchanged)"
+      return 1
+    fi
+  fi
+  cp "$src" "$dst" 2>/dev/null
 }
 
 # --- create_backup: Backup MEMORY.md, CLAUDE.md, active-context.md, transcript ---
@@ -130,28 +163,28 @@ create_backup() {
   ts=$(date +%Y%m%d-%H%M%S)
   local count=0
 
-  # Backup MEMORY.md
+  # Backup MEMORY.md (skip if unchanged)
   if [ -f "$memory_dir/MEMORY.md" ]; then
-    cp "$memory_dir/MEMORY.md" "$backup_dir/MEMORY-${ts}.md" 2>/dev/null && count=$((count + 1))
+    _backup_if_changed "$memory_dir/MEMORY.md" "$backup_dir/MEMORY-${ts}.md" "MEMORY" "$backup_dir" && count=$((count + 1))
   fi
 
-  # Backup CLAUDE.md (check both locations)
+  # Backup CLAUDE.md (check both locations, skip if unchanged)
   for f in "$project_dir/CLAUDE.md" "$project_dir/.claude/CLAUDE.md"; do
     if [ -f "$f" ]; then
-      cp "$f" "$backup_dir/CLAUDE-${ts}.md" 2>/dev/null && count=$((count + 1))
+      _backup_if_changed "$f" "$backup_dir/CLAUDE-${ts}.md" "CLAUDE" "$backup_dir" && count=$((count + 1))
       break
     fi
   done
 
-  # Backup active-context.md
+  # Backup active-context.md (skip if unchanged)
   local ctx="$project_dir/.claude/rules/active-context.md"
   if [ -f "$ctx" ]; then
-    cp "$ctx" "$backup_dir/active-context-${ts}.md" 2>/dev/null && count=$((count + 1))
+    _backup_if_changed "$ctx" "$backup_dir/active-context-${ts}.md" "active-context" "$backup_dir" && count=$((count + 1))
   fi
 
-  # Backup transcript (if path provided and file exists)
+  # Backup transcript (skip if unchanged)
   if [ -n "$transcript" ] && [ -f "$transcript" ]; then
-    cp "$transcript" "$backup_dir/transcript-${ts}.jsonl" 2>/dev/null && count=$((count + 1))
+    _backup_if_changed "$transcript" "$backup_dir/transcript-${ts}.jsonl" "transcript" "$backup_dir" && count=$((count + 1))
   fi
 
   # Rotate: keep last N per type
@@ -187,7 +220,7 @@ atomic_append() {
 }
 
 # --- Learnings regex (centralized, refined for fewer false positives) ---
-LEARNINGS_REGEX='(statt(dessen)?|instead of|should have|the (error|issue|bug|problem) was|mistake was|correction:|NEVER |MUST NOT |MUST |ALWAYS |decided to use|chose .* over|switched from|changed .* to |root cause|workaround:|nicht mehr|ab jetzt|in zukunft|von jetzt an)'
+LEARNINGS_REGEX='(statt(dessen)?|instead of|should have|the (error|issue|bug|problem) was|mistake was|correction:|NEVER |MUST NOT |MUST [A-Z]|ALWAYS |decided to use|chose .* over|switched from|changed .* to |root cause|workaround:|nicht mehr|ab jetzt|in zukunft|von jetzt an)'
 
 # --- extract_learnings: Extract correction patterns from transcript ---
 # Args: $1=transcript_path, $2=tail_lines (default 150)
@@ -198,7 +231,7 @@ extract_learnings() {
   tail -"$tail_lines" "$transcript" 2>/dev/null | \
     jq -r "$JQ_ASSISTANT_TEXT" 2>/dev/null | \
     grep -iE "$LEARNINGS_REGEX" 2>/dev/null | \
-    awk 'length > 20 { s=substr($0, 1, 120); print s }' | \
+    awk 'length > 20 { s=substr($0, 1, 200); print s }' | \
     head -20 | \
     sed 's/^[[:space:]]*/- /' 2>/dev/null
 }
@@ -281,7 +314,18 @@ SESSEOF
     atomic_append "$suggest_file" "
 ## Session ${ts}
 - New dependencies: ${new_deps}"
+    # Rotate suggestions.md (keep last 30 lines if >50)
+    if [ -f "$suggest_file" ]; then
+      local sug_lines=$(wc -l < "$suggest_file" | tr -d ' ')
+      if [ "$sug_lines" -gt 50 ]; then
+        tail -30 "$suggest_file" > "${suggest_file}.tmp" && mv "${suggest_file}.tmp" "$suggest_file"
+      fi
+    fi
   fi
+
+  # Rotate old sessions (keep last N)
+  local session_keep="${MIND_SESSION_KEEP_COUNT:-10}"
+  ls -t "$sessions_dir"/session-*.md 2>/dev/null | tail -n +$((session_keep + 1)) | xargs rm -f 2>/dev/null
 
   echo "$session_file"
 }

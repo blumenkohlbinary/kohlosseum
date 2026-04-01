@@ -71,6 +71,7 @@ Total: 4 rules, 90 lines
 | YAML quoting issue | WARNING | `*` or `{` at line start without quotes |
 | Empty frontmatter | INFO | No globs: = always loaded (may be intentional) |
 | Rule >50 lines | INFO | Large rule may impact compliance |
+| Dead `globs:` pattern | WARNING | `ls <pattern>` returns 0 matches — rule never loads |
 
 Output:
 ```

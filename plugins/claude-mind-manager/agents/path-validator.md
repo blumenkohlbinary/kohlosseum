@@ -70,6 +70,13 @@ Look for patterns matching:
 - References to directories like `src/api/`, `packages/core/`
 - Architecture diagrams showing directory trees
 
+### Rule Globs Validation
+Read all `.claude/rules/*.md` and `~/.claude/rules/*.md` files. For each file with a `globs:` frontmatter field:
+- Extract the glob pattern (e.g., `"src/**/*.ts"`, `"**/*.py"`)
+- Use Bash `ls <pattern> 2>/dev/null | head -1` to check if ANY file matches
+- If 0 matches: report as "Dead glob pattern" — the rule will never load
+- Also check `~/.claude/rules/` for user-level rules with `globs:` patterns
+
 ## Validation Rules
 
 - @import targets: MUST exist — broken @imports are silently ignored by Claude Code

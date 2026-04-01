@@ -80,7 +80,8 @@ For each learning entry (lines starting with "- "):
 
 **Check 2: Debug-Log Recurring Errors**
 ```
-Read: /tmp/mind-manager.log
+Read the mind-manager log. The path depends on the OS:
+  Bash: cat "$TEMP/mind-manager.log" 2>/dev/null || cat /tmp/mind-manager.log 2>/dev/null
 Grep for "ERROR" and "WARN" lines
 Group by message pattern (strip timestamps), count occurrences
 Any pattern appearing 3+ times → add to "Missing" list: "Recurring issue: <pattern> (Nx)"
@@ -115,6 +116,16 @@ Dead paths → add to "Outdated" list: "Dead path in CLAUDE.md: <path>"
 Read: CLAUDE.md → extract all environment variable defaults (MIND_BACKUP_INTERVAL, etc.)
 Read: hooks/auto-save-context.sh + hooks/lib.sh → extract actual defaults from code
 Compare → mismatches go to "Outdated" list: "CLAUDE.md says default=X but code says Y"
+```
+
+**Check 7: Recurring Learnings → MEMORY.md Promotion**
+```
+Glob: .claude-mind/learnings/session-*.md
+Extract all "- " prefixed lines from all files
+For each unique learning (first 40 chars as fingerprint):
+  Count how many DIFFERENT files contain it
+  If found in 3+ files → add to "Missing" list:
+    "Recurring learning (Nx), consider MEMORY.md: <text>"
 ```
 
 **Output:** Present ALL findings as a separate section in the optimization plan:
