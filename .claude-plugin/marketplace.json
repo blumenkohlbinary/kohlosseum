@@ -71,8 +71,8 @@
     },
     {
       "name": "claude-mind-manager",
-      "description": "Claude Mind Manager v2.5.0 — Comprehensive context management for Claude Code with quality scoring (0-100 + A-F grading), CLAUDE.md generation from templates, natural language search, auto-learnings via Korrektur-Flywheel, periodic backups with MD5 dedup, session summaries, and self-diagnosing optimization. 12 skills (/mind-* prefix), 5 agents, 5 lifecycle hooks. v2.5.0: MD5-based skip for active-context writes, backup dedup, learnings dedup, session/learnings rotation, quick audit mode (--quick), globs validation, total budget warning, UTF-8 safety. Zero external dependencies. TIP: Enable auto-update in /plugin > Marketplaces for automatic updates.",
-      "version": "2.5.0",
+      "description": "Claude Mind Manager v2.6.0 — Comprehensive context management for Claude Code. 12 skills, 5 agents, 5 lifecycle hooks. v2.6.0: Learnings quality filter (no table fragments/conversation), errors extraction filter, recurring learnings promotion to suggestions.md, Hook Health dashboard in /mind-status, Quick Fixes in /mind-audit, .claudeignore active management (stale-check + auto-detect). Zero external dependencies. TIP: Enable auto-update in /plugin > Marketplaces for automatic updates.",
+      "version": "2.6.0",
       "author": {
         "name": "blumenkohlbinary"
       },

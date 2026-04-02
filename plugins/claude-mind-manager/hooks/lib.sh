@@ -231,7 +231,10 @@ extract_learnings() {
   tail -"$tail_lines" "$transcript" 2>/dev/null | \
     jq -r "$JQ_ASSISTANT_TEXT" 2>/dev/null | \
     grep -iE "$LEARNINGS_REGEX" 2>/dev/null | \
-    awk 'length > 20 { s=substr($0, 1, 200); print s }' | \
+    grep -vE '^\||\|$' | \
+    grep -vE '^#{1,4} |^```|^---' | \
+    grep -vE '^[[:space:]]*$' | \
+    awk 'NF >= 3 && length > 20 { s=substr($0, 1, 200); print s }' | \
     head -20 | \
     sed 's/^[[:space:]]*/- /' 2>/dev/null
 }
@@ -262,7 +265,11 @@ write_session_summary() {
 
   local decisions errors file_changes key_commands
   decisions=$(echo "$context_text" | grep -iE '(decided|chose|switched to|went with|selected|statt|→)' 2>/dev/null | awk 'length > 15 { print substr($0, 1, 120) }' | head -5)
-  errors=$(echo "$context_text" | grep -iE '(error|failed|exception|bug|kaputt|broken|fix:)' 2>/dev/null | awk 'length > 15 { print substr($0, 1, 120) }' | head -5)
+  errors=$(echo "$context_text" | \
+    grep -iE '(error|failed|exception|bug|kaputt|broken|fix:)' 2>/dev/null | \
+    grep -vE '^\||^#{1,4} |^```|^---' | \
+    grep -viE '^(auch|plan |todo|muss|soll |lass|fix[e]? |fixen)' | \
+    awk 'NF >= 3 && length > 15 { print substr($0, 1, 120) }' | head -5)
   # Transcript format: .message.content[] contains tool_use blocks
   file_changes=$(echo "$tail_data" | jq -r '
     select(.type == "assistant") |

@@ -41,6 +41,7 @@ Run inline analysis (no agents — speed over depth):
 4. **Budget overflow:** MEMORY.md >180 lines, CLAUDE.md >200 lines
 5. **Empty/whitespace lines** at end of files
 6. **Misplaced content:** Conventions in MEMORY.md (should be CLAUDE.md), personal prefs in project CLAUDE.md
+7. **.claudeignore stale entries:** If `.claudeignore` exists, read each non-comment, non-empty line. For each entry, check `test -d "$entry"` or `test -e "$entry"`. If the path does not exist on disk, mark as stale.
 
 ### Step 3: Auto-Fix (No Confirmation Needed)
 
@@ -70,7 +71,12 @@ Present each issue individually:
   This is a project convention → belongs in CLAUDE.md
   [M] Move to CLAUDE.md  [K] Keep in MEMORY.md  [S] Skip
 
-[3/N] MEMORY.md approaching limit (192/200 lines)
+[3/N] .claudeignore:3 — Stale entry
+  Current: "old-build/"
+  Directory not found on disk.
+  [R] Remove  [K] Keep  [S] Skip
+
+[4/N] MEMORY.md approaching limit (192/200 lines)
   Suggest offloading to topic files:
   - Lines 45-67: Debugging notes → .claude-mind/debugging.md
   - Lines 80-95: API patterns → .claude-mind/api-conventions.md

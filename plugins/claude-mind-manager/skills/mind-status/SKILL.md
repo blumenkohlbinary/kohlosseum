@@ -109,6 +109,54 @@ Recommendations:
 
 If `--verbose`: show first 5 lines of each file as preview.
 
+### Step 6: Hook Health (if log exists)
+
+Read the mind-manager log:
+```
+Bash: tail -50 "$TEMP/mind-manager.log" 2>/dev/null || tail -50 /tmp/mind-manager.log 2>/dev/null
+```
+
+If the log exists, parse the last 50 lines:
+- Count lines matching `context saved` → extract byte values with `grep -oE '[0-9]+ bytes'`, calculate average
+- Count `context unchanged, skip write` → MD5-skip saves
+- Count `backup triggered` and `backup skipped`
+- Count `learnings extracted`
+- Count lines with `ERROR` or `WARN`
+- Count `recurring learning detected` → learning promotion candidates
+
+Display after main dashboard:
+```
+### Hook Health (last 50 log entries)
+| Metric | Value |
+|--------|-------|
+| Context saves | 14 (avg 2,400 bytes, range 1,200-3,000) |
+| MD5 skips | 3 (18% I/O saved) |
+| Backups | 2 triggered, 1 skipped (unchanged) |
+| Learnings | 1 extraction (4 entries) |
+| Recurring learnings | 0 promotion candidates |
+| Warnings | 0 | Errors | 0 |
+| Log | /tmp/mind-manager.log (87 lines) |
+```
+
+If log not found: show `Hook log: not found (no session activity yet)` and skip this step.
+
+### Step 7: .claudeignore Recommendation (if missing)
+
+If `.claudeignore` does not exist, check which of these directories are present:
+`node_modules/`, `dist/`, `build/`, `.next/`, `__pycache__/`, `target/`, `coverage/`,
+`.claude-mind/backups/`, `.claude-mind/sessions/`, `Beispiele/`, `Wissen/`
+
+Use `test -d` for each. For every existing directory, add to recommendation list.
+
+Display after dashboard:
+```
+.claudeignore: MISSING — recommended patterns based on detected directories:
+  .claude-mind/backups/   (exists)
+  .claude-mind/sessions/  (exists)
+  node_modules/           (exists)
+Run /mind-audit to create automatically, or create manually.
+```
+
 ## Hard Constraints
 
 - NEVER modify any files — this skill is read-only

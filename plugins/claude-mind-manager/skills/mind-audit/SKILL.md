@@ -157,10 +157,44 @@ Compliance Prognosis: ~XX% (SFEIR: N total instruction lines)
 3. /mind-optimize — resolve contradictions + compress
 ```
 
+### Step 8: Quick Fixes (after report)
+
+After presenting the consolidated report, identify issues that can be fixed immediately.
+
+**Auto-fixable (apply without confirmation):**
+- Exact duplicate lines within the same file: remove with Edit
+- Trailing whitespace or consecutive empty lines: trim with Edit
+
+**One-click fixes (present [Apply / Skip] for each):**
+- active-context.md > 50 lines → offer to flush (overwrite with clean 10-line header)
+- `.claudeignore` missing → offer to create with auto-detected patterns:
+  Check which directories exist: `node_modules/`, `dist/`, `build/`, `.next/`,
+  `__pycache__/`, `target/`, `coverage/`, `.claude-mind/backups/`, `.claude-mind/sessions/`
+  Use `test -d` for each. Only include existing directories.
+- Rules with `paths:` frontmatter → offer `globs:` replacement (show before/after diff)
+
+**NEVER auto-fix without confirmation:** Contradictions, stale content, cross-file deduplication,
+or anything requiring judgment about which version to keep.
+
+Present as:
+```
+### Quick Fixes
+[AUTO] Removed 2 exact duplicate lines in MEMORY.md
+[FIX?] Flush active-context.md (189 → 10 lines) — [Apply / Skip]
+[FIX?] Create .claudeignore (4 patterns detected) — [Apply / Skip]
+[FIX?] Migrate paths: → globs: in api.md — [Apply / Skip]
+```
+
+If all auto-fixes applied and user confirmed one-click fixes, show:
+```
+Quick Fixes applied: N auto + M confirmed
+```
+
 ## Hard Constraints
 
-- NEVER modify any files — this skill is read-only
-- ALWAYS dispatch agents in parallel (not sequentially)
+- In Steps 1-7: NEVER modify any files (read-only analysis)
+- Step 8 Quick Fixes: MAY modify files but ONLY with user confirmation for one-click fixes
+- ALWAYS dispatch agents in parallel (not sequentially) in Step 3
 - ALWAYS include specific file:line references for every finding
 - ALWAYS calculate health score using budget-thresholds.md rubric
 - ALWAYS recommend specific /mind-* commands for each finding

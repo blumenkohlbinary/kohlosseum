@@ -143,6 +143,22 @@ LEOF
 ${LEARNINGS}
 "
     mind_log "learnings extracted (msg ${COUNT})"
+
+    # Recurring learnings check: if a learning appears in 3+ different files → suggest for MEMORY.md
+    SUGGEST_FILE="$MIND_DIR/suggestions.md"
+    while IFS= read -r line; do
+      [ -z "$line" ] && continue
+      fp=$(echo "$line" | sed 's/^- //' | tr -d '\r' | cut -c1-40)
+      [ -z "$fp" ] && continue
+      match_count=$(grep -rlF "$fp" "$LEARNINGS_DIR"/session-*.md 2>/dev/null | wc -l | tr -d ' ')
+      if [ "$match_count" -ge 3 ]; then
+        if ! grep -qF "$fp" "$SUGGEST_FILE" 2>/dev/null; then
+          mkdir -p "$MIND_DIR"
+          atomic_append "$SUGGEST_FILE" "- RECURRING (${match_count}x): ${line}"
+          mind_log "recurring learning detected (${match_count}x): ${fp}"
+        fi
+      fi
+    done <<< "$LEARNINGS"
   fi
 
   # Rotate old learnings (keep last N files)
