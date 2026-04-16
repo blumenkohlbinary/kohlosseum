@@ -56,6 +56,14 @@ Glob for and read (if found):
 - `pom.xml` / `build.gradle` -- Java/Kotlin
 - `Gemfile` -- Ruby
 - `composer.json` -- PHP
+- `CMakeLists.txt` / `Makefile` / `*.vcxproj` -- C/C++
+- `*.csproj` / `*.sln` / `*.fsproj` -- C# / .NET / F#
+- `Package.swift` -- Swift
+- `build.gradle.kts` -- Kotlin (additional to build.gradle)
+- `mix.exs` -- Elixir
+- `pubspec.yaml` -- Dart/Flutter
+- `*.spec` (RPM) / `PKGBUILD` (Arch) -- System packages
+- `Justfile` / `Taskfile.yml` -- Task runners
 
 Extract: project name, version, declared scripts/commands, dependency list.
 
@@ -68,6 +76,11 @@ From dependencies, identify:
 - **Build**: Webpack, Vite, esbuild, Turbopack, tsc
 - **ORM/DB**: Prisma, TypeORM, Sequelize, SQLAlchemy, GORM
 - **CLI**: Commander, yargs, clap, cobra, click
+- **Desktop**: tkinter, PyQt, Electron, Tauri, WPF, WinForms
+- **Game**: Unity (.unity), Unreal (.uproject), Godot (project.godot), BepInEx
+- **Data**: pandas, numpy, jupyter, dbt, airflow
+- **Automation**: Ansible, Terraform, Pulumi
+- **MCP**: .mcp.json, mcp-server-* patterns
 
 ### 3. Detect Configuration Files
 
@@ -80,6 +93,10 @@ Glob for:
 - `.env.example` / `.env.local` -- Environment variables
 - `turbo.json` / `nx.json` / `lerna.json` -- Monorepo tools
 - `.editorconfig` -- Editor settings
+- `.mcp.json` -- MCP server config
+- `*.bat` / `*.ps1` / `*.sh` (standalone, not part of a build system) -- Standalone scripts
+- `*.ipynb` -- Jupyter notebooks
+- `.claude-plugin/` -- Kohlosseum plugin
 
 ### 4. Analyze Directory Structure
 
@@ -92,6 +109,10 @@ Glob for top-level and second-level directories. Identify key patterns:
 - `scripts/` -- build/deploy scripts
 - `public/` / `static/` / `assets/` -- static files
 - `migrations/` -- database migrations
+- `agents/` / `skills/` / `hooks/` -- plugin structure
+- `Wissen/` / `Beispiele/` / `Recherche/` -- research workspace
+- `data/` / `datasets/` / `raw/` / `processed/` -- data project
+- `Backup/` / `backups/` -- backup structure
 
 ### 5. Extract Build/Test/Lint Commands
 
@@ -105,16 +126,49 @@ From package.json scripts, Makefile, or CI configs, extract:
 
 If no explicit scripts found, infer from detected tools (e.g., `npx vitest`, `cargo test`).
 
-### 6. Detect Project Type
+### 6. Projekt-Klassifikation (dynamisch, multi-label)
 
-Classify into one of:
-- `web_app` -- Frontend framework + backend detected
-- `api` -- Backend framework, no frontend
-- `cli` -- CLI framework or `bin` field in package.json
-- `library` -- `main`/`exports` in package.json, `lib/` structure, no app entry
-- `fullstack` -- Monorepo with `packages/` or `apps/` containing both frontend and backend
-- `mobile` -- React Native, Flutter, Expo detected
-- `unknown` -- Cannot determine
+Statt EINEN Typ zu vergeben, erstelle ein PROFIL mit gewichteten Labels:
+
+**Primary Type** (das Hauptziel des Projekts):
+- `code_app` -- Hat Build-System + ausfuehrbaren Code
+- `library` -- Hat exports/publish, wird von anderen konsumiert
+- `plugin` -- Hat plugin.json oder .claude-plugin/
+- `workspace` -- Sammlung von Dokumenten, Recherche, Notizen
+- `data` -- Primaer Daten (CSV, JSON, XML) + optional Scripts
+- `scripts` -- Standalone Scripts ohne Build-System
+- `config` -- Konfigurationsdateien (Ansible, Terraform, rclone)
+- `mcp` -- MCP Server/Workspace (.mcp.json)
+
+**Secondary Labels** (zusaetzliche Aspekte):
+- `+docs` -- Hat signifikante Dokumentation (>5 .md Dateien)
+- `+tests` -- Hat Test-Infrastruktur
+- `+ci` -- Hat CI/CD Pipeline
+- `+monorepo` -- Hat mehrere Sub-Projekte
+- `+hybrid` -- Mehrere Primary Types im selben Ordner
+
+**Language** (erkannt aus Manifesten + Dateiendungen):
+- Scan: Glob fuer `*.py`, `*.js`, `*.ts`, `*.cs`, `*.java`, `*.go`, `*.rs`, `*.rb`, `*.php`, `*.cpp`, `*.c`, `*.h`, `*.sh`, `*.bat`, `*.ps1`, `*.md`
+- Zaehle Dateien pro Endung, sortiere nach Haeufigkeit
+- Primaere Sprache = haeufigste Code-Dateiendung
+
+**Classification rules:**
+1. If `.claude-plugin/` or `plugin.json` exists → Primary = `plugin`
+2. If `.mcp.json` exists and is the main artifact → Primary = `mcp`
+3. If a build system manifest exists (package.json, pyproject.toml, Cargo.toml, CMakeLists.txt, etc.) AND the project has executable code (not just a library) → Primary = `code_app`
+4. If `main`/`exports` in package.json, or `lib/` structure with no app entry, or publish config → Primary = `library`
+5. If primarily `*.sh`, `*.bat`, `*.ps1` files without a build system → Primary = `scripts`
+6. If primarily data files (CSV, JSON, XML, Parquet) with optional processing scripts → Primary = `data`
+7. If primarily config files (Ansible playbooks, Terraform .tf, rclone.conf) → Primary = `config`
+8. If primarily documentation/research files (.md, .txt, .pdf) → Primary = `workspace`
+9. If none of the above match clearly → use the best-fitting Primary based on file composition
+
+Then apply Secondary Labels:
+- Count `.md` files: if >5, add `+docs`
+- Check for test dirs/frameworks: if found, add `+tests`
+- Check for CI configs (.github/workflows/, .gitlab-ci.yml, Jenkinsfile): if found, add `+ci`
+- Check for monorepo indicators (apps/, packages/, turbo.json, nx.json, lerna.json): if found, add `+monorepo`
+- If multiple Primary Types could apply equally: add `+hybrid`
 
 ### 7. Estimate Team/Phase Indicators
 
@@ -132,15 +186,15 @@ Look for signals:
 
 ### Project Info
 - **Name**: <name>
-- **Type**: <web_app|api|cli|library|fullstack|mobile|unknown>
-- **Primary Language**: <language>
+- **Type**: <primary_type> [+label1] [+label2] ...
+- **Primary Language**: <language> (<N> files)
 - **Package Manager**: <npm|pnpm|yarn|pip|cargo|go|maven|...>
 
 ### Tech Stack
 - **Runtime**: <Node 20 / Python 3.12 / Go 1.22 / ...>
-- **Framework**: <Next.js 14 / Express 4 / Django 5 / ...>
+- **Framework**: <Next.js 14 / Express 4 / Django 5 / tkinter / Unity / ...>
 - **Testing**: <Vitest / Jest / pytest / ...>
-- **Build Tool**: <Vite / Webpack / tsc / ...>
+- **Build Tool**: <Vite / Webpack / tsc / CMake / ...>
 - **Database**: <PostgreSQL (Prisma) / MongoDB / ...>
 - **CI/CD**: <GitHub Actions / GitLab CI / ...>
 

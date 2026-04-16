@@ -46,12 +46,12 @@ Dispatch **project-scanner** Agent:
 
 Read these reference files:
 - [references/claudemd-best-practices.md](../../references/claudemd-best-practices.md) — Required sections, anti-patterns, size guidelines
-- [references/templates.md](../../references/templates.md) — 7 project type templates
+- [references/templates.md](../../references/templates.md) — 13 project type templates
 
 ### Step 3c: Template wählen + generieren
 
 Basierend auf project-scanner Ergebnis:
-1. Passenden Template-Typ wählen (python, node, csharp, docs, plugin, mcp, generic)
+1. Passenden Template-Typ wählen (web_app, api, cli, library, fullstack, mobile, default, workspace, scripts, data, config, desktop_app, game_mod)
 2. Template mit Scan-Daten füllen (tech stack, build commands, conventions)
 3. Ziel: 40-80 Zeilen, max 100
 

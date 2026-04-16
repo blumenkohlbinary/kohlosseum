@@ -25,22 +25,59 @@ Dispatch **project-scanner** agent:
 ## Step 2: Referenzen laden
 
 Read these reference files for templates and best practices:
-- [references/templates.md](../../references/templates.md) -- 7 project type templates
+- [references/templates.md](../../references/templates.md) -- 13 project type templates
 - [references/claudemd-best-practices.md](../../references/claudemd-best-practices.md) -- Required sections, anti-patterns
 - [references/context-file-guide.md](../../references/context-file-guide.md) -- Complete file catalog
 
-## Step 3: Soll-Zustand definieren
+## Step 3: Soll-Zustand dynamisch ableiten
 
-Based on project-scanner results, define what files this project SHOULD have:
+Basierend auf dem Profil vom project-scanner, den Soll-Zustand ABLEITEN statt nachschlagen:
 
-| Type | Claude Files | Project Files |
+#### Claude-Dateien (fuer ALLE Projekttypen):
+| Datei | Wann noetig | Inhalt |
 |---|---|---|
-| Python | CLAUDE.md, .claude/rules/, .claude/settings.json | pyproject.toml, src/, tests/, .gitignore |
-| Node.js | CLAUDE.md, .claude/rules/, .claude/settings.json | package.json, tsconfig.json, .gitignore |
-| C# / Unity | CLAUDE.md, .claude/rules/patterns.md | .sln, .csproj, .gitignore |
-| Docs-Only | CLAUDE.md (minimal) | -- |
-| Plugin | CLAUDE.md, .claude/rules/ | plugin.json, agents/, skills/ |
-| MCP Workspace | CLAUDE.md, .mcp.json | -- |
+| CLAUDE.md | IMMER | Projektuebersicht, Commands (wenn vorhanden), Konventionen |
+| .claude/settings.json | Wenn sensible Dateien existieren (.env, credentials) | permissions.deny fuer Secrets |
+| .claude/rules/*.md | Wenn Projekt gross genug (>10 Dateien in einer Sprache) | Sprach-/Domain-spezifische Rules |
+
+#### Projekt-Dateien (abhaengig vom Profil):
+
+Wenn Primary=code_app oder library:
+-> Pruefe ob Build-System existiert (package.json, pyproject.toml, CMakeLists.txt, etc.)
+-> Pruefe ob Tests existieren
+-> Pruefe ob .gitignore existiert und vollstaendig ist
+-> Pruefe ob Linter/Formatter konfiguriert ist
+
+Wenn Primary=workspace oder +docs:
+-> CLAUDE.md soll Ordner-Struktur beschreiben (was liegt wo, was ist der Zweck jedes Ordners)
+-> Keine Build-Commands noetig
+-> Stattdessen: Navigations-Hilfe (welcher Ordner fuer was)
+
+Wenn Primary=scripts:
+-> CLAUDE.md mit Script-Uebersicht (was macht welches Script)
+-> Keine package.json/pyproject.toml noetig
+-> Pruefe ob Scripts ausfuehrbar sind (chmod +x) und Shebangs haben
+
+Wenn Primary=data:
+-> CLAUDE.md mit Datenformat-Beschreibung (welche Felder, welche Formate)
+-> Pruefe ob .gitignore grosse Datenfiles ausschliesst
+
+Wenn Primary=config:
+-> CLAUDE.md mit Konfigurations-Uebersicht
+-> Pruefe ob Secrets in Dateien sind
+
+Wenn Primary=plugin:
+-> Pruefe plugin.json Vollstaendigkeit
+-> Pruefe ob agents/, skills/, hooks/ existieren
+-> CLAUDE.md soll Plugin-Architektur beschreiben
+
+Wenn Primary=mcp:
+-> Pruefe .mcp.json Validitaet
+-> CLAUDE.md mit MCP-Server-Uebersicht
+
+Wenn +hybrid:
+-> Fuer jedes erkannte Sub-Profil die obigen Regeln anwenden
+-> CLAUDE.md soll die verschiedenen Teile klar trennen
 
 ### Claude-Specific Files (check for all types):
 
@@ -80,8 +117,9 @@ Present findings:
 ```
 === Project Setup Report ===
 
-Project Type: Node.js (detected: package.json, tsconfig.json, src/)
+Profile: code_app +docs +tests
 Tech Stack: TypeScript, React, Vitest
+Language: TypeScript (34 .ts files)
 
 ### Missing Files (3)
 [1] CRITICAL    .claude/settings.json — No permission restrictions configured
@@ -96,8 +134,40 @@ Tech Stack: TypeScript, React, Vitest
 [5] IMPROVE     .gitignore — Missing: coverage/, .env.local
 [6] OK          package.json — Valid, has scripts
 
+### Not Needed for this Project Type
+- (none — code_app benefits from all file types)
+
 ### Summary
 Create: 3 files | Improve: 1 file | OK: 2 files
+
+Proceed? [Yes / Select / Skip]
+```
+
+Example for non-code project:
+
+```
+=== Project Setup Report ===
+
+Profile: workspace +docs
+Content: 23 .md files, 5 .txt files, 3 folders (Wissen/, Beispiele/, recherche/)
+Language: Markdown (primary), keine Code-Sprache
+
+### Missing Files (1)
+[1] RECOMMENDED  CLAUDE.md — Projekt hat keine Uebersicht
+    -> Will create with:
+       - Ordner-Beschreibung (Wissen/ = Recherche-Dateien, Beispiele/ = Referenz-Plugins)
+       - Zweck des Projekts
+       - Navigation: Welcher Ordner fuer was
+
+### Existing Files (0)
+
+### Not Needed for this Project Type
+- .gitignore (kein Build-Output)
+- .claude/settings.json (keine sensiblen Dateien)
+- Test-Infrastruktur (kein Code zum Testen)
+
+### Summary
+Create: 1 file | Improve: 0 files | OK: 0 files
 
 Proceed? [Yes / Select / Skip]
 ```

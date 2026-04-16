@@ -194,3 +194,126 @@ Reference templates for the `/mind:generate` skill. Each template is a skeleton 
 ## Gotchas
 <!-- non-obvious pitfalls -->
 ```
+
+---
+
+## workspace
+
+```markdown
+## Projekt-Übersicht
+<!-- 1-2 Sätze: Was ist dieses Projekt, welchen Zweck hat es -->
+
+## Ordner-Struktur
+<!-- Für jeden Ordner: Was liegt dort und warum -->
+- `Ordner1/` -- <!-- Beschreibung -->
+- `Ordner2/` -- <!-- Beschreibung -->
+
+## Wichtige Dateien
+<!-- Schlüssel-Dateien die man kennen muss -->
+
+## Arbeitsweise
+<!-- Wie wird mit diesem Projekt gearbeitet? Was sind typische Aufgaben? -->
+```
+
+---
+
+## scripts
+
+```markdown
+## Projekt-Übersicht
+<!-- 1-2 Sätze: Was machen diese Scripts -->
+
+## Scripts
+<!-- Für jedes Script: Name, was es tut, wie man es aufruft -->
+| Script | Zweck | Aufruf |
+|---|---|---|
+| `script.sh` | <!-- Beschreibung --> | `./script.sh [args]` |
+
+## Voraussetzungen
+<!-- Was muss installiert sein damit die Scripts laufen -->
+
+## Konventionen
+<!-- Naming, Error-Handling, Logging -->
+```
+
+---
+
+## data
+
+```markdown
+## Projekt-Übersicht
+<!-- 1-2 Sätze: Welche Daten, wozu -->
+
+## Datenformate
+<!-- Für jedes Format: Felder, Typen, Beispiele -->
+
+## Verarbeitung
+<!-- Wie werden die Daten verarbeitet/transformiert -->
+
+## Quellen
+<!-- Woher kommen die Daten -->
+```
+
+---
+
+## config
+
+```markdown
+## Übersicht
+<!-- Was wird konfiguriert, welches System -->
+
+## Konfigurationsdateien
+<!-- Für jede Datei: Zweck, wichtige Einstellungen -->
+
+## Anwendung
+<!-- Wie wird die Konfiguration angewendet/deployed -->
+```
+
+---
+
+## desktop_app
+
+```markdown
+## Project Overview
+<!-- 1-2 sentences: app name, GUI framework, purpose -->
+
+## Commands
+- Build: `<!-- build command -->`
+- Run: `<!-- run command -->`
+- Test: `<!-- test suite command -->`
+- Package: `<!-- packaging/installer command -->`
+
+## Architecture
+- `src/` -- <!-- source code -->
+- `ui/` or `views/` -- <!-- GUI components -->
+<!-- additional directories -->
+
+## Conventions
+<!-- UI patterns, event handling, data binding -->
+
+## Gotchas
+<!-- platform-specific issues, packaging quirks, native deps -->
+```
+
+---
+
+## game_mod
+
+```markdown
+## Project Overview
+<!-- 1-2 sentences: game, mod framework, purpose -->
+
+## Commands
+- Build: `<!-- build command -->`
+- Install: `<!-- how to install the mod -->`
+- Test: `<!-- how to test in-game -->`
+
+## Architecture
+<!-- mod structure, hooks, patches -->
+
+## Conventions
+<!-- naming, Harmony patches, BepInEx patterns -->
+
+## Gotchas
+<!-- game version compatibility, load order, IL2CPP issues -->
+```
