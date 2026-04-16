@@ -1,7 +1,7 @@
 {
   "name": "claude-mind-manager",
-  "version": "2.6.0",
-  "description": "Comprehensive context management for Claude Code with quality scoring (0-100 + A-F), CLAUDE.md generation, natural language search, auto-learnings, periodic backups (incl. transcript), and session summaries. 12 skills, 5 agents, 5 lifecycle hooks. Zero external dependencies.",
+  "version": "3.0.0",
+  "description": "Region-based context management for Claude Code. 5 commands: /mind-claudemd (create/audit/optimize CLAUDE.md), /mind-memory (MEMORY.md management), /mind-rules (rules validation/creation), /mind-files (project setup per type), /mind-update (fast context sweep). 2 agents, 1 hook (pre-compact backup). Zero dependencies.",
   "author": {
     "name": "blumenkohlbinary"
   },
@@ -11,16 +11,10 @@
     "claude-md",
     "rules",
     "optimization",
-    "audit",
     "quality-scoring",
-    "generate",
-    "search",
-    "hooks",
-    "auto-save",
-    "session-learnings",
-    "token-optimization",
-    "cross-project",
+    "project-setup",
     "compliance-rate",
-    "templates"
+    "templates",
+    "region-based"
   ]
 }

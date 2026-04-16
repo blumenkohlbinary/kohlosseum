@@ -71,8 +71,8 @@
     },
     {
       "name": "claude-mind-manager",
-      "description": "Claude Mind Manager v2.6.0 — Comprehensive context management for Claude Code. 12 skills, 5 agents, 5 lifecycle hooks. v2.6.0: Learnings quality filter (no table fragments/conversation), errors extraction filter, recurring learnings promotion to suggestions.md, Hook Health dashboard in /mind-status, Quick Fixes in /mind-audit, .claudeignore active management (stale-check + auto-detect). Zero external dependencies. TIP: Enable auto-update in /plugin > Marketplaces for automatic updates.",
-      "version": "2.6.0",
+      "description": "Claude Mind Manager v3.0.0 — Region-based context management for Claude Code. 5 commands: /mind-claudemd (create/audit/optimize CLAUDE.md), /mind-memory (MEMORY.md management), /mind-rules (rules validation/creation), /mind-files (project setup per type), /mind-update (fast context sweep). Each command: audit first, show findings, user approves, then fix. 2 agents, 1 hook (pre-compact backup). Zero dependencies.",
+      "version": "3.0.0",
       "author": {
         "name": "blumenkohlbinary"
       },
