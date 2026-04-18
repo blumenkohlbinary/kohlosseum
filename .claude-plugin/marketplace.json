@@ -1,6 +1,6 @@
 {
   "name": "kohlosseum",
-  "description": "Kohlosseum — Claude Code Plugin Arena by blumenkohlbinary. Multi-Agent Pipelines, Document Fusion, Code Refactoring, AI-Powered Tooling.",
+  "description": "Kohlosseum â€” Claude Code Plugin Arena by blumenkohlbinary. Multi-Agent Pipelines, Document Fusion, Code Refactoring, AI-Powered Tooling.",
   "version": "1.2.0",
   "owner": {
     "name": "blumenkohlbinary",
@@ -38,7 +38,7 @@
   "plugins": [
     {
       "name": "tdo",
-      "description": "TDO v11.3.0 — Dynamische verlustfreie Dokumentkompression und Multi-Dokument-Fusion mit 8-Stufen Multi-Agent Pipeline. 5 Skills, 10 Agents, Joplin-Formatierung (20 Techniken), CoVe-Verifikation + Completeness-Check, DARE-Text Merging, Prompt-Template-Schutz, Original-Rueckpruefung.",
+      "description": "TDO v11.3.0 â€” Dynamische verlustfreie Dokumentkompression und Multi-Dokument-Fusion mit 8-Stufen Multi-Agent Pipeline. 5 Skills, 10 Agents, Joplin-Formatierung (20 Techniken), CoVe-Verifikation + Completeness-Check, DARE-Text Merging, Prompt-Template-Schutz, Original-Rueckpruefung.",
       "version": "11.3.0",
       "author": {
         "name": "blumenkohlbinary"
@@ -49,7 +49,7 @@
     },
     {
       "name": "refactoring",
-      "description": "Universal Code Refactoring v2.1.0 — Diszipliniertes Refactoring fuer alle Programmiersprachen. Fowler Catalog, SOLID, Clean Code, DRY/KISS/YAGNI, Performance Anti-Patterns, Concurrency, Error Handling, Testing Quality, Architecture. 2 Skills, 8 Opus Agents (6 parallele Analyse-Spezialisten + Critic Synthesis + Refactoring Specialist), Confidence Scoring (0-100), NASA/CERT/MISRA Standards, 8-Point Verification Gate.",
+      "description": "Universal Code Refactoring v2.1.0 â€” Diszipliniertes Refactoring fuer alle Programmiersprachen. Fowler Catalog, SOLID, Clean Code, DRY/KISS/YAGNI, Performance Anti-Patterns, Concurrency, Error Handling, Testing Quality, Architecture. 2 Skills, 8 Opus Agents (6 parallele Analyse-Spezialisten + Critic Synthesis + Refactoring Specialist), Confidence Scoring (0-100), NASA/CERT/MISRA Standards, 8-Point Verification Gate.",
       "version": "2.1.0",
       "author": {
         "name": "blumenkohlbinary"
@@ -60,7 +60,7 @@
     },
     {
       "name": "deep-review",
-      "description": "Deep Code Review v1.0.0 — 31 checks across 8 categories for all programming languages. OWASP Top 10, CWE taint analysis, performance anti-patterns (N+1, O(n2), Blocking I/O), concurrency issues (TOCTOU, Deadlock), resilience defects (Resource Leak, Swallowed Exception), API design, testing quality, architecture analysis. 8 parallel Sonnet specialist agents synthesized by an Opus Critic-Agent with confidence scoring (0-100) and false-positive filtering.",
+      "description": "Deep Code Review v1.0.0 â€” 31 checks across 8 categories for all programming languages. OWASP Top 10, CWE taint analysis, performance anti-patterns (N+1, O(n2), Blocking I/O), concurrency issues (TOCTOU, Deadlock), resilience defects (Resource Leak, Swallowed Exception), API design, testing quality, architecture analysis. 8 parallel Sonnet specialist agents synthesized by an Opus Critic-Agent with confidence scoring (0-100) and false-positive filtering.",
       "version": "1.0.0",
       "author": {
         "name": "blumenkohlbinary"
@@ -71,8 +71,8 @@
     },
     {
       "name": "claude-mind-manager",
-      "description": "Claude Mind Manager v3.0.0 — Region-based context management for Claude Code. 5 commands: /mind-claudemd (create/audit/optimize CLAUDE.md), /mind-memory (MEMORY.md management), /mind-rules (rules validation/creation), /mind-files (project setup per type), /mind-update (fast context sweep). Each command: audit first, show findings, user approves, then fix. 2 agents, 1 hook (pre-compact backup). Zero dependencies.",
-      "version": "3.0.0",
+      "description": "Claude Mind Manager v3.1.0 - Region-based context management. 5 commands: /mind-claudemd, /mind-memory, /mind-rules, /mind-files, /mind-update. v3.1: intelligent multi-label project detection (code_app/workspace/scripts/data/config/plugin/mcp + secondary labels), 13 templates, supports C++/C#/Swift/Kotlin + non-code projects. 2 agents, 1 hook. Zero dependencies.",
+      "version": "3.1.0",
       "author": {
         "name": "blumenkohlbinary"
       },
