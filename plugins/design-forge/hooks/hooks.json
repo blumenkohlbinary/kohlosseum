@@ -1,0 +1,29 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PLUGIN_ROOT\"/scripts/load-system.sh",
+            "timeout": 3000
+          }
+        ],
+        "description": "Inject .design-forge/system.md summary into context if exists"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PLUGIN_ROOT\"/scripts/quick-validate.sh \"$CLAUDE_TOOL_INPUT_FILE_PATH\"",
+            "timeout": 5000
+          }
+        ],
+        "description": "Quick syntactic CSS/HTML validation on file edits"
+      }
+    ]
+  }
+}

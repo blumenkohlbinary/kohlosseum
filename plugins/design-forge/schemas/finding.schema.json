@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/blumenkohlbinary/kohlosseum/design-forge/schemas/finding.schema.json",
+  "title": "Finding",
+  "description": "A single rule violation produced by a design-forge auditor agent.",
+  "type": "object",
+  "required": ["id", "agent", "severity", "rule", "file", "confidence", "auto_fixable"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z]+_[0-9]{4}$",
+      "description": "Unique finding identifier, format: <agent-short>_<4-digit-counter>"
+    },
+    "agent": {
+      "type": "string",
+      "enum": ["css", "a11y", "color", "typography", "layout", "system", "performance", "motion", "interaction", "visual"]
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["blocker", "high", "medium", "nitpick"]
+    },
+    "rule": {
+      "type": "string",
+      "description": "Human-readable rule name, e.g. 'Magic Numbers (Non-Grid)'"
+    },
+    "file": {
+      "type": "string",
+      "description": "Relative path to the affected file"
+    },
+    "line": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "col": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "snippet": {
+      "type": "string",
+      "description": "Source code excerpt showing the violation"
+    },
+    "message": {
+      "type": "string",
+      "description": "Short, actionable description of the violation"
+    },
+    "why": {
+      "type": "string",
+      "description": "Rationale with source reference (e.g. Matrix A #N, WCAG SC)"
+    },
+    "fix_hint": {
+      "type": "string",
+      "description": "Concrete suggestion for resolving the violation"
+    },
+    "auto_fixable": {
+      "type": "string",
+      "enum": ["safe", "medium", "risky", "no"]
+    },
+    "confidence": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Auditor confidence 0-100; findings <40 should not be emitted"
+    },
+    "wcag_ref": {
+      "type": "string",
+      "description": "WCAG Success Criterion reference (e.g. '1.4.3' or 'n/a')"
+    },
+    "evidence": {
+      "type": "object",
+      "properties": {
+        "screenshot": {"type": "string"},
+        "measured_value": {},
+        "expected_value": {},
+        "context": {"type": "string"}
+      }
+    }
+  },
+  "additionalProperties": false
+}

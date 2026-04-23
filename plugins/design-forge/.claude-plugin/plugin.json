@@ -1,0 +1,36 @@
+{
+  "name": "design-forge",
+  "version": "1.0.0-rc",
+  "description": "Production-grade UI/design audit + auto-fix engine. Dispatches 10 specialist auditors in parallel (CSS, A11y, Color, Typography, Layout, System, Performance, Motion, Interaction, Visual), synthesizes via Opus-Critic, and fixes with risk-phased Git-checkpoints. WCAG 2.2 AA + OKLCH + APCA.",
+  "author": {
+    "name": "blumenkohlbinary",
+    "email": "feddersen.home@gmail.com",
+    "url": "https://github.com/blumenkohlbinary"
+  },
+  "license": "MIT",
+  "keywords": [
+    "design",
+    "ui",
+    "ux",
+    "accessibility",
+    "a11y",
+    "wcag",
+    "css",
+    "lint",
+    "audit",
+    "auto-fix",
+    "design-system",
+    "tokens",
+    "typography",
+    "color",
+    "contrast",
+    "oklch",
+    "apca",
+    "performance",
+    "core-web-vitals",
+    "motion",
+    "responsive",
+    "playwright",
+    "visual-regression"
+  ]
+}

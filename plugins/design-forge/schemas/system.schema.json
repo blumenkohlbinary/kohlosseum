@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/blumenkohlbinary/kohlosseum/design-forge/schemas/system.schema.json",
+  "title": "DesignForgeSystem",
+  "description": "Schema for .design-forge/system.md YAML frontmatter (persistent design-system memory).",
+  "type": "object",
+  "required": ["version", "project_name", "framework"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "project_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "framework": {
+      "type": "string",
+      "enum": ["react", "vue", "svelte", "angular", "html", "python-pyqt", "python-tkinter", "python-ctk", "mixed"]
+    },
+    "token_format": {
+      "type": "string",
+      "enum": ["w3c-dtcg", "tailwind-v4", "tailwind-v3", "css-vars", "scss-vars", "python-dataclass", "style-dictionary"]
+    },
+    "intent": {
+      "type": "object",
+      "properties": {
+        "who": {"type": "string"},
+        "what": {"type": "string"},
+        "feel": {"type": "string"}
+      }
+    },
+    "direction": {
+      "type": "object",
+      "properties": {
+        "personality": {"type": "string"},
+        "foundation": {"type": "string"},
+        "depth": {"type": "string"}
+      }
+    },
+    "tokens": {
+      "type": "object",
+      "properties": {
+        "primitives": {
+          "type": "object",
+          "properties": {
+            "colors": {"type": "object"},
+            "spacing": {"type": "array", "items": {"type": "integer"}},
+            "typography": {"type": "object"},
+            "radius": {"type": "array"},
+            "shadow": {"type": "object"}
+          }
+        },
+        "semantic": {"type": "object"},
+        "component": {"type": "object"}
+      }
+    },
+    "rules": {
+      "type": "object",
+      "properties": {
+        "spacing_grid": {
+          "type": "array",
+          "items": {"type": "integer"},
+          "description": "Permitted spacing values in px, e.g. [4,8,12,16,24,32,48,64]"
+        },
+        "elevation_levels": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "contrast_min_ratio": {
+          "type": "number",
+          "minimum": 1.0,
+          "maximum": 21.0,
+          "description": "Minimum WCAG contrast ratio; 4.5 for AA body text"
+        },
+        "icon_sizes": {
+          "type": "array",
+          "items": {"type": "integer"}
+        },
+        "breakpoints": {
+          "type": "array",
+          "items": {"type": "integer"}
+        },
+        "type_scale_ratio": {
+          "type": "number",
+          "description": "Modular type scale ratio, e.g. 1.25 (Major Third)"
+        }
+      }
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["date", "what", "why"],
+        "properties": {
+          "date": {"type": "string", "format": "date"},
+          "what": {"type": "string"},
+          "why": {"type": "string"},
+          "author": {"type": "string"}
+        }
+      }
+    },
+    "themes": {
+      "type": "object",
+      "properties": {
+        "light": {"type": "object"},
+        "dark": {"type": "object"}
+      }
+    }
+  }
+}

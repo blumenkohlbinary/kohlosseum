@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/blumenkohlbinary/kohlosseum/design-forge/schemas/fix.schema.json",
+  "title": "FixApplication",
+  "description": "Record of a fix attempt applied by design-fixer, used for Git-checkpoint rollback.",
+  "type": "object",
+  "required": ["finding_id", "status", "phase"],
+  "properties": {
+    "finding_id": {
+      "type": "string",
+      "pattern": "^[a-z]+_[0-9]{4}$",
+      "description": "References a Finding.id from finding.schema.json"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["applied", "skipped", "failed", "rolled_back"]
+    },
+    "phase": {
+      "type": "string",
+      "enum": ["safe", "medium", "risky"]
+    },
+    "git_stash_id": {
+      "type": "string",
+      "description": "Git-stash SHA or name identifying the pre-fix checkpoint for rollback"
+    },
+    "diff": {
+      "type": "string",
+      "description": "Unified diff text of the applied change"
+    },
+    "files_modified": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "verification": {
+      "type": "object",
+      "properties": {
+        "re_audit_passed": {"type": "boolean"},
+        "affected_auditors": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "residual_findings": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "error": {
+      "type": "string",
+      "description": "Error message if status == failed"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

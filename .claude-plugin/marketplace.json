@@ -1,7 +1,7 @@
 {
   "name": "kohlosseum",
   "description": "Kohlosseum â€” Claude Code Plugin Arena by blumenkohlbinary. Multi-Agent Pipelines, Document Fusion, Code Refactoring, AI-Powered Tooling.",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "owner": {
     "name": "blumenkohlbinary",
     "url": "https://github.com/blumenkohlbinary"
@@ -78,6 +78,17 @@
       },
       "category": "utilities",
       "source": "./plugins/claude-mind-manager",
+      "homepage": "https://github.com/blumenkohlbinary/kohlosseum"
+    },
+    {
+      "name": "design-forge",
+      "description": "design-forge v1.0.0-rc - Production-grade UI/design audit + auto-fix engine. 10 specialist Sonnet auditors (CSS, A11y, Color, Typography, Layout, System, Performance, Motion, Interaction, Visual) dispatched in parallel, synthesized via Opus-Critic. Auto-fixes with risk-phased Git-checkpoints (Safe/Medium/Risky). WCAG 2.2 AA + 9 new 2.2 criteria + OKLCH + APCA + CVD safety + Dark Mode. 10 guides, 3 JSON schemas, native contrast.js WCAG/APCA calculator. Playwright MCP integration for visual regression. Single slash-command /design-forge:audit; fix/init/extract/status/doctor/diff/modernize invoked via natural language.",
+      "version": "1.0.0-rc",
+      "author": {
+        "name": "blumenkohlbinary"
+      },
+      "category": "development",
+      "source": "./plugins/design-forge",
       "homepage": "https://github.com/blumenkohlbinary/kohlosseum"
     }
   ]
