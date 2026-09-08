@@ -137,6 +137,52 @@ def absichtlich_tot(text, span):
     return all(_TOT_ERKLAERT.search(z) for z in treffer)
 
 
+# ⭐ Variablen, deren Wurzel zur Pruefzeit BEKANNT ist. Sie sind aufloesbar wie
+#   '~' und deshalb PRUEFBAR — kein Platzhalter.
+#   ⛔ Die Liste ist bewusst KURZ. Jede Aufnahme braucht eine Stelle in pruefe(),
+#     die sie aufloest; eine Variable hier ohne Aufloesung dort waere ein
+#     Halbfix (dieselbe Klasse wie classify_path/mind_agent_quittung_start).
+_VAR_WURZEL = ("PWD", "CLAUDE_PROJECT_DIR", "PROJ", "CLAUDE_PLUGIN_ROOT", "HOME")
+_ZUWEISUNG = re.compile(r"^(?:export\s+)?[A-Za-z_][A-Za-z0-9_]*=(.+)$")
+_VAR_KOPF = re.compile(r"^\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?(/.*)$")
+
+
+def entpacke(p):
+    """`MIND_SNAPSHOT_EXTRA="$PWD/x"` -> `$PWD/x`. Sonst unveraendert.
+
+    ⛔ OHNE DAS greift die Variablen-Regel nicht. Im Dauerkontext steht der
+       Pfad fast nie nackt, sondern als ZUWEISUNG im selben Backtick-Span —
+       genau so in CLAUDE.md:137. Eine erste Messung, die nur nackte Spans
+       suchte, meldete deshalb 0 Treffer und war wertlos.
+    """
+    m = _ZUWEISUNG.match(p.strip())
+    if not m:
+        return p
+    w = m.group(1).strip()
+    if len(w) >= 2 and w[0] == w[-1] and w[0] in "\"'":
+        w = w[1:-1]
+    return w
+
+
+def var_wurzel(p, projekt):
+    """(rest, wurzel) fuer einen aufloesbaren $VAR-Pfad, sonst None.
+
+    ⚠ Gibt None zurueck, wenn die Variable zwar bekannt, ihr Wert aber zur
+      Pruefzeit nicht da ist. Der Aufrufer macht daraus KEINEN Befund.
+    """
+    m = _VAR_KOPF.match(p)
+    if not m or m.group(1) not in _VAR_WURZEL:
+        return None
+    name = m.group(1)
+    if name == "HOME":
+        w = os.path.expanduser("~")
+    elif name == "CLAUDE_PLUGIN_ROOT":
+        w = os.environ.get("CLAUDE_PLUGIN_ROOT") or ""
+    else:
+        w = projekt or ""
+    return (m.group(2), w) if w else None
+
+
 def classify_path(p):
     """SKIP | UNSURE | CHECK — Wortlaut und Reihenfolge wie in mind-update Step 3b."""
     # 0) NORMALISIEREN: Zitat mit Zeilennummer (NEU 26.08.2026).
@@ -144,6 +190,8 @@ def classify_path(p):
     #    SKIP waere hier falsch — der Pfad davor soll sehr wohl geprueft werden.
     #    Deshalb abschneiden und mit dem Rest weitermachen, nicht ueberspringen.
     p = _ohne_zeilennummer(p)
+    # 0c) NORMALISIEREN: Zuweisung auspacken (NEU 09.09.2026).
+    p = entpacke(p)
     # 0a) SKIP: Leerzeichen UNMITTELBAR VOR dem Schraegstrich (NEU 26.08.2026).
     #     Ein Pfadtrenner hat NIE ein Leerzeichen davor — auch nicht auf Windows.
     #     Gefangen werden damit die Ausgabezeile `gefunden / gefahren / gruen`
@@ -170,8 +218,21 @@ def classify_path(p):
     #    Zeichen, wurde also CHECK -> nicht gefunden -> DEAD -> und bei <=5 Findings AUTONOM
     #    GELOESCHT. Genau diese Zeile steht in der CLAUDE.md dieses Projekts.
     if ("…" in p or "..." in p or ("<" in p and ">" in p)
-            or ("{" in p and "}" in p) or "$" in p or "*" in p
+            or ("{" in p and "}" in p) or "*" in p
             or ("[" in p and "](" in p)):
+        return "SKIP"
+    # 3v) SKIP: Variable mit UNBEKANNTER Wurzel (NEU 09.09.2026).
+    #     ⛔ Hier stand `"$" in p` in Regel 3 — ein PAUSCHALES SKIP fuer jedes
+    #        Dollarzeichen, unter der Ueberschrift "Platzhalter". `$PWD` ist
+    #        aber keiner: er ist aufloesbar wie '~'. Gemessen am 09.09.2026 war
+    #        `MIND_SNAPSHOT_EXTRA="$PWD/knowledge"` seit dem Umzug von
+    #        `knowledge/` nach `docs/plugin/` (77f87d8, 07.09.2026) tot, stand
+    #        in der dauerhaft geladenen CLAUDE.md — und wurde nie gemeldet.
+    #     ⚠ Unbekannte Variablen bleiben SKIP. `${VAR}/x` und `$FREMD/x` sind
+    #       nicht pruefbar, und Raten waere hier ein Fehlalarm-Generator.
+    if "$" in p and not _VAR_KOPF.match(p):
+        return "SKIP"
+    if "$" in p and _VAR_KOPF.match(p).group(1) not in _VAR_WURZEL:
         return "SKIP"
     # 3y) SKIP: Interpreter-AUFRUF, kein zu pruefender Pfad (aus dem Zustellplan-Lauf,
     #     21.08.2026). `.venv/Scripts/python` und `/usr/bin/python` sind Befehle und
@@ -450,7 +511,19 @@ def pruefe(pfad, projekt):
             continue
         # ⛔ '~' EXPANDIEREN. Ohne das galt jeder `~/.claude/...`-Pfad als tot — auch
         #    solche, die nachweislich existieren. 8 von 13 Fehlbefunden im ersten Lauf.
-        roh = s.replace(chr(92), '/').rstrip('/')
+        roh = entpacke(s).replace(chr(92), '/').rstrip('/')
+        # ⛔ Bekannte Variable EXPANDIEREN — dieselbe Begruendung wie bei '~'
+        #    zwei Zeilen weiter: ohne das gilt jeder `$PWD/...`-Pfad als
+        #    unpruefbar, auch wenn er nachweislich tot ist.
+        if roh.startswith('$'):
+            vw = var_wurzel(roh, projekt)
+            if vw is None:
+                continue          # ⚠ nicht aufloesbar -> KEIN Befund
+            rest, wurzel = vw
+            if os.path.exists(wurzel + rest):
+                continue
+            dead.append(s)
+            continue
         if roh.startswith('~'):
             voll = os.path.expanduser(roh)
             if os.path.exists(voll):
@@ -632,6 +705,18 @@ def selbsttest():
         ("Plugin - Entwicklung/Claude Mind Manager", "CHECK",
          "zwei Leerzeichen im Namen, keines vor dem Trenner"),
         ("knowledge/README.md", "CHECK", "gewoehnlicher Pfad bleibt CHECK"),
+        # --- $VAR: die Luecke vom 09.09.2026, je Alternative ein Fall ---
+        ("$PWD/knowledge", "CHECK", "bekannte Wurzel ist pruefbar wie '~'"),
+        ("$PROJ/.claude-mind/rescued/OPEN", "CHECK", "dito, mehrsegmentig"),
+        ("$CLAUDE_PLUGIN_ROOT/references/x.py", "CHECK", "dito"),
+        ("$HOME/.claude/rules", "CHECK", "dito"),
+        ('MIND_SNAPSHOT_EXTRA="$PWD/knowledge"', "CHECK",
+         "ZUWEISUNG wird ausgepackt — so steht es in CLAUDE.md:137"),
+        ("export MIND_SNAPSHOT_EXTRA=\"$PWD/docs/plugin\"", "CHECK",
+         "auch mit export davor"),
+        ("$FREMD/x.md", "SKIP", "UNBEKANNTE Wurzel bleibt unpruefbar"),
+        ("${VAR}/knowledge", "SKIP", "geklammerte unbekannte Wurzel"),
+        ("$PWD", "SKIP", "ohne Schraegstrich ist es kein Pfad"),
         (".tsx/.jsx", "SKIP", "Endungspaar"),
         (".claude/rules/x.md", "CHECK", "fuehrender Punkt ALLEIN ist ein echter Pfad"),
         (".venv/Scripts/python", "SKIP", "Interpreter-Aufruf, gehoert an Check 14"),
