@@ -71,3 +71,34 @@
 - Has .claudeignore: +5
 - ⛔ **ENTFALLEN v5.43.0** (war: *Rules use `globs:` not `paths:`: +5*). Die Zeile belohnte genau die Umschreibung, die P1 gestoppt hat. `globs:` ist der Cursor-Feldname; die offizielle Doku kennt nur `paths:`.
 - Progressive disclosure (**Skills oder Commands** — nicht `@import`): +5. ⚠ Nur was VERZOEGERT laedt, ist progressive disclosure. `@import` laedt beim Start mit.
+
+
+## ⚠ Das Beschreibungsbudget — gemessen 08.09.2026
+
+Alle Skill-`description` zusammen konkurrieren um ein Budget. Bei Ueberlauf wirft
+Claude Code Beschreibungen weg, **beginnend mit den am seltensten aufgerufenen** —
+der Name bleibt stehen, die Beschreibung faellt. Es schreibt dabei eine Warnung ins
+Debug-Log (`--debug`).
+
+```
+15 Skills insgesamt      7 396 Zeichen
+davon dieses Plugin      5 740 Zeichen   = 78 %
+laengste                 mind-update 893 · mind-memory 640 · mind-cleaner 627
+```
+
+⛔ **Wie voll das Budget ist, haengt an einer ungeklaerten Frage.** Offiziell heisst
+es „1 % of the model's context window". Issue #57941 belegt empirisch, dass gegen
+eine **feste ~200K-Basis** gerechnet wird, nicht gegen das echte Fenster:
+
+| Lesart | Budget | wir liegen bei |
+|---|---:|---:|
+| 1 % des echten Fensters (1M) | ~15 000 | **39 %** |
+| feste 200K-Basis (#57941) | ~8 000 | **92 %** |
+
+⚠ **Fuenf Issues seit Mai 2026, keines geloest.** Solange das offen ist, ist die
+zweite Lesart die vorsichtige — und dann faellt als erstes `mind-compact` oder
+`mind-session-log` weg, weil sie am seltensten gerufen werden.
+
+⭐ **Das ist eine MESSUNG, kein Defekt.** Nichts ist zu tun, solange nichts
+ueberlaeuft. Die Zahl steht hier, damit sie beim naechsten Mal gefunden wird —
+und der Pruefweg ist `--debug`, nicht Raten.

@@ -1,6 +1,35 @@
 # Hooks API Quick Reference
 
-## Event List (22 Events)
+## Event List
+
+⛔ **Hier stand „22 Events". Am 08.09.2026 sind es 33** — zweimal unabhaengig an
+der offiziellen Doku gegengezaehlt. Eine feste Zahl in einer Ueberschrift veraltet
+lautlos; dieselbe Bauform hat dieses Projekt schon dreimal getroffen
+(`architecture.md` 16./17.08., `hooks.md` 27.08., die Klassenliste 03.09.).
+**Deshalb steht hier keine Zahl mehr, sondern die Liste.**
+
+```
+SessionStart · Setup · UserPromptSubmit · UserPromptExpansion · PreToolUse
+PermissionRequest · PermissionDenied · PostToolUse · PostToolUseFailure
+PostToolBatch · Notification · MessageDisplay · SubagentStart · SubagentStop
+TaskCreated · TaskCompleted · Stop · StopFailure · TeammateIdle
+InstructionsLoaded · ConfigChange · CwdChanged · DirectoryAdded · FileChanged
+WorktreeCreate · WorktreeRemove · PreCompact · PostCompact · PreModelSwitch
+PostModelSwitch · Elicitation · ElicitationResult · SessionEnd
+```
+
+⚠ **Das Plugin nutzt davon SECHS.** Zwei weitere waeren naheliegend und sind
+bewusst **nicht** gebaut:
+
+| Event | warum nicht |
+|---|---|
+| `PostCompact` | Die Uebergabe laeuft heute ueber `pre-compact.sh` (retten) + `prompt-submit.sh` (einspeisen) und **funktioniert**. Ein zweiter Weg loeste dieselbe Aufgabe doppelt. |
+| `SessionStart` mit `compact`-Matcher | Offiziell empfohlen, um Kontext nach jeder Kompaktierung neu einzuspeisen. Unser `SessionStart` hat **keinen** Matcher — derselbe Grund. |
+
+⚠ **`SessionStart`-Resume-Hooks bekommen seit v2.1.251 „session staleness and the
+estimated re-cache cost" mitgeliefert** — Werte, die `session-start.sh` heute
+schaetzen muss. Das waere ein echter Gewinn, wenn jemand die Schaetzung ersetzen
+will.
 
 ### Full Handler Support (command, http, prompt, agent)
 `PermissionRequest` | `PostToolUse` | `PostToolUseFailure` | `PreToolUse` | `Stop` | `SubagentStop` | `TaskCompleted` | `UserPromptSubmit`
