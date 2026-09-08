@@ -360,46 +360,26 @@ def main():
             z.append("- … %d weitere" % (len(v) - 12))
         z.append("")
 
-    # --- Ursachen-Bilanz (NEU v5.41.0) ---------------------------------------
+    # ⛔ HIER STAND BIS v5.42.0 EINE URSACHEN-BILANZ. Sie ist ENTFERNT.
     #
-    # ⛔ Punkt 9 (08.09.2026) hat versucht, `instrument-misst-nichts` aus den
-    #    eigenen Texten zu zerlegen: 70 % blieben UNBESTIMMT, weil 66 % der
-    #    Eintraege unter 120 Zeichen lang sind und jeder einen anderen
-    #    Mechanismus in freier Formulierung beschreibt. Ein besseres Muster war
-    #    die falsche Antwort — ein FELD ist die richtige.
-    nach_ursache = {}
-    for e in eintraege:
-        nach_ursache.setdefault(ursache_von(e), []).append(e)
-
-    z.append("## Ursachen")
-    z.append("")
-    z.append("⚠ **Das Feld `ursache` ist OPTIONAL.** Ein Pflichtfeld wuerde zum "
-             "RATEN zwingen — also genau die Fehlerart erzeugen, die es messen "
-             "soll. `nicht-zugeordnet` ist deshalb ein gueltiger Zustand und kein "
-             "Mangel.")
-    z.append("")
-    z.append("| Ursache | Befunde | was sie bedeutet |")
-    z.append("|---|---:|---|")
-    for u, v in sorted(nach_ursache.items(), key=lambda x: -len(x[1])):
-        if u == "nicht-zugeordnet":
-            was = "kein Feld gesetzt — **kein Mangel**"
-        elif u in URSACHEN:
-            was = URSACHEN[u]
-        else:
-            was = "⛔ **unbekannter Wert** — Tippfehler? Steht in keiner Liste"
-        z.append("| `%s` | %d | %s |" % (u, len(v), was))
-    z.append("")
-    _zu = sum(len(v) for u, v in nach_ursache.items() if u != "nicht-zugeordnet")
-    if _zu:
-        z.append("⭐ **%d von %d Befunden tragen eine Ursache.** Die Frage "
-                 "*welche Ursache waechst* ist damit fuer sie beantwortbar statt "
-                 "geschaetzt." % (_zu, len(eintraege)))
-    else:
-        z.append("⚠ **Noch kein Befund traegt eine Ursache.** Das Feld ist seit "
-                 "v5.41.0 da; die vorhandenen Eintraege stammen von davor und "
-                 "werden NICHT nachtraeglich zugeordnet — das waere "
-                 "Geschichtsfaelschung.")
-    z.append("")
+    #    Beim ERSTEN Doppeleinsatz des Feldes waren sich zwei Sitzungen beim
+    #    SELBEN Defekt uneinig — `nicht-treffer-als-befund` gegen
+    #    `falsche-bezugsgroesse` — und eine dritte, ebenso vertretbare Lesart
+    #    stand daneben. Drei Antworten, ein Defekt.
+    #
+    # ⭐ EINE PROZENTZAHL AUS EINEM FELD, BEI DEM SICH DIE AUSWERTER BEIM ERSTEN
+    #    DOPPELFALL UNEINIG SIND, IST KEINE MESSUNG. Sie ist genau die Klasse,
+    #    die dieses Werkzeug zaehlt.
+    #
+    # ⚠ DER GRUND LIEGT IN DER NATUR DER BEIDEN FELDER, nicht in schlechter
+    #   Pflege: `klasse` beschreibt, WAS passiert ist, und ist am Text
+    #   nachpruefbar. `ursache` beschreibt, WARUM — das ist eine Deutung, und
+    #   Deutungen streuen. Das ist keine Schwaeche des Feldes, sondern seine Art.
+    #
+    # ⛔ WIEDER AGGREGIEREN ERST NACH EINER UEBEREINSTIMMUNGSMESSUNG: zwei
+    #    Auswerter ordnen dieselben 20 Eintraege unabhaengig zu, ohne die
+    #    Zuordnung des anderen zu sehen. Unter ~70 % bleibt das Feld reine
+    #    Lesehilfe. Die Einzelangabe steht weiter bei jedem Befund.
 
     z.append("## Alle Klassen")
     z.append("")
@@ -417,9 +397,14 @@ def main():
                      "`debug_auswertung.py`")
         z.append("")
         for e in sorted(v, key=lambda x: x.get("ts", ""), reverse=True)[:8]:
-            z.append("- `%s` %s · %s"
+            # ⭐ Die Ursache steht BEIM EINTRAG, nicht in einer Summe. Beim
+            #    Lesen eines einzelnen Befundes ist sie nuetzlich; aufaddiert
+            #    waere sie eine Zahl ohne gemessene Verlaesslichkeit.
+            _u = ursache_von(e)
+            z.append("- `%s` %s · %s%s"
                      % (e.get("ts", "?")[:16], projekt_name(e),
-                        e.get("kurz", "").replace("\n", " ")[:150]))
+                        e.get("kurz", "").replace("\n", " ")[:150],
+                        "" if _u == "nicht-zugeordnet" else "  _(%s)_" % _u))
         if len(v) > 8:
             z.append("- … %d weitere" % (len(v) - 8))
         z.append("")

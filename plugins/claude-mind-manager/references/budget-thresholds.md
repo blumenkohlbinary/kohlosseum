@@ -56,7 +56,7 @@
 - Uses markdown headings: +10
 - Uses bullet points (not prose): +10
 - Logical section ordering: +5
-- Uses @imports or rules for modularity: +5
+- Uses **rules** for modularity: +5 — ⛔ **`@import` zaehlt NICHT mehr.** Offiziell: *"Splitting into @path imports helps organization but doesn't reduce context, since imported files load at launch."* Ein Punktesystem, das eine wirkungslose Sparmassnahme belohnt, belohnt Umraeumen statt Kuerzen.
 
 ### Budget Efficiency (0-30 points)
 - CLAUDE.md < 150 lines: +15 (150-200: +10, 200-300: +5, >300: 0)
@@ -69,5 +69,5 @@
 
 ### Best Practices (0-15 points)
 - Has .claudeignore: +5
-- Rules use `globs:` not `paths:`: +5
-- Progressive disclosure (rules or @imports used): +5
+- ⛔ **ENTFALLEN v5.43.0** (war: *Rules use `globs:` not `paths:`: +5*). Die Zeile belohnte genau die Umschreibung, die P1 gestoppt hat. `globs:` ist der Cursor-Feldname; die offizielle Doku kennt nur `paths:`.
+- Progressive disclosure (**Skills oder Commands** — nicht `@import`): +5. ⚠ Nur was VERZOEGERT laedt, ist progressive disclosure. `@import` laedt beim Start mit.

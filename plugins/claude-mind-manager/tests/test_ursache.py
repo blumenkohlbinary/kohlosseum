@@ -109,16 +109,18 @@ try:
     pruef("debug_auswertung laeuft durch", r.returncode == 0,
           "(%s)" % (r.stderr or "").strip()[:110])
     txt = io.open(os.path.join(tmp, "BEFUNDE.md"), encoding="utf-8").read()
-    pruef("Abschnitt `## Ursachen` steht drin", "## Ursachen" in txt)
-    pruef("die gesetzten Ursachen erscheinen",
-          "erreicht-gegenstand-nicht" in txt and "falsche-bezugsgroesse" in txt)
-    pruef("⭐ `nicht-zugeordnet` erscheint AUSDRUECKLICH als kein Mangel",
-          "nicht-zugeordnet" in txt and "kein Mangel" in txt)
-    pruef("⛔ der Tippfehler wird als UNBEKANNT gemeldet",
-          "tippfehlr" in txt and "unbekannter Wert" in txt)
-    pruef("die Zaehlung stimmt (3 von 4 tragen eine Ursache)",
-          "3 von 4 Befunden tragen eine Ursache" in txt,
-          "(gesucht in %d Zeichen)" % len(txt))
+    # v5.43.0: die BILANZ ist entfernt. Beim ersten Doppeleinsatz waren sich
+    # zwei Sitzungen beim selben Defekt uneinig, eine dritte Lesart stand
+    # daneben. Eine Prozentzahl aus einem Feld ohne gemessene Uebereinstimmung
+    # ist keine Messung - sie ist die Klasse, die dieses Werkzeug zaehlt.
+    pruef("⛔ KEINE Ursachen-BILANZ mehr", "## Ursachen" not in txt)
+    pruef("   ... und keine Aggregat-Zeile", "Befunden tragen eine Ursache" not in txt)
+    pruef("⭐ die Ursache steht JE EINTRAG", "_(erreicht-gegenstand-nicht)_" in txt)
+    pruef("   ... auch die zweite", "_(falsche-bezugsgroesse)_" in txt)
+    pruef("⚠ ein Eintrag OHNE Feld traegt keinen Zusatz",
+          txt.count("_(") == 3, "(%d Zusaetze)" % txt.count("_("))
+    pruef("⛔ auch ein Tippfehler wird angezeigt, nicht verschluckt",
+          "_(tippfehlr)_" in txt)
 finally:
     shutil.rmtree(tmp, ignore_errors=True)
 

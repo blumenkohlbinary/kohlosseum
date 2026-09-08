@@ -8,7 +8,7 @@ All context files Claude Code loads, organized by load timing and scope.
 |------|-------------|-------|-------|-------|
 | Global CLAUDE.md | `~/.claude/CLAUDE.md` | All projects | <200 lines recommended | Lowest priority in hierarchy |
 | Project CLAUDE.md | `./CLAUDE.md` or `./.claude/CLAUDE.md` | Team (Git) | <200 lines recommended | Overrides global |
-| Local CLAUDE.md | `./CLAUDE.local.md` | Personal (gitignored) | — | **Deprecation indicated** — migrate to @imports |
+| Local CLAUDE.md | `./CLAUDE.local.md` | Personal (gitignored) | — | ⛔ **NICHT deprecated** (Doku 08.09.2026): *"It loads alongside CLAUDE.md and is treated the same way."* Der frueher empfohlene Ersatz `@import` spart ausserdem KEINEN Kontext. |
 | Enterprise CLAUDE.md | `/Library/Application Support/ClaudeCode/CLAUDE.md` (macOS), `%PROGRAMDATA%\ClaudeCode\CLAUDE.md` (Win) | Org-wide | — | Highest priority, read-only |
 | MEMORY.md | `~/.claude/projects/<hash>/memory/MEMORY.md` | Per-project | **200 lines hard limit** | Truncated from bottom silently |
 | Rules (matching) | `.claude/rules/*.md` | Team (Git) | — | Only when `globs:` matches current files |

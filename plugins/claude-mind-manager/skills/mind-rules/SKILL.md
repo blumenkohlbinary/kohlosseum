@@ -2,7 +2,7 @@
 name: mind-rules
 description: |
   [Mind Manager] Manage project rules (.claude/rules/*.md). List, validate syntax, create new rules,
-  migrate from paths: to globs: (fixing the known bug where paths: silently fails).
+  report on paths:/globs: frontmatter. ⛔ NICHT mehr autonom umschreiben — siehe P1 unten.
   Supports alwaysApply workaround (rule without globs: = always loaded). Offers
   InstructionsLoaded debug mode to verify which files load.
 
@@ -77,7 +77,7 @@ Manage, validate, create, and fix Claude Code rule files.
 
 ## Objective
 
-Provide complete management of `.claude/rules/*.md` files including syntax validation, creation, and migration from the buggy `paths:` field to the working `globs:` field.
+Provide complete management of `.claude/rules/*.md` files including syntax validation, creation, ⛔ Die Feld-Migration `paths:` -> `globs:` ist in v5.43.0 ENTFERNT - sie lief fuenf Monate in die falsche Richtung.
 
 ## Step 0: Modus + Snapshot (PFLICHT, NEU v5.0.0)
 
@@ -126,13 +126,46 @@ From `$ARGUMENTS`:
 - **list** — show all rules with frontmatter and line counts
 - **check** — validate syntax, detect issues
 - **create** — guided creation of a new rule
-- **migrate** — auto-convert paths: to globs: ⚠ **siehe Widerspruch unten**
+- **migrate** — ⛔ **schreibt NICHTS mehr um.** Meldet nur, welches Feld eine Regel traegt, und was daran gemessen ist. Siehe P1 unten.
 - **budget** (NEU v5.12.0) — was laedt wirklich, wie ist der Bestand aufgebaut
 - No argument — default to `list`
 
 Optional flag: `--debug` (nur mit `check`) — Ladeprotokoll auswerten
 
-### ⛔ UNGEKLAERTER WIDERSPRUCH: `paths:` gegen `globs:`
+### ⛔ P1 (v5.43.0): die Migration lief FUENF MONATE in die falsche Richtung
+
+**Bis v5.42.0 schrieb dieser Skill AUTONOM `paths:` nach `globs:` um** — auch in
+fremden Projekten. Die Begruendung stammte aus dem Januar 2026, als `paths:`
+tatsaechlich kaputt war.
+
+⛔ **Was seither gemessen ist:**
+
+```
+offizielle Doku (abgerufen 08.09.2026, code.claude.com/docs/en/memory):
+   "Rules can be scoped to specific files using YAML frontmatter with the
+    `paths` field."
+   "Rules without a `paths` field are loaded UNCONDITIONALLY."
+   `globs:` wird dort NICHT genannt - es ist der CURSOR-Feldname.
+
+eigene Messung 03.-08.09.2026:
+   `path_glob_match` kommt in 3667 Protokollzeilen NULL mal vor
+   /context zeigt ALLE 23 Regeldateien im Fenster, auch jede mit `globs:`
+```
+
+⭐ **Die Folge der alten Richtung:** eine funktionierende Pfad-Eingrenzung wurde in
+eine Regel verwandelt, die **bedingungslos laedt**. Das Plugin vergroesserte damit
+genau den Dauerkontext, den es verkleinern soll.
+
+⛔ **WAS NICHT GETAN WIRD, und warum:** die Gegenrichtung (`globs:` -> `paths:`)
+wird **nicht** automatisch gefahren. Gemessen ist, dass `globs:` **nicht** filtert;
+**nicht** gemessen ist, dass `paths:` es hier **tut** — dafuer gibt es nur die
+Doku. Eine autonome Umschreibung auf eine ungepruefte Annahme waere derselbe
+Fehler noch einmal, nur in die andere Richtung.
+
+⚠ **Der Versuch, der es entscheiden wuerde:** EINE Projektregel auf `paths:`
+umstellen, frische Sitzung, `/context`. Stehen dort weniger Dateien, filtert es.
+**Nur der Mensch kann das ausloesen** — `/context` ist fuer den Assistenten nicht
+aufrufbar.
 
 Dieser Skill migriert `paths:` → `globs:` und stuft `paths:` als *„won't work"* ein.
 **Die offizielle Doku sagt das Gegenteil** (Recherche 21.08.2026):
@@ -332,10 +365,13 @@ After:
 [Apply / Skip]
 ```
 
-3. **Read each rule file BEFORE Edit** — Edit-Tool benoetigt vorherigen Read im
-   selben Tool-Call-Kontext, sonst Crash mit `<tool_use_error>File has not been
-   read yet`. Apply changes with Edit on confirmation.
-4. Summary: "Migrated N files from paths: to globs:"
+3. ⛔ **SCHREIBT NICHTS UM (seit v5.43.0).** Der Ablauf endet hier: gemeldet wird,
+   welches Feld jede Regel traegt. Kein Edit, keine Bestaetigungsfrage, kein
+   Vorher/Nachher — die Richtung war fuenf Monate falsch, und die Gegenrichtung
+   ist hier NICHT gemessen (siehe P1 oben).
+4. Summary: "N Regeln mit `paths:`, M mit `globs:`, K ohne Feld (= laden immer)."
+   ⚠ Dazu der Satz, was daran gemessen ist und was nicht — eine blosse Zahl
+   verleitet zur naechsten Umschreibung.
 
 ## ⛔ SUCHEN, BEVOR DU ERGAENZT (PFLICHT, NEU v5.20.0)
 
