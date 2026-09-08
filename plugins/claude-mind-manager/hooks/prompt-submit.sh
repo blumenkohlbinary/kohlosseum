@@ -298,13 +298,28 @@ if [ -f "$_KWM" ] && [ "$_PLAN_STILL" != "ja" ]; then
   _KV=$(grep -m1 '^vorher=' "$_KWM" 2>/dev/null | cut -d= -f2)
   _KJ=$(grep -m1 '^jetzt='  "$_KWM" 2>/dev/null | cut -d= -f2)
   _KD=$(grep -m1 '^delta='  "$_KWM" 2>/dev/null | cut -d= -f2)
+  # ⭐ v5.47.0: die STEHENDE Deckel-Schuld, unabhaengig vom Einzelschritt.
+  _KS=$(grep -m1 '^schuld_bytes='  "$_KWM" 2>/dev/null | cut -d= -f2)
+  _KT=$(grep -m1 '^schuld_tokens=' "$_KWM" 2>/dev/null | cut -d= -f2)
+  _KA=$(grep -m1 '^anker_ts='      "$_KWM" 2>/dev/null | cut -d= -f2-)
+  case "${_KS:-}" in ''|*[!0-9]*) _KS=0 ;; esac
+  case "${_KT:-}" in ''|*[!0-9]*) _KT=0 ;; esac
   # ⛔ VERBRAUCHEN, bevor ausgegeben wird. Bleibt der Merker liegen, meldet es
   #    bei JEDEM Prompt dieselbe Zahl — und ein Melder, der sich wiederholt,
   #    wird abgeschaltet.
   rm -f "$_KWM" 2>/dev/null
+  # ⛔ NICHT mehr allein am Delta haengen. Das Muster '*[!0-9]*' verwirft auch
+  #    ein NEGATIVES Delta — bis v5.46.0 unmoeglich, seit v5.47.0 der Normalfall,
+  #    wenn der Merker wegen der SCHULD entsteht. Wer hier nur das Delta prueft,
+  #    baut den Anker und schaltet ihn im selben Zug stumm.
   case "${_KD:-}" in ''|*[!0-9]*) _KD="" ;; esac
-  if [ -n "$_KD" ]; then
-    _MSGW="[Mind Manager] Der IMMER geladene Kontext ist um $_KD Zeilen gewachsen ($_KV -> $_KJ).
+  if [ -n "$_KD" ] || [ "$_KS" -gt 0 ] 2>/dev/null; then
+    if [ -n "$_KD" ]; then
+      _KOPF="Der IMMER geladene Kontext ist um $_KD Zeilen gewachsen ($_KV -> $_KJ)."
+    else
+      _KOPF="Der IMMER geladene Kontext steht ueber seinem letzten Ausgleich."
+    fi
+    _MSGW="[Mind Manager] $_KOPF
 
 Das ist KEIN Fehler und blockt nichts — Handarbeit an Context-Dateien ist normal.
 Es ist eine Erinnerung: dieser Zuwachs ist an den fuenf Context-Commands vorbei
@@ -314,6 +329,11 @@ Die acht Fragen, kurz:
   A1 selbsterklaerend?   A2 noch wahr?      A3 Regel oder Historie?
   B1 steht es schon woanders?   B2 im Code?   B3 wirkt es an DIESEM Ort?
   C1 hart formuliert?    C2 befolgbar?
+
+⛔ OFFENE DECKEL-SCHULD: $_KS B (~$_KT Tokens), seit $_KA.
+Die Deckelregel sagt: wer im Dauerkontext anlegt, zahlt aus dem Bestand.
+Der Anker sinkt erst wieder, wenn der Bestand unter seinen Stand faellt —
+⚠ ein Guthaben gibt es nicht, Kuerzen auf Vorrat zaehlt also nicht.
 
 Wenn ja: nichts tun. Wenn nein: `/mind-cleaner` raeumt auf.
 Bestand messen: mind_kontext_bilanz \"\$PROJ\" --vergleichen"
