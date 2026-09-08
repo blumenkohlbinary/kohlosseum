@@ -798,6 +798,91 @@ richtige — wie die Agent-Quittung (v5.19.0), die keinen Agenten zur Arbeit
 zwingt, sondern sein Fehlen sichtbar macht.
 
 
+## Step 5e: Der Roster — anbieten und pruefen (NEU v5.46.0)
+
+Ein Projekt, in dem **mehrere Sitzungen** arbeiten, braucht `.claude/rules/rollen.md`.
+Ohne ihn wirkt `~/.claude/rules/manager-chats.md` nicht — sie sagt das in ihrer
+dritten Zeile selbst: *„Ohne Roster gilt nichts davon."*
+
+### ⛔ Das Gate — gemessen am 09.09.2026, nicht geraten
+
+| Kandidat | trennt er? |
+|---|---|
+| Sitzungen mit **ueberlappenden Laufzeitfenstern** | 9 von 22 Projekten |
+| schlicht **>= 2 Sitzungen** je Projekt | **9 von 22 Projekten** |
+
+⭐ **Beide liefern DIESELBE Menge.** Jedes Projekt, das je zwei Sitzungen hatte,
+hatte auch ueberlappende. **Also gilt das einfache Merkmal** — ein aufwendiges
+Instrument, das dasselbe misst wie ein triviales, ist eine Last und keine Zusatzsicherheit.
+
+⚠ **Die naheliegenden Kandidaten aus dem Auftrag taugen alle nicht**, und zwar aus
+demselben Grund: `.claude-mind/sessions/`, verschiedene `session_id` im Hook-Zaehler und
+mehrere `OPEN.seen-<sid>` zaehlen Sitzungen **ueber die Zeit**. Ein Projekt, an dem seit
+Maerz jede Woche eine neue Sitzung arbeitet, saehe damit aus wie ein Manager-Aufbau.
+
+⛔ **Die Messung selbst hatte einen Fehler, der sie fast unbrauchbar gemacht haette:**
+die erste Fassung las nur den **ersten** Datensatz je Transkript — und der traegt keinen
+Zeitstempel. Von 15 Transkripten wurde eines gewertet, und **dieses** Projekt meldete
+*„1 Sitzung, 0 gleichzeitig"*, waehrend drei Sitzungen darin liefen. Gefunden nur, weil der
+bekannt wahre Fall in der Ausgabe stand.
+
+```bash
+# Zaehlt die Sitzungstranskripte dieses Projekts.
+_SLUG=$(hash_project_dir "$PROJ")
+_N=$(ls -1 "$HOME/.claude/projects/$_SLUG"/*.jsonl 2>/dev/null | wc -l)
+```
+
+**Angeboten wird, wenn `_N >= 2` UND `.claude/rules/rollen.md` fehlt.**
+⛔ **Nie erzwungen** — Muster wie Step 5c: erkennen, anbieten, der Nutzer entscheidet.
+
+### Das Geruest wird NICHT entworfen — es steht schon
+
+```bash
+python "$CLAUDE_PLUGIN_ROOT/references/rollen_geruest.py" --projekt "$PROJ"
+python "$CLAUDE_PLUGIN_ROOT/references/rollen_geruest.py" --pruefe "$PROJ/.claude/rules/rollen.md"
+python "$CLAUDE_PLUGIN_ROOT/references/rollen_geruest.py" --selbsttest
+```
+
+⛔ **Verbindlich ist Joplin `🧭 Manager-Chats` §10a** (ID
+`6e27ab4e46f94884b88f56a1e7c46f27`): Abschnittsfolge, Ueberschriften, **vier Saetze, die
+woertlich stehen muessen**. Der Skill baut **genau** dieses Geruest. Sonst gaebe es zwei
+Wahrheiten — eine fuer Projekte, die die Kopiervorlage benutzt haben, und eine fuer die,
+in denen `/mind-files` lief.
+
+⛔ **LEERE NAMEN BLEIBEN LEER.** Namen vergibt der Nutzer. Ein erfundener Name ist
+schlimmer als eine Luecke: die Adressierung trifft dann ins Leere, und das faellt erst auf,
+wenn jemand eine Nachricht schickt.
+
+⛔ **Die Eigentuemer-Tabelle kommt aus dem TATSAECHLICHEN Bestand**, nie aus einer festen
+Liste — und `~/.claude/projects/<slug>/memory/` steht immer drin, weil es **ausserhalb**
+des Projektordners liegt und sonst zum Streitfall wird.
+
+### Pruefung 8: Abschnittsfolge (`--pruefe`)
+
+| | |
+|---|---|
+| Abschnitt **weggelassen** | Hinweis — was es nicht gibt, faellt weg |
+| Abschnitt **ergaenzt**, Geruest sonst vollstaendig | Hinweis — *„was NUR hier gilt"* gehoert hinein |
+| Abschnitt **umbenannt** oder **umgestellt** | **BEFUND**, rc 1 |
+| ein **Pflichtsatz** fehlt | **BEFUND**, rc 1 |
+
+⭐ **Umbenannt und ergaenzt sehen von aussen gleich aus.** Unterschieden wird mechanisch
+nur daran, ob dafuer ein Pflichtabschnitt **fehlt**: fehlt einer, ist der fremde
+verdaechtig; fehlt keiner, ist er eine Zugabe.
+
+⚠ **Umlaute sind tolerant, alles andere nicht.** `gehoert` und `gehört` gelten als
+dieselbe Ueberschrift. Gefunden an echtem Material: die erste Fassung meldete die
+handgeschriebene `rollen.md` dieses Projekts als *„umbenannt"*, weil sie ASCII schreibt.
+Ein Pruefer, der eine Schreibkonvention fuer eine Umbenennung haelt, erzeugt in jedem
+ASCII-schreibenden Projekt einen Fehlalarm.
+
+### ⛔ Was NICHT mechanisch geht — und deshalb im Bericht dazugesagt wird
+
+Ob der **Zuschnitt** der Rollen sinnvoll ist · ob die **Namen** zu den laufenden
+Sitzungen passen · ob sich jemand an den Roster **haelt**. Der Bericht nennt diese drei,
+statt sie wegzulassen — sonst liest sich ein gruener Lauf wie eine Zusicherung, die er
+nicht ist.
+
 ## Step 5f: ⛔ Der Bestands-Pass — PFLICHT, auch bei leerem Befund (NEU v5.22.0)
 
 **Nutzer-Auftrag 27.08.2026:** *„die anderen skills sollen von vorne rein sauber arbeiten,
