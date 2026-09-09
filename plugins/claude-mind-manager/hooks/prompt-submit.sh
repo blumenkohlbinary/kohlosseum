@@ -535,6 +535,22 @@ Pfad an einen Subagenten uebergeben, und zaehlende Aufrufe (grep -c, wc).
 
 Die Schuld bleibt bestehen, bis /mind-all gelaufen ist — sie verfaellt nicht mit dieser Meldung."
 
+# ⛔ v5.55.0: DER GRUND UND DIE UNGEPRUEFTEN BEREICHE GEHOEREN AUCH HIERHIN.
+#    Bis v5.54.0 standen `grund=` und `ungepruef=` nur im COMPACT-FAELLIG-Zweig
+#    (v5.50.0) und im Blocktext von `stop.sh`. Liegt eine Teilsync-Schuld OHNE
+#    anstehende Kompaktierung, nannte sie niemand — und mit dem Wegfall des
+#    Blocks waere das die einzige verbliebene Stelle gewesen.
+# ⚠ Gefunden beim Verschieben der 23 Zusicherungen, nicht beim Lesen: zwei
+#   Faelle aus `test_teilsync.sh` hatten nach dem Umbau kein Ziel mehr. Eine
+#   Zusicherung ohne Ziel ist der Beleg fuer eine Luecke, nicht fuer einen
+#   ueberfluessigen Prueffall.
+_OG=$(grep -m1 '^grund=' "$OPEN" 2>/dev/null | cut -d= -f2-)
+_OU=$(grep -m1 '^ungepruef=' "$OPEN" 2>/dev/null | cut -d= -f2-)
+[ -n "${_OG:-}" ] && MSG="$MSG
+  Grund: $_OG"
+[ -n "${_OU:-}" ] && MSG="$MSG
+  ⚠ TEILSYNC — diese Bereiche sind UNGEPRUEFT, nicht unauffaellig: $_OU"
+
 # JSON-Ausgabe (Context Injection ist fuer UserPromptSubmit dokumentiert).
 # Ohne jq: plain-text stdout wirkt laut Referenz ebenfalls als Kontext.
 _slog INFO "Schuld gemeldet (events=${RESCUE_N:-?}, compactions=${COMPACTIONS:-?}, sid=$SID) -> $RESCUE_PATH"

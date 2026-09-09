@@ -54,11 +54,15 @@ pruef "800 000 -> mahnt"      "$(ruf_prompt "$T/t800.jsonl" | grep -c '/mind-all
 pruef "800 000 -> nennt die Zahl" "$(ruf_prompt "$T/t800.jsonl" | grep -c '800000')" "1"
 
 echo
-echo "=== 2 · Schwelle des ZWANGS (stop) ==="
+echo "=== 2 · ⛔ DER ZWANG IST ENTFALLEN — die Mahnung traegt allein ==="
+# ⛔ v5.55.0: MIND_SYNC_FORCE_TOKENS wird von keinem Hook mehr gelesen.
+#    Die Zusicherung "840 000 -> Block" ist nicht weggelassen, sondern
+#    umgezogen: oberhalb der Schwelle MAHNT prompt-submit.sh weiter.
 mach_transkript "$T/t839.jsonl" 839999
 mach_transkript "$T/t840.jsonl" 840000
 pruef "839 999 -> kein Block" "$(ruf_stop "$T/t839.jsonl" | grep -c 'decision')" "0"
-pruef "840 000 -> Block"      "$(ruf_stop "$T/t840.jsonl" | grep -c '\"block\"')" "1"
+pruef "⛔ 840 000 -> AUCH kein Block mehr" "$(ruf_stop "$T/t840.jsonl" | grep -c 'decision')" "0"
+pruef "⭐ 840 000 -> die Mahnung kommt weiter" "$(ruf_prompt "$T/t840.jsonl" | grep -c '/mind-all')" "1"
 
 echo
 echo "=== 3 · Transkript OHNE usage -> KEINE Aussage, nicht 0 ==="
@@ -83,15 +87,19 @@ echo "=== 4 · sync-stand macht still — solange er FRISCH ist (v5.11.0) ==="
 # schweigt. Die zwei darunter sind NEU und wuerden den alten Stand rot machen.
 SS="$T/proj/.claude-mind/rescued/sync-stand"
 
+# ⛔ v5.55.0: gemessen wird an der MAHNUNG statt am Block. Der Vertrag
+#    (frisch = still, verbraucht = laut) ist derselbe; nur der Traeger hat
+#    gewechselt. Ohne diesen Umzug waere `mind_sync_frisch` unbewacht — die
+#    Funktion, wegen der v5.11.0 ueberhaupt entstanden ist.
 printf 'ts=jetzt\ntokens=838000\n' > "$SS"            # 2k Zuwachs -> frisch
-pruef "frischer sync-stand -> keine Mahnung" "$(ruf_prompt "$T/t800.jsonl" | grep -c 'JETZT /mind-all')" "0"
+pruef "frischer sync-stand -> keine Mahnung" "$(ruf_prompt "$T/t840.jsonl" | grep -c '/mind-all')" "0"
 pruef "frischer sync-stand -> kein Block"    "$(ruf_stop  "$T/t840.jsonl" | grep -c 'decision')" "0"
 
 printf 'ts=2026-08-21 08:00:00\n' > "$SS"              # Alt-Merker, keine Zahl
-pruef "Alt-Merker ohne tokens= -> Block kommt" "$(ruf_stop "$T/t840.jsonl" | grep -c '\"block\"')" "1"
+pruef "Alt-Merker ohne tokens= -> Mahnung kommt" "$(ruf_prompt "$T/t840.jsonl" | grep -c '/mind-all')" "1"
 
 printf 'ts=jetzt\ntokens=700000\n' > "$SS"            # 140k Zuwachs -> faellig
-pruef "140k Zuwachs seit dem Sync -> Block kommt" "$(ruf_stop "$T/t840.jsonl" | grep -c '\"block\"')" "1"
+pruef "140k Zuwachs seit dem Sync -> Mahnung kommt" "$(ruf_prompt "$T/t840.jsonl" | grep -c '/mind-all')" "1"
 
 rm -f "$SS"
 
@@ -123,7 +131,14 @@ printf 'path=%s\nresume=%s\nevents=99\nblocks=0\n' "$T/proj/.claude-mind/rescued
 printf 'x\n' > "$T/proj/.claude-mind/rescued/chat.md"
 ALT="$CLAUDE_PLUGIN_ROOT"
 export CLAUDE_PLUGIN_ROOT="/pfad/den/es/nicht/gibt"     # lib.sh unerreichbar
-pruef "ohne lib.sh: Schuld-Zwang blockt trotzdem" "$(ruf_stop "$T/t840.jsonl" | grep -c '\"block\"')" "1"
+# ⛔ v5.55.0: es gibt keinen Zwang mehr, der ueberleben koennte. Was bleibt,
+#    ist die FAIL-OPEN-Eigenschaft: stop.sh laeuft auch mit unerreichbarer
+#    lib.sh sauber durch (Rueckgabe 0) und stuerzt nicht ab. Er ist der Hook,
+#    der am Turn-Ende die Kontext-Wache ruft — ein Absturz hier waere teurer
+#    als alles, was er meldet.
+ruf_stop "$T/t840.jsonl" >/dev/null 2>&1
+pruef "ohne lib.sh: stop.sh laeuft sauber durch" "$?" "0"
+pruef "und gibt dabei nichts aus" "$(ruf_stop "$T/t840.jsonl" 2>/dev/null | wc -c | tr -d ' ')" "0"
 export CLAUDE_PLUGIN_ROOT="$ALT"
 
 rm -rf "$T"

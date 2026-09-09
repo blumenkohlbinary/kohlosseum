@@ -235,29 +235,52 @@ stop_lauf() { # projekt
   printf '{"session_id":"s","transcript_path":"","stop_hook_active":false,"cwd":"%s"}' "$1" \
     | CLAUDE_PROJECT_DIR="$1" MIND_SYNC_FORCE_TOKENS=0 bash "$H/stop.sh" 2>/dev/null
 }
+# ⛔ v5.55.0: stop.sh blockt niemanden mehr. Der Teilsync-GRUND wird seither
+#    in `prompt-submit.sh` gemeldet — in der COMPACT-Meldung (v5.50.0) UND in
+#    der reinen Schuld-Meldung (v5.55.0). Die zweite Stelle ist beim Verschieben
+#    dieser Faelle entstanden: ohne sie haetten sie kein Ziel gehabt, und die
+#    Zusicherung waere weggefallen statt umgezogen.
+prompt_lauf() { # projekt
+  printf '{"session_id":"s","transcript_path":"","prompt":"hi","cwd":"%s"}' "$1" \
+    | CLAUDE_PROJECT_DIR="$1" MIND_SYNC_AT_TOKENS=0 bash "$H/prompt-submit.sh" 2>/dev/null
+}
 
-# --- 20 · Teilsync-Schuld -> der Blocktext sagt WARUM --------------------
+# --- 20 · Teilsync-Schuld -> die MELDUNG sagt WARUM ----------------------
+#     ⛔ v5.55.0: war "der Blocktext". Der Block ist entfallen, die Aussage
+#        nicht — sie steht jetzt in der Schuld-Meldung des naechsten Prompts.
 P=$(neu_projekt); offen "$P" teilsync "claude-md,memory"
-O=$(stop_lauf "$P")
+O=$(prompt_lauf "$P")
 printf '%s' "$O" | grep -q "TEILSYNC" && A=ja || A=nein
-janein "Blocktext nennt TEILSYNC" ja "$A"
+janein "Meldung nennt TEILSYNC" ja "$A"
 printf '%s' "$O" | grep -q "claude-md,memory" && A=ja || A=nein
-janein "Blocktext nennt die ungeprueften Bereiche" ja "$A"
-# Ein Blocktext, der kein gueltiges JSON mehr ist, blockt gar nicht — das ist
-# derselbe Fehler wie v5.7.6 (Klartext neben JSON im selben stdout).
-printf '%s' "$O" | grep -q '"decision"' && A=ja || A=nein
-janein "Ausgabe bleibt ein gueltiger Block" ja "$A"
+janein "Meldung nennt die ungeprueften Bereiche" ja "$A"
+# ⛔ Zwei Ausgaben in einem stdout sind kein gueltiges JSON mehr — der
+#    v5.7.6-Fehler. Die Zusicherung wandert mit: genau EIN Objekt.
+if command -v jq >/dev/null 2>&1; then
+  printf '%s' "$O" | jq -e '.hookSpecificOutput.additionalContext' >/dev/null 2>&1 \
+    && A=ja || A=nein
+  janein "Ausgabe bleibt genau EIN gueltiges JSON-Objekt" ja "$A"
+else
+  echo "  [--] jq fehlt — JSON-Fall UEBERSPRUNGEN, nichts gemessen"
+fi
 rm -rf "$P"
 
 # --- 21 · GEGENKONTROLLE: normale Schuld -> KEIN Teilsync-Text -----------
 #     Ohne diesen Fall koennte der Text immer erscheinen und die Pruefung
 #     waere blind dafuer.
 P=$(neu_projekt); offen "$P"
-O=$(stop_lauf "$P")
+O=$(prompt_lauf "$P")
 printf '%s' "$O" | grep -q "TEILSYNC" && A=ja || A=nein
 janein "normale Schuld -> KEIN Teilsync-Text" nein "$A"
-printf '%s' "$O" | grep -q '"decision"' && A=ja || A=nein
-janein "und sie blockt trotzdem" ja "$A"
+# ⛔ v5.55.0: war "und sie blockt trotzdem". Ohne Block lautet die tragende
+#    Richtung: sie wird trotzdem GEMELDET. Ein Melder, der bei einer normalen
+#    Schuld schweigt, waere durch den Umbau kaputtgegangen — und der Fall
+#    daneben (kein Teilsync-Text) haette es nicht bemerkt.
+printf '%s' "$O" | grep -qi 'sync-schuld' && A=ja || A=nein
+janein "⭐ und sie wird trotzdem gemeldet" ja "$A"
+S=$(stop_lauf "$P")
+printf '%s' "$S" | grep -q '"decision"' && A=ja || A=nein
+janein "⛔ stop.sh blockt dabei nicht mehr" nein "$A"
 rm -rf "$P"
 
 echo

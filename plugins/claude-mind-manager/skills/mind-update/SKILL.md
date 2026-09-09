@@ -970,31 +970,38 @@ fi
 _VOLL="${MIND_AGENT_VOLL_TOKENS:-600000}"
 _HALB="${MIND_AGENT_HALB_TOKENS:-800000}"
 
-# ⚠ Keine Zahl ist KEINE Null: ohne lesbares Transkript wird NICHT gekuerzt.
-case "$_ATOK" in ''|*[!0-9]*) AGENT_MAX=4 ;;
-  *) if   [ "$_ATOK" -lt "$_VOLL" ]; then AGENT_MAX=4
-     elif [ "$_ATOK" -lt "$_HALB" ]; then AGENT_MAX=2
-     else                                 AGENT_MAX=0
-     fi ;;
-esac
+# ⛔ v5.55.0: 4 ODER GAR NICHTS. Die Zwischenstufe 2 ist entfallen.
+#    Nutzer-Entscheidung 10.09.2026: "ein teilsync soll verboten sein keine
+#    ausreden wenn ich einen sync haben will immer voll keine ausreden".
+# ⚠ Keine Zahl ist KEINE Null: ohne lesbares Transkript wird NICHT abgebrochen.
+if type mind_sync_moeglich >/dev/null 2>&1; then
+  if ! _TSGRUND=$(mind_sync_moeglich "$PROJ" "${MIND_TP:-}"); then
+    echo "$_TSGRUND" >&2
+    exit 1
+  fi
+fi
+AGENT_MAX=4
 AGENT_SOLL=$AGENT_MAX          # Step 2.96a von mind-all liest das
-[ "$AGENT_MAX" -lt 4 ] && echo "⚠ Kontext bei ${_ATOK:-?} Tokens -> nur $AGENT_MAX von 4 Agents. Der Rest gilt als UNGEPRUEFT."
 ```
 
-⛔ **Das senkt den Anspruch nicht, es macht ihn ehrlich.** Alle vier Bereiche bleiben
-Pflicht; was entfaellt, steht im Bericht und erzeugt ueber `sync-stand`/`OPEN` eine
-**Schuld**, die den naechsten Lauf dazu zwingt. Der Unterschied zu vorher ist nicht die
-Zahl, sondern **wer sie festlegt**.
+⛔ **Hier stand bis v5.54.0 die Begruendung fuer einen halben Lauf** — *„das senkt
+den Anspruch nicht, es macht ihn ehrlich“*, und daneben die Vorschrift, was bei
+`AGENT_MAX=0` zu tun sei. **Beides ist gegenstandslos:** es gibt keinen halben Lauf mehr.
+Der Text bleibt als Historie stehen, weil er erklaert, warum die Schwelle ueberhaupt
+existiert — nicht als geltende Anweisung.
 
-⛔ **Bei `AGENT_MAX=0` ist der grep-Rueckfall PFLICHT**, nicht optional — Step 2 von
-`mind-all` verlangt ihn schon heute bei leerer Rueckgabe. Am 21.08.2026 dauerte er unter
-einer Minute und fand genau den Befund, den der Agent finden sollte.
+⛔ **Was heute gilt:** unter `MIND_AGENT_VOLL_TOKENS` faehrt der Lauf mit **4** Agents,
+darueber faehrt er **gar nicht** und sagt dem Menschen, was zu tun ist. Der grep-Rueckfall
+bleibt Pflicht fuer den **einzelnen** Agenten, der LEER zurueckkommt (mind-all Step 2) —
+das ist ein anderer Fall als „er wurde nie gestartet“.
 
-⚠ **Die beiden Schwellen sind GERATEN, nicht gemessen.** Belegt sind nur drei Datenpunkte
-(888k und 914k: Ausfall) und die Laufzeiten frueherer Agents (105 s / 163 s / 199 s).
-Deshalb sind sie **Regler mit dokumentierter Herkunft** und keine Konstanten — dieselbe
-Begruendung wie bei den drei v5.5.0-Reglern. ⛔ **Das Plugin setzt sie nie selbst**
-(`claude-mem` #2836 machte so 75 Erinnerungen unsichtbar).
+⚠ **Die Schwelle ist GERATEN, nicht gemessen.** Belegt sind drei Datenpunkte (888k und
+914k: Ausfall) und die Laufzeiten frueherer Agents (105 s / 163 s / 199 s). Deshalb ein
+**Regler mit dokumentierter Herkunft** und keine Konstante — dieselbe Begruendung wie bei
+den drei v5.5.0-Reglern. ⛔ **Das Plugin setzt ihn nie selbst** (`claude-mem` #2836 machte
+so 75 Erinnerungen unsichtbar).
+⭐ **Und sie wiegt jetzt schwerer als vorher:** frueher kostete ein zu niedriger Wert
+zwei Agents, heute kostet er den ganzen Lauf. Wer sie anfasst, misst vorher.
 
 ### ⛔ Agent-Quittung — PFLICHT, vor UND nach jedem Agent (NEU v5.14.0)
 

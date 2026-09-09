@@ -107,6 +107,26 @@ PROJ="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 # sonst haelt der naechste Befundlauf ein totes Netz fuer ein gespanntes.
 mind_hook_health "$PROJ" || HOOK_WARN="ja"
 
+# ⛔ v5.55.0: TEILSYNC IST VERBOTEN — der Lauf faellt aus, statt halb zu laufen.
+#    Nutzer-Entscheidung 10.09.2026: "ein teilsync soll verboten sein keine
+#    ausreden wenn ich einen sync haben will immer voll keine ausreden".
+#    ⛔ DAS GATE STEHT VOR DEM SNAPSHOT. Ein Lauf, der ohnehin abbricht, soll
+#       nicht vorher eine Sicherung anlegen, eine Kettenmarke setzen und eine
+#       Agent-Quittung eroeffnen — die Quittung waere danach eine Spur ohne Lauf.
+#    ⚠ Der Transkript-Pfad wird HIER geholt statt weiter unten: der eigene
+#      prompt-submit.sh ist gerade gelaufen, der Merker gehoert in diesem Moment
+#      uns. Je frueher, desto kleiner das Rennfenster (v5.38.0).
+MIND_TP=""
+if type mind_transkript_pfad >/dev/null 2>&1; then
+  MIND_TP=$(mind_transkript_pfad "$PROJ")
+fi
+if [ "$DRY_RUN" = "no" ] && type mind_sync_moeglich >/dev/null 2>&1; then
+  if ! _TSGRUND=$(mind_sync_moeglich "$PROJ" "$MIND_TP"); then
+    echo "$_TSGRUND" >&2
+    exit 1
+  fi
+fi
+
 if [ "$DRY_RUN" = "no" ]; then
   SNAPSHOT=$(mind_snapshot "$PROJ" "pre-mind-all") || {
     echo "ABBRUCH: Snapshot fehlgeschlagen — KEIN Skill wird gestartet." >&2; exit 1; }
@@ -209,15 +229,14 @@ fi
 # ⚠ EIN REST BLEIBT: schiebt eine andere Sitzung ihren Prompt genau dazwischen,
 #   ist er schon fremd. Aufloesen liesse sich das nur mit einer Sitzungskennung
 #   im Skill — die gibt es dort nicht (CLAUDE_SESSION_ID ist LEER, gemessen v5.30.0).
-MIND_TP=""
-if type mind_transkript_pfad >/dev/null 2>&1; then
-  MIND_TP=$(mind_transkript_pfad "$PROJ")
-  if [ -n "$MIND_TP" ]; then
-    echo "Transkript dieser Sitzung: $(basename "$MIND_TP")"
-  else
-    echo "⚠ Transkript NICHT bestimmbar — Tokenzahlen dieses Laufs bleiben LEER."
-    echo "  (Eine fehlende Zahl ist keine Null. Der Lauf geht weiter.)"
-  fi
+# ⚠ v5.55.0: MIND_TP steht schon — es wird oben vor dem Teilsync-Gate geholt.
+#   Hier wird es nur noch GEMELDET. Ein zweites `mind_transkript_pfad` waere ein
+#   zweiter Griff auf einen Merker, der sich zwischendurch geaendert haben kann.
+if [ -n "$MIND_TP" ]; then
+  echo "Transkript dieser Sitzung: $(basename "$MIND_TP")"
+else
+  echo "⚠ Transkript NICHT bestimmbar — Tokenzahlen dieses Laufs bleiben LEER."
+  echo "  (Eine fehlende Zahl ist keine Null. Der Lauf geht weiter.)"
 fi
 ```
 

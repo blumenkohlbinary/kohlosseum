@@ -2161,6 +2161,67 @@ mind_lauf_frei() {
   return 0
 }
 
+# ===== v5.55.0: TEILSYNC IST VERBOTEN =======================================
+# ⛔ Nutzer-Entscheidung 10.09.2026, woertlich: "ein teilsync soll verboten
+#    sein keine ausreden wenn ich einen sync haben will immer voll keine
+#    ausreden".
+#
+# WAS VORHER GALT: `mind-update` Step 3.5 leitete die Agentenzahl aus dem
+# Kontextstand ab — unter 600 000 vier Agents, darunter zwei, darueber null.
+# Ein Lauf mit null Agents lief TROTZDEM durch, schrieb `umfang=...0/4 agents`
+# und hinterliess eine Schuld mit `grund=teilsync`.
+#
+# ⛔ DER WIDERSPRUCH, DEN DAS AUFLOEST, WAR REAL: `MIND_SYNC_FORCE_TOKENS`
+#    (800 000) erzwang einen Sync GENAU an der Grenze, an der er null Agents
+#    bekommt (`MIND_AGENT_HALB_TOKENS`, ebenfalls 800 000). Der Zwang
+#    produzierte den Teilsync, den er verhindern sollte — nachzulesen in
+#    `env-vars.md`, Tabelle "Der Ablauf", wo beide Zahlen nebeneinander stehen
+#    und die Folge dort selbst als "Absicht" beschrieben war.
+#
+# AB JETZT: 4 Agents oder gar nichts. Es gibt keine Zwischenstufe mehr.
+#
+# ⚠ FAIL-SAFE-RICHTUNG: KEINE MESSUNG IST KEIN ABBRUCH. Ohne lesbares
+#   Transkript, ohne `mind_kontext_tokens`, bei unparsbarer Zahl → der Lauf
+#   faehrt. Ein Sync, der an einer fehlenden Messung scheitert, waere teurer als
+#   einer, der bei ungewissem Stand vier Agents versucht — dieselbe Richtung
+#   wie die alte Regel "Keine Zahl ist KEINE Null".
+
+mind_sync_moeglich() {
+  # $1 = Projekt, $2 = Transkript (optional; sonst wird es selbst gesucht)
+  # -> 0 = der volle Fan-out ist moeglich
+  #    1 = NICHT moeglich; die Begruendung steht auf stdout
+  local proj="${1:-}" tp="${2:-}" tok voll
+  voll="${MIND_AGENT_VOLL_TOKENS:-600000}"
+  [ -n "$proj" ] || return 0
+  if [ -z "$tp" ] && type mind_transkript_pfad >/dev/null 2>&1; then
+    tp=$(mind_transkript_pfad "$proj" 2>/dev/null)
+  fi
+  { [ -n "$tp" ] && [ -f "$tp" ]; } || return 0
+  type mind_kontext_tokens >/dev/null 2>&1 || return 0
+  tok=$(mind_kontext_tokens "$tp" 2>/dev/null)
+  case "$tok" in ''|*[!0-9]*) return 0 ;; esac
+  [ "$tok" -lt "$voll" ] 2>/dev/null && return 0
+
+  printf 'ABBRUCH: Der Sync faehrt NICHT — er koennte nur ein Teilsync werden.\n'
+  printf '\n'
+  printf '  Kontext dieser Sitzung: %s Tokens\n' "$tok"
+  printf '  Voller Fan-out geht bis: %s Tokens (MIND_AGENT_VOLL_TOKENS)\n' "$voll"
+  printf '\n'
+  printf 'Oberhalb dieser Grenze bekommt der Lauf nicht alle 4 Wissens-Agents. Bis\n'
+  printf 'v5.54.0 lief er dann halb durch und meldete die fehlenden Bereiche als\n'
+  printf 'UNGEPRUEFT. Das ist seit dem 10.09.2026 verboten: ein Sync ist voll oder\n'
+  printf 'er findet nicht statt.\n'
+  printf '\n'
+  printf 'WAS DU TUN MUSST (der Lauf kann es nicht selbst):\n'
+  printf '  1. Diese Sitzung kompaktieren oder neu starten, damit der Kontext\n'
+  printf '     unter %s liegt.\n' "$voll"
+  printf '  2. /mind-all danach erneut aufrufen.\n'
+  printf '\n'
+  printf 'Die Schuld bleibt liegen und der geretteter Chat bleibt erhalten — es\n'
+  printf 'geht nichts verloren, es wird nur nichts halb erledigt.\n'
+  return 1
+}
+
 # ===== v5.54.0: DAS ROLLEN-GATE =============================================
 # ⛔ Bis v5.53.0 las KEIN Hook die Rollentabelle. Gemessen am Paketbaum:
 #    `grep -rn rollen hooks/` -> 0 Treffer, waehrend vier Hooks die session_id

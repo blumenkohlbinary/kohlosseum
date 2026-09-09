@@ -73,12 +73,19 @@ lauf() { # <transkript>
   printf '{"stop_hook_active":false,"cwd":"%s","transcript_path":"%s"}' "$P" "$1" \
     | CLAUDE_PLUGIN_ROOT="$R" CLAUDE_PROJECT_DIR="$P" bash "$R/hooks/stop.sh" 2>/dev/null
 }
+# ⛔ v5.55.0: stop.sh blockt unter KEINEM Modell mehr. Der Modell-Ausnahme-
+#    Zweig ist aus stop.sh entfernt — er nahm vom Zwang aus, den es nicht mehr
+#    gibt. ⭐ Die tragende Unterscheidung (Fable still, Opus laut) sitzt seit
+#    jeher auch in Abschnitt 4 an `prompt-submit.sh`; DORT wird sie gemessen,
+#    hier nur noch die Abwesenheit des Blocks.
+#    ⚠ Ohne Abschnitt 4 waere dieser Abschnitt nach dem Umbau blind: drei
+#      Faelle, die alle dasselbe Nichts pruefen.
 AUS=$(lauf "$TMP/opus.jsonl")
-enthaelt "⭐ POSITIVKONTROLLE: unter Opus wird geblockt" '"decision":"block"' "$AUS"
+fehlt "⛔ unter Opus KEIN Block mehr" '"decision"' "$AUS"
 AUS=$(lauf "$TMP/fable.jsonl")
 fehlt "⭐ unter Fable KEIN Block" '"decision"' "$AUS"
 AUS=$(lauf "$TMP/ohne.jsonl")
-enthaelt "⛔ FAIL-SAFE: ohne Modell wird weiter geblockt" '"decision":"block"' "$AUS"
+fehlt "⛔ ohne Modell ebenfalls kein Block" '"decision"' "$AUS"
 
 echo
 echo "=== 4) prompt-submit.sh — schweigt die Schuld-Mahnung? ==="

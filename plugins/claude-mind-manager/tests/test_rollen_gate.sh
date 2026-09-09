@@ -8,7 +8,7 @@
 #
 # ⭐ POSITIV- UND NEGATIVKONTROLLE STEHEN NEBENEINANDER, und zwar an jeder
 #    Stelle. Ein Gate, das alle stilllegt, waere so wertlos wie eines, das
-#    niemanden stilllegt — die Faelle 10, 12 und 15 pruefen, dass GEREDET wird.
+#    niemanden stilllegt — die Faelle 8, 10 und 12 pruefen, dass GEREDET wird.
 #
 # ⛔ FALL 12 IST DIE STELLE, AN DER DER AUFTRAG UND ICH AUSEINANDERGEHEN.
 #    Die Auftragstabelle sagt "prompt-submit.sh komplett still". Der Hook gibt
@@ -171,14 +171,22 @@ hat "der arbeiter bekommt seinen Arbeitsstand" "den Umbau zu Ende bringen" "$U"
 hat "   ... als Kompaktierungs-Uebergabe" "kompaktiert" "$U"
 
 echo
-echo "=== 13) stop.sh: der Zwang faellt fuer den arbeiter, nicht fuer den sync ==="
+echo "=== 13) ⛔ stop.sh blockt NIEMANDEN mehr — auch den sync nicht ==="
+# ⛔ v5.55.0: DAS ROLLEN-GATE IST AUS stop.sh WIEDER VERSCHWUNDEN, eine
+#    Version nach seinem Einbau. Es unterdrueckte den Zwang fuer Sitzungen, die
+#    nicht `sync` sind — und seit v5.55.0 gibt es keinen Zwang mehr, den man
+#    unterdruecken koennte. Hier stand deshalb bis v5.54.0 "sync: block".
+# ⭐ Die tragende Unterscheidung des Rollen-Gates sitzt in den Abschnitten
+#    9 bis 12 an `prompt-submit.sh`. DORT wird gemessen, ob es wirkt; hier nur
+#    noch, dass der Block wirklich weg ist. ⚠ Ohne die Abschnitte 9–12 waere
+#    dieser hier blind — drei Faelle, die alle dasselbe Nichts pruefen.
 if command -v jq >/dev/null 2>&1; then
   sauber; schuld
-  pruef "arbeiter: KEIN block" "nein" "$(blockt "$ARB")"
+  pruef "arbeiter: kein block" "nein" "$(blockt "$ARB")"
   sauber; schuld
-  pruef "⭐ sync: block"       "ja"   "$(blockt "$SYNC")"
+  pruef "⛔ sync: AUCH kein block" "nein" "$(blockt "$SYNC")"
   rm -f "$P/.claude/rules/rollen.md"; sauber; schuld
-  pruef "⭐ ohne Roster: block" "ja"  "$(blockt "$ARB")"
+  pruef "⛔ ohne Roster: ebenfalls nicht" "nein" "$(blockt "$ARB")"
 else
   echo "  [--] jq fehlt — uebersprungen (ein uebersprungener Fall ist kein bestandener)"
 fi

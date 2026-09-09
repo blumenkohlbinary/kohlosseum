@@ -33,42 +33,67 @@ stop_lauf() { # projekt [stop_hook_active]
       "${2:-false}" "$1" | CLAUDE_PROJECT_DIR="$1" MIND_SYNC_FORCE_TOKENS=0 bash "$H/stop.sh" 2>/dev/null
 }
 
+# ⛔ v5.55.0: stop.sh blockt niemanden mehr. Die Zusicherungen sind deshalb
+#    VERSCHOBEN, nicht weggelassen — gemeldet wird jetzt in prompt-submit.sh.
+#    Die Regel steht in PLAN-v5.44.0-kein-block.md §3.
+prompt_lauf() { # projekt
+  printf '{"session_id":"s","transcript_path":"","prompt":"hi","cwd":"%s"}' "$1" \
+    | CLAUDE_PROJECT_DIR="$1" MIND_SYNC_AT_TOKENS=0 bash "$H/prompt-submit.sh" 2>/dev/null
+}
+
 echo "=== COMPACT-FAELLIG ==="
 
-# --- 1 · Merker da -> stop.sh blockt, und der Text nennt /compact ---------
+# --- 1 · Merker da -> prompt-submit MELDET, und der Text nennt /compact ---
+#     ⛔ v5.55.0: war "stop.sh blockt". Der Block ist entfallen, die AUSSAGE
+#        nicht — sie steht jetzt in der Meldung des naechsten Prompts.
 P=$(neu_projekt); marker "$P"
-O=$(stop_lauf "$P")
-printf '%s' "$O" | grep -q '"decision"' && A=ja || A=nein
-janein "Merker vorhanden -> Block" ja "$A"
+O=$(prompt_lauf "$P")
+printf '%s' "$O" | grep -q 'Mind Manager' && A=ja || A=nein
+janein "Merker vorhanden -> Meldung" ja "$A"
 printf '%s' "$O" | grep -q '/compact' && A=ja || A=nein
-janein "Blocktext nennt /compact" ja "$A"
+janein "Meldungstext nennt /compact" ja "$A"
+# ⭐ GEGENKONTROLLE zum Umzug: stop.sh schweigt dazu jetzt vollstaendig.
+#    Ohne diesen Fall koennte der Block zurueckkommen, ohne dass es auffaellt.
+S=$(stop_lauf "$P")
+printf '%s' "$S" | grep -q '"decision"' && A=ja || A=nein
+janein "⛔ stop.sh blockt NICHT mehr" nein "$A"
 # Die Ehrlichkeit MUSS im Text stehen, sonst versucht der Assistent es selbst
 # Die AUSSAGE muss stehen, nicht ihr Wortlaut: dass nur der Mensch /compact ausloest.
 # Sonst versucht der Assistent es selbst und meldet danach faelschlich Erfolg.
 printf '%s' "$O" | grep -qi 'nur der Mensch\|weder ein Hook noch der Assistent\|nicht ausloesbar' && A=ja || A=nein
-janein "Blocktext nennt die Grenze (nur der Mensch loest aus)" ja "$A"
+janein "Meldungstext nennt die Grenze (nur der Mensch loest aus)" ja "$A"
 rm -rf "$P"
 
-# --- 2 · Der Zaehler wird hochgesetzt ------------------------------------
+# --- 2 · ⛔ KEIN Zaehler mehr — die Datei wird nicht mehr umgeschrieben -----
+#     Der `blocks=`-Zaehler ist mit dem Block entfallen. Er war genau die
+#     Stelle, an der v5.7.6 eine echte Endlosschleife hatte (Zurueckschreiben
+#     schlaegt fehl -> Notausgang nie erreicht). Was frueher zugesichert wurde
+#     ("der Zaehler kommt an"), wird jetzt in der Umkehrung zugesichert:
+#     stop.sh fasst den Merker nicht mehr an.
 P=$(neu_projekt); marker "$P"
 stop_lauf "$P" >/dev/null
 B=$(grep -m1 '^blocks=' "$P/.claude-mind/rescued/COMPACT-FAELLIG" 2>/dev/null | cut -d= -f2-)
-janein "Zaehler steht nach einem Block auf 1" 1 "${B:-fehlt}"
-# und die uebrigen Felder ueberleben
+janein "⛔ der Zaehler bleibt unveraendert (kein Umschreiben)" 0 "${B:-fehlt}"
 grep -q '^tokens=772345' "$P/.claude-mind/rescued/COMPACT-FAELLIG" && A=ja || A=nein
-janein "tokens= ueberlebt das Umschreiben" ja "$A"
+janein "tokens= ist unversehrt" ja "$A"
 rm -rf "$P"
 
-# --- 3 · Notausgang: nach MIND_COMPACT_MAX_BLOCKS ist Schluss ------------
-#     Ein Zwang, den niemand aufloesen kann, waere eine Falle.
-P=$(neu_projekt); marker "$P" 2
-O=$(MIND_COMPACT_MAX_BLOCKS=2 CLAUDE_PROJECT_DIR="$P" bash -c \
-  'printf "{\"session_id\":\"s\",\"transcript_path\":\"\",\"stop_hook_active\":false,\"cwd\":\"$0\"}" "$1" | MIND_SYNC_FORCE_TOKENS=0 bash "$2/stop.sh"' \
-  "$P" "$P" "$H" 2>/dev/null)
+# --- 3 · ⛔ KEIN Notausgang mehr — und der Merker BLEIBT liegen -----------
+#     Der Notausgang gab es, weil ein Zwang, den der Blockierte nicht aufloesen
+#     kann, eine Falle waere. Ohne Zwang gibt es keine Falle. Was an seine
+#     Stelle tritt, ist die Umkehrung: stop.sh ENTFERNT den Merker nicht mehr.
+#     ⭐ Das ist die wichtigere Zusicherung von beiden. Der alte Notausgang
+#        LOESCHTE ihn — die Bitte um /compact verschwand damit nach drei
+#        Turns, ohne dass kompaktiert worden waere. Verbraucht wird er allein
+#        von pre-compact.sh (Fall 11).
+P=$(neu_projekt); marker "$P" 9
+O=$(stop_lauf "$P")
 printf '%s' "$O" | grep -q '"decision"' && A=ja || A=nein
-janein "Notausgang: kein Block mehr bei blocks>=max" nein "$A"
+janein "auch bei blocks=9 kein Block" nein "$A"
 [ -f "$P/.claude-mind/rescued/COMPACT-FAELLIG" ] && A=ja || A=nein
-janein "Notausgang entfernt den Merker" nein "$A"
+janein "⭐ der Merker bleibt liegen (nur pre-compact verbraucht ihn)" ja "$A"
+janein "und die Meldung kommt weiter" ja \
+       "$(prompt_lauf "$P" | grep -q '/compact' && echo ja || echo nein)"
 rm -rf "$P"
 
 # --- 4 · Kein Merker -> kein Block (kein Fehlalarm) ----------------------
@@ -80,6 +105,11 @@ rm -rf "$P"
 
 # --- 5 · Schleifenschutz geht VOR ---------------------------------------
 #     stop_hook_active=true muss auch mit Merker sofort aussteigen, sonst Endlosschleife.
+# ⚠ v5.55.0: DIESER FALL MISST SEIT DEM WEGFALL DES BLOCKS NICHTS MEHR —
+#   stop.sh gibt in JEDER Lage nichts aus, also auch hier. Er bleibt als
+#   Rueckbau-Sperre stehen: kaeme der Block je zurueck, muesste er die
+#   Schleifenbremse mitbringen. ⛔ Ein Fall, der nicht mehr unterscheidet,
+#   wird BENANNT und nicht stillschweigend als gruen mitgezaehlt.
 P=$(neu_projekt); marker "$P"
 O=$(stop_lauf "$P" true)
 printf '%s' "$O" | grep -q '"decision"' && A=ja || A=nein
@@ -107,11 +137,13 @@ rm -rf "$P"
 #     Zwang nicht ausfallen — sonst waere Handarbeit ein stiller Notausgang.
 P=$(neu_projekt)
 printf 'ts=2026-08-21 13:00:00\n' > "$P/.claude-mind/rescued/COMPACT-FAELLIG"
-O=$(stop_lauf "$P")
-printf '%s' "$O" | grep -q '"decision"' && A=ja || A=nein
-janein "Merker ohne blocks= blockt trotzdem" ja "$A"
-B=$(grep -m1 '^blocks=' "$P/.claude-mind/rescued/COMPACT-FAELLIG" 2>/dev/null | cut -d= -f2-)
-janein "und legt den Zaehler an" 1 "${B:-fehlt}"
+O=$(prompt_lauf "$P")
+printf '%s' "$O" | grep -q '/compact' && A=ja || A=nein
+janein "Merker ohne blocks= wird trotzdem gemeldet" ja "$A"
+# ⛔ v5.55.0: kein Zaehler mehr — die Datei bleibt, wie sie war. Handarbeit
+#    darf weder ein stiller Notausgang sein noch eine Datei beschaedigen.
+B=$(grep -c '^blocks=' "$P/.claude-mind/rescued/COMPACT-FAELLIG" 2>/dev/null)
+janein "und es wird KEIN Zaehler angelegt" 0 "${B:-fehlt}"
 rm -rf "$P"
 
 # --- 9 · Pathologisch: Merker ist ein VERZEICHNIS -> nicht abstuerzen ----
@@ -182,11 +214,17 @@ echo "=== v5.7.6: adversarische Befunde ==="
 #     derselben Nummer. Eine echte Endlosschleife, nur von Hand aufloesbar.
 P=$(neu_projekt)
 printf 'blocks=0\n' > "$P/.claude-mind/rescued/COMPACT-FAELLIG"
-O=$(stop_lauf "$P")
-printf '%s' "$O" | grep -q '"decision"' && A=ja || A=nein
-janein "nur blocks= in der Datei: blockt trotzdem" ja "$A"
-B=$(grep -m1 '^blocks=' "$P/.claude-mind/rescued/COMPACT-FAELLIG" 2>/dev/null | cut -d= -f2-)
-janein "und der Zaehler kommt WIRKLICH an (sonst Endlosschleife)" 1 "${B:-fehlt}"
+O=$(prompt_lauf "$P")
+printf '%s' "$O" | grep -q '/compact' && A=ja || A=nein
+janein "nur blocks= in der Datei: wird trotzdem gemeldet" ja "$A"
+# ⭐ Die Endlosschleife von v5.7.6 ist mit dem Zaehler ENTFALLEN, nicht
+#    behoben. Zugesichert wird deshalb ihre Unmoeglichkeit: derselbe Aufruf
+#    zweimal hintereinander veraendert die Datei kein einziges Mal.
+S1=$(cat "$P/.claude-mind/rescued/COMPACT-FAELLIG" 2>/dev/null)
+stop_lauf "$P" >/dev/null; stop_lauf "$P" >/dev/null
+S2=$(cat "$P/.claude-mind/rescued/COMPACT-FAELLIG" 2>/dev/null)
+janein "⛔ zwei stop-Laeufe veraendern die Datei nicht" ja \
+       "$([ "$S1" = "$S2" ] && echo ja || echo nein)"
 rm -rf "$P"
 
 # --- 14 · Zaehler nicht schreibbar -> KEIN Block, Merker weg -------------
@@ -242,8 +280,12 @@ printf '{"type":"assistant","message":{"role":"assistant","content":"y","usage":
   > "$P/t.jsonl"
 O=$(printf '{"session_id":"s","transcript_path":"%s","stop_hook_active":false,"cwd":"%s"}' "$P/t.jsonl" "$P" \
     | CLAUDE_PROJECT_DIR="$P" MIND_SYNC_FORCE_TOKENS=770000 bash "$H/stop.sh" 2>/dev/null)
+# ⛔ v5.55.0: MIND_SYNC_FORCE_TOKENS IST ENTFALLEN — ohne Blockade kein
+#    Zwang. Der Regler wird von keinem Hook mehr gelesen; er hier zu setzen
+#    aendert nichts. Die MAHNUNG an der Schwelle MIND_SYNC_AT_TOKENS bleibt und
+#    wird in test_teil1.sh §1 zugesichert.
 printf '%s' "$O" | grep -q '"decision"' && A=ja || A=nein
-janein "Token-Zwang blockt bei 900k" ja "$A"
+janein "⛔ Token-Zwang entfallen: kein Block bei 900k" nein "$A"
 printf '%s' "$O" | grep -q 'von selbst' && A=ja || A=nein
 janein "und sagt NICHT mehr 'kommt von selbst'" nein "$A"
 rm -rf "$P"

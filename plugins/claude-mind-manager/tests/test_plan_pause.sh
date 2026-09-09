@@ -114,7 +114,13 @@ janein "mind_plan_frei entfernt den Merker" "0" \
 #    Die erste Fassung nutzte den Funktionsnamen — er war IMMER unbekannt,
 #    der Block wurde IMMER still uebersprungen, und beide Hooks verhielten
 #    sich exakt wie vorher. Gefunden nur von Fall 7 unten.
-janein "stop.sh ruft plan-pause.sh als SUBPROZESS" "1" \
+# ⛔ v5.55.0: stop.sh ruft plan-pause.sh NICHT MEHR — und das ist gewollt.
+#    Seit dem Wegfall des Blocks hat der Hook nichts mehr zu unterdruecken;
+#    eine Pause, die nichts pausiert, waere eine Attrappe. Der Aufruf in
+#    prompt-submit.sh traegt die Pause weiter (naechste Zusicherung).
+# ⚠ Das ist STILL MITGELOESCHTES VERHALTEN und wird deshalb ausdruecklich
+#   zugesichert statt weggelassen — PLAN-v5.44.0-kein-block.md, Nachtrag ③.
+janein "⛔ stop.sh ruft plan-pause.sh NICHT mehr" "0" \
        "$(grep -c 'bash "$_PP" "$PROJ"' "$CLAUDE_PLUGIN_ROOT/hooks/stop.sh")"
 janein "prompt-submit.sh ruft plan-pause.sh als SUBPROZESS" "1" \
        "$(grep -c 'bash "$_PP" "$PROJ"' \
@@ -144,15 +150,34 @@ echo "== 7/7  ⭐ POSITIVKONTROLLE AM LEBENDEN HOOK — beide Richtungen =="
 H="$TMP/hooklauf"; mkdir -p "$H/.claude-mind/rescued"
 _R="$H/.claude-mind/rescued/20260831-000000_chat.md"; printf '## [x]\n' > "$_R"
 printf 'path=%s\ncompactions=1\n' "$_R" > "$H/.claude-mind/rescued/OPEN"
-_A=$(echo '{"stop_hook_active":false}' \
-     | CLAUDE_PROJECT_DIR="$H" bash "$CLAUDE_PLUGIN_ROOT/hooks/stop.sh" 2>&1)
-janein "⭐ OHNE Pause blockt stop.sh (die tragende Richtung)" "1" \
-       "$(printf '%s' "$_A" | grep -c '\"decision\"')"
+# ⛔ v5.55.0: DAS PAAR IST UMGEZOGEN — von stop.sh nach prompt-submit.sh.
+#    Der Plan nennt genau diese Falle: "Sein Kern ist 'mit Pause schweigt er'.
+#    Wenn stop.sh NIE mehr etwas sagt, ist das immer wahr — der Test bleibt
+#    gruen und misst nichts." Dieselbe Bauform war in v5.28.0 schon einmal ein
+#    stiller No-op. Deshalb steht das Paar jetzt dort, wo noch geredet wird.
+_PIN='{"cwd":"'"$H"'","session_id":"pp-paar"}'
+_A=$(printf '%s' "$_PIN" \
+     | CLAUDE_PROJECT_DIR="$H" bash "$CLAUDE_PLUGIN_ROOT/hooks/prompt-submit.sh" 2>&1)
+janein "⭐ OHNE Pause SPRICHT prompt-submit.sh (die tragende Richtung)" "1" \
+       "$(printf '%s' "$_A" | grep -ci 'sync-schuld')"
+# ⭐ GEGENKONTROLLE ZUM UMZUG, und sie steht bewusst VOR der Pause: mit
+#   gesetzter Pause haette der alte stop.sh ebenfalls geschwiegen — der Fall
+#   waere gruen gewesen und haette nichts gemessen. Gemessen an einem alten
+#   Paket (Gegenprobe 10.09.2026): so herum faellt er rot, andersherum nicht.
+janein "⛔ OHNE Pause blockt stop.sh trotzdem nicht mehr" "0" \
+       "$(echo '{"stop_hook_active":false}' \
+          | CLAUDE_PROJECT_DIR="$H" bash "$CLAUDE_PLUGIN_ROOT/hooks/stop.sh" 2>&1 \
+          | grep -c '\"decision\"')"
 printf 'ts=%s\nplan=plan.md\n' "$(date +%s)" > "$H/.claude-mind/PLAN-AKTIV"
-_B=$(echo '{"stop_hook_active":false}' \
-     | CLAUDE_PROJECT_DIR="$H" bash "$CLAUDE_PLUGIN_ROOT/hooks/stop.sh" 2>&1)
-janein "⭐ MIT Pause blockt stop.sh NICHT" "0" \
-       "$(printf '%s' "$_B" | grep -c '\"decision\"')"
+rm -f "$H/.claude-mind/rescued/OPEN.seen-"* 2>/dev/null
+_B=$(printf '%s' "$_PIN" \
+     | CLAUDE_PROJECT_DIR="$H" bash "$CLAUDE_PLUGIN_ROOT/hooks/prompt-submit.sh" 2>&1)
+janein "⭐ MIT Pause SCHWEIGT prompt-submit.sh" "0" \
+       "$(printf '%s' "$_B" | grep -ci 'sync-schuld')"
+janein "⛔ stop.sh blockt auch MIT Pause nicht" "0" \
+       "$(echo '{"stop_hook_active":false}' \
+          | CLAUDE_PROJECT_DIR="$H" bash "$CLAUDE_PLUGIN_ROOT/hooks/stop.sh" 2>&1 \
+          | grep -c '\"decision\"')"
 janein "⛔ und die SCHULD liegt danach noch da" "1" \
        "$(ls "$H/.claude-mind/rescued/OPEN" 2>/dev/null | wc -l)"
 # Der Setz-Hook, live, mit echtem JSON auf stdin.

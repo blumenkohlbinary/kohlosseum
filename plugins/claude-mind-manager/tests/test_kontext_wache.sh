@@ -103,8 +103,13 @@ janein "⛔ Merker ist VERBRAUCHT (sonst meldet es bei jedem Prompt)" \
 _C=$(printf '%s' "$_EIN" | CLAUDE_PROJECT_DIR="$P" bash "$PS" 2>/dev/null)
 janein "zweiter Prompt schweigt" "$(printf '%s' "$_C" | grep -c 'gewachsen')" "0"
 # ⛔ stop.sh darf NICHTS ausgeben — sonst zwei Ausgaben in einem stdout (v5.7.6).
-janein "⛔ stop.sh nennt die Wache, gibt aber keinen Klartext aus" \
-       "$(grep -c 'kontext-wache.sh' "$ST")" "1"
+# ⚠ v5.55.0: auf die AUFRUFFORM zaehlen, nicht auf die Erwaehnung. Seit
+#   stop.sh niemanden mehr blockt, steht `kontext-wache.sh` zweimal darin —
+#   einmal als Kommentar ("der einzige Grund, warum dieser Hook noch
+#   existiert") und einmal als Aufruf. Die alte Zaehlung meldete 2 statt 1 und
+#   sah aus wie ein Befund ueber den Hook.
+janein "⛔ stop.sh RUFT die Wache, gibt aber keinen Klartext aus" \
+       "$(grep -c 'bash "$_KW" "$PROJ"' "$ST")" "1"
 janein "⛔ und tut es OHNE echo" \
        "$(sed -n '/kontext-wache.sh/,/^fi$/p' "$ST" | grep -cE '^\s*(echo|printf)')" "0"
 
