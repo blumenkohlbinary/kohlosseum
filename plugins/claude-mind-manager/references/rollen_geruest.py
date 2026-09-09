@@ -354,6 +354,101 @@ def ueberschriften(text):
 #      lesen kann, ist `instrument-misst-nichts`.
 
 
+_ROLLEN = ("manager", "arbeiter", "sync")
+
+
+def _zelle(zeile, n):
+    """Zelle n einer Markdown-Tabellenzeile, normalisiert und klein."""
+    teile = zeile.split("|")
+    if len(teile) <= n:
+        return ""
+    return (teile[n].replace("*", "").replace("`", "")
+            .strip().lower())
+
+
+def _platzhalter(s):
+    """Ist die Zelle noch ein Platzhalter aus dem Geruest?
+
+    ⛔ GEMESSEN AM EIGENEN ERZEUGNIS, nicht angenommen: `geruest()` schreibt
+       `**<Name>**` und `` `local_…` ``. Eine Zelle ist also unausgefuellt,
+       wenn sie spitze Klammern oder Auslassungspunkte traegt — nicht, wenn sie
+       leer ist. Die erste Fassung dieses Melders nahm "leer" an und schwaerzte
+       damit JEDES frisch erzeugte Roster an.
+    """
+    if not s:
+        return True
+    return ("<" in s) or (">" in s) or ("\u2026" in s) or ("..." in s)
+
+
+def kennung_gueltig(k):
+    """Sieht die Zelle wie eine sessionId aus? — FORM, nicht Existenz.
+
+    ⛔ Bewusst dieselbe Regel wie `_mind_kennung_gueltig` in `hooks/lib.sh`:
+       mindestens 8 Zeichen, nur Kennungszeichen. Weicht sie ab, meldet das
+       Geruest gruen fuer einen Roster, den das Gate nicht lesen kann.
+    """
+    if not k or len(k) < 8:
+        return False
+    for c in k:
+        if not (c.isascii() and (c.isalnum() or c in "_-")):
+            return False
+    return True
+
+
+def kennungen_pruefen(text):
+    """Traegt die Rollentabelle Kennungen, mit denen das Gate arbeiten kann?
+
+    -> (befunde, hinweise)
+
+    ⛔ KEINE Aussage darueber, ob eine Sitzung LEBT. Das kann hier niemand
+       messen (siehe Ratschen-Block), und es zu versuchen war der Fehler vom
+       09.09.2026.
+
+    ⛔ EIN LEERES GERUEST IST KEIN BEFUND, und dieser Satz ist der Grund,
+       warum der Positivfall im Selbsttest tragend ist. Die erste Fassung
+       meldete das frisch erzeugte Geruest als kaputt — also JEDES neu
+       angelegte Roster. Gefunden hat es Fall 1, nicht das Nachlesen.
+    ⭐ Die Trennlinie ist der NAME: steht in Spalte 2 keiner, ist die Zeile
+       noch nicht ausgefuellt und schweigt. Steht einer und die Kennung fehlt,
+       hat jemand den Roster befuellt und Spalte 3 vergessen.
+    """
+    B, H = [], []
+    gesehen = {}
+    for z in text.splitlines():
+        if not z.lstrip().startswith("|"):
+            continue
+        rolle = _zelle(z, 1)
+        if rolle not in _ROLLEN:
+            continue
+        name = _zelle(z, 2)
+        kenn = _zelle(z, 3)
+        if _platzhalter(name) and _platzhalter(kenn):
+            continue          # unausgefuelltes Geruest — dazu wird nichts gesagt
+        gesehen[rolle] = (not _platzhalter(kenn)) and kennung_gueltig(kenn)
+
+    if not gesehen:
+        return B, H
+
+    if "sync" not in gesehen:
+        H.append("keine ausgefuellte sync-Zeile — das Rollen-Gate legt "
+                 "niemanden still, Mahnung und Zwang laufen wie in einem "
+                 "Einzelprojekt (zulaessig)")
+    elif not gesehen["sync"]:
+        B.append("die sync-Zeile hat einen Namen, aber KEINE Kennung in "
+                 "Spalte 3 — das Rollen-Gate (v5.54.0) findet damit keinen "
+                 "Zustaendigen und mahnt weiter in JEDER Sitzung")
+
+    for r in ("manager", "arbeiter"):
+        if r in gesehen and not gesehen[r]:
+            H.append("%s hat einen Namen, aber keine Kennung — diese Sitzung "
+                     "wird nie stillgelegt, auch wenn eine sync-Zeile da ist" % r)
+
+    # ⚠ KEINE Doppelpruefung auf gleiche Kennungen in zwei Zeilen. Sie waere
+    #   billig und faende nichts: zwei Rollen mit derselben Id sind ein
+    #   Tippfehler, den der Zustellversuch sofort zeigt — und der Melder haette
+    #   keinen einzigen belegten Fall. `negativbefund-ist-ein-ergebnis`.
+    return B, H
+
 def pruefe(text):
     """Pruefung 8: Abschnittsfolge und Saetze. (befunde, hinweise)
 
@@ -406,7 +501,24 @@ def pruefe(text):
     for u in fehlend:
         H.append("Abschnitt fehlt (Weglassen ist erlaubt): %r" % u)
 
-    # ⛔ KEINE sessionId-Pruefung. Begruendung im Block oberhalb von `pruefe`.
+    # ⛔ KEINE sessionId-Pruefung, die eine Id gegen die WIRKLICHKEIT haelt.
+    #    Begruendung im Ratschen-Block oberhalb von `pruefe`. Was hier steht,
+    #    ist etwas anderes: eine FORM-Pruefung der ZELLE.
+    #
+    # ⭐ WARUM SIE SEIT v5.54.0 NOETIG IST. Spalte 3 war bis dahin Beschriftung.
+    #    Seither liest `mind_sync_zustaendig` sie: steht in der sync-Zeile keine
+    #    Kennung, findet das Rollen-Gate keinen Zustaendigen und mahnt weiter in
+    #    JEDER Sitzung — also genau der Zustand, gegen den es gebaut wurde.
+    #    ⚠ Das ist die richtige Fail-safe-Richtung und trotzdem eine Falle:
+    #      der Aufbau sieht fertig aus und wirkt nicht.
+    #
+    # ⛔ DER UNTERSCHIED ZUR VERWORFENEN PRUEFUNG, in einem Satz:
+    #    Hier wird gefragt "STEHT da eine Kennung?", nicht "GIBT es die Sitzung?".
+    #    Die erste Frage kann ein Skript beantworten, die zweite nicht — und
+    #    genau daran ist `sitzungen_pruefen()` am 09.09.2026 gescheitert.
+    B2, H2 = kennungen_pruefen(text)
+    B.extend(B2)
+    H.extend(H2)
     for name, teil in SAETZE:
         if teil not in text:
             B.append("Pflichtsatz fehlt \u2014 %s (%r)" % (name, teil))
@@ -568,6 +680,41 @@ def selbsttest():
           ("def " + "sitzungen_pruefen") in quelle, False)
     pruef("   ... die Begruendung steht daneben",
           "NICHT WIEDER GEBAUT" in quelle, True)
+
+    print("=== 9d) ⛔ Spalte 3 ist seit v5.54.0 TRAGEND — die FORM wird geprueft ===")
+    # ⭐ Der Unterschied zu 9c in einem Satz: dort wurde gefragt "GIBT es die
+    #   Sitzung?" (unbeantwortbar), hier "STEHT da eine Kennung?" (ablesbar).
+    def _tab(sync_kennung, mit_sync=True):
+        z = ["| Rolle | Name | sessionId | Tut |", "|---|---|---|---|",
+             "| **manager** | **Anton** | `local_aaaaaaaa-1111` | liest |",
+             "| **arbeiter** | **Nils** | `local_bbbbbbbb-2222` | baut |"]
+        if mit_sync:
+            z.append("| **sync** | **Rita** | %s | faehrt |" % sync_kennung)
+        return "\n".join(z)
+
+    B14, H14 = kennungen_pruefen(_tab("`local_cccccccc-3333`"))
+    pruef("⭐ POSITIVKONTROLLE: alle drei mit Kennung -> kein Befund", B14, [])
+    pruef("   ... und auch kein Hinweis", H14, [])
+
+    B15, _ = kennungen_pruefen(_tab("—"))
+    pruef("sync mit Namen, ohne Kennung -> BEFUND", len(B15), 1)
+    B16, _ = kennungen_pruefen(_tab("`tbd`"))
+    pruef("   ... auch bei einem zu kurzen Wert", len(B16), 1)
+
+    B17, H17 = kennungen_pruefen(_tab("", mit_sync=False))
+    pruef("⛔ gar keine sync-Zeile ist KEIN Befund", B17, [])
+    pruef("   ... sondern ein Hinweis", len(H17), 1)
+
+    # ⛔ Der Fall, der die erste Fassung gestellt hat: das frische Geruest.
+    B18, H18 = kennungen_pruefen(g)
+    pruef("⭐ das eigene Geruest schweigt (Platzhalter)", B18 + H18, [])
+
+    # ⚠ Und die Gegenprobe dazu: ein AUSGEFUELLTER Name neben einem
+    #   Platzhalter-Zeiger ist sehr wohl ein Befund. Ohne diesen Fall koennte
+    #   `_platzhalter` alles verschlucken und der Melder waere stumm.
+    halb = _tab("`local_\u2026`")
+    B19, _ = kennungen_pruefen(halb)
+    pruef("⛔ echter Name + Platzhalter-Kennung -> BEFUND", len(B19), 1)
     return rot
 
 
