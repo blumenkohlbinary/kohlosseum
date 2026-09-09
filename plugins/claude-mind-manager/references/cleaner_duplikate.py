@@ -684,6 +684,19 @@ def ablagen(projekt, bereich="alles"):
     return {k: [p for p in v if os.path.isfile(p)] for k, v in a.items()}
 
 
+_WORTMARKE = re.compile(r"^[A-Za-zÄÖÜäöüß]+$")
+
+
+def _wortmarke(m):
+    """Marke ohne jedes Sonderzeichen — also moeglicherweise nur ein Wort.
+
+    ⚠ KEIN URTEIL, ein Formmerkmal. `OPEN` und `BEIDE` sehen gleich aus; das
+      eine ist ein Merkername, das andere ein betontes Wort. Die Unterscheidung
+      ist eine Bedeutungsfrage und bleibt beim Menschen.
+    """
+    return bool(_WORTMARKE.match(m or ""))
+
+
 def lauf(projekt, bereich="alles"):
     abl = ablagen(projekt, bereich)
     if not any(abl.values()):
@@ -755,10 +768,35 @@ def lauf(projekt, bereich="alles"):
         print("\n  ⚠ DUPLIKAT — eine Stelle koennte zum Zeiger werden"
               + ("   (zeige %d von %d)" % (_zeige, _n) if _n > 10 else ""))
         for _, m, na, nb, grund, _, _ in dup[:10]:
-            print("     %-30s %s + %s  (%s)" % (m[:30], na, nb, grund))
+            print("     %s%-30s %s + %s  (%s)"
+                  % ("~" if _wortmarke(m) else " ", m[:30], na, nb, grund))
         if _n > 10:
             print("     … %d weitere — die vollstaendige Liste steht im "
                   "Rueckgabewert, nicht auf der Konsole" % (_n - 10))
+
+        # ⛔ AUSWEISEN, NICHT FILTERN. Gemessen 09.09.2026 im eigenen Bestand:
+        #    von 186 Duplikat-Paaren hingen **62 (33 %)** an Marken, die reine
+        #    Woerter sind — `BEIDE`, `EINEM`, `JEDER`, `ZUERST`, `DIESER`.
+        #    `marken()` nimmt Grossbuchstaben-Woerter als Kennungen, und im
+        #    Deutschen sind das oft nur betonte Woerter.
+        # ⚠ NICHT ALLE SIND RAUSCHEN: `OPEN` ist ein Merkername, `NEVER` und
+        #   `ALWAYS` sind Haertegrade, `README` und `NOTFALL` sind Bezeichner.
+        #   ⛔ Die FORM kann das nicht entscheiden — genau wie `BEHOBEN` gegen
+        #     `UEBERGABE` in `cleaner_belege.py` (v5.51.0). Deshalb wird
+        #     gekennzeichnet und gezaehlt, nicht weggeworfen: wer filtert,
+        #     macht aus einer pruefbaren Zahl eine Behauptung.
+        _wort = [z for z in dup if _wortmarke(z[1])]
+        if _wort:
+            _mw = sorted({z[1] for z in _wort})
+            print("\n     ~ %d der %d Paare haengen an einer Marke ohne "
+                  "Sonderzeichen (%d verschiedene):" % (len(_wort), _n, len(_mw)))
+            print("       " + " · ".join(_mw[:24])
+                  + (" · …" if len(_mw) > 24 else ""))
+            print("     ⚠ Das ist ein HINWEIS, kein Urteil. Ein reines Wort "
+                  "KANN eine Kennung sein")
+            print("       (`OPEN`, `NEVER`, `README`). Die Form entscheidet "
+                  "es nicht — ein Mensch schon.")
+            print("     ⭐ Ohne die Wort-Paare bleiben %d." % (_n - len(_wort)))
 
     ziel = [z for z in zeilen if z[0] == "zielform"]
     if ziel:

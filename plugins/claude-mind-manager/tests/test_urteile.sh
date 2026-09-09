@@ -20,6 +20,10 @@ set -u
 WURZEL="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 U="$WURZEL/references/cleaner_urteile.py"
 D="$WURZEL/references/cleaner_duplikate.py"
+# ⛔ WINDOWS-FASSUNG DER WURZEL. `python.exe` kann `/c/...` nicht
+#    aufloesen — ein sys.path.insert mit MSYS-Pfad findet das Modul nie.
+#    Genau hier zum SECHSTEN Mal an einem Tag hineingelaufen.
+WREF=$(cygpath -m "$WURZEL/references" 2>/dev/null || echo "$WURZEL/references")
 
 fehler=0
 pruefe() {
@@ -158,6 +162,34 @@ pruefe "⭐ beide Orte da -> kein Befund" \
   "$(printf '%s' "$AUS7" | grep -c 'GEGENSTANDSLOS')" "0"
 pruefe "   ... der Eintrag steht trotzdem da" \
   "$(printf '%s' "$AUS7" | grep -c 'zielform')" "1"
+
+echo
+echo "=============================================================================="
+echo "  7) ⛔ Wort-Marken werden AUSGEWIESEN, nicht gefiltert"
+echo "=============================================================================="
+# ⛔ GEMESSEN 09.09.2026 im eigenen Bestand: von 186 Duplikat-Paaren hingen 62
+#    (33 %) an Marken, die reine Woerter sind — BEIDE, EINEM, JEDER, ZUERST.
+# ⚠ NICHT ALLE sind Rauschen: OPEN ist ein Merkername, NEVER ein Haertegrad.
+#   Die FORM kann das nicht entscheiden. Deshalb kennzeichnen und zaehlen —
+#   wer filtert, macht aus einer pruefbaren Zahl eine Behauptung.
+pruefe "reines Wort erkannt" \
+  "$(python -c "import sys;sys.path.insert(0,r'$WREF');
+import cleaner_duplikate as D;print(int(D._wortmarke('BEIDE')))" 2>&1)" "1"
+pruefe "   ... Umlaut zaehlt als Buchstabe" \
+  "$(python -c "import sys;sys.path.insert(0,r'$WREF');
+import cleaner_duplikate as D;print(int(D._wortmarke('GROESSE')))" 2>&1)" "1"
+pruefe "⭐ NEGATIV: Pfad ist keine Wort-Marke" \
+  "$(python -c "import sys;sys.path.insert(0,r'$WREF');
+import cleaner_duplikate as D;print(int(D._wortmarke('hooks/lib.sh')))" 2>&1)" "0"
+pruefe "   ... Slash-Command auch nicht" \
+  "$(python -c "import sys;sys.path.insert(0,r'$WREF');
+import cleaner_duplikate as D;print(int(D._wortmarke('/mind-all')))" 2>&1)" "0"
+pruefe "   ... Regler mit Unterstrich auch nicht" \
+  "$(python -c "import sys;sys.path.insert(0,r'$WREF');
+import cleaner_duplikate as D;print(int(D._wortmarke('MIND_SYNC_AT_TOKENS')))" 2>&1)" "0"
+pruefe "⛔ leere Marke bricht nicht" \
+  "$(python -c "import sys;sys.path.insert(0,r'$WREF');
+import cleaner_duplikate as D;print(int(D._wortmarke('')))" 2>&1)" "0"
 
 echo
 echo "=== $fehler Abweichung(en) ==="
