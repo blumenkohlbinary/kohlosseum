@@ -745,9 +745,20 @@ def lauf(projekt, bereich="alles"):
 
     dup = [z for z in zeilen if z[0] == "duplikat"]
     if dup:
-        print("\n  ⚠ DUPLIKAT — eine Stelle koennte zum Zeiger werden")
+        # ⛔ DIE KAPPUNG NENNT SICH JETZT SELBST. Vorher stand hier nur
+        #   `dup[:10]`: bei 386 Treffern zeigte die Konsole 10, und wer nur
+        #   die Konsole las, hielt 10 fuer alles. Eine stille Kappung ist von
+        #   einem vollstaendigen Ergebnis nicht zu unterscheiden.
+        #   Gemeldet von der sync-Sitzung am 09.09.2026.
+        _n = len(dup)
+        _zeige = 10 if _n > 10 else _n
+        print("\n  ⚠ DUPLIKAT — eine Stelle koennte zum Zeiger werden"
+              + ("   (zeige %d von %d)" % (_zeige, _n) if _n > 10 else ""))
         for _, m, na, nb, grund, _, _ in dup[:10]:
             print("     %-30s %s + %s  (%s)" % (m[:30], na, nb, grund))
+        if _n > 10:
+            print("     … %d weitere — die vollstaendige Liste steht im "
+                  "Rueckgabewert, nicht auf der Konsole" % (_n - 10))
 
     ziel = [z for z in zeilen if z[0] == "zielform"]
     if ziel:

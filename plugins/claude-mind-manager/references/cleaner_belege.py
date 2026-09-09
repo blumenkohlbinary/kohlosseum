@@ -98,11 +98,38 @@ def debug_pfad(projekt):
 
 
 def verstoesse(index_pfad, stichworte):
-    """Befunde, die eines der Stichworte nennen. (gesamt, letztes_datum, liste)"""
+    """Befunde, die eines der Stichworte nennen.
+
+    (gesamt, letztes_datum, liste, je_wort)
+
+    ⛔ `je_wort` KAM AM 09.09.2026 DAZU, und ohne es war die Zahl irrefuehrend.
+       Vorher stand hier `any(s.lower() in txt for s in stichworte)` — alle
+       Stichworte flossen in EINE Zahl. Gemessen an
+       `sync-loescht-laufende-version.md`: die Ueberschrift lautet
+       „BEHOBEN am 19.08.2026 …", `BEHOBEN` gilt als technische Kennung
+       (ALLCAPS ab 6 Zeichen) und trifft **9 von 398** Eintraegen. Der
+       DATEINAME trifft **0**. Die gemeldeten Verstoesse hatten mit dem Thema
+       der Datei nichts zu tun.
+
+    ⛔ ZWEI NAHELIEGENDE SCHAERFUNGEN SIND GEMESSEN UND VERWORFEN:
+       · „ein Wort, das zu viele Eintraege trifft, ist Rauschen" —
+         9 von 398 sind 2,3 %, das faengt es nicht.
+       · „ein Wort, das in vielen Dateien vorkommt, ist generisch" —
+         `BEHOBEN` steht in genau EINER Datei.
+    ⭐ Und eine Sperrliste waere Kalibrieren gegen den einen Fall.
+
+    ⭐ DESHALB KEINE BESSERE REGEL, SONDERN EINE ZUORDNUNG. Die Form kann
+       Fliesstext nicht von einer Kennung trennen — `BEHOBEN` und `UEBERGABE`
+       sind beide reine Grossbuchstaben. Formmerkmale liefern KANDIDATEN, keine
+       Urteile; also bleibt das Stichwort, und die Zahl sagt, WELCHES Wort sie
+       getragen hat. Ein generisches Wort kann sich nicht mehr in einer Summe
+       verstecken.
+    """
     t = _lies(index_pfad)
     if t is None:
         return None
     treffer = []
+    je_wort = {}
     for z in t.split("\n"):
         z = z.strip()
         if not z:
@@ -112,11 +139,14 @@ def verstoesse(index_pfad, stichworte):
         except ValueError:
             continue
         txt = (e.get("kurz", "") + " " + e.get("klasse", "")).lower()
-        if any(s.lower() in txt for s in stichworte):
+        passend = [s for s in stichworte if s.lower() in txt]
+        if passend:
             treffer.append(e)
+            for s in passend:
+                je_wort[s] = je_wort.get(s, 0) + 1
     treffer.sort(key=lambda e: e.get("ts", ""))
     letztes = treffer[-1].get("ts", "")[:10] if treffer else ""
-    return len(treffer), letztes, treffer
+    return len(treffer), letztes, treffer, je_wort
 
 
 def stichworte_aus(pfad):
@@ -187,8 +217,17 @@ def urteile(pfad, index_pfad):
     v = verstoesse(index_pfad, sw) if index_pfad else None
     n_v, letztes = (v[0], v[1]) if v else (None, "")
     commits = git_commits(pfad)
+    # ⭐ Welches Stichwort hat die Zahl getragen? Ist es NICHT der Dateiname,
+    #   ist die Zahl unsicher — sie kann von einem Fliesstextwort stammen.
+    #   Nicht verworfen, nur ausgewiesen: Formmerkmale liefern Kandidaten.
+    _name = os.path.splitext(os.path.basename(pfad))[0]
+    _traeger = ""
+    if v and len(v) > 3 and v[3]:
+        _top = sorted(v[3].items(), key=lambda x: -x[1])[0]
+        if _top[0] not in (_name, _name.replace("-", " ")) and n_v:
+            _traeger = "%s (%d von %d)" % (_top[0], _top[1], n_v)
     z = {"verstoesse": n_v, "letzter": letztes, "commits": commits,
-         "stichworte": sw[:4]}
+         "stichworte": sw[:4], "traeger": _traeger}
 
     if n_v is None:
         return "NICHT MESSBAR", "kein Verstoss-Protokoll erreichbar", z
@@ -228,7 +267,15 @@ def bericht(zeilen):
               % (os.path.basename(pfad)[:30], u,
                  "?" if z["verstoesse"] is None else z["verstoesse"],
                  "?" if z["commits"] is None else z["commits"], z["letzter"] or "—"))
-    print()
+    # ⛔ Eine Zahl, die ein FLIESSTEXTWORT getragen hat, sieht wie ein Beleg
+    #   aus. Am 09.09.2026 gemessen: 9 Treffer, alle nur wegen „BEHOBEN",
+    #   der Dateiname selbst 0. Deshalb wird der Traeger genannt.
+    _uns = [(p, z) for p, _u, _g, z in zeilen if z.get("traeger")]
+    if _uns:
+        print("  ⚠ UNSICHERE ZAHLEN — nicht der Dateiname trug den Treffer:")
+        for p, z in _uns:
+            print("     %-30s %s" % (os.path.basename(p)[:30], z["traeger"]))
+        print()
     for pfad, u, g, z in zeilen:
         if u in ("VERALTUNGS-KANDIDAT", "SCHWACHER KANDIDAT"):
             print("  ⚠ %s\n     %s" % (os.path.basename(pfad), g))
@@ -312,6 +359,23 @@ def selbsttest():
         fh.write("{kein json\n")
     r = verstoesse(idx, ["msyspfad"])
     pruef("kaputte Zeile: Protokoll bleibt lesbar", r[0] if r else -1, 1)
+
+    # ⛔ DER FALL VOM 09.09.2026, gefunden von der sync-Sitzung an echtem
+    #   Material: ein Fliesstextwort in der Ueberschrift gilt als technische
+    #   Kennung und traegt die ganze Zahl. Hier als Prueffall am ORIGINAL,
+    #   nicht als Sperrliste.
+    with open(idx, "w", encoding="utf-8", newline="\n") as fh:
+        for i in range(3):
+            fh.write('{"ts":"2026-09-0%d","kurz":"BEHOBEN: irgendwas",'
+                     '"klasse":"sonstiges"}\n' % (i + 1))
+        fh.write('{"ts":"2026-09-04","kurz":"thema-x kaputt",'
+                 '"klasse":"sonstiges"}\n')
+    r2 = verstoesse(idx, ["thema-x", "BEHOBEN"])
+    pruef("Treffer gesamt", r2[0], 4)
+    pruef("⭐ je Wort zugeordnet: BEHOBEN", r2[3].get("BEHOBEN"), 3)
+    pruef("   ... und thema-x getrennt davon", r2[3].get("thema-x"), 1)
+    pruef("⛔ ein generisches Wort versteckt sich nicht mehr in der Summe",
+          max(r2[3].values()) > r2[3].get("thema-x", 0), True)
 
     print("\n=== %d Abweichung(en) ===" % fehler)
     return 3 if fehler else 0
