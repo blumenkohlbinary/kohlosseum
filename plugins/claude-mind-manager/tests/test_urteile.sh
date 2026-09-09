@@ -124,5 +124,41 @@ pruefe "als zielform eingeordnet" "$(printf '%s' "$AUS" | grep -cE 'zielform +1$
 pruefe "NICHT als duplikat"       "$(printf '%s' "$AUS" | grep -cE 'duplikat +0$')" "1"
 
 echo
+echo "=============================================================================="
+echo "  6) ⛔ Ein Urteil auf einem TOTEN Ort ist gegenstandslos — und wird gemeldet"
+echo "=============================================================================="
+# ⛔ GEMESSEN AM ECHTEN BUCH, 09.09.2026: beide Eintraege zeigten auf Dateien,
+#    die es nicht mehr gab (`kontext-und-umgebung.md` geloescht, `knowledge/`
+#    nach `docs/plugin/` umbenannt) — 3 von 4 Pfaden tot. `--lesen` zeigte sie
+#    unveraendert an, als waeren sie in Kraft. Ein Schutzinstrument, das seinen
+#    eigenen Ausfall nicht meldet, ist von einem wirksamen nicht zu
+#    unterscheiden.
+mkdir -p "$T/tot/.claude-mind" "$T/tot/a"
+echo "x" > "$T/tot/a/lebt.md"
+# ⛔ WINDOWS-PFADE IN DIE JSON, NICHT MSYS. `python.exe` kann `/tmp/...` nicht
+#    aufloesen — dann gelten BEIDE Orte als tot, der Positivfall meldet 2 statt
+#    1 und die Negativkontrolle schlaegt nie um. Genau so beim ersten Lauf
+#    passiert; die Falle steht in `shell-windows.md`.
+TW=$(cygpath -m "$T/tot" 2>/dev/null || echo "$T/tot")
+printf '{"ts":"2026-09-09T00:00","werkzeug":"t","orte":["%s/a/lebt.md","%s/a/weg.md"],"schluessel":"k1","urteil":"zielform","entschieden_von":"mensch","grund":"g","hashes":{}}\n' \
+  "$TW" "$TW" > "$T/tot/.claude-mind/urteile.jsonl"
+AUS6=$(python "$U" "$TW" --lesen 2>&1)
+pruefe "toter Ort wird benannt" \
+  "$(printf '%s' "$AUS6" | grep -c 'ORT EXISTIERT NICHT MEHR')" "1"
+pruefe "   ... und als GEGENSTANDSLOS gezaehlt" \
+  "$(printf '%s' "$AUS6" | grep -c 'GEGENSTANDSLOS')" "1"
+pruefe "⚠ ohne Loeschauftrag" \
+  "$(printf '%s' "$AUS6" | grep -c 'KEIN Auftrag')" "1"
+
+# ⭐ NEGATIVKONTROLLE: leben beide Orte, schweigt es. Ohne diesen Fall waere ein
+#   Melder, der IMMER meldet, vom richtigen nicht zu unterscheiden.
+echo "y" > "$T/tot/a/weg.md"
+AUS7=$(python "$U" "$TW" --lesen 2>&1)
+pruefe "⭐ beide Orte da -> kein Befund" \
+  "$(printf '%s' "$AUS7" | grep -c 'GEGENSTANDSLOS')" "0"
+pruefe "   ... der Eintrag steht trotzdem da" \
+  "$(printf '%s' "$AUS7" | grep -c 'zielform')" "1"
+
+echo
 echo "=== $fehler Abweichung(en) ==="
 exit $((fehler > 0 ? 1 : 0))

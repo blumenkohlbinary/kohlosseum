@@ -275,13 +275,32 @@ def main():
         return 2
 
     if "--lesen" in argv:
+        # ⛔ TOTE ORTE MITMELDEN (v5.52.0). Gemessen 09.09.2026: BEIDE
+        #    Eintraege des eigenen Buchs zeigten auf Dateien, die es nicht mehr
+        #    gibt — `kontext-und-umgebung.md` geloescht, `knowledge/` nach
+        #    `docs/plugin/` umbenannt. 3 von 4 Pfaden tot, und `--lesen` zeigte
+        #    sie unveraendert an, als waeren sie in Kraft.
+        # ⚠ Ein Urteil auf einem toten Pfad ist nicht FALSCH, es ist
+        #   GEGENSTANDSLOS. Der Unterschied zaehlt: ein falsches Urteil muss man
+        #   aendern, ein gegenstandsloses nur wissen.
+        tot_ges = 0
         for e in lesen(projekt):
             if e.get("__kaputt__"):
                 print("  ⛔ KAPUTTE ZEILE: %s" % e["__kaputt__"])
                 continue
+            tot = [o for o in e.get("orte", []) if not os.path.exists(o)]
+            tot_ges += 1 if tot else 0
             print("  %s  %-12s %-11s %s"
                   % (e.get("ts", "?")[:16], e.get("urteil", "?"),
                      e.get("entschieden_von", "?"), e.get("schluessel", "?")[:60]))
+            for o in tot:
+                print("      ⛔ ORT EXISTIERT NICHT MEHR: %s" % o)
+        if tot_ges:
+            print("\n  ⛔ %d Eintrag/Eintraege GEGENSTANDSLOS — mindestens ein "
+                  "Ort fehlt. Sie schuetzen nichts mehr." % tot_ges)
+            print("  ⚠ Das ist KEIN Auftrag, sie zu loeschen: ein Urteil ist "
+                  "eine Entscheidung mit")
+            print("    Datum, und die bleibt Historie.")
         return 0
 
     orte = hol("--orte", 2) or []
