@@ -49,7 +49,17 @@ if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
   SAMPLER="${CLAUDE_PLUGIN_ROOT:-$(dirname "$0")/..}/references/session_sampler.py"
   if [ -f "$SAMPLER" ]; then
     mkdir -p "$RESCUE_DIR" 2>/dev/null
-    RTS=$(date +%Y%m%d-%H%M%S)
+    # ⛔ v5.56.0: SUB-SEKUNDEN **UND** SITZUNGSKENNUNG. Bis v5.55.0 war die
+    #    Aufloesung EINE SEKUNDE — zwei Kompaktierungen im selben Ordner
+    #    innerhalb derselben Sekunde schrieben in dieselbe Datei.
+    # ⭐ Beides, nicht eines von beiden: die Sub-Sekunde loest die KOLLISION,
+    #    die Kennung die ZUORDNUNG. Wem eine Rettung gehoert, liess sich vorher
+    #    nicht am Namen ablesen — und bei drei Sitzungen in einem Ordner ist
+    #    genau das die Frage, die man spaeter stellt.
+    _RNS=$(date +%N 2>/dev/null); case "$_RNS" in ''|*[!0-9]*) _RNS=000000000 ;; esac
+    _RSID=$(printf '%s' "${SESSION_ID:-nosession}" | tr -cd 'A-Za-z0-9' | tail -c 8)
+    [ -n "$_RSID" ] || _RSID=nosession
+    RTS="$(date +%Y%m%d-%H%M%S)-$(printf '%s' "$_RNS" | cut -c1-3)-${_RSID}"
     RESCUE_FILE="$RESCUE_DIR/${RTS}_chat.md"
     # Python-Pfad (venv bevorzugt, wie im Skill)
     if [ -x ".venv/Scripts/python.exe" ]; then RPY=".venv/Scripts/python.exe"
@@ -170,34 +180,47 @@ if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
       # Sync, zeigte der Merker nur noch auf die neue Rettung — die aeltere lag als Datei
       # da, war aber als Quelle unerreichbar, weil alle Leser `grep -m1 '^path='` nahmen.
       # Belegt im eigenen Projekt: 20260816-194132_chat.md, 412 KB, nie eingespeist.
+      # ⛔ v5.56.0: HIER WURDE GELESEN UND SPAETER MIT `>` NEU GESCHRIEBEN —
+      #    ein Read-Modify-Write ohne Sperre. Zwei Kompaktierungen im selben
+      #    Ordner: die zweite liest den Stand VOR dem Schreiben der ersten und
+      #    ueberschreibt ihn vollstaendig. Die Rettung der ersten liegt dann als
+      #    Datei da und ist als QUELLE unerreichbar — exakt der Zustand, den
+      #    v5.4.1 behoben hat, nur durch Gleichzeitigkeit statt durch `grep -m1`.
+      #    Gemessen am Code von Anton, 10.09.2026 (Z.175-181 lesen, Z.228 schreibt).
+      #
+      # ⭐ GEWAEHLT: ZEILE-JE-RETTUNG mit `>>`, KEINE SPERRE. Begruendung:
+      #    Eine Sperre braucht eine Altersgrenze gegen ein verwaistes Schloss,
+      #    und die ist geraten. Ein Anhaengen braucht gar keine — der Merker
+      #    wird nie wieder als Ganzes gelesen und zurueckgeschrieben, also gibt
+      #    es kein Fenster, in dem zwei Schreiber sich ueberholen koennen.
+      #    ⚠ `>>` ist nicht unter allen Umstaenden atomar; fuer eine einzelne
+      #      kurze Zeile auf einem lokalen Dateisystem ist es das praktisch.
+      #      Der Rest-Fall ist eine verschraenkte Zeile — die faellt beim Lesen
+      #      als unbekannter Schluessel raus und kostet EINE Rettung.
+      #      Die alte Bauform kostete ALLE aelteren auf einmal.
+      #
+      # ⛔ `compactions=` WIRD NICHT MEHR GESCHRIEBEN. Es war der Grund fuer das
+      #    Lesen: eine Zahl, die man nur fortschreiben kann, wenn man den alten
+      #    Wert kennt. ⭐ Gezaehlt wird sie jetzt beim LESEN aus den `path=`-Zeilen
+      #    — damit stimmt sie auch dann, wenn zwei Sitzungen gleichzeitig
+      #    kompaktieren; die alte Rechnung haette beide Male dieselbe Zahl
+      #    gelesen und um eins zu niedrig geschrieben.
+      # ⚠ Alte Merker mit `compactions=N` bleiben lesbar: die Leser nehmen den
+      #   groesseren der beiden Werte.
+      #
+      # ⛔ `blocks=` faellt ebenfalls weg — der Stop-Hook blockt seit v5.55.0
+      #    niemanden mehr, und ein Zaehler ohne Zaehlgegenstand ist eine Attrappe.
       PREV_C=0
-      PREV_PATHS=""; PREV_RESUMES=""; PREV_ARB=""
       if [ -f "$RESCUE_DIR/OPEN" ]; then
-        PREV_C=$(grep -m1 '^compactions=' "$RESCUE_DIR/OPEN" 2>/dev/null | cut -d= -f2-)
+        PREV_C=$(grep -c '^path=' "$RESCUE_DIR/OPEN" 2>/dev/null)
         case "$PREV_C" in ''|*[!0-9]*) PREV_C=0 ;; esac
-        # Nur uebernehmen, was es noch GIBT — ein toter Zeiger soll die Liste nicht belasten.
-        OLD_P=$(grep '^path='   "$RESCUE_DIR/OPEN" 2>/dev/null | cut -d= -f2-)
-        OLD_R=$(grep '^resume=' "$RESCUE_DIR/OPEN" 2>/dev/null | cut -d= -f2-)
-        OLD_A=$(grep '^arbeitsstand=' "$RESCUE_DIR/OPEN" 2>/dev/null | cut -d= -f2-)
-        while IFS= read -r _p; do
-          [ -n "$_p" ] && [ -f "$_p" ] && PREV_PATHS="${PREV_PATHS}path=${_p}
-"
-        done <<EOF
-$OLD_P
-EOF
-        while IFS= read -r _r; do
-          [ -n "$_r" ] && [ -f "$_r" ] && PREV_RESUMES="${PREV_RESUMES}resume=${_r}
-"
-        done <<EOF
-$OLD_R
-EOF
-        while IFS= read -r _a; do
-          [ -n "$_a" ] && [ -f "$_a" ] && PREV_ARB="${PREV_ARB}arbeitsstand=${_a}
-"
-        done <<EOF
-$OLD_A
-EOF
       fi
+      # ⚠ DAS AUSSORTIEREN TOTER ZEIGER ENTFAELLT HIER — es war nur beim
+      #   Neuschreiben moeglich. Es geht nichts verloren: `prompt-submit.sh`,
+      #   `session-start.sh` und `/mind-all` pruefen jede `path=`-Zeile ohnehin
+      #   auf Existenz, melden die Differenz und entfernen `OPEN`, sobald KEINE
+      #   Rettung mehr da ist. Aufgeraeumt wird jetzt beim Lesen statt beim
+      #   Schreiben — und Lesen ist die Seite ohne Gleichzeitigkeitsproblem.
       # ⛔ v5.7.0: KEINE neue Schuld, wenn der Sync VOR dieser Kompaktierung lief.
       #    Ab v5.7.0 ist genau das der Normalfall: /mind-all laeuft bei 800k, die
       #    Kompaktierung ist seine FOLGE und nicht sein Ausloeser. Eine Schuld waere hier
@@ -206,18 +229,30 @@ EOF
       if [ "$SYNC_LIEF_SCHON" = "ja" ]; then
         mind_log "keine Schuld angelegt (Sync lief vor dieser Kompaktierung)"
       else
+        # ⛔ `>>` STATT `>`. Der Merker wird nur noch ergaenzt, nie ersetzt.
+        #    Die Reihenfolge bleibt dieselbe wie vorher: aeltere Rettungen
+        #    stehen oben, die neue unten. Leser mit `grep -m1 '^path='`
+        #    bekommen weiterhin die AELTESTE, Leser mit `tail -1` die juengste.
+        # ⛔ HIER STAND EINE BEHAUPTUNG, DIE FALSCH WAR. Sie lautete, bis
+        #    v5.55.0 habe die Meldung den Pfad der einen mit der Beitragszahl
+        #    der anderen Rettung genannt. Gemessen stimmt das nicht:
+        #    `prompt-submit.sh` ueberschreibt `RESCUE_PATH` mit `tail -1`
+        #    ("die JUENGSTE ist die Leitrettung"), und `events=`/`ts=` gab es
+        #    genau einmal — beide gehoerten zur juengsten. Kein Fehler.
+        # ⭐ DER FEHLER WAERE HIER ERST ENTSTANDEN: mit dem Anhaengen gibt es
+        #    jetzt MEHRERE `events=`/`ts=`/`resume=`-Zeilen, und `grep -m1`
+        #    haette die aelteste genommen. Deshalb lesen `prompt-submit.sh` und
+        #    `session-start.sh` sie seit v5.56.0 mit `tail -1`.
+        # ⚠ Bei EINER Rettung sind beide Formen gleich — der Fehler waere erst
+        #   ab der zweiten Kompaktierung sichtbar geworden.
         {
-          printf '%s' "$PREV_PATHS"            # aeltere zuerst -> chronologisch
           echo "path=$RESCUE_FILE"
-          printf '%s' "$PREV_RESUMES"
           echo "resume=$RESUME_FILE"
-          printf '%s' "$PREV_ARB"
           echo "arbeitsstand=$ARBEITSSTAND_FILE"
           echo "events=${RESCUE_N:-?}"
           echo "ts=$RTS"
+          echo "sid=${SESSION_ID:-nosession}"
           echo "trigger=$TRIGGER"
-          echo "compactions=$((PREV_C + 1))"   # seit dem letzten erfolgreichen Sync
-          echo "blocks=0"                       # Stop-Hook-Notausgang, s. hooks/stop.sh
           # v5.19.0: WARUM die Schuld besteht. Ohne diese zwei Zeilen sieht ein
           # Teilsync im Merker aus wie ein ausgefallener Sync — und der naechste
           # Lauf wuesste nicht, dass nur der Fan-out fehlt und welche Bereiche.
@@ -225,7 +260,7 @@ EOF
             echo "grund=teilsync"
             echo "ungepruef=${TEIL_UNGEPRUEFT:-unbekannt}"
           fi
-        } > "$RESCUE_DIR/OPEN" 2>/dev/null
+        } >> "$RESCUE_DIR/OPEN" 2>/dev/null
         # Neue Rettung -> in JEDER Sitzung neu ankuendigen, Notausgang-Zaehler auf 0
         rm -f "$RESCUE_DIR/OPEN.seen-"* 2>/dev/null
       fi

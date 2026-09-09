@@ -255,7 +255,15 @@ if [ -f "$OPEN" ]; then
   # v5.6.0: der ausfuehrliche Arbeitsstand. Er steht BEWUSST nicht in RESUME.md —
   # die Erinnerungs-Hooks kappen die dort bei 30 Zeilen, und das ist richtig so.
   ARBEITSSTAND=$(grep '^arbeitsstand=' "$OPEN" | cut -d= -f2- | tail -1)
-  COMPACTIONS=$(grep -m1 '^compactions=' "$OPEN" | cut -d= -f2-)
+  # ⛔ v5.56.0: gezaehlt statt gelesen — `pre-compact.sh` haengt `OPEN` nur
+  #    noch an. Die Zahl der `path=`-Zeilen IST die Zahl der Kompaktierungen
+  #    seit dem letzten Sync. Alte Merker tragen `compactions=`; deshalb der
+  #    groessere der beiden Werte.
+  COMPACTIONS=$(grep -c '^path=' "$OPEN" 2>/dev/null)
+  _CALT=$(grep -m1 '^compactions=' "$OPEN" 2>/dev/null | cut -d= -f2-)
+  case "$COMPACTIONS" in ''|*[!0-9]*) COMPACTIONS=0 ;; esac
+  case "$_CALT" in ''|*[!0-9]*) _CALT=0 ;; esac
+  [ "$_CALT" -gt "$COMPACTIONS" ] 2>/dev/null && COMPACTIONS="$_CALT"
 fi
 # Rueckfall, falls OPEN fehlt (Rettung aus einer aelteren Version)
 [ -z "$RESCUED_ALL" ] && RESCUED_ALL=$(ls -t "$PROJ/.claude-mind/rescued"/*_chat.md 2>/dev/null | head -1)

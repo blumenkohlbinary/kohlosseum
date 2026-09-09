@@ -106,10 +106,32 @@ SEEN="${OPEN}.seen-${SID}"
 # Fehlersuche vom 17.08.2026 aus wie "der Hook hat gar nicht gefeuert".
 [ -f "$SEEN" ] && { _slog INFO "still: Schuld besteht, aber in dieser Sitzung schon gemeldet (sid=$SID)"; exit 0; }
 
-RESCUE_PATH=$(grep -m1 '^path='        "$OPEN" 2>/dev/null | cut -d= -f2-)
-RESUME_FILE=$(grep -m1 '^resume='      "$OPEN" 2>/dev/null | cut -d= -f2-)
-RESCUE_N=$(grep    -m1 '^events='      "$OPEN" 2>/dev/null | cut -d= -f2-)
-COMPACTIONS=$(grep -m1 '^compactions=' "$OPEN" 2>/dev/null | cut -d= -f2-)
+# ⛔ v5.56.0: DIE BEGLEITANGABEN GEHOEREN ZUR LEITRETTUNG, ALSO ZUR JUENGSTEN.
+#    Seit `OPEN` angehaengt statt neu geschrieben wird, gibt es MEHRERE
+#    `resume=`/`events=`/`ts=`-Zeilen — eine je Kompaktierung. `grep -m1` naehme
+#    die AELTESTE, waehrend `RESCUE_PATH` weiter unten per `tail -1` die
+#    JUENGSTE waehlt. Das haette den Pfad der einen mit der Beitragszahl der
+#    anderen gemeldet: `zahl-in-falscher-rolle`.
+# ⚠ Bei EINER Rettung sind `-m1` und `tail -1` dasselbe — der Fehler waere
+#   erst ab der zweiten Kompaktierung sichtbar geworden und dort als
+#   Doku-Ungenauigkeit durchgegangen.
+RESCUE_PATH=$(grep '^path='   "$OPEN" 2>/dev/null | cut -d= -f2- | tail -1)
+RESUME_FILE=$(grep '^resume=' "$OPEN" 2>/dev/null | cut -d= -f2- | tail -1)
+RESCUE_N=$(grep    '^events=' "$OPEN" 2>/dev/null | cut -d= -f2- | tail -1)
+# ⛔ v5.56.0: GEZAEHLT statt GELESEN. `pre-compact.sh` schreibt `OPEN` nur
+#    noch an und fuehrt keine `compactions=`-Zahl mehr fort — eine Zahl, die
+#    man fortschreiben muss, verlangt ein Lesen VOR dem Schreiben, und genau
+#    dort ueberholten sich zwei gleichzeitige Kompaktierungen.
+# ⭐ Die Zahl der `path=`-Zeilen IST die Zahl der Kompaktierungen seit dem
+#    letzten Sync — jede legt genau eine an.
+# ⚠ Alte Merker (bis v5.55.0) tragen eine `compactions=`-Zeile und nur EINE
+#   `path=`-Zeile. Deshalb der groessere der beiden Werte, nicht der gezaehlte.
+_CZ=$(grep -c '^path=' "$OPEN" 2>/dev/null); case "$_CZ" in ''|*[!0-9]*) _CZ=0 ;; esac
+_CA=$(grep -m1 '^compactions=' "$OPEN" 2>/dev/null | cut -d= -f2-)
+case "$_CA" in ''|*[!0-9]*) _CA=0 ;; esac
+[ "$_CA" -gt "$_CZ" ] 2>/dev/null && _CZ="$_CA"
+[ "$_CZ" -gt 0 ] 2>/dev/null || _CZ=1
+COMPACTIONS="$_CZ"
 
 # v5.4.1: OPEN kann MEHRERE Rettungen nennen — eine je Kompaktierung ohne Sync.
 # Tote Zeiger fliegen EINZELN raus; OPEN verschwindet nur, wenn KEINE Rettung mehr da ist.
