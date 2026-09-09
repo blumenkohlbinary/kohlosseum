@@ -116,6 +116,38 @@ PROJ="${CLAUDE_PROJECT_DIR:-}"
 [ -z "$PROJ" ] && PROJ=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
 [ -z "$PROJ" ] && PROJ="$(pwd)"
 
+# ⛔ v5.54.0: DAS ROLLEN-GATE — der Sync gehoert einer anderen Sitzung.
+#    Vorfall Palvedo 10.09.2026: drei Sitzungen im selben Ordner, eine davon
+#    `sync`. Alle Merker liegen unter EINEM `.claude-mind/` und tragen keine
+#    Sitzungskennung — der Zwang traf damit jede Sitzung gleich.
+#
+# ⛔ ER STEHT NACH DEM SCHLEIFENSCHUTZ, NICHT DAVOR. Dieselbe Ordnung wie bei
+#    der Plan-Pause (v5.28.0): keine Ruhigstellung darf `stop_hook_active`
+#    ueberstimmen — sonst wird aus einem stillen Hook eine Endlosschleife.
+#
+# ⚠ Fail-safe: kein Roster, keine Kennung, kaputte Tabelle → `nein`, und alles
+#   zwingt wie heute. Still wird nur bei einem positiven Treffer.
+# ⚠ Kein Fork ohne Roster: der `-f`-Test steht VOR dem `bash`-Aufruf.
+_ROLLE_STILL="nein"
+if [ -f "$PROJ/.claude/rules/rollen.md" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] \
+   && [ -f "$CLAUDE_PLUGIN_ROOT/hooks/rollen-gate.sh" ]; then
+  _RSID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null)
+  if [ -n "$_RSID" ]; then
+    if _RROLLE=$(bash "$CLAUDE_PLUGIN_ROOT/hooks/rollen-gate.sh" "$_RSID" "$PROJ" 2>/dev/null); then
+      _ROLLE_STILL="ja"
+      _slog INFO "Rollen-Gate: kein Zwang (Rolle ${_RROLLE:-?}, der Sync gehoert einer anderen Sitzung)"
+    fi
+  fi
+fi
+
+# ⛔ Der TOKEN-Zwang faellt damit ebenfalls. Er wird oben berechnet, weil er
+#    `lib.sh` braucht und `PROJ` dort noch nicht steht — zurueckgenommen wird er
+#    hier, an genau einer Stelle, statt die Bedingung oben zu verdoppeln.
+if [ "$_ROLLE_STILL" = "ja" ] && [ "$_TOKZWANG" = "ja" ]; then
+  _TOKZWANG="nein"
+  _slog INFO "Rollen-Gate: Token-Zwang zurueckgenommen"
+fi
+
 # --- v5.7.5: COMPACT-FAELLIG — der Sync ist durch, die Kompaktierung steht aus ---
 # Nutzerwunsch: nach /mind-all soll KOMPAKTIERT werden, bevor weitergearbeitet wird. Sonst
 # wandert der Sync-Ertrag (40-60k) in das naechste Kontextfenster.
@@ -125,7 +157,11 @@ PROJ="${CLAUDE_PROJECT_DIR:-}"
 #    LETZTER Satz der Antwort steht statt in einem Bericht vergraben. Mehr ist ehrlich nicht
 #    drin, und der Text sagt das auch.
 CFA="$PROJ/.claude-mind/rescued/COMPACT-FAELLIG"
-if [ -f "$CFA" ]; then
+# ⚠ v5.54.0: Das Rollen-Gate legt AUCH diesen Zweig still — anders als die
+#   Plan-Pause, die ihn durchlaesst. Der Merker stammt aus dem Sync-Lauf einer
+#   FREMDEN Sitzung; ihn hier zu blocken heisst, eine Sitzung fuer die Arbeit
+#   einer anderen festzunageln.
+if [ -f "$CFA" ] && [ "$_ROLLE_STILL" != "ja" ]; then
   _CB=$(grep -m1 '^blocks=' "$CFA" 2>/dev/null | cut -d= -f2-)
   case "$_CB" in ''|*[!0-9]*) _CB=0 ;; esac
   _CMAX="${MIND_COMPACT_MAX_BLOCKS:-2}"
@@ -238,6 +274,19 @@ ausfuehrbar, sage kurz warum — und arbeite weiter." \
     exit 0
   fi
   _slog INFO "still: keine offene Schuld (PROJ=$PROJ)"
+  exit 0
+fi
+
+# ⛔ v5.54.0: Schuld liegt, aber der Sync gehoert einer anderen Sitzung.
+#    Die SCHULD bleibt bestehen und der Chat bleibt gerettet — es zwingt nur
+#    niemand. Die zustaendige Sitzung nimmt sie mit: `OPEN` traegt seit v5.4.1
+#    mehrere `path=`-Zeilen, und `/mind-all` synct alle offenen Rettungen.
+#    ⚠ Der Preis ist bekannt und vom Nutzer abgewogen: ist die sync-Sitzung
+#      tot, zwingt niemand mehr. Dieselbe Abwaegung wie in
+#      PLAN-v5.44.0-kein-block.md §4 — der Zwang ist durch eine ZUSTAENDIGKEIT
+#      ersetzt, nicht ersatzlos gestrichen.
+if [ "$_ROLLE_STILL" = "ja" ]; then
+  _slog INFO "still: Rollen-Gate (Schuld liegt, zustaendig ist eine andere Sitzung)"
   exit 0
 fi
 

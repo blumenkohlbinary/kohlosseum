@@ -105,6 +105,40 @@ if [ -f "$_PP" ]; then
   fi
 fi
 
+# ⛔ v5.54.0: DAS ROLLEN-GATE — eine ANDERE Sitzung ist fuer den Sync zustaendig.
+#    Vorfall Palvedo 10.09.2026: drei Sitzungen im selben Ordner, eine davon
+#    `sync`, und diese Mahnung erschien in allen dreien. Der manager fuhr
+#    daraufhin den Sync selbst. ⭐ Er hat nicht falsch gehandelt, er wurde
+#    gemahnt. Nutzer: "feuert die ganze zeit der hook der ist ueberfluessig
+#    weil ein anderer chat das ja macht".
+#
+# ⛔ ZWEITES FLAG, ABSICHTLICH — und das ist der Unterschied zu v5.37.0.
+#    Dort wurde `_PLAN_STILL` bewusst WIEDERVERWENDET, weil ein ausgenommenes
+#    Modell und eine Plan-Pause DASSELBE meinen. Hier ist es nicht dasselbe:
+#    eine Plan-Pause laesst `COMPACT-FAELLIG` durch (die Bitte um /compact
+#    richtet sich an den Menschen), das Rollen-Gate darf sie NICHT durchlassen
+#    — sie stammt aus dem Sync-Lauf einer fremden Sitzung. Zwei Flags mit
+#    VERSCHIEDENER Bedeutung sind kein Halbfix; zwei mit derselben waeren einer.
+#
+# ⚠ Was NICHT still wird: die UEBERGABE des Arbeitsstands (Z. oben). Sie ist
+#   keine Mahnung, sondern der Stand der Sitzung, die kompaktiert hat — und das
+#   ist fast immer der arbeiter, nie der sync. Wer sie mit stilllegt, nimmt
+#   genau der arbeitenden Sitzung ihr Gedaechtnis.
+#
+# ⚠ Kein Fork ohne Roster: der `-f`-Test steht VOR dem `bash`-Aufruf.
+_ROLLE_STILL="nein"
+if [ -f "$PROJ/.claude/rules/rollen.md" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] \
+   && [ -f "$CLAUDE_PLUGIN_ROOT/hooks/rollen-gate.sh" ]; then
+  _RSID=""
+  command -v jq >/dev/null 2>&1 && _RSID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null)
+  if [ -n "$_RSID" ]; then
+    if _RROLLE=$(bash "$CLAUDE_PLUGIN_ROOT/hooks/rollen-gate.sh" "$_RSID" "$PROJ" 2>/dev/null); then
+      _ROLLE_STILL="ja"
+      _slog INFO "Rollen-Gate: still (Rolle ${_RROLLE:-?}, der Sync gehoert einer anderen Sitzung)"
+    fi
+  fi
+fi
+
 # ===== v5.7.0: Uebergabe nach der Kompaktierung =============================
 # Bis v5.6.0 hing JEDE Meldung an der Sync-SCHULD. Laeuft der Sync kuenftig VOR der
 # Kompaktierung, gibt es keine Schuld — und damit haette hier niemand mehr ein Wort gesagt,
@@ -176,7 +210,7 @@ fi
 # stehen bleiben; sie tut nichts mehr.
 
 _CFA="$PROJ/.claude-mind/rescued/COMPACT-FAELLIG"
-if [ -f "$_CFA" ]; then
+if [ -f "$_CFA" ] && [ "$_ROLLE_STILL" != "ja" ]; then
   _CFT=$(grep -m1 '^ts=' "$_CFA" 2>/dev/null | cut -d= -f2-)
   # ⛔ Als JSON ausgeben und AUSSTEIGEN — nicht per echo weiterlaufen. (v5.7.6)
   #    Die erste Fassung schrieb Klartext und lief weiter; kam danach die OPEN-Erinnerung
@@ -232,7 +266,8 @@ _STAND="$PROJ/.claude-mind/rescued/sync-stand"
 # Sein einziger Verbraucher (pre-compact.sh) feuert seit autoCompactEnabled=false
 # nur noch bei handgetipptem /compact -- ein Merker konnte damit ewig liegen.
 # Geprueft wird jetzt der ZUWACHS seit dem Sync, s. mind_sync_frisch in lib.sh.
-if [ "$_PLAN_STILL" != "ja" ] && [ ! -f "$OPEN" ] && [ "$_SCHWELLE" -gt 0 ] 2>/dev/null; then
+if [ "$_PLAN_STILL" != "ja" ] && [ "$_ROLLE_STILL" != "ja" ] \
+   && [ ! -f "$OPEN" ] && [ "$_SCHWELLE" -gt 0 ] 2>/dev/null; then
   _TP=""
   command -v jq >/dev/null 2>&1 && _TP=$(echo "$INPUT" | jq -r '.transcript_path // empty' 2>/dev/null)
   if [ -n "$_TP" ] && [ -n "$CLAUDE_PLUGIN_ROOT" ] && [ -f "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" ]; then
@@ -272,7 +307,8 @@ fi
 _CSCHWELLE="${MIND_SYNC_AT_COMMITS:-0}"
 _CSTAND="$PROJ/.claude-mind/rescued/sync-stand"
 [ -f "$_CSTAND" ] || _CSTAND="$PROJ/.claude-mind/rescued/commit-stand"
-if [ "$_PLAN_STILL" != "ja" ] && [ ! -f "$OPEN" ] && [ "$_CSCHWELLE" -gt 0 ] 2>/dev/null && [ -d "$PROJ/.git" ]; then
+if [ "$_PLAN_STILL" != "ja" ] && [ "$_ROLLE_STILL" != "ja" ] \
+   && [ ! -f "$OPEN" ] && [ "$_CSCHWELLE" -gt 0 ] 2>/dev/null && [ -d "$PROJ/.git" ]; then
   if [ -n "$CLAUDE_PLUGIN_ROOT" ] && [ -f "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" ]; then
     # shellcheck disable=SC1091
     . "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" 2>/dev/null
@@ -466,8 +502,8 @@ fi
 # ⛔ v5.37.0: auch die Schuld-Mahnung schweigt unter einem ausgenommenen Modell.
 #    Die SCHULD bleibt bestehen und der Chat bleibt gerettet — es draengt nur
 #    niemand. Sie wartet auf die naechste Sitzung mit einem anderen Modell.
-if [ "$_PLAN_STILL" = "ja" ]; then
-  _slog INFO "OPEN-Mahnung unterdrueckt (Modell ausgenommen oder Plan-Pause)"
+if [ "$_PLAN_STILL" = "ja" ] || [ "$_ROLLE_STILL" = "ja" ]; then
+  _slog INFO "OPEN-Mahnung unterdrueckt (Modell/Plan-Pause oder Rollen-Gate)"
   exit 0
 fi
 

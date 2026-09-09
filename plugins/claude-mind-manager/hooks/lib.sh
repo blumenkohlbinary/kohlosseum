@@ -2161,6 +2161,113 @@ mind_lauf_frei() {
   return 0
 }
 
+# ===== v5.54.0: DAS ROLLEN-GATE =============================================
+# ⛔ Bis v5.53.0 las KEIN Hook die Rollentabelle. Gemessen am Paketbaum:
+#    `grep -rn rollen hooks/` -> 0 Treffer, waehrend vier Hooks die session_id
+#    schon aus stdin holen (prompt-submit.sh:77+382, session-start.sh:102,
+#    instructions-loaded.sh:58, lib.sh:269). Der Mechanismus fehlte, die
+#    Kennung war da.
+#
+# DER VORFALL (Palvedo, 10.09.2026): drei Sitzungen im selben Ordner, eine
+# davon `sync` — und die Sync-Mahnung erschien in allen dreien. Der manager hat
+# daraufhin den Sync selbst gefahren. ⭐ Er hat nicht falsch gehandelt, er wurde
+# gemahnt. Nutzer woertlich: "feuert die ganze zeit der hook der ist
+# ueberfluessig weil ein anderer chat das ja macht".
+#
+# ⛔ FAIL-SAFE-RICHTUNG, hart: still wird NUR bei einem POSITIVEN Treffer —
+#    die eigene Kennung steht im Roster mit einer NICHT-sync-Rolle, UND es gibt
+#    eine sync-Zeile mit eigener Kennung. Alles andere (keine rollen.md,
+#    unlesbar, Kennung nicht gefunden, sync-Zeile ohne Kennung) redet wie heute.
+#
+# ⚠ WARUM `unbekannt` NICHT stillgelegt wird, obwohl der Auftrag "alles
+#   andere" sagt: eine sessionId wechselt beim Neustart. Ein Roster, der eine
+#   Nacht alt ist, macht die sync-Sitzung selbst zu `unbekannt` — und wer
+#   `unbekannt` stilllegt, legt genau die Sitzung stumm, die mahnen soll. Der
+#   Satz "Stillschweigen nur bei einem positiven Treffer" ist die engere
+#   Vorschrift und gewinnt gegen die weitere Zeile in der Auftragstabelle.
+#
+# ⛔ KEIN MERKER MIT SITZUNGSKENNUNG. Der Weg ist in
+#    PLAN-v5.44.0-kein-block.md §5 geprueft und verworfen: ein Merker, der auf
+#    eine beendete Sitzung zeigt, laesst die Mahnung luegen. Gelesen wird der
+#    Roster, jedes Mal frisch.
+
+_mind_zelle() {
+  # Zelle $2 einer Markdown-Tabellenzeile $1, normalisiert: ohne Sternchen,
+  # ohne Schraegstriche, ohne Leerraum, klein geschrieben.
+  # ⚠ `| a | b |` zerfaellt an `|` in ''/' a '/' b '/'' — Zelle n ist Feld n+1.
+  local zeile="${1:-}" n="${2:-1}"
+  printf '%s' "$zeile" \
+    | awk -F'|' -v n="$n" '{ if (NF > n) print $(n+1) }' \
+    | tr -d '*`' | tr -d '[:space:]' | tr 'A-Z' 'a-z'
+}
+
+_mind_kennung_gueltig() {
+  # Eine sessionId ist gueltig, wenn sie lang genug ist und nur aus
+  # Kennungszeichen besteht. ⛔ Das filtert die Platzhalter weg (`?`, `tbd`,
+  # Gedankenstrich) — eine sync-Zeile OHNE Kennung darf niemanden stilllegen.
+  local k="${1:-}"
+  [ -n "$k" ] || return 1
+  [ "${#k}" -ge 8 ] || return 1
+  case "$k" in *[!a-z0-9_-]*) return 1 ;; esac
+  return 0
+}
+
+mind_rolle() {
+  # $1 = session_id, $2 = Projekt
+  # -> sync | manager | arbeiter | unbekannt | keine   (Rueckgabe immer 0)
+  local sid="${1:-}" proj="${2:-}" datei zeile k r
+  datei="$proj/.claude/rules/rollen.md"
+  { [ -n "$proj" ] && [ -r "$datei" ]; } || { printf 'keine'; return 0; }
+  sid=$(printf '%s' "$sid" | tr 'A-Z' 'a-z')
+  [ -n "$sid" ] || { printf 'unbekannt'; return 0; }
+
+  # ⛔ KEINE Pipe in die Schleife — die liefe in einer Subshell, und der
+  #    Treffer waere danach wieder weg. Derselbe Fehler steckt zweimal in
+  #    diesem Projekt (mind_check_tools_have_rules, mind-all Step 0).
+  while IFS= read -r zeile; do
+    case "$zeile" in '|'*) ;; *) continue ;; esac
+    k=$(_mind_zelle "$zeile" 3)
+    [ "$k" = "$sid" ] || continue
+    r=$(_mind_zelle "$zeile" 1)
+    case "$r" in
+      sync|manager|arbeiter) printf '%s' "$r"; return 0 ;;
+    esac
+  done < "$datei"
+  printf 'unbekannt'
+  return 0
+}
+
+mind_sync_kennung() {
+  # Die Kennung der sync-Zeile aus dem Roster, oder nichts.
+  local datei="${1:-}" zeile k
+  [ -r "$datei" ] || return 0
+  while IFS= read -r zeile; do
+    case "$zeile" in '|'*) ;; *) continue ;; esac
+    [ "$(_mind_zelle "$zeile" 1)" = "sync" ] || continue
+    k=$(_mind_zelle "$zeile" 3)
+    _mind_kennung_gueltig "$k" || continue
+    printf '%s' "$k"
+    return 0
+  done < "$datei"
+  return 0
+}
+
+mind_sync_zustaendig() {
+  # $1 = session_id, $2 = Projekt
+  # -> 0 = eine ANDERE Sitzung ist fuer den Sync zustaendig  (also: still sein)
+  #    1 = niemand sonst, oder nicht entscheidbar            (also: reden)
+  # ⛔ Diese Funktion ist die EINZIGE Stelle, an der die Entscheidung
+  #    faellt. Ein Hook, der sie nachbaut, faellt unter `instrument-nachgebaut`.
+  local sid="${1:-}" proj="${2:-}" rolle syncid
+  { [ -n "$sid" ] && [ -n "$proj" ]; } || return 1
+  rolle=$(mind_rolle "$sid" "$proj")
+  case "$rolle" in manager|arbeiter) ;; *) return 1 ;; esac
+  syncid=$(mind_sync_kennung "$proj/.claude/rules/rollen.md")
+  _mind_kennung_gueltig "$syncid" || return 1
+  [ "$syncid" = "$(printf '%s' "$sid" | tr 'A-Z' 'a-z')" ] && return 1
+  return 0
+}
+
 mind_lauf_kennung() {
   # Die Laufkennung: basename des Snapshots. Je Lauf eindeutig (Zeitstempel im
   # Namen), und unabhaengig von jeder Umgebungsvariablen.
