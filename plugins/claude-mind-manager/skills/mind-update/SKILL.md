@@ -872,11 +872,19 @@ aus der Mitte. 3-Stufen-Algorithmus:
 # v5.2.1: Vorrang hat der Zeiger aus der offenen Schuld (OPEN) — er nennt genau die Rettung,
 # fuer die der Sync noch aussteht. Fehlt OPEN (aeltere Version): neueste Datei per Zeitstempel.
 _MU_OPEN="${CLAUDE_PROJECT_DIR:-$(pwd)}/.claude-mind/rescued/OPEN"
-RESCUED=""
-# v5.4.1: OPEN kann mehrere Rettungen nennen — alle nehmen, aelteste zuerst.
-[ -f "$_MU_OPEN" ] && RESCUED=$(grep '^path=' "$_MU_OPEN" 2>/dev/null | cut -d= -f2-                                 | while IFS= read -r p; do [ -f "$p" ] && echo "$p"; done)
-[ -n "$RESCUED" ] && [ ! -f "$RESCUED" ] && RESCUED=""
-[ -z "$RESCUED" ] && RESCUED=$(ls -t "${CLAUDE_PROJECT_DIR:-$(pwd)}/.claude-mind/rescued"/*_chat.md 2>/dev/null | head -1)
+# ⛔ v5.57.0: EINE Stelle, und sie liegt in `lib.sh`. Hier stand ein Halbfix
+#    aus v5.4.1: das Sammeln war auf mehrere Zeilen umgestellt, die
+#    Einzeldatei-Pruefung darunter nicht. `[ ! -f "$RESCUED" ]` auf einen
+#    mehrzeiligen Text ist immer wahr — bei ZWEI oder mehr Rettungen wurde die
+#    Liste geleert und der Rueckfall nahm die juengste Datei im Ordner.
+#    GEMESSEN mit drei Rettungen: EINE kam an. Die Doku behauptete seit v5.4.1
+#    das Gegenteil, und niemand hatte es je nachgestellt.
+RESCUED_ALLE=$(mind_rettungen "${CLAUDE_PROJECT_DIR:-$(pwd)}")
+RESCUED_N=$(printf '%s' "$RESCUED_ALLE" | grep -c . 2>/dev/null)
+case "$RESCUED_N" in ''|*[!0-9]*) RESCUED_N=0 ;; esac
+# Die JUENGSTE ist die Leitrettung fuer Zaehlungen und Meldungen; gespeist
+# werden die Agents mit ALLEN (siehe unten).
+RESCUED=$(printf '%s' "$RESCUED_ALLE" | tail -1)
 
 # ⛔ FIX v5.2.2 — hier stand ein ENTWEDER-ODER, und das war ein Konstruktionsfehler.
 # Die Rettung enthaelt per Definition nur, was VOR der Kompaktierung war. Alles, was danach
@@ -891,7 +899,14 @@ RESCUED=""
 if [ -n "$RESCUED" ] && [ -s "$RESCUED" ]; then
   SESSION_SOURCE="gerettet+live"
   # NUR ZAEHLEN, NICHT LESEN (Kontext-Flut-Sperre v5.2.1)
-  echo "Session-Quelle: gerettet -> $RESCUED ($(grep -c '^## \[' "$RESCUED") Beitraege)"
+  echo "Session-Quelle: gerettet -> $RESCUED_N Rettung(en), aelteste zuerst:"
+  printf '%s\n' "$RESCUED_ALLE" | while IFS= read -r _r; do
+    [ -n "$_r" ] || continue
+    echo "    $_r ($(grep -c '^## \[' "$_r") Beitraege)"
+  done
+  # ⛔ ALLE Rettungen gehen an die Agents, nicht nur die juengste. Bei
+  #    mehreren Sitzungen im selben Ordner gehoert jede einer anderen — wer
+  #    nur die juengste nimmt, synct eine Sitzung und verliert die anderen.
   echo "                + live    -> Sampler ueber das laufende Transkript (deckt die Zeit NACH der Rettung ab)"
 else
   SESSION_SOURCE="live"

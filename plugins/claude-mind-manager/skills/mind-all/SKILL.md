@@ -249,8 +249,14 @@ if [ -f "$OPEN" ]; then
   # v5.4.1: ALLE offenen Rettungen, aelteste zuerst. Bis v5.4.0 stand hier `grep -m1` —
   # bei zwei Kompaktierungen ohne Sync wurde die aeltere NIE eingespeist, obwohl ihre Datei
   # noch dalag. Belegt: 20260816-194132_chat.md, 412 KB, verwaist.
-  RESCUED_ALL=$(grep '^path=' "$OPEN" | cut -d= -f2- | while IFS= read -r p; do
-                  [ -n "$p" ] && [ -f "$p" ] && echo "$p"; done)
+  # ⛔ v5.57.0: DIESELBE AUSWAHL STAND HIER UND IN `mind-update` — zweimal,
+  #    und nur eine der beiden war richtig. Die in `mind-update` leerte bei
+  #    zwei oder mehr Rettungen ihre eigene Liste (`[ ! -f ]` auf mehrzeiligen
+  #    Text) und fiel auf die juengste Datei im Ordner zurueck. GEMESSEN: von
+  #    drei Rettungen kam EINE an. Von aussen sah die Kette dabei richtig aus,
+  #    weil DIESE Fassung alle drei korrekt AUFZAEHLTE.
+  #    Jetzt beide ueber `mind_rettungen` aus `lib.sh`.
+  RESCUED_ALL=$(mind_rettungen "$PROJ")
   RESUME_FILE=$(grep '^resume='      "$OPEN" | cut -d= -f2- | tail -1)   # der juengste Auftrag
   # v5.6.0: der ausfuehrliche Arbeitsstand. Er steht BEWUSST nicht in RESUME.md —
   # die Erinnerungs-Hooks kappen die dort bei 30 Zeilen, und das ist richtig so.

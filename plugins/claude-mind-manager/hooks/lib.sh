@@ -2161,6 +2161,57 @@ mind_lauf_frei() {
   return 0
 }
 
+# ===== v5.57.0: ALLE offenen Rettungen, an EINER Stelle ====================
+# ⛔ GEMESSEN 10.09.2026, und die Messung fiel ROT aus. `hooks.md` behauptet
+#    seit v5.4.1, `/mind-all` synce ALLE offenen Rettungen. Nachgestellt mit
+#    drei `path=`-Zeilen kommt in `mind-update` GENAU EINE an — und nicht
+#    einmal eine aus dem Merker:
+#
+#      RESCUED=$(... alle drei ...)          -> drei Zeilen
+#      [ -n "$RESCUED" ] && [ ! -f "$RESCUED" ] && RESCUED=""
+#                                            -> LEER. `-f` auf einen
+#                                               mehrzeiligen Text ist falsch.
+#      [ -z "$RESCUED" ] && RESCUED=$(ls -t ... | head -1)
+#                                            -> die juengste Datei im ORDNER
+#
+# ⭐ DER ZWEITE TEIL IST DER SCHLIMMERE: der Rueckfall liest den Merker gar
+#    nicht mehr. Er nimmt die juengste `*_chat.md` nach Aenderungszeit — auch
+#    eine, die gar nicht in `OPEN` steht, und uebergeht eine geschuetzte.
+#
+# ⛔ Die Zeile war ein HALBFIX aus v5.4.1: dort wurde das Sammeln auf mehrere
+#    Zeilen umgestellt und die Einzeldatei-Pruefung darunter stehengelassen.
+#    Dieselbe Bauform wie `classify_path` und `mind_agent_quittung_start`
+#    (beide 27.08.2026): eine Faehigkeit erweitert, die Aufrufer nicht.
+#
+# ⭐ Deshalb steht die Auswahl jetzt an EINER Stelle. Sie stand in
+#    `mind-all` Step 0 und in `mind-update` Step 3 doppelt — eine Fassung war
+#    richtig, die andere nicht, und beide sahen gleich aus.
+
+mind_rettungen() {
+  # $1 = Projekt
+  # -> alle offenen Rettungen, EINE JE ZEILE, aelteste zuerst.
+  #    Nur Dateien, die es wirklich gibt. Ohne Merker: nichts.
+  local proj="${1:-}" open p n=0
+  [ -n "$proj" ] || return 1
+  open="$proj/.claude-mind/rescued/OPEN"
+  if [ -f "$open" ]; then
+    # ⛔ KEINE Pipe in die Schleife — Subshell, der Zaehler waere danach 0.
+    while IFS= read -r p; do
+      p="${p#path=}"
+      [ -n "$p" ] && [ -f "$p" ] || continue
+      printf '%s\n' "$p"; n=$((n + 1))
+    done < <(grep '^path=' "$open" 2>/dev/null)
+  fi
+  [ "$n" -gt 0 ] && return 0
+  # ⚠ RUECKFALL nur, wenn es KEINEN brauchbaren Merker gibt (Rettung aus einer
+  #   Fassung vor v5.2.1). Dann die juengste Datei — ausdruecklich eine
+  #   Notloesung, keine Auswahl.
+  p=$(ls -t "$proj/.claude-mind/rescued"/*_chat.md 2>/dev/null | head -1)
+  [ -n "$p" ] && [ -f "$p" ] || return 1
+  printf '%s\n' "$p"
+  return 0
+}
+
 # ===== v5.55.0: TEILSYNC IST VERBOTEN =======================================
 # ⛔ Nutzer-Entscheidung 10.09.2026, woertlich: "ein teilsync soll verboten
 #    sein keine ausreden wenn ich einen sync haben will immer voll keine
