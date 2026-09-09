@@ -66,7 +66,7 @@ hat "Platzhalter statt erfundener Name" "<Name>" "$G"
 
 echo
 echo "=== 6) ⛔ Eine echte Umbenennung wird gemeldet, rc=1 ==="
-sed 's/^## ⛔ Deckelregel/## Deckel-Regel/' "$TMP/rollen.md" > "$TMP/kaputt.md"
+sed 's/^## ⛔ Offene Deckel-Schuld/## Deckel-Schuld/' "$TMP/rollen.md" > "$TMP/kaputt.md"
 OUT2=$(python "$S" --pruefe "$TMP/kaputt.md" 2>&1); RC2=$?
 pruef "Rueckgabe 1 bei Befund" 1 "$RC2"
 hat "  ... und nennt den Verdacht" "umbenannt" "$OUT2"

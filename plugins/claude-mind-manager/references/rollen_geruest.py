@@ -53,8 +53,20 @@ ABSCHNITTE = [
     "Wem welche Datei geh\u00f6rt",
     "Die projektweiten Werkzeuge",
     "\u26d4 Wer den NUTZER fragen darf \u2014 und wer NICHT",
-    "\u26d4 Deckelregel",
+    "\u26d4 Offene Deckel-Schuld",
 ]
+
+# \u26d4 DAS BAND ZUR ZWEITEN QUELLE. Das Geruest steht auch in Joplin, und Joplin
+#   ist von hier NICHT lesbar \u2014 kein Hook und kein Prueffall kommt an die Notiz.
+#   Ein Gate dagegen ist deshalb nicht baubar; was baubar ist, ist ein ZEIGER
+#   mit Stand-Datum. Wer eine der beiden Seiten aendert, sieht hier, wo die
+#   andere liegt.
+# \u26a0 GEMESSEN, dass das noetig ist: am 09.09.2026 wurden in \u00a710a sieben Punkte
+#   geaendert, und dieses Skript zog KEINEN nach \u2014 sechs Marker, null Treffer.
+#   Gefunden hat es ein Mensch beim Lesen, keine Pruefung.
+QUELLE_NOTIZ = "6e27ab4e46f94884b88f56a1e7c46f27"   # Joplin `\ud83e\udded Manager-Chats`
+QUELLE_ABSCHNITT = "10a"
+QUELLE_STAND = "2026-09-09"
 
 # ⭐ Die vier Saetze aus §10a. Jeder stammt aus einem Vorfall; sie werden
 #   als TEILSTRING geprueft, damit Zeilenumbrueche nicht stoeren.
@@ -166,15 +178,24 @@ def geruest(projekt, plugin_root=None, rollen=3):
       "stehen nur die Namen, der")
     a("Dateibesitz und was NUR hier gilt.**")
     a("")
-    a("| Rolle | Name | Tut |")
-    a("|---|---|---|")
-    a("| **manager** | **<Name>** | liest, beauftragt, pr\u00fcft nach. "
-      "\u26d4 **Schreibt keinen Code** |")
-    a("| **arbeiter** | **<Name>** | baut, misst, commitet |")
-    a("| **sync** | **<Name>** | f\u00e4hrt die projektweiten Werkzeuge. "
-      "\u26d4 **Baut nichts, entscheidet nichts** |")
+    # \u2b50 Die sessionId-Spalte kam aus dem ZWEITEN Aufbau (Palvedo, 09.09.2026):
+    #   Namen aendern sich, Auto-Namen wandern, Titel werden umbenannt \u2014 die
+    #   sessionId bleibt.
+    # \u26a0 Sie ist zugleich die EINZIGE fluechtige Angabe der Datei: eine ERSETZTE
+    #   Sitzung bekommt eine neue Id, und die Zeile zeigt dann ins Leere.
+    #   \u26d4 Genau das war am 09.09.2026 schon Stunden nach dem Eintragen der Fall
+    #     \u2014 eine von drei Zeilen verwies auf eine Id ohne Transkript. Deshalb
+    #     prueft `--pruefe` sie gegen die Wirklichkeit, statt ihr zu glauben.
+    a("| Rolle | Name | sessionId | Tut |")
+    a("|---|---|---|---|")
+    a("| **manager** | **<Name>** | `local_\u2026` | liest, beauftragt, "
+      "pr\u00fcft nach. \u26d4 **Schreibt keinen Code** |")
+    a("| **arbeiter** | **<Name>** | `local_\u2026` | baut, misst, commitet |")
+    a("| **sync** | **<Name>** | `local_\u2026` | f\u00e4hrt die projektweiten "
+      "Werkzeuge. \u26d4 **Baut nichts, entscheidet nichts** |")
     a("")
-    a("Titelform: `<Vorname> \u00b7 %s \u00b7 <Rolle>`." % name)
+    a("Titel: `<Rollen-Emoji> <Vorname> \u00b7 <Rolle> \u00b7 %s` \u2014 "
+      "\U0001f9ed manager \u00b7 \U0001f527 arbeiter \u00b7 \U0001f9e0 sync." % name)
     a("\u26a0 Bist du keine dieser Rollen, gilt diese Datei nicht \u2014 normal "
       "weiterarbeiten.")
     a("")
@@ -188,12 +209,26 @@ def geruest(projekt, plugin_root=None, rollen=3):
     a("|---|---|")
     for d in dirs:
         a("| `%s/**` | **<Name>** |" % d)
+    # \u2b50 Feste Zeilen aus \u00a710a \u2014 sie stehen in JEDEM Roster gleich, weil jede
+    #   einzelne aus einem Vorfall stammt.
+    a("| `CLAUDE.md` | **<arbeiter>** |")
+    a("| `.claude/rules/**` (au\u00dfer dieser Datei) | **<arbeiter>** |")
+    a("| `.claude/rules/rollen.md` | **<manager>** |")
     if mem:
-        a("| `%s` | **<Name>** | \u2b50 liegt AUSSERHALB des Projektordners" % mem)
+        a("| `.claude-mind/**`, `%s` \u2014 **wenn ein Werkzeug sie schreibt** | "
+          "**<sync>** |" % mem)
     else:
-        a("| `~/.claude/projects/<slug>/memory/` | **<Name>** | "
-          "\u26a0 Slug nicht aufgel\u00f6st \u2014 `hash_project_dir` war nicht "
-          "erreichbar, bitte eintragen |")
+        a("| `.claude-mind/**`, `~/.claude/projects/<slug>/memory/**` \u2014 "
+          "**wenn ein Werkzeug sie schreibt** | **<sync>** "
+          "\u26a0 Slug nicht aufgel\u00f6st, bitte eintragen |")
+    # \u26d4 ZWEI \u201eniemand\"-Werte, und sie sind keine Alternativen, sondern zwei
+    #   ACHSEN: gesperrt sein UND von einem Werkzeug befuellt werden geht
+    #   gleichzeitig. Wer daraus zwei ZEILEN macht, erzeugt genau den Zustand,
+    #   den \u201eein Pfad, ein Eigentuemer" verhindern soll \u2014 unentschieden statt
+    #   doppelt geschuetzt. Beide Angaben gehoeren in DIESELBE Zelle.
+    a("| `<pfad, den nur ein Werkzeug f\u00fcllt>` | \u26d4 **niemand von Hand** \u2014 "
+      "schreibt `<werkzeug>` |")
+    a("| `<pfad mit Nutzerdaten>` | \u26d4 **niemand \u2014 gesperrt**, weil `<grund>` |")
     a("| `git add` / `git commit` | **<Name>** \u2014 \u26d4 der manager "
       "commitet nie |")
     a("")
@@ -231,10 +266,27 @@ def geruest(projekt, plugin_root=None, rollen=3):
     a("| Freigabe f\u00fcr eine \u00c4nderung, die bestehendes Verhalten "
       "ersetzt | \u26d4 **NUR der Nutzer** |")
     a("")
-    a("## \u26d4 Deckelregel")
+    a("## \u26d4 Offene Deckel-Schuld")
     a("")
-    a("Wer im Dauerkontext anlegt, **zahlt aus dem Bestand** \u2014 100 dazu, "
-      "100 weg.")
+    # \u26d4 Der REGELTEXT steht seit dem 09.09.2026 global in
+    #   `~/.claude/rules/kontext-anlegen.md` und NICHT mehr hier. Vorher stand
+    #   er in zwei Rostern und null globalen Regeln; als er korrigiert wurde,
+    #   zog nur eine Kopie nach, und beide Dateien meldeten fuer sich gruen.
+    a("Die **Regel** steht global in `~/.claude/rules/kontext-anlegen.md` \u2014 "
+      "wer anlegt, zahlt aus")
+    a("dem Bestand; wer nichts zu streichen findet, weist die Schuld aus. "
+      "\u26d4 **Hier steht nur die")
+    a("Schuld DIESES Projekts**, sonst nichts:")
+    a("")
+    a("```")
+    a("(keine)")
+    a("```")
+    a("")
+    a("\u26d4 **Der Ausweis geh\u00f6rt in DIESE Datei, nicht in eine Antwort.** Nur "
+      "gesagt ist er beim")
+    a("n\u00e4chsten Sitzungsstart weg \u2014 dann ist die Schuld getilgt, ohne dass "
+      "jemand sie getilgt hat.")
+    a("\u2b50 Ist nichts offen: `(keine)`. Eine leere \u00dcberschrift ist kein Ausweis.")
     a("")
     a("> Herleitung und Vorf\u00e4lle: `<archiv-datei>` (l\u00e4dt nicht mit).")
     return "\n".join(z) + "\n"
@@ -264,6 +316,50 @@ def _normal(s):
 def ueberschriften(text):
     return [m.group(1).strip()
             for m in re.finditer(r"^##\s+(.+?)\s*$", text, re.M)]
+
+
+_SID = re.compile(r"local_([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}"
+                  r"-[0-9a-f]{4}-[0-9a-f]{12})")
+
+
+def sitzungen_pruefen(text):
+    """Jede genannte `sessionId` muss ein Transkript haben. (befunde, hinweise)
+
+    ⛔ WARUM DAS NOETIG IST, gemessen am 09.09.2026: die Spalte war keine drei
+       Stunden alt, und eine von drei Zeilen zeigte auf eine Id, die weder in
+       30 gelisteten Sitzungen noch als Transkript existierte. Eine falsche
+       Adresse ist schlimmer als keine — sie sieht amtlich aus, und die
+       Nachricht kommt trotzdem nirgends an.
+
+    ⚠ FAIL-SAFE: ist `~/.claude/projects` nicht lesbar, gibt es KEINEN Befund.
+      Ein Pruefer, der die Ablage nicht erreicht, misst nichts — und darf
+      daraus nicht „alle tot" machen.
+    """
+    B, H = [], []
+    ids = _SID.findall(text)
+    if not ids:
+        return B, H
+    basis = os.path.join(os.path.expanduser("~"), ".claude", "projects")
+    if not os.path.isdir(basis):
+        H.append("sessionId nicht pruefbar — %r nicht lesbar" % basis)
+        return B, H
+    vorhanden = set()
+    try:
+        for slug in os.listdir(basis):
+            d = os.path.join(basis, slug)
+            if not os.path.isdir(d):
+                continue
+            for n in os.listdir(d):
+                if n.endswith(".jsonl"):
+                    vorhanden.add(n[:-6])
+    except OSError:
+        H.append("sessionId nicht pruefbar — Ablage nicht lesbar")
+        return B, H
+    for i in ids:
+        if i not in vorhanden:
+            B.append("sessionId ohne Transkript — die Adresse zeigt ins "
+                     "Leere: local_%s" % i)
+    return B, H
 
 
 def pruefe(text):
@@ -296,14 +392,31 @@ def pruefe(text):
     #   ob dafuer ein Pflichtabschnitt FEHLT. Also:
     #     fehlt einer  -> jeder fremde ist verdaechtig  -> BEFUND
     #     fehlt keiner -> die fremden sind Zugaben      -> Hinweis
-    for u in fremd:
+    # \u26d4 HINZUFUEGEN ist erlaubt, DAZWISCHENSCHIEBEN nicht (\u00a710a, 09.09.2026).
+    #   Ein neuer Abschnitt HINTER dem letzten Pflichtabschnitt ist eine Zugabe;
+    #   einer ZWISCHEN zweien zerreisst die Folge, an der man den Roster in
+    #   jedem Projekt an derselben Stelle findet.
+    letzter = -1
+    for i, u in enumerate(gefunden):
+        if _normal(u) in soll:
+            letzter = i
+    for i, u in enumerate(gefunden):
+        if _normal(u) in soll:
+            continue
         if fehlend:
             B.append("Ueberschrift steht nicht in \u00a710a und ein "
                      "Pflichtabschnitt fehlt \u2014 umbenannt? %r" % u)
+        elif i < letzter:
+            B.append("Abschnitt DAZWISCHENGESCHOBEN \u2014 erlaubt ist nur "
+                     "Anhaengen: %r" % u)
         else:
             H.append("projekteigener Abschnitt (erlaubt): %r" % u)
     for u in fehlend:
         H.append("Abschnitt fehlt (Weglassen ist erlaubt): %r" % u)
+
+    b2, h2 = sitzungen_pruefen(text)
+    B.extend(b2)
+    H.extend(h2)
     for name, teil in SAETZE:
         if teil not in text:
             B.append("Pflichtsatz fehlt \u2014 %s (%r)" % (name, teil))
@@ -337,7 +450,7 @@ def selbsttest():
 
     print()
     print("=== 3) \u26d4 NEGATIVKONTROLLE: Umbenennen und Umstellen fallen auf ===")
-    umbenannt = g.replace("## \u26d4 Deckelregel", "## Deckel-Regel")
+    umbenannt = g.replace("## \u26d4 Offene Deckel-Schuld", "## Deckel-Schuld")
     B2, _ = pruefe(umbenannt)
     pruef("umbenannte Ueberschrift wird gemeldet", len(B2) >= 1, True)
 
@@ -384,7 +497,7 @@ def selbsttest():
           B9, [])
     pruef("   ... und er wird als erlaubt gemeldet",
           any("projekteigener" in x for x in H9), True)
-    luecke = zusatz.replace("## \u26d4 Deckelregel", "## Deckel-Regel")
+    luecke = zusatz.replace("## \u26d4 Offene Deckel-Schuld", "## Deckel-Schuld")
     B10, _ = pruefe(luecke)
     pruef("fehlt dagegen ein Pflichtabschnitt, wird der fremde verdaechtig",
           any("umbenannt" in x for x in B10), True)
@@ -411,6 +524,49 @@ def selbsttest():
     print()
     print("=== 8) Leere Namen bleiben LEER ===")
     pruef("kein erfundener Name im Geruest", "<Name>" in g, True)
+
+    print()
+    print("=== 9) ⭐ Der Stand vom 09.09.2026 — sieben Punkte aus §10a ===")
+    pruef("1 sessionId-Spalte in der Rollentabelle",
+          "| Rolle | Name | sessionId | Tut |" in g, True)
+    pruef("2 Titel mit Rollen-Emoji und ausgeschriebener Rolle",
+          "\U0001f9ed manager" in g and "\U0001f527 arbeiter" in g, True)
+    pruef("3 Abschnitt heisst `Offene Deckel-Schuld`",
+          "## ⛔ Offene Deckel-Schuld" in g, True)
+    pruef("   ... und der REGELTEXT ist NICHT mehr drin",
+          "100 dazu, 100 weg" in g, False)
+    pruef("   ... sondern ein Zeiger auf die globale Regel",
+          "kontext-anlegen.md" in g, True)
+    pruef("4 beide `niemand`-Werte stehen drin",
+          "niemand von Hand" in g and "niemand — gesperrt" in g, True)
+    pruef("5 feste Eigentuemer-Zeilen",
+          all(x in g for x in ("| `CLAUDE.md` | **<arbeiter>** |",
+                               "| `.claude/rules/rollen.md` | **<manager>** |")),
+          True)
+    pruef("7 die Quelle ist benannt, damit sie nicht driftet",
+          QUELLE_NOTIZ in (__doc__ or "") or len(QUELLE_NOTIZ) == 32, True)
+
+    print()
+    print("=== 9b) ⛔ DAZWISCHENSCHIEBEN ist verboten, ANHAENGEN erlaubt ===")
+    mitte = g.replace("## Die projektweiten Werkzeuge",
+                      "## Eigener Abschnitt\n\ntext\n\n"
+                      "## Die projektweiten Werkzeuge")
+    B11, _ = pruefe(mitte)
+    pruef("ein eingeschobener Abschnitt wird gemeldet",
+          any("DAZWISCHENGESCHOBEN" in x for x in B11), True)
+    B12, H12 = pruefe(g + "\n## Ganz hinten\n\ntext\n")
+    pruef("   ... ein angehaengter NICHT", B12, [])
+    pruef("   ... und er gilt als erlaubt",
+          any("projekteigener" in x for x in H12), True)
+
+    print()
+    print("=== 9c) ⛔ Eine sessionId ohne Transkript ist eine tote Adresse ===")
+    tot = g + "\n| **x** | **y** | `local_00000000-0000-0000-0000-000000000000` | z |\n"
+    B13, _ = pruefe(tot)
+    pruef("erfundene sessionId wird gemeldet",
+          any("zeigt ins Leere" in x for x in B13), True)
+    pruef("⭐ NEGATIVKONTROLLE: das Geruest selbst hat keine echte Id",
+          any("zeigt ins Leere" in x for x in pruefe(g)[0]), False)
     return rot
 
 
