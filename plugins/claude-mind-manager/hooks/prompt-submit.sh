@@ -190,6 +190,32 @@ Tokens wandert sonst in das naechste Kontextfenster.
 
 Eine Kompaktierung ist NICHT ausloesbar: weder aus einem Hook noch vom Assistenten.
 Nur der Mensch kann /compact eingeben."
+  # ⭐ v5.50.0: liegt ZUGLEICH eine Sync-Schuld, muss sie MIT in diese Meldung.
+  #   Ein Hook gibt genau EINE aus und steigt aus — der Ausstieg ist richtig,
+  #   falsch war, dass die Meldung nur eine der beiden Tatsachen trug. Die
+  #   Schuld-Meldung steht 150 Zeilen weiter unten und wurde nie erreicht.
+  # ⛔ Genau dieser Zustand ist der HAEUFIGE: ein token-erzwungener Sync bekommt
+  #   oberhalb von MIND_AGENT_HALB_TOKENS null Agenten, ist damit per
+  #   Konstruktion ein Teilsync UND setzt COMPACT-FAELLIG.
+  _ZUSATZ=""
+  if [ -f "$OPEN" ]; then
+    _ZG=$(grep -m1 '^grund=' "$OPEN" 2>/dev/null | cut -d= -f2-)
+    _ZU=$(grep -m1 '^ungepruef=' "$OPEN" 2>/dev/null | cut -d= -f2-)
+    _ZN=$(grep -c '^path=' "$OPEN" 2>/dev/null)
+    case "${_ZN:-}" in ''|*[!0-9]*) _ZN=0 ;; esac
+    _ZUSATZ="
+
+⛔ ZUSAETZLICH steht eine SYNC-SCHULD offen — sie ist mit der Kompaktierung
+nicht erledigt und bleibt danach bestehen."
+    [ "$_ZN" -gt 0 ] 2>/dev/null && _ZUSATZ="$_ZUSATZ
+  offene Rettungen: $_ZN"
+    [ -n "${_ZG:-}" ] && _ZUSATZ="$_ZUSATZ
+  Grund: $_ZG"
+    [ -n "${_ZU:-}" ] && _ZUSATZ="$_ZUSATZ
+  ⚠ TEILSYNC — diese Bereiche sind UNGEPRUEFT, nicht unauffaellig: $_ZU"
+    _slog INFO "Schuld in die COMPACT-Meldung aufgenommen (grund=${_ZG:-?})"
+  fi
+  _MSGC="$_MSGC$_ZUSATZ"
   _slog INFO "COMPACT-FAELLIG gemeldet (seit ${_CFT:-?})"
   if command -v jq >/dev/null 2>&1; then
     jq -nc --arg ctx "$_MSGC" \
