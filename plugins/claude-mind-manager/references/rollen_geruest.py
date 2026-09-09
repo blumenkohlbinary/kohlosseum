@@ -318,48 +318,40 @@ def ueberschriften(text):
             for m in re.finditer(r"^##\s+(.+?)\s*$", text, re.M)]
 
 
-_SID = re.compile(r"local_([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}"
-                  r"-[0-9a-f]{4}-[0-9a-f]{12})")
-
-
-def sitzungen_pruefen(text):
-    """Jede genannte `sessionId` muss ein Transkript haben. (befunde, hinweise)
-
-    ⛔ WARUM DAS NOETIG IST, gemessen am 09.09.2026: die Spalte war keine drei
-       Stunden alt, und eine von drei Zeilen zeigte auf eine Id, die weder in
-       30 gelisteten Sitzungen noch als Transkript existierte. Eine falsche
-       Adresse ist schlimmer als keine — sie sieht amtlich aus, und die
-       Nachricht kommt trotzdem nirgends an.
-
-    ⚠ FAIL-SAFE: ist `~/.claude/projects` nicht lesbar, gibt es KEINEN Befund.
-      Ein Pruefer, der die Ablage nicht erreicht, misst nichts — und darf
-      daraus nicht „alle tot" machen.
-    """
-    B, H = [], []
-    ids = _SID.findall(text)
-    if not ids:
-        return B, H
-    basis = os.path.join(os.path.expanduser("~"), ".claude", "projects")
-    if not os.path.isdir(basis):
-        H.append("sessionId nicht pruefbar — %r nicht lesbar" % basis)
-        return B, H
-    vorhanden = set()
-    try:
-        for slug in os.listdir(basis):
-            d = os.path.join(basis, slug)
-            if not os.path.isdir(d):
-                continue
-            for n in os.listdir(d):
-                if n.endswith(".jsonl"):
-                    vorhanden.add(n[:-6])
-    except OSError:
-        H.append("sessionId nicht pruefbar — Ablage nicht lesbar")
-        return B, H
-    for i in ids:
-        if i not in vorhanden:
-            B.append("sessionId ohne Transkript — die Adresse zeigt ins "
-                     "Leere: local_%s" % i)
-    return B, H
+# ⛔⛔ HIER STAND EINE PRUEFUNG `sitzungen_pruefen()`. SIE IST FALSCH UND WIRD
+#    NICHT WIEDER GEBAUT. Eingebaut und widerlegt am selben Tag, 09.09.2026.
+#
+# SIE GLICH JEDE `sessionId` GEGEN DIE TRANSKRIPTNAMEN unter
+# `~/.claude/projects/<slug>/*.jsonl` ab. Gemessen im eigenen Projekt:
+#
+#     acd4e029-…  (manager)   Transkript da     Id == Transkriptname
+#     61d97508-…  (sync)      Transkript da     Id == Transkriptname
+#     a02a245a-…  (arbeiter)  KEIN Transkript   Id != Transkriptname
+#                             ... und diese Id ist NACHWEISLICH ERREICHBAR:
+#                             ueber sie kam ein halbes Dutzend Nachrichten an.
+#
+# ⛔ DIE PRUEFUNG HAETTE ALSO EINE FUNKTIONIERENDE ADRESSE ALS TOT GEMELDET —
+#    und zwar die des Arbeiters, also die meistbenutzte. Wird eine Sitzung
+#    fortgesetzt oder geforkt, behaelt die Datei ihren Namen und die Sitzung
+#    bekommt eine neue Id. Ein Pruefer gegen Transkriptnamen meldet damit ROT
+#    fuer jede fortgesetzte Sitzung.
+#
+# ⭐ MEIN DENKFEHLER WAR DER SCHAERFERE TEIL, und er steht hier, damit ihn
+#    niemand wiederholt: `list_sessions` SCHLIESST DIE EIGENE SITZUNG AUS —
+#    das steht in seiner Werkzeugbeschreibung. Dass `a02a245a` in meiner
+#    Auflistung fehlte, war der **Beleg, dass ich es selbst bin**. Ich habe ihn
+#    als Beleg fuer das Gegenteil gelesen und darauf ein Werkzeug gebaut.
+#    ⚠ Klasse `instrument-meldet-falsch`: die Messung stimmte, die Auslegung
+#      nicht. Das Fail-safe fing den AUSFALL und nicht den FEHLTREFFER.
+#
+# ⛔ WAS WIRKLICH MISST, und warum es hier nicht geht:
+#    1. `list_sessions` ist die Registry — aber ein MCP-Werkzeug, fuer ein
+#       `references/*.py` unerreichbar. Dieselbe Lage wie bei Joplin.
+#    2. Der ZUSTELLVERSUCH ist die haerteste Pruefung und kann kein Skript
+#       fahren.
+#    ⭐ Also gibt es hier KEINE mechanische Pruefung. Das ist das Ergebnis,
+#      nicht eine offene Aufgabe — und ein Pruefer, der seine Gegenseite nicht
+#      lesen kann, ist `instrument-misst-nichts`.
 
 
 def pruefe(text):
@@ -414,9 +406,7 @@ def pruefe(text):
     for u in fehlend:
         H.append("Abschnitt fehlt (Weglassen ist erlaubt): %r" % u)
 
-    b2, h2 = sitzungen_pruefen(text)
-    B.extend(b2)
-    H.extend(h2)
+    # ⛔ KEINE sessionId-Pruefung. Begruendung im Block oberhalb von `pruefe`.
     for name, teil in SAETZE:
         if teil not in text:
             B.append("Pflichtsatz fehlt \u2014 %s (%r)" % (name, teil))
@@ -560,13 +550,24 @@ def selbsttest():
           any("projekteigener" in x for x in H12), True)
 
     print()
-    print("=== 9c) ⛔ Eine sessionId ohne Transkript ist eine tote Adresse ===")
-    tot = g + "\n| **x** | **y** | `local_00000000-0000-0000-0000-000000000000` | z |\n"
-    B13, _ = pruefe(tot)
-    pruef("erfundene sessionId wird gemeldet",
-          any("zeigt ins Leere" in x for x in B13), True)
-    pruef("⭐ NEGATIVKONTROLLE: das Geruest selbst hat keine echte Id",
-          any("zeigt ins Leere" in x for x in pruefe(g)[0]), False)
+    print("=== 9c) ⛔ RATSCHE: die sessionId-Pruefung darf NICHT zurueckkommen ===")
+    # ⛔ Sie war am 09.09.2026 eingebaut und am selben Tag widerlegt: sie
+    #   meldete eine NACHWEISLICH ERREICHBARE Adresse als tot, weil eine
+    #   fortgesetzte Sitzung eine andere Id traegt als ihr Transkript.
+    #   Diese Sammlung wird rot, sobald jemand sie erneut baut.
+    tot = (g + "\n| **x** | **y** | "
+           "`local_00000000-0000-0000-0000-000000000000` | z |\n")
+    B13, H13 = pruefe(tot)
+    pruef("eine unbekannte sessionId ergibt KEINEN Befund",
+          any("zeigt ins Leere" in x for x in B13 + H13), False)
+    quelle = io.open(os.path.abspath(__file__), encoding="utf-8").read()
+    # ⛔ ZUSAMMENGESETZT, sonst findet die Ratsche SICH SELBST: der gesuchte
+    #   String stuende sonst woertlich in dieser Zeile, und die Pruefung waere
+    #   von der ersten Sekunde an rot. Beim ersten Lauf genau so passiert.
+    pruef("   ... und die Funktion ist nicht wieder da",
+          ("def " + "sitzungen_pruefen") in quelle, False)
+    pruef("   ... die Begruendung steht daneben",
+          "NICHT WIEDER GEBAUT" in quelle, True)
     return rot
 
 
