@@ -93,6 +93,8 @@ echo
 GEFAHREN=0
 GRUEN=0
 ROT=()
+UEBERSPRUNGEN=0     # v5.73.0 — fiel bisher in KEINE Spalte
+MIT_SKIP=()
 NICHT_GEFAHREN=()
 LOGDIR="${TMPDIR:-/tmp}/mind-tests-$$"
 mkdir -p "$LOGDIR"
@@ -117,9 +119,49 @@ for f in "${GEFUNDEN[@]}"; do
   t1=$(date +%s)
   GEFAHREN=$((GEFAHREN + 1))
 
+  # ⛔ v5.73.0: UEBERSPRUNGENE FAELLE ZAEHLEN — sie fielen bisher in KEINE Spalte.
+  #    Gemessen 10.09.2026: ein neu gebauter Waechter uebersprang sich, weil
+  #    `CLAUDE_PROJECT_DIR` fehlte. Die Sammlung meldete GRUEN und hatte recht —
+  #    ein uebersprungener Fall ist kein roter. Gefunden wurde es nur durch einen
+  #    Blick in die DETAILAUSGABE.
+  # ⭐ Das ist derselbe Fehler, den `hooks.md` eine Ebene tiefer beschreibt:
+  #    ein Hook, der schweigt weil er soll, und einer, der schweigt weil er tot
+  #    ist, sehen im Log identisch aus.
+  # ⛔ GEZAEHLT WIRD DIE AUSGABE, NICHT DER QUELLTEXT — sonst zaehlten Kommentare
+  #    mit. Klasse `nennung-statt-zuweisung`.
+  #
+  # ⛔ UND DAS REICHTE NICHT. Die erste Fassung zaehlte jede Zeile mit dem Wort
+  #    und meldete beim ERSTEN Lauf einen Uebersprung in `test_schritt_quittung.sh`,
+  #    der keiner war: die Sammlung PRUEFT das Konzept, und ihre Prueffall-Namen
+  #    lauten "als UEBERSPRUNGEN gezaehlt". Ein Ergebnis, kein Uebersprung.
+  #    ⭐ NEUNTES Vorkommen derselben Klasse — im selben Handgriff, in dem der
+  #      Kommentar darueber davor warnt. Gefunden hat es der neue Zaehler beim
+  #      ersten Lauf; das ist zugleich sein bester Beleg.
+  #
+  # ⭐ DAS MERKMAL IST DIE ZEILENFORM, NICHT DAS WORT: ein ERGEBNIS beginnt mit
+  #    `[ok ]`, `[FEHL]`, `[ROT]`, `OK` oder `FEHL`. Ein Uebersprung tut das nie —
+  #    er hat kein Ergebnis, das ist sein ganzer Punkt.
+  # ⛔ `[--]` und `[--- ]` sind AUSDRUECKLICH NICHT ausgeschlossen — das SIND die
+  #    Skip-Markierungen zweier Sammlungen. Die erste Fassung dieses Ausschlusses
+  #    haette sie mitgetoetet und damit genau die Faelle verschwiegen, um die es
+  #    geht: ein Zaehler, der die echten Uebersprunge wegfiltert und den
+  #    Fehlalarm behaelt, waere schlimmer als gar keiner.
+  u=$(grep 'UEBERSPRUNGEN' "$LOGDIR/$base.log" 2>/dev/null \
+      | grep -cvE '^[[:space:]]*(\[(ok|FEHL|ROT)[^]]*\]|OK|FEHL)[[:space:]]' \
+      || echo 0)
+  case "$u" in ''|*[!0-9]*) u=0 ;; esac
+  if [ "$u" -gt 0 ]; then
+    UEBERSPRUNGEN=$((UEBERSPRUNGEN + u))
+    MIT_SKIP+=("$base:$u")
+  fi
+
   if [ "$rc" -eq 0 ]; then
     GRUEN=$((GRUEN + 1))
-    printf '  %-28s GRUEN   (%ss)\n' "$base" "$((t1 - t0))"
+    if [ "$u" -gt 0 ]; then
+      printf '  %-28s GRUEN   (%ss)  ⚠ %s uebersprungen\n' "$base" "$((t1 - t0))" "$u"
+    else
+      printf '  %-28s GRUEN   (%ss)\n' "$base" "$((t1 - t0))"
+    fi
   else
     ROT+=("$base")
     printf '  %-28s ROT     (Rueckgabe %s, %ss)\n' "$base" "$rc" "$((t1 - t0))"
@@ -132,8 +174,22 @@ done
 #    dreimal am falschen Gegenstand gescheitert.
 echo
 echo "----------------------------------------------------------------------"
-printf '  gefunden %d · gefahren %d · gruen %d · rot %d\n' \
-       "$N" "$GEFAHREN" "$GRUEN" "${#ROT[@]}"
+printf '  gefunden %d · gefahren %d · gruen %d · rot %d · uebersprungen %d\n' \
+       "$N" "$GEFAHREN" "$GRUEN" "${#ROT[@]}" "$UEBERSPRUNGEN"
+
+# ⭐ v5.73.0: Uebersprungenes wird BENANNT, nicht nur gezaehlt. Eine Zahl allein
+#    liesse offen, WO nachzusehen ist — und der Blick in die Detailausgabe war
+#    genau der Schritt, ohne den es unentdeckt geblieben waere.
+# ⛔ Es bricht NICHT ab. Ein uebersprungener Fall kann eine ehrliche Umgebungs-
+#    grenze sein (kein `jq`, keine Vorgaengerversion). Er darf nur nicht mehr
+#    wie ein bestandener aussehen.
+if [ "$UEBERSPRUNGEN" -gt 0 ]; then
+  echo
+  echo "  ⚠ UEBERSPRUNGENE FAELLE — ein uebersprungener Fall ist KEIN bestandener:"
+  for x in "${MIT_SKIP[@]:-}"; do
+    [ -n "$x" ] && echo "     ${x%%:*}  (${x##*:})  -> $LOGDIR/${x%%:*}.log"
+  done
+fi
 
 # ⚠ EHRLICH DAZUGESAGT: Diese Zusicherung kann heute nicht ausloesen — `find`
 #   und das `case` oben nennen dieselben zwei Endungen, also wird jede gefundene
