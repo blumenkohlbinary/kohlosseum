@@ -977,24 +977,16 @@ auftauchte. Der Creator-Lauf hat den Ausweg selbst benannt:
 > nicht dem Ermessen des Laufs ueberlassen und landet automatisch im Bericht."*
 
 ```bash
-_ATOK=""
-if type mind_kontext_tokens >/dev/null 2>&1; then
-  _ATP=$(ls -t "$HOME/.claude/projects/$(hash_project_dir "$PROJ")"/*.jsonl 2>/dev/null | head -1)
-  [ -n "$_ATP" ] && _ATOK=$(mind_kontext_tokens "$_ATP" 2>/dev/null)
-fi
-_VOLL="${MIND_AGENT_VOLL_TOKENS:-600000}"
-_HALB="${MIND_AGENT_HALB_TOKENS:-800000}"
-
-# ⛔ v5.55.0: 4 ODER GAR NICHTS. Die Zwischenstufe 2 ist entfallen.
-#    Nutzer-Entscheidung 10.09.2026: "ein teilsync soll verboten sein keine
-#    ausreden wenn ich einen sync haben will immer voll keine ausreden".
-# ⚠ Keine Zahl ist KEINE Null: ohne lesbares Transkript wird NICHT abgebrochen.
-if type mind_sync_moeglich >/dev/null 2>&1; then
-  if ! _TSGRUND=$(mind_sync_moeglich "$PROJ" "${MIND_TP:-}"); then
-    echo "$_TSGRUND" >&2
-    exit 1
-  fi
-fi
+# ⛔ v5.64.0: HIER WURDE DER KONTEXT GEMESSEN. Das faellt komplett weg.
+#    Nutzer-Entscheidung 10.09.2026: "die sollen garnicht mehr tokens messen
+#    das soll komplett raus". Weder die Agentenzahl noch der Abbruch haengen
+#    noch an einer Tokenzahl — `AGENT_MAX` ist fest 4.
+# ⭐ GEMESSEN, warum: der Tokenstand kam aus einem Merker je PROJEKT, und im
+#    selben Ordner arbeiten mehrere Rollen. Die Zahl gehoerte zuverlaessig einer
+#    fremden Sitzung (Palvedo, 10.09.2026: ~130 000 echt gegen 721 405 gemeldet).
+# ⛔ DAS TEILSYNC-VERBOT BLEIBT — gemessen wird HINTERHER, an der Quittung:
+#    kommt ein Agent leer zurueck, steht er in `ungepruef=`, `mind_sync_voll`
+#    sagt "teil", und die Schuld bleibt liegen.
 AGENT_MAX=4
 AGENT_SOLL=$AGENT_MAX          # Step 2.96a von mind-all liest das
 ```
@@ -1005,18 +997,32 @@ den Anspruch nicht, es macht ihn ehrlich“*, und daneben die Vorschrift, was be
 Der Text bleibt als Historie stehen, weil er erklaert, warum die Schwelle ueberhaupt
 existiert — nicht als geltende Anweisung.
 
-⛔ **Was heute gilt:** unter `MIND_AGENT_VOLL_TOKENS` faehrt der Lauf mit **4** Agents,
-darueber faehrt er **gar nicht** und sagt dem Menschen, was zu tun ist. Der grep-Rueckfall
+⛔ **Was heute gilt (v5.64.0):** der Lauf faehrt **immer** und versucht **immer alle 4**
+Agents. Es gibt **keine Schwelle mehr**, an der er vorher aussteigt. Der grep-Rueckfall
 bleibt Pflicht fuer den **einzelnen** Agenten, der LEER zurueckkommt (mind-all Step 2) —
 das ist ein anderer Fall als „er wurde nie gestartet“.
 
-⚠ **Die Schwelle ist GERATEN, nicht gemessen.** Belegt sind drei Datenpunkte (888k und
-914k: Ausfall) und die Laufzeiten frueherer Agents (105 s / 163 s / 199 s). Deshalb ein
-**Regler mit dokumentierter Herkunft** und keine Konstante — dieselbe Begruendung wie bei
-den drei v5.5.0-Reglern. ⛔ **Das Plugin setzt ihn nie selbst** (`claude-mem` #2836 machte
-so 75 Erinnerungen unsichtbar).
-⭐ **Und sie wiegt jetzt schwerer als vorher:** frueher kostete ein zu niedriger Wert
-zwei Agents, heute kostet er den ganzen Lauf. Wer sie anfasst, misst vorher.
+⛔ **Das Teilsync-Verbot ist damit nicht weg, es wird nur HINTERHER gemessen.**
+
+| | war (v5.55.0–v5.63.0) | ist (v5.64.0) |
+|---|---|---|
+| Messpunkt | **vorher**, Tokenstand als Vorhersage | **hinterher**, `umfang=` und `ungepruef=` |
+| Quelle | `mind_transkript_pfad` — ein Merker je **Projekt** | die Agent-Quittung dieses Laufs |
+| Folge | der Lauf faellt aus | der Lauf laeuft; ein unvollstaendiger begleicht **keine** Schuld |
+
+⭐ **Das ist strenger, nicht laxer.** Eine Vorhersage konnte in beide Richtungen
+danebenliegen; die Quittung zaehlt, was wirklich zurueckkam. Ein Agent mit `bytes:0` war
+schon immer ein Teilsync, und `mind_sync_voll` sieht ihn.
+
+⛔ **Warum die Vorhersage weg musste — gemessen, nicht vermutet.** Der Tokenstand kam
+aus `mind_transkript_pfad`: **eine** Merkerdatei je Projekt fuer **mehrere** Sitzungen im
+selben Ordner, der Letzte gewinnt. In `APP - Palvedo` am 10.09.2026 lagen fuenf aktive
+Transkripte nebeneinander (169 971 · 472 250 · 650 698 · **721 405** · 867 259); der
+Merker zeigte auf das vierte, waehrend die abgewiesene Sitzung bei **~130 000** stand.
+⚠ Der Kommentar in `lib.sh` nannte diesen Rest seit v5.38.0 selbst. Solange er eine
+Mahnung kostete, war er tragbar — als er den ganzen Lauf kostete, nicht mehr.
+Nutzer-Entscheidung 10.09.2026: *„die sollen garnicht mehr tokens messen das soll
+komplett raus“*.
 
 ### ⛔ Agent-Quittung — PFLICHT, vor UND nach jedem Agent (NEU v5.14.0)
 

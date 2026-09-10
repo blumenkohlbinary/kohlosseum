@@ -107,24 +107,22 @@ PROJ="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 # sonst haelt der naechste Befundlauf ein totes Netz fuer ein gespanntes.
 mind_hook_health "$PROJ" || HOOK_WARN="ja"
 
-# ⛔ v5.55.0: TEILSYNC IST VERBOTEN — der Lauf faellt aus, statt halb zu laufen.
-#    Nutzer-Entscheidung 10.09.2026: "ein teilsync soll verboten sein keine
-#    ausreden wenn ich einen sync haben will immer voll keine ausreden".
-#    ⛔ DAS GATE STEHT VOR DEM SNAPSHOT. Ein Lauf, der ohnehin abbricht, soll
-#       nicht vorher eine Sicherung anlegen, eine Kettenmarke setzen und eine
-#       Agent-Quittung eroeffnen — die Quittung waere danach eine Spur ohne Lauf.
-#    ⚠ Der Transkript-Pfad wird HIER geholt statt weiter unten: der eigene
-#      prompt-submit.sh ist gerade gelaufen, der Merker gehoert in diesem Moment
-#      uns. Je frueher, desto kleiner das Rennfenster (v5.38.0).
+# ⛔ v5.64.0: HIER STAND EIN TOKEN-GATE, DAS DEN LAUF ABBRACH. Es ist WEG.
+#    Nutzer-Entscheidung 10.09.2026: "die sollen garnicht mehr tokens messen
+#    das soll komplett raus". Der Grund ist gemessen: die Zahl kam aus
+#    `mind_transkript_pfad`, und dieser Merker liegt je PROJEKT statt je
+#    SITZUNG — bei mehreren Rollen im Ordner gewinnt der Letzte. Nora (sync,
+#    Palvedo) stand bei ~130 000 und wurde mit 721 405 abgewiesen.
+#    ⭐ DAS TEILSYNC-VERBOT BLEIBT, es wechselt den MESSPUNKT: der Lauf faehrt
+#       immer und versucht immer alle 4 Agents; ob es gereicht hat, entscheidet
+#       HINTERHER `mind_sync_voll` an `umfang=`/`ungepruef=`. Ein Lauf, der
+#       nicht durchkam, begleicht KEINE Schuld — `OPEN` bleibt liegen.
+#    ⚠ Der Transkript-Pfad wird trotzdem HIER geholt: er traegt unten die
+#      Lauf-Kennung und die Sitzungskennung der Sperre. Je frueher, desto
+#      kleiner das Rennfenster (v5.38.0).
 MIND_TP=""
 if type mind_transkript_pfad >/dev/null 2>&1; then
   MIND_TP=$(mind_transkript_pfad "$PROJ")
-fi
-if [ "$DRY_RUN" = "no" ] && type mind_sync_moeglich >/dev/null 2>&1; then
-  if ! _TSGRUND=$(mind_sync_moeglich "$PROJ" "$MIND_TP"); then
-    echo "$_TSGRUND" >&2
-    exit 1
-  fi
 fi
 
 # ⛔ v5.59.0: DIE SPERRE STEHT VOR DEM SNAPSHOT. Befund von Nora (Palvedo):

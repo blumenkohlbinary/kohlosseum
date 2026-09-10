@@ -1,19 +1,49 @@
 #!/usr/bin/env bash
-# Teilsync ist verboten (v5.55.0) — 4 Agents oder gar nichts.
+# Teilsync ist verboten — aber gemessen wird HINTERHER (v5.64.0).
 #
-# Nutzer-Entscheidung 10.09.2026, woertlich: "ein teilsync soll verboten sein
-# keine ausreden wenn ich einen sync haben will immer voll keine ausreden".
+# ⛔ NUTZER-ENTSCHEIDUNG 10.09.2026, woertlich: "die sollen garnicht mehr tokens
+#    messen das soll komplett raus ea nervt ihr seit zu bloed zum messrn".
 #
-# ⛔ DER WIDERSPRUCH, DEN DAS AUFLOEST, WAR REAL UND STAND IN DER DOKU:
-#    MIND_SYNC_FORCE_TOKENS (800 000) erzwang einen Sync genau an der Grenze,
-#    an der MIND_AGENT_HALB_TOKENS (ebenfalls 800 000) ihm null Agents gibt.
-#    Der Zwang produzierte den Teilsync, den er verhindern sollte — in
-#    `env-vars.md` stand das nebeneinander und war dort als "Absicht" erklaert.
+# Diese Sammlung hiess bis v5.63.0 dasselbe und pruefte das GEGENTEIL: dass
+# `mind_sync_moeglich` den Lauf oberhalb einer Tokenschwelle ABBRICHT. Das
+# Verbot bleibt, die Funktion ist weg — deshalb wird die Sammlung umgebaut und
+# nicht geloescht.
 #
-# ⭐ FALL 5 IST DER WICHTIGSTE: die Abbruch-Pruefung muss VOR dem Snapshot
-#    stehen. Ein Lauf, der ohnehin abbricht, darf nicht vorher eine Sicherung,
-#    eine Kettenmarke und eine Agent-Quittung hinterlassen — die Quittung waere
-#    danach eine Spur ohne Lauf, und genau daran misst `mind_agent_bilanz`.
+# ⛔ DER MESSFEHLER, der sie gekostet hat (Palvedo, 10.09.2026): der Tokenstand
+#    kam aus `mind_transkript_pfad` — EINE Merkerdatei je PROJEKT fuer MEHRERE
+#    Sitzungen im selben Ordner, der Letzte gewinnt. Fuenf aktive Transkripte:
+#      169 971 · 472 250 · 650 698 · 721 405 (der Merker) · 867 259
+#    Nora (sync) stand bei ~130 000 und wurde mit 721 405 abgewiesen.
+#    ⭐ Der Kommentar in `lib.sh` nannte diesen Rest seit v5.38.0 selbst.
+#       Solange er eine Mahnung kostete, war er tragbar; als er den ganzen Lauf
+#       kostete, nicht mehr.
+#
+# ⛔ WO DIE ALTEN ZUSICHERUNGEN HINGEGANGEN SIND — keine faellt still weg
+#    (`autonom-arbeiten.md`: verliert ein Prueffall sein ZIEL, ist das eine
+#    LUECKE, bis die Zusicherung anderswo steht):
+#
+#    | war (v5.55.0)                     | ist                                   |
+#    |-----------------------------------|---------------------------------------|
+#    | 1 Schwelle 599 999 / 600 000      | ⛔ gegenstandslos — es gibt keine      |
+#    |                                   |   Schwelle. Abschnitt 1 sichert zu,   |
+#    |                                   |   dass sie WEG ist.                   |
+#    | 2 Fail-safe "keine Messung"       | ⛔ gegenstandslos — nichts wird mehr   |
+#    |                                   |   gemessen, also faellt nichts aus.   |
+#    | 3 der Abbruchtext                 | ⛔ gegenstandslos — kein Abbruch.      |
+#    | 4 der Regler wirkt                | ⛔ gegenstandslos — kein Regler.       |
+#    | 5 Gate VOR dem Snapshot           | ⭐ die LAUFSPERRE steht weiter davor:  |
+#    |                                   |   tests/test_lauf_sperre.sh           |
+#    | 6 AGENT_MAX fest 4                | ⭐ BLEIBT — Abschnitt 4 hier.          |
+#    | 7 FORCE_TOKENS wird nicht gelesen | ⭐ BLEIBT — Abschnitt 5 hier.          |
+#    | — das Verbot selbst               | ⭐ `mind_sync_voll` + `OPEN`:          |
+#    |                                   |   Abschnitt 3 hier, ausfuehrlich in   |
+#    |                                   |   tests/test_teilsync.sh.             |
+#
+# ⭐ GEGENPROBE GEGEN DEN ALTEN STAND ist Pflicht, sonst ist gruen nur
+#    Schweigen. Abschnitt 1 und 2 sind gegen v5.63.0 ROT:
+#      CLAUDE_PLUGIN_ROOT=<alter-stand> bash tests/test_teilsync_verboten.sh
+#
+# Aufruf:  CLAUDE_PLUGIN_ROOT=<paket> bash tests/test_teilsync_verboten.sh
 set -u
 R="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 GRUEN=0; ROT=0
@@ -22,88 +52,77 @@ trap 'rm -rf "$TMP"' EXIT
 
 pruef() { if [ "$2" = "$3" ]; then GRUEN=$((GRUEN+1)); echo "  [ok ] $1"
   else ROT=$((ROT+1)); echo "  [ROT] $1 (erwartet '$2', war '$3')"; fi; }
-hat() { case "$3" in *"$2"*) GRUEN=$((GRUEN+1)); echo "  [ok ] $1";;
-  *) ROT=$((ROT+1)); echo "  [ROT] $1 — '$2' fehlt";; esac; }
 
 # shellcheck disable=SC1090
 . "$R/hooks/lib.sh" 2>/dev/null
 
-mach_transkript() {  # <datei> <tokens>
-  printf '{"type":"assistant","message":{"role":"assistant","content":"x","usage":{"input_tokens":%s,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":5}}}\n' \
-    "$2" > "$1"
-}
-
-P="$TMP/proj"; mkdir -p "$P/.claude-mind"
-mach_transkript "$TMP/klein.jsonl" 599999
-mach_transkript "$TMP/gross.jsonl" 600000
-printf '{"type":"user"}\n{"foo":1}\n' > "$TMP/ohne.jsonl"
-
-echo "=== 1) Die Schwelle ==="
-mind_sync_moeglich "$P" "$TMP/klein.jsonl" >/dev/null
-pruef "599 999 -> der Lauf faehrt" "0" "$?"
-mind_sync_moeglich "$P" "$TMP/gross.jsonl" >/dev/null
-pruef "⛔ 600 000 -> ABBRUCH" "1" "$?"
-
-echo
-echo "=== 2) ⛔ FAIL-SAFE: keine Messung ist KEIN Abbruch ==="
-mind_sync_moeglich "$P" "$TMP/ohne.jsonl" >/dev/null
-pruef "Transkript ohne usage -> faehrt" "0" "$?"
-mind_sync_moeglich "$P" "$TMP/gibtsnicht.jsonl" >/dev/null
-pruef "Transkript fehlt -> faehrt" "0" "$?"
-mind_sync_moeglich "" "" >/dev/null
-pruef "kein Projekt -> faehrt" "0" "$?"
-
-echo
-echo "=== 3) Der Abbruchtext sagt, was der Mensch tun muss ==="
-A=$(mind_sync_moeglich "$P" "$TMP/gross.jsonl" 2>&1)
-hat "nennt die gemessene Zahl"      "600000" "$A"
-hat "nennt die Grenze"              "MIND_AGENT_VOLL_TOKENS" "$A"
-hat "sagt, dass NICHT gefahren wird" "faehrt NICHT" "$A"
-hat "nennt den Weg (kompaktieren oder neu starten)" "kompaktieren" "$A"
-hat "⭐ und dass nichts verloren geht" "geht nichts verloren" "$A"
-
-echo
-echo "=== 4) Der Regler wirkt (die Schwelle ist keine Konstante) ==="
-MIND_AGENT_VOLL_TOKENS=900000 mind_sync_moeglich "$P" "$TMP/gross.jsonl" >/dev/null
-pruef "hochgesetzt -> 600 000 faehrt wieder" "0" "$?"
-MIND_AGENT_VOLL_TOKENS=1 mind_sync_moeglich "$P" "$TMP/klein.jsonl" >/dev/null
-pruef "heruntergesetzt -> auch 599 999 bricht ab" "1" "$?"
-
-echo
-echo "=== 5) ⭐ Das Gate steht VOR dem Snapshot ==="
 MA="$R/skills/mind-all/SKILL.md"
-_G=$(grep -n 'mind_sync_moeglich "$PROJ" "$MIND_TP"' "$MA" | head -1 | cut -d: -f1)
-_S=$(grep -n 'mind_snapshot "$PROJ" "pre-mind-all"' "$MA" | head -1 | cut -d: -f1)
-pruef "mind-all ruft mind_sync_moeglich" "ja" "$([ -n "$_G" ] && echo ja || echo nein)"
-pruef "mind-all legt einen Snapshot an"  "ja" "$([ -n "$_S" ] && echo ja || echo nein)"
-pruef "⭐ das Gate steht VOR dem Snapshot" "ja" \
-      "$([ -n "$_G" ] && [ -n "$_S" ] && [ "$_G" -lt "$_S" ] && echo ja || echo nein)"
+MU="$R/skills/mind-update/SKILL.md"
+
+echo "=== 1) ⛔ Die Funktion ist WEG — nicht nur ungenutzt ==="
+# ⛔ GEGEN DEN ALTEN STAND ROT. Das ist der Zweck dieses Abschnitts: er
+#   unterscheidet "entfernt" von "war nie da".
+type mind_sync_moeglich >/dev/null 2>&1
+pruef "mind_sync_moeglich ist nicht mehr definiert" "1" "$?"
+# ⚠ GEZAEHLT WIRD DER AUFRUF, NICHT DIE NENNUNG. Der Kommentar in lib.sh sagt,
+#   dass die Funktion entfernt WURDE — das ist kein Aufrufer. Dieselbe
+#   Verwechslung ist in diesem Projekt viermal aufgetreten (env-vars.md fuer
+#   MIND_NOTFALL_TOKENS, dreimal am 10.09.2026 in eigenen Prueffaellen).
+#   Ein Aufruf hat ein Argument dahinter, eine Nennung nicht.
+pruef "kein Aufruf in den Hooks" "0" \
+      "$(grep -rhoE 'mind_sync_moeglich "' "$R/hooks/" 2>/dev/null | wc -l | tr -d ' ')"
+pruef "kein Aufruf in mind-all" "0" \
+      "$(grep -coE 'mind_sync_moeglich "' "$MA")"
+pruef "kein Aufruf in mind-update" "0" \
+      "$(grep -coE 'mind_sync_moeglich "' "$MU")"
 
 echo
-echo "=== 6) ⛔ Die Zwischenstufe 2 ist WEG ==="
-MU="$R/skills/mind-update/SKILL.md"
-# ⛔ GEZAEHLT WIRD DIE ZUWEISUNG, NICHT DIE NENNUNG — und diese Zeile ist
-#   der Beleg dafuer, dass der Unterschied zaehlt: die erste Fassung fiel
-#   an ihrem eigenen Erfolg durch. Der Satz "hier stand `AGENT_MAX=0`, es
-#   ist gegenstandslos" ist eine NENNUNG und wurde als Rueckfall gewertet.
-#   Dieselbe Verwechslung steht in `env-vars.md` fuer MIND_NOTFALL_TOKENS
-#   dokumentiert — sie ist in diesem Projekt jetzt zweimal aufgetreten.
+echo "=== 2) ⛔ Kein Lauf bricht mehr wegen einer Tokenzahl ab ==="
+# Der Abbruch war ein `exit 1` direkt hinter dem Gate. Beide Stellen sind weg.
+pruef "mind-all: kein Abbruch ueber \$_TSGRUND"    "0" "$(grep -c '_TSGRUND' "$MA")"
+pruef "mind-update: kein Abbruch ueber \$_TSGRUND" "0" "$(grep -c '_TSGRUND' "$MU")"
+# ⭐ POSITIVKONTROLLE: die Sammlung darf nicht dadurch gruen sein, dass sie die
+#   falschen Dateien liest. Beide Skills muessen es geben und sie muessen den
+#   Fan-out ueberhaupt noch enthalten.
+pruef "mind-all ist lesbar"              "ja" "$([ -s "$MA" ] && echo ja || echo nein)"
+pruef "mind-update enthaelt den Fan-out"  "ja" \
+      "$([ "$(grep -c '^AGENT_MAX=4' "$MU")" -ge 1 ] && echo ja || echo nein)"
+
+echo
+echo "=== 3) ⭐ Das VERBOT bleibt — es wird jetzt HINTERHER gemessen ==="
+# Nicht die Vorhersage entscheidet, sondern die Quittung. Ausfuehrlich in
+# tests/test_teilsync.sh; hier die drei Kernfaelle, damit diese Sammlung ihr
+# eigenes Ziel traegt und nicht nur auf eine andere zeigt.
+printf 'umfang=5/5 skills 4/4 agents\n' > "$TMP/voll"
+printf 'umfang=5/5 skills 0/4 agents\n' > "$TMP/keine_agents"
+printf 'umfang=5/5 skills 4/4 agents\nungepruef=custom-context\n' > "$TMP/leer_zurueck"
+mind_sync_voll "$TMP/voll" >/dev/null 2>&1
+pruef "4/4 Agents -> voll"                      "0" "$?"
+mind_sync_voll "$TMP/keine_agents" >/dev/null 2>&1
+pruef "⛔ 0/4 Agents -> TEIL, die Schuld bleibt" "1" "$?"
+mind_sync_voll "$TMP/leer_zurueck" >/dev/null 2>&1
+pruef "⛔ 4/4 dispatcht, einer leer -> TEIL"     "1" "$?"
+
+echo
+echo "=== 4) ⛔ Es gibt keine Zwischenstufe — AGENT_MAX ist fest 4 ==="
+# ⛔ GEZAEHLT WIRD DIE ZUWEISUNG, NICHT DIE NENNUNG — und diese Zeile ist der
+#   Beleg dafuer, dass der Unterschied zaehlt: die erste Fassung fiel an ihrem
+#   eigenen Erfolg durch. Der Satz "hier stand `AGENT_MAX=0`, es ist
+#   gegenstandslos" ist eine NENNUNG und wurde als Rueckfall gewertet.
 pruef "keine Zuweisung AGENT_MAX=2 mehr" "0" "$(grep -cE '^[[:space:]]*(\*\) *)?AGENT_MAX=2' "$MU")"
 pruef "keine Zuweisung AGENT_MAX=0 mehr" "0" "$(grep -cE '^[[:space:]]*(\*\) *)?AGENT_MAX=0' "$MU")"
-pruef "AGENT_MAX ist fest 4"  "1" "$(grep -c '^AGENT_MAX=4' "$MU")"
-# ⚠ Zwei Vorkommen sind richtig (Waechter + Aufruf); gezaehlt wird die
-#   AUFRUFFORM, nicht die Erwaehnung — dieselbe Umstellung wie in
-#   test_leitplanke.sh (v5.25.0).
-pruef "mind-update ruft das Gate ebenfalls" "1" \
-      "$(grep -c 'mind_sync_moeglich "$PROJ"' "$MU")"
+pruef "AGENT_MAX ist fest 4"             "1" "$(grep -c '^AGENT_MAX=4' "$MU")"
 
 echo
-echo "=== 7) ⛔ MIND_SYNC_FORCE_TOKENS wird von keinem Hook mehr gelesen ==="
-# ⚠ Gezaehlt werden LESEZUGRIFFE, nicht Erwaehnungen: ein Kommentar, der sagt
-#   "der Regler ist entfallen", ist kein Leser. Genau diese Verwechslung steht
-#   in `env-vars.md` fuer MIND_NOTFALL_TOKENS dokumentiert.
-pruef "kein ${MIND_SYNC_FORCE_TOKENS:+}\${MIND_SYNC_FORCE_TOKENS:-} in den Hooks" "0" \
+echo "=== 5) ⛔ Die entfallenen Regler werden von keinem Hook gelesen ==="
+# ⚠ Gezaehlt werden LESEZUGRIFFE (`${VAR:-`), nicht Erwaehnungen: ein
+#   Kommentar, der sagt "der Regler ist entfallen", ist kein Leser.
+pruef "kein MIND_SYNC_FORCE_TOKENS:- in den Hooks" "0" \
       "$(grep -rl 'MIND_SYNC_FORCE_TOKENS:-' "$R/hooks/" 2>/dev/null | wc -l | tr -d ' ')"
+pruef "kein MIND_AGENT_HALB_TOKENS:- in den Hooks" "0" \
+      "$(grep -rl 'MIND_AGENT_HALB_TOKENS:-' "$R/hooks/" 2>/dev/null | wc -l | tr -d ' ')"
+pruef "kein MIND_AGENT_VOLL_TOKENS:- in den Hooks" "0" \
+      "$(grep -rl 'MIND_AGENT_VOLL_TOKENS:-' "$R/hooks/" 2>/dev/null | wc -l | tr -d ' ')"
 pruef "stop.sh gibt gar kein JSON mehr aus" "0" \
       "$(grep -c 'jq -nc' "$R/hooks/stop.sh")"
 
