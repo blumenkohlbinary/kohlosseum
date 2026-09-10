@@ -697,7 +697,15 @@ def _wortmarke(m):
     return bool(_WORTMARKE.match(m or ""))
 
 
-def lauf(projekt, bereich="alles"):
+def lauf(projekt, bereich="alles", liefere=False):
+    """`liefere=True` gibt die Befundliste zurueck statt des Exit-Codes.
+
+    ⛔ v5.62.0: die Konsole behauptete seit jeher "die vollstaendige Liste
+       steht im Rueckgabewert" — zurueck kam eine 0. Wer der Zeile glaubte,
+       suchte etwas, das es nicht gab (`instrument-meldet-falsch`).
+    ⚠ Die Vorgabe bleibt der Exit-Code: `main()` reicht ihn an `sys.exit`
+       weiter, und ein Listenobjekt waere dort ein stiller Fehlschlag.
+    """
     abl = ablagen(projekt, bereich)
     if not any(abl.values()):
         print("⛔ Keine Ablage lesbar unter %s" % projekt)
@@ -772,7 +780,7 @@ def lauf(projekt, bereich="alles"):
                   % ("~" if _wortmarke(m) else " ", m[:30], na, nb, grund))
         if _n > 10:
             print("     … %d weitere — die vollstaendige Liste steht im "
-                  "Rueckgabewert, nicht auf der Konsole" % (_n - 10))
+                  "vollstaendig ueber lauf(projekt, bereich, liefere=True)" % (_n - 10))
 
         # ⛔ AUSWEISEN, NICHT FILTERN. Gemessen 09.09.2026 im eigenen Bestand:
         #    von 186 Duplikat-Paaren hingen **62 (33 %)** an Marken, die reine
@@ -809,6 +817,8 @@ def lauf(projekt, bereich="alles"):
     print("     cleaner_urteile.py <projekt> --orte <a> <b>")
     print("  ⚠ Gemessen wird ERWAEHNUNG derselben Marke, nicht Bedeutungsgleichheit.")
     print("     Zwei Stellen, die dasselbe ANDERS formulieren, findet das hier NICHT.")
+    if liefere:
+        return zeilen
     return 0
 
 
@@ -1023,6 +1033,31 @@ def selbsttest():
     m = marken("Text mit `tools/x.py` und MIND_ABC_DEF und claude und 200 Zeilen.")
     pruef("claude nicht in den Marken", "claude" in m, False)
     pruef("Pfad in den Marken", "tools/x.py" in m, True)
+    # --- ⛔ `liefere=True` gibt die Liste, die Vorgabe den Exit-Code --------
+    #     Die Konsole behauptete das seit jeher; zurueck kam eine 0. Wer der
+    #     Zeile glaubte, suchte etwas, das es nicht gab.
+    import io as _io
+    import os as _os
+    _p = tempfile.mkdtemp()
+    _os.makedirs(_os.path.join(_p, ".claude", "rules"))
+    _io.open(_os.path.join(_p, "CLAUDE.md"), "w", encoding="utf-8").write(
+        "Siehe `zzz_marke_9x.md` fuer alles.\n")
+    _io.open(_os.path.join(_p, ".claude", "rules", "a.md"), "w",
+             encoding="utf-8").write("Auch `zzz_marke_9x.md` steht hier.\n")
+    _alt = sys.stdout
+    sys.stdout = _io.StringIO()
+    try:
+        _liste = lauf(_p, "projekt", liefere=True)
+        _code = lauf(_p, "projekt")
+    finally:
+        sys.stdout = _alt
+    pruef("liefere gibt die Liste zurueck", isinstance(_liste, list), True)
+    pruef("   ... die Vorgabe weiterhin den Exit-Code", _code, 0)
+    # ⚠ GEGENPROBE: eine leere Liste waere auch eine Liste. Der Prueftext
+    #   oben erzeugt mindestens einen Befund — sonst misst der Fall nichts.
+    pruef("   ... und sie ist nicht leer", len(_liste) > 0, True)
+
+
 
     print("\n=== %d Abweichung(en) ===" % fehler)
     return 3 if fehler else 0
