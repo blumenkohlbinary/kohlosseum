@@ -123,7 +123,10 @@ if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
         printf 'ts=%s\n' "$TS"
         [ -n "$ARBEITSSTAND_FILE" ] && printf 'arbeitsstand=%s\n' "$ARBEITSSTAND_FILE"
         [ -n "$RESUME_FILE" ] && printf 'resume=%s\n' "$RESUME_FILE"
-      } > "$RESCUE_DIR/UEBERGABE" 2>/dev/null \
+      # ⛔ v5.61.0: JE SITZUNG. Bis v5.60.0 hiess die Datei fest `UEBERGABE`,
+      #    lag projektweit, und der ERSTE Leser nahm sie mit — gemessen: der
+      #    Arbeitsstand der einen Sitzung landete vollstaendig in der anderen.
+      } > "$(mind_uebergabe_pfad "$PROJECT_DIR" "${SESSION_ID:-}")" 2>/dev/null \
         || mind_log WARN "UEBERGABE-Merker nicht schreibbar (Rettung ist davon unberuehrt)"
 
       # --- v5.7.0: lief in diesem Zyklus schon ein Sync? ---

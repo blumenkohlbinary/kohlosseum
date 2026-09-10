@@ -2189,6 +2189,44 @@ mind_lauf_frei() {
   return 0
 }
 
+# ===== v5.61.0: DIE UEBERGABE GEHOERT EINER SITZUNG ========================
+# ⛔ GEMESSEN am 10.09.2026, ohne dass jemand kompaktieren musste: `UEBERGABE`
+#    von Hand angelegt, zwei Sitzungen schicken einen Prompt.
+#      Sitzung B fragt zuerst -> B bekommt den Arbeitsstand von A
+#      danach ist der Merker WEG
+#      Sitzung A fragt spaeter -> bekommt nichts
+#    Der Arbeitsstand der einen landet vollstaendig in der anderen, und die
+#    richtige Empfaengerin sieht nie, dass es ihn gab.
+#
+# ⭐ DAS IST DER GEMELDETE PALVEDO-VORFALL, eine Ebene tiefer als die Mahnung.
+#    Dort fuhr der manager den Sync nach einem fremden `/compact`. Eine Mahnung
+#    kann man ueberlesen; einen uebergebenen Arbeitsstand samt fremdem Auftrag
+#    nicht — er liest sich wie der eigene.
+#
+# ⭐ DIE REGEL, nach der die Merker getrennt sind (Anton, 10.09.2026):
+#    **WAS GETAN WERDEN MUSS ist projektweit. WER ES GERADE TAT ist
+#    sitzungsbezogen.**
+#      projektweit:      OPEN · COMPACT-FAELLIG · sync-stand
+#      je Sitzung:       UEBERGABE · ARBEITSSTAND · RESUME · mind-all.lock
+#    ⛔ `OPEN` bleibt EINE Datei — der Sync soll ja gerade ALLE Rettungen
+#      einspeisen, auch fremde. Deshalb dort `sid=` in der ZEILE (v5.56.0),
+#      hier im DATEINAMEN.
+
+mind_sid_kurz() {
+  # Eine Sitzungskennung, die in einen Dateinamen passt. Leer -> `nosession`.
+  local s="${1:-}"
+  s=$(printf '%s' "$s" | tr -cd 'A-Za-z0-9_-')
+  [ -n "$s" ] || s="nosession"
+  printf '%s' "$s"
+}
+
+mind_uebergabe_pfad() {
+  # $1 = Projekt, $2 = session_id -> der Pfad der EIGENEN Uebergabe.
+  local proj="${1:-}" sid
+  sid=$(mind_sid_kurz "${2:-}")
+  printf '%s/.claude-mind/rescued/UEBERGABE-%s' "$proj" "$sid"
+}
+
 # ===== v5.57.0: ALLE offenen Rettungen, an EINER Stelle ====================
 # ⛔ GEMESSEN 10.09.2026, und die Messung fiel ROT aus. `hooks.md` behauptet
 #    seit v5.4.1, `/mind-all` synce ALLE offenen Rettungen. Nachgestellt mit
@@ -2354,7 +2392,14 @@ _mind_kennung_gueltig() {
 
 mind_rolle() {
   # $1 = session_id, $2 = Projekt
-  # -> sync | manager | arbeiter | unbekannt | keine   (Rueckgabe immer 0)
+  # -> die Rolle, wie sie im Roster steht | unbekannt | keine  (Rueckgabe 0)
+  # ⛔ v5.61.0: KEINE FESTE LISTE MEHR. Bis v5.60.0 gab die Funktion nur
+  #    `sync|manager|arbeiter` heraus und alles andere als `unbekannt`. Palvedo
+  #    hat VIER Rollen (manager, arbeiter, sync, forschung) — die vierte galt
+  #    damit als nicht im Roster, und `unbekannt` redet. Eine forschung-Sitzung
+  #    waere weiter gemahnt worden, obwohl dort ein sync sitzt.
+  # ⭐ `unbekannt` heisst jetzt genau eine Sache: DIESE KENNUNG STEHT NICHT IM
+  #    ROSTER. Was die Rolle bedeutet, entscheidet der Aufrufer.
   local sid="${1:-}" proj="${2:-}" datei zeile k r
   datei="$proj/.claude/rules/rollen.md"
   { [ -n "$proj" ] && [ -r "$datei" ]; } || { printf 'keine'; return 0; }
@@ -2369,9 +2414,9 @@ mind_rolle() {
     k=$(_mind_zelle "$zeile" 3)
     [ "$k" = "$sid" ] || continue
     r=$(_mind_zelle "$zeile" 1)
-    case "$r" in
-      sync|manager|arbeiter) printf '%s' "$r"; return 0 ;;
-    esac
+    # ⚠ Nur die Kopfzeile ausschliessen — sie traegt in Spalte 3 nie eine
+    #   Kennung und kann hier gar nicht treffen; der Fall bleibt als Guard.
+    case "$r" in ''|rolle|---) ;; *) printf '%s' "$r"; return 0 ;; esac
   done < "$datei"
   printf 'unbekannt'
   return 0
@@ -2401,7 +2446,11 @@ mind_sync_zustaendig() {
   local sid="${1:-}" proj="${2:-}" rolle syncid
   { [ -n "$sid" ] && [ -n "$proj" ]; } || return 1
   rolle=$(mind_rolle "$sid" "$proj")
-  case "$rolle" in manager|arbeiter) ;; *) return 1 ;; esac
+  # ⛔ STILL wird JEDE Rolle ausser `sync`, sofern die Kennung im Roster steht.
+  #    Bis v5.60.0 stand hier `manager|arbeiter` — eine feste Liste, die eine
+  #    vierte Rolle nicht kennt. `keine` (kein Roster) und `unbekannt` (Kennung
+  #    nicht im Roster) reden weiter: das ist die Fail-safe-Richtung.
+  case "$rolle" in sync|unbekannt|keine|'') return 1 ;; esac
   syncid=$(mind_sync_kennung "$proj/.claude/rules/rollen.md")
   _mind_kennung_gueltig "$syncid" || return 1
   [ "$syncid" = "$(printf '%s' "$sid" | tr 'A-Z' 'a-z')" ] && return 1

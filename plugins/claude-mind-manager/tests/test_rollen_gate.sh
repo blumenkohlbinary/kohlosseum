@@ -199,5 +199,32 @@ pruef "ohne CLAUDE_PLUGIN_ROOT -> Rueckgabe 1" "1" \
   "$(CLAUDE_PLUGIN_ROOT="" bash "$R/hooks/rollen-gate.sh" "$ARB" "$P" >/dev/null 2>&1; echo $?)"
 
 echo
+echo "=== 15) ⛔ EIN ROSTER KANN MEHR ALS DREI ROLLEN HABEN ==="
+# ⛔ Palvedo hat VIER: manager, arbeiter, sync, forschung. Bis v5.60.0 gab
+#    `mind_rolle` nur drei feste Werte heraus und meldete die vierte als
+#    `unbekannt` — und `unbekannt` redet. Eine forschung-Sitzung waere weiter
+#    gemahnt worden, obwohl dort ein sync sitzt.
+FORSCH="local_ee11ee22-3333-4444-5555-666677778888"
+{
+  echo '| Rolle | Name | sessionId | Tut |'
+  echo '|---|---|---|---|'
+  echo "| **manager** | **Timo** | \`$MGR\` | leitet |"
+  echo "| **arbeiter** | **Kalle** | \`$ARB\` | baut |"
+  echo "| **sync** | **Nora** | \`$SYNC\` | faehrt die Werkzeuge |"
+  echo "| **forschung** | **Emil** | \`$FORSCH\` | recherchiert |"
+} > "$P/.claude/rules/rollen.md"
+pruef "die vierte Rolle wird beim Namen genannt" "forschung" "$(mind_rolle "$FORSCH" "$P")"
+mind_sync_zustaendig "$FORSCH" "$P"
+pruef "⭐ und sie wird STILLGELEGT wie die anderen" "0" "$?"
+mind_sync_zustaendig "$SYNC" "$P"
+pruef "⛔ der sync selbst weiterhin nicht" "1" "$?"
+mind_sync_zustaendig "$FREMD" "$P"
+pruef "⛔ eine Kennung ausserhalb des Rosters weiterhin nicht" "1" "$?"
+sauber; schuld
+pruef "am Hook: forschung ist still" "ja" "$(still_ps "$FORSCH")"
+sauber; schuld
+pruef "⭐ POSITIVKONTROLLE: der sync redet weiter" "nein" "$(still_ps "$SYNC")"
+
+echo
 echo "  $GRUEN gruen · $ROT rot"
 [ "$ROT" -eq 0 ]

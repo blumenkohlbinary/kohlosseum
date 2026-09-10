@@ -38,7 +38,14 @@ export CLAUDE_PROJECT_DIR="$T1/p"
 ruf "$T1/p" "$T1/p/t.jsonl"
 R="$T1/p/.claude-mind/rescued"
 pruef "Chat-Rettung entsteht"  "$(ls "$R"/*_chat.md 2>/dev/null | wc -l | tr -d ' ')" "1"
-pruef "UEBERGABE-Merker liegt" "$([ -f "$R/UEBERGABE" ] && echo ja || echo nein)" "ja"
+# ⛔ v5.61.0: die UEBERGABE traegt die Sitzungskennung im Dateinamen. Der
+#    Aufruf oben setzt `session_id: S1`, also heisst sie `UEBERGABE-S1`.
+pruef "UEBERGABE-Merker der EIGENEN Sitzung liegt" \
+      "$([ -f "$R/UEBERGABE-S1" ] && echo ja || echo nein)" "ja"
+# ⭐ GEGENPROBE zum Umzug: der alte, namenlose Merker entsteht NICHT mehr.
+#    Ohne sie bliebe unbemerkt, wenn jemand beide schriebe.
+pruef "⛔ und der namenlose NICHT" \
+      "$([ -f "$R/UEBERGABE" ] && echo ja || echo nein)" "nein"
 pruef "OPEN entsteht (kein Sync gelaufen)" "$([ -f "$R/OPEN" ] && echo ja || echo nein)" "ja"
 
 echo
@@ -46,7 +53,10 @@ echo "=== B · SABOTAGE: nur die UEBERGABE-Schreibung scheitert ==="
 T2=$(mktemp -d); bau_projekt "$T2/p"
 export CLAUDE_PROJECT_DIR="$T2/p"
 # Ein VERZEICHNIS namens UEBERGABE laesst die Umleitung scheitern — und sonst nichts.
-mkdir -p "$T2/p/.claude-mind/rescued/UEBERGABE/blockiert"
+# ⛔ v5.61.0: das Sperr-Verzeichnis muss den NEUEN Namen tragen. Mit dem
+#    alten blockiert es nichts mehr, und der Fall waere gruen, ohne noch etwas
+#    zu messen — die teuerste Sorte von Prueffall.
+mkdir -p "$T2/p/.claude-mind/rescued/UEBERGABE-S1/blockiert"
 ruf "$T2/p" "$T2/p/t.jsonl"
 R="$T2/p/.claude-mind/rescued"
 pruef "Chat-Rettung entsteht TROTZDEM" "$(ls "$R"/*_chat.md 2>/dev/null | wc -l | tr -d ' ')" "1"
@@ -62,7 +72,7 @@ printf 'ts=vorher\n' > "$T3/p/.claude-mind/rescued/sync-stand"
 ruf "$T3/p" "$T3/p/t.jsonl"
 R="$T3/p/.claude-mind/rescued"
 pruef "Chat-Rettung entsteht"        "$(ls "$R"/*_chat.md 2>/dev/null | wc -l | tr -d ' ')" "1"
-pruef "UEBERGABE liegt"              "$([ -f "$R/UEBERGABE" ] && echo ja || echo nein)" "ja"
+pruef "UEBERGABE-S1 liegt"           "$([ -f "$R/UEBERGABE-S1" ] && echo ja || echo nein)" "ja"
 pruef "KEINE neue Schuld (kein OPEN)" "$([ -f "$R/OPEN" ] && echo ja || echo nein)" "nein"
 pruef "sync-stand verbraucht"        "$([ -f "$R/sync-stand" ] && echo da || echo weg)" "weg"
 

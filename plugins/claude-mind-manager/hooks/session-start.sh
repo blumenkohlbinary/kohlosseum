@@ -50,7 +50,13 @@ fi
 # Wird eine Sitzung nach der Kompaktierung neu gestartet, ist prompt-submit.sh noch nicht
 # gelaufen. Ohne diesen Zweig ginge der Arbeitsstand genau dann verloren, wenn er am
 # meisten wert waere.
-_UEB="$PROJ/.claude-mind/rescued/UEBERGABE"
+# ⛔ v5.61.0: NUR DIE EIGENE — siehe prompt-submit.sh. Die Kennung wird hier
+#    frueher gebraucht als weiter unten fuer die Schuld-Sperre; deshalb ein
+#    eigenes `jq` statt der Variablen von dort, die es hier noch nicht gibt.
+_USID=""
+command -v jq >/dev/null 2>&1 && _USID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null)
+_UEB="$PROJ/.claude-mind/rescued/UEBERGABE-$(printf '%s' "${_USID:-nosession}" | tr -cd 'A-Za-z0-9_-')"
+[ -f "$_UEB" ] || _UEB="$PROJ/.claude-mind/rescued/UEBERGABE"
 if [ -f "$_UEB" ]; then
   _AS=$(grep -m1 '^arbeitsstand=' "$_UEB" 2>/dev/null | cut -d= -f2-)
   if [ -n "$_AS" ] && [ -s "$_AS" ] && [ -n "$CLAUDE_PLUGIN_ROOT" ]; then

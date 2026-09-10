@@ -143,7 +143,16 @@ fi
 # Bis v5.6.0 hing JEDE Meldung an der Sync-SCHULD. Laeuft der Sync kuenftig VOR der
 # Kompaktierung, gibt es keine Schuld — und damit haette hier niemand mehr ein Wort gesagt,
 # genau in dem Moment, in dem der Kontext leer ist und die Uebergabe am noetigsten waere.
-UEBERGABE="$PROJ/.claude-mind/rescued/UEBERGABE"
+# ⛔ v5.61.0: NUR DIE EIGENE UEBERGABE. Sie traegt die Sitzungskennung im
+#    Dateinamen; `rm -f` unten raeumt damit nur die eigene weg.
+# ⚠ EIN RUECKFALL BLEIBT, und er ist bewusst: ein Merker aus einer Fassung vor
+#   v5.61.0 heisst noch `UEBERGABE` ohne Kennung. Den nimmt weiterhin der erste
+#   Leser — sonst laege er fuer immer. Er ist endlich: nach der ersten
+#   Kompaktierung unter v5.61.0 entsteht keiner mehr.
+_USID=""
+command -v jq >/dev/null 2>&1 && _USID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null)
+UEBERGABE="$PROJ/.claude-mind/rescued/UEBERGABE-$(printf '%s' "${_USID:-nosession}" | tr -cd 'A-Za-z0-9_-')"
+[ -f "$UEBERGABE" ] || UEBERGABE="$PROJ/.claude-mind/rescued/UEBERGABE"
 if [ -f "$UEBERGABE" ]; then
   _AS=$(grep -m1 '^arbeitsstand=' "$UEBERGABE" 2>/dev/null | cut -d= -f2-)
   _RS=$(grep -m1 '^resume='       "$UEBERGABE" 2>/dev/null | cut -d= -f2-)
