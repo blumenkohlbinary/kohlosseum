@@ -1929,8 +1929,34 @@ mind_schritt_start() {
       mind_log WARN "schritt-quittung bei $zeilen Zeilen geleert (Notbremse, Kettenmarke liegt)"
     : > "$q" || return 1
   fi
-  printf '{"ereignis":"start","skill":"%s","erwartet":"%s","ts":"%s"}\n' \
-    "$skill" "$*" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$q"
+  # ⛔ v5.77.0 — WELCHE VERSION LAEUFT HIER EIGENTLICH? Zwei Antworten, und sie
+  #    koennen auseinanderlaufen:
+  #      code  = basename "$CLAUDE_PLUGIN_ROOT"   — woher lib.sh und references kommen
+  #      text  = $MIND_SKILL_VERSION              — der Stempel IM Skill-Text selbst,
+  #                                                 gesetzt in dessen erstem Bash-Block
+  #    Gemessen 10.09.2026: Rita bekam bei /mind-memory den Skill-TEXT aus 5.2.0
+  #    (72 Versionen alt), waehrend derselbe Aufruf fuer /mind-all 5.70.0 zeigte.
+  #    Sie hat es GEMERKT, weil sie hingesehen hat — Glueck, kein Verfahren.
+  #    ⭐ Der Stempel macht den Text messbar: laeuft ein alter Skill-Text gegen
+  #      eine neue lib.sh, stimmen die beiden nicht ueberein, und das steht ab
+  #      jetzt in der Quittung statt nur in der Aufmerksamkeit der Leserin.
+  #    ⚠ KEIN neuer Parameter — beide Werte kommen aus der Umgebung. Sonst
+  #      muessten alle zehn Aufrufer im selben Commit nachziehen (CLAUDE.md).
+  #    ⚠ Fehlt der Stempel (aelterer Skill-Text): `unbekannt`, KEIN Bruch gemeldet.
+  #      Ein alter Text ohne Stempel ist genau der Fall, den man sehen will —
+  #      aber "unbekannt gegen 5.77.0" ist ein Befund, keine Luege.
+  local v_code v_text bruch
+  v_code=$(basename "${CLAUDE_PLUGIN_ROOT:-}" 2>/dev/null); [ -n "$v_code" ] || v_code="unbekannt"
+  v_text="${MIND_SKILL_VERSION:-unbekannt}"
+  bruch=false
+  if [ "$v_text" != "unbekannt" ] && [ "$v_code" != "unbekannt" ] && [ "$v_text" != "$v_code" ]; then
+    bruch=true
+    mind_log WARN "VERSIONSBRUCH in $skill: Skill-Text $v_text, Code $v_code"
+    echo "⛔ VERSIONSBRUCH: der Text von $skill ist $v_text, der Code (lib.sh, references) ist $v_code." >&2
+    echo "   Dieser Lauf folgt einer anderen Anleitung, als das Plugin ausliefert. Neustart." >&2
+  fi
+  printf '{"ereignis":"start","skill":"%s","erwartet":"%s","ts":"%s","code":"%s","text":"%s","versionsbruch":%s}\n' \
+    "$skill" "$*" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$v_code" "$v_text" "$bruch" >> "$q"
 }
 
 # NACH jedem Schritt. status = gelaufen | gelaufen:<a>/<b> | uebersprungen:<grund>
@@ -2037,6 +2063,16 @@ mind_schritt_bilanz() {
   # ⛔ `TEIL=` ist MASCHINENLESBAR und dafuer da: `/mind-all` soll die Zahl
   #    lesen koennen, ohne die Prosa darunter zu parsen.
   echo "ERWARTET=$n_erw GELAUFEN=$gel UEBERSPRUNGEN=$ueb FEHLER=$feh LEER=$leer TEIL=$n_teil"
+  # ⛔ v5.77.0: VERSIONSBRUCH steht in der Bilanz, nicht nur im Log. Ein Lauf,
+  #    dessen Skill-Text aus einer anderen Version stammt als sein Code, hat
+  #    einer anderen Anleitung gefolgt, als das Plugin ausliefert — und das
+  #    gehoert dorthin, wo der Bericht es liest.
+  local vb; vb=$(grep -c '"versionsbruch":true' "$q" 2>/dev/null); case "$vb" in ''|*[!0-9]*) vb=0 ;; esac
+  if [ "$vb" -gt 0 ]; then
+    echo "  ⛔ VERSIONSBRUCH in $vb Schritt(en):"
+    grep '"versionsbruch":true' "$q" 2>/dev/null \
+      | sed -n 's/.*"skill":"\([^"]*\)".*"code":"\([^"]*\)","text":"\([^"]*\)".*/     \1: Text \3, Code \2/p'
+  fi
   [ -n "$ueberliste" ] && echo "  UEBERSPRUNGEN:$ueberliste"
   # ⭐ Teilabdeckung ist ein EIGENER Zustand, nicht "gelaufen". 5/11 ist eine
   #    gueltige Antwort; sie als 11/11 zu berichten ist es nicht.

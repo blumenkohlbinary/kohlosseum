@@ -230,5 +230,40 @@ R=$( D=$(mktemp -d); mkdir -p "$D/.claude-mind"
 janein "⛔ 5/5 Skills, 4/4 Agents, EINE Teilabdeckung -> TEILSYNC" "teil" "$R"
 
 echo
+echo "== ⭐ v5.77.0  VERSIONSBRUCH — welche Version laeuft hier eigentlich? =="
+# ⛔ ANLASS: Rita bekam am 10.09.2026 bei /mind-memory den Skill-TEXT aus 5.2.0
+#    (72 Versionen alt), waehrend derselbe Aufruf fuer /mind-all 5.70.0 zeigte.
+#    Sie hat es GEMERKT, weil sie hingesehen hat — Glueck, kein Verfahren.
+# ⭐ Jetzt traegt jeder Skill-Text einen Stempel (MIND_SKILL_VERSION), und
+#    mind_schritt_start vergleicht ihn mit basename "$CLAUDE_PLUGIN_ROOT".
+# ⛔ Am gebauten Paket ist basename "$CLAUDE_PLUGIN_ROOT" die Versionsnummer.
+#    Am Quellbaum waere es "claude-mind-manager" — dann sagt der Fall ehrlich,
+#    dass er dort nichts messen kann, statt gruen zu melden.
+_VC=$(basename "$CLAUDE_PLUGIN_ROOT")
+case "$_VC" in
+  [0-9]*.[0-9]*)
+    A=$(lauf "export MIND_SKILL_VERSION='$_VC'; mind_schritt_start \"\$D\" x a; mind_schritt a gelaufen 5 \"\$D\"")
+    janein "Stempel == Code -> kein VERSIONSBRUCH" "nein" \
+      "$(echo "$A" | grep -q 'VERSIONSBRUCH' && echo ja || echo nein)"
+    B=$(lauf 'export MIND_SKILL_VERSION="5.2.0"; mind_schritt_start "$D" x a; mind_schritt a gelaufen 5 "$D"')
+    janein "⛔ Stempel 5.2.0 gegen Code $_VC -> VERSIONSBRUCH in der Bilanz" "ja" \
+      "$(echo "$B" | grep -q 'VERSIONSBRUCH in 1 Schritt' && echo ja || echo nein)"
+    janein "   ... und sie nennt BEIDE Versionen" "ja" \
+      "$(echo "$B" | grep -q "x: Text 5.2.0, Code $_VC" && echo ja || echo nein)"
+    C=$(lauf 'unset MIND_SKILL_VERSION; mind_schritt_start "$D" x a; mind_schritt a gelaufen 5 "$D"')
+    janein "⚠ ohne Stempel (alter Text) -> unbekannt, KEIN Bruch behauptet" "nein" \
+      "$(echo "$C" | grep -q 'VERSIONSBRUCH' && echo ja || echo nein)"
+    _D2=$(mktemp -d); ( . "$LIB" >/dev/null 2>&1; export MIND_SKILL_VERSION="5.2.0"; mind_schritt_start "$_D2" x a >/dev/null 2>&1 )
+    janein "die Startzeile traegt code= und text= maschinenlesbar" "ja" \
+      "$(grep -q "\"code\":\"$_VC\",\"text\":\"5.2.0\",\"versionsbruch\":true" "$_D2/.claude-mind/schritt-quittung.jsonl" 2>/dev/null && echo ja || echo nein)"
+    rm -rf "$_D2"
+    ;;
+  *)
+    echo "  [--- ] UEBERSPRUNGEN: CLAUDE_PLUGIN_ROOT zeigt auf den Quellbaum ('$_VC'), nicht auf ein Paket."
+    echo "         ⚠ Ein uebersprungener Fall ist KEIN bestandener — am gebauten Paket fahren."
+    ;;
+esac
+
+echo
 echo "  $OK ok, $ROT rot"
 [ "$ROT" -eq 0 ] || exit 1
