@@ -687,6 +687,51 @@ def ablagen(projekt, bereich="alles"):
 _WORTMARKE = re.compile(r"^[A-Za-zÄÖÜäöüß]+$")
 
 
+# ---------------------------------------------------------------------------
+# ⛔ v5.63.0: DIE FORM DER MARKE, GEZAEHLT — die Methode aus Lauf 4.
+#
+# Gemessen 10.09.2026 an 131 echten Duplikat-Paaren dieses Projekts:
+#   Pfad oder Dateiname   93 · Slash-Befehl 20 · Versionsnummer 2
+#   -> 115 von 131 = 87,8 % sind NAMEN VON DINGEN, keine Aussagen.
+# Zwei Dateien nennen `CLAUDE.md` oder `/mind-all`, weil beide ueber dasselbe
+# System reden. Das ist ein QUERVERWEIS, keine Dopplung — und ein Schnitt
+# wuerde eine Verbindung kappen statt einer Wiederholung.
+#
+# ⭐ WARUM DIE ZAHL HIER STEHT UND NICHT IN EINER REGEL: was durchgesetzt
+#    werden muss, gehoert in ein Werkzeug (`kontext-anlegen.md`). Ein
+#    kuenftiger Lauf SIEHT die Verteilung, bevor er urteilt.
+# ⛔ UND SIE IST KEIN FREISPRUCH. Sie bindet zur PRUEFUNG, nicht zum
+#    Ergebnis: kommt eine andere Verteilung heraus, urteilt der Lauf anders.
+#    Ein Freispruch im Urteilsbuch haette den naechsten ECHTEN Fall
+#    unterdrueckt, und ein Lauf, der ihn nicht vorlegt, sieht aus wie einer,
+#    der nichts gefunden hat.
+_F_ZAHL = re.compile(r"^\d[\d\s.,]*\s*(Zeilen|Zeichen|Bytes|B|KB|MB|Tokens|h|s|%)$",
+                     re.I)
+_F_VERSION = re.compile(r"^v?\d+\.\d+")
+_F_DATEI = re.compile(r"\.(md|py|sh|json|jsonl|txt|bat|log|exe)$", re.I)
+_F_BEFEHL = re.compile(r"^/[a-z]")
+_F_CODE = re.compile(r"[()\[\]{}=$\"']")
+
+
+def formklasse(m):
+    """Welcher FORM gehoert die Marke an? ⛔ Form liefert KANDIDATEN, keine Urteile."""
+    m = (m or "").strip()
+    if _F_ZAHL.match(m):
+        return "zahl-mit-einheit"
+    if _F_BEFEHL.match(m):
+        return "slash-befehl"
+    if _F_VERSION.match(m):
+        return "versionsnummer"
+    if _F_DATEI.search(m) or "/" in m or "\\" in m:
+        return "pfad-oder-datei"
+    if _F_CODE.search(m):
+        return "code-oder-variable"
+    return "sonstiges"
+
+
+NAMEN_VON_DINGEN = ("pfad-oder-datei", "slash-befehl", "versionsnummer")
+
+
 def _wortmarke(m):
     """Marke ohne jedes Sonderzeichen — also moeglicherweise nur ein Wort.
 
@@ -805,6 +850,29 @@ def lauf(projekt, bereich="alles", liefere=False):
             print("       (`OPEN`, `NEVER`, `README`). Die Form entscheidet "
                   "es nicht — ein Mensch schon.")
             print("     ⭐ Ohne die Wort-Paare bleiben %d." % (_n - len(_wort)))
+
+        # ⛔ v5.63.0: DIE FORM DER MARKEN, GEZAEHLT — vor jedem Urteil.
+        #    Sie steht hier und nicht in einer Regel, damit ein kuenftiger Lauf
+        #    sie SIEHT statt sie nachschlagen zu muessen.
+        _echt = [z for z in dup if not _wortmarke(z[1])]
+        if _echt:
+            _k = collections.Counter(formklasse(z[1]) for z in _echt)
+            _namen = sum(_k[x] for x in NAMEN_VON_DINGEN)
+            print("\n     ⭐ FORM der %d Marken ohne Wort-Paare:" % len(_echt))
+            for _name, _c in _k.most_common():
+                print("       %-20s %3d  (%4.1f %%)"
+                      % (_name, _c, 100.0 * _c / len(_echt)))
+            print("     ⭐ NAMEN VON DINGEN (Pfad/Befehl/Version): %d von %d "
+                  "= %.1f %%" % (_namen, len(_echt), 100.0 * _namen / len(_echt)))
+            print("     ⚠ Ein hoher Anteil heisst QUERVERWEIS, nicht Dopplung —"
+                  " zwei Dateien nennen")
+            print("       denselben Pfad, weil beide ueber dasselbe System reden."
+                  " Ein Schnitt kappt")
+            print("       dann eine Verbindung statt einer Wiederholung.")
+            print("     ⛔ Das ist eine PRUEFPFLICHT, kein Freispruch. Kommt eine"
+                  " andere Verteilung")
+            print("       heraus, wird anders geurteilt. (Gemessen 10.09.2026:"
+                  " 115 von 131 = 87,8 %.)")
 
     ziel = [z for z in zeilen if z[0] == "zielform"]
     if ziel:
@@ -1056,6 +1124,35 @@ def selbsttest():
     # ⚠ GEGENPROBE: eine leere Liste waere auch eine Liste. Der Prueftext
     #   oben erzeugt mindestens einen Befund — sonst misst der Fall nichts.
     pruef("   ... und sie ist nicht leer", len(_liste) > 0, True)
+    # --- ⛔ FORMKLASSE: die Methode aus Lauf 4, gemessen statt geglaubt ----
+    #     ⭐ Sie entscheidet nichts — sie zaehlt. "Formmerkmale liefern
+    #        KANDIDATEN, keine Urteile" ist die Doktrin dieses Projekts, und
+    #        eine Zaehlung ist der einzige Gebrauch von Form, der sie einhaelt.
+    pruef("Pfad -> pfad-oder-datei", formklasse("docs/plugin/README.md"),
+          "pfad-oder-datei")
+    pruef("blosser Dateiname auch", formklasse("architecture.md"),
+          "pfad-oder-datei")
+    pruef("Windows-Pfad auch", formklasse("C:\\CD\\KOHLEKTIV"),
+          "pfad-oder-datei")
+    pruef("Slash-Befehl", formklasse("/mind-all"), "slash-befehl")
+    pruef("Versionsnummer", formklasse("5.2.1"), "versionsnummer")
+    pruef("Zahl mit Einheit", formklasse("200 Zeichen"), "zahl-mit-einheit")
+    pruef("Code/Variable", formklasse("subprocess.run([\"bash\"])"),
+          "code-oder-variable")
+    # ⛔ GEGENPROBE: ein Bezeichner ohne Sonderzeichen faellt NICHT in eine
+    #    der drei "Namen von Dingen"-Klassen. Ohne diesen Fall koennte
+    #    `formklasse` alles zu 100 % als Querverweis ausweisen und die Methode
+    #    waere ein Freibrief.
+    pruef("⛔ blosser Bezeichner -> sonstiges", formklasse("KEEP_VERSIONS"),
+          "sonstiges")
+    pruef("   ... und er zaehlt NICHT als Name-von-Dingen",
+          formklasse("KEEP_VERSIONS") in NAMEN_VON_DINGEN, False)
+    pruef("⛔ leere Marke -> sonstiges", formklasse(""), "sonstiges")
+    # ⚠ Eine Zahl OHNE Einheit ist keine "Zahl mit Einheit".
+    pruef("⚠ blosse Zahl ist keine Zahl-mit-Einheit", formklasse("354"),
+          "sonstiges")
+
+
 
 
 
