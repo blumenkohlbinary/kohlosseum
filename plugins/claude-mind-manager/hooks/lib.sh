@@ -1967,7 +1967,29 @@ mind_schritt_bilanz() {
   [ -n "$teil" ] && echo "  TEILABDECKUNG:$teil"
   [ -n "$leerliste" ] && echo "  LEER (lief, gab nichts aus):$leerliste"
   [ -n "$fehlliste" ] && echo "  FEHLER:$fehlliste"
-  [ -n "$fehlt" ] && echo "  ⛔ FEHLT:$fehlt"
+  # ⛔ v5.59.0: `FEHLT` HEISST "NOCH NICHT QUITTIERT", NICHT "TOT".
+  #    Befund von Nora (Palvedo): ein LEBENDER Lauf schwieg 72 Sekunden, und
+  #    die Bilanz sah in dieser Zeit genauso aus wie bei einem gestorbenen.
+  #    ⭐ Eine Quittung ist ein LEBENSZEICHEN: sie belegt, dass etwas lief —
+  #      ihr Ausbleiben belegt NICHT, dass nichts mehr laeuft.
+  #    Deshalb steht das ALTER daneben. Es macht die Frage entscheidbar, ohne
+  #    sie zu beantworten: frisch heisst "arbeitet vermutlich", alt heisst
+  #    "sieh nach". ⚠ Eine Grenze wird bewusst NICHT gezogen — wie lange ein
+  #    Schritt dauern darf, ist ungemessen, und eine geratene Schwelle waere
+  #    dieselbe Bauform wie die Agent-Schwellen.
+  if [ -n "$fehlt" ]; then
+    local _qalt _qmt
+    _qmt=$(stat -c %Y "$q" 2>/dev/null)
+    case "$_qmt" in ''|*[!0-9]*) _qmt=0 ;; esac
+    if [ "$_qmt" -gt 0 ] 2>/dev/null; then
+      _qalt=$(( $(date +%s) - _qmt ))
+      echo "  ⛔ FEHLT (= noch nicht quittiert, NICHT tot):$fehlt"
+      echo "     letzte Quittung vor ${_qalt}s — ein laufender Schritt schweigt,"
+      echo "     bis er fertig ist. Gemessen: 72 s bei einem lebenden Lauf."
+    else
+      echo "  ⛔ FEHLT (= noch nicht quittiert, NICHT tot):$fehlt"
+    fi
+  fi
 
   [ -z "$fehlt" ] && [ "$feh" -eq 0 ] && [ "$leer" -eq 0 ]
 }

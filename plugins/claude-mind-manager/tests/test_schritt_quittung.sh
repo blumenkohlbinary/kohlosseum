@@ -130,5 +130,22 @@ janein "alle weisen die Bilanz im Bericht aus" "" \
        grep -q 'mind_schritt_bilanz' "$s" || printf ' %s' "$(basename "$(dirname "$s")")"; done)"
 
 echo
+echo "== ⛔ Noras Befund 3: FEHLT heisst noch nicht quittiert, nicht tot =="
+# ⭐ Gemessen in Palvedo: ein LEBENDER Lauf schwieg 72 Sekunden, und die Bilanz
+#    sah dabei aus wie bei einem gestorbenen. Eine Quittung ist ein
+#    LEBENSZEICHEN — ihr Ausbleiben belegt nichts.
+Q=$(lauf 'mind_schritt_start "$D" x eins zwei; mind_schritt eins gelaufen 10 "$D"')
+janein "die Marke FEHLT bleibt erhalten" "ja" \
+       "$(echo "$Q" | grep -q 'FEHLT' && echo ja || echo nein)"
+janein "⭐ und sie sagt, dass das NICHT tot heisst" "ja" \
+       "$(echo "$Q" | grep -qi 'NICHT tot' && echo ja || echo nein)"
+janein "⭐ das ALTER der letzten Quittung steht daneben" "ja" \
+       "$(echo "$Q" | grep -q 'letzte Quittung vor' && echo ja || echo nein)"
+# ⚠ GEGENPROBE: ist alles quittiert, wird auch nichts behauptet.
+V=$(lauf 'mind_schritt_start "$D" x eins zwei; mind_schritt eins gelaufen 10 "$D"; mind_schritt zwei gelaufen 10 "$D"')
+janein "⛔ vollstaendig quittiert -> weder FEHLT noch Alter" "nein" \
+       "$(echo "$V" | grep -qE 'FEHLT|letzte Quittung' && echo ja || echo nein)"
+
+echo
 echo "  $OK ok, $ROT rot"
 [ "$ROT" -eq 0 ] || exit 1
