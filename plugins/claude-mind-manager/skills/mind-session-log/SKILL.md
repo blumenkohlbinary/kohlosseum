@@ -175,10 +175,31 @@ source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 SLUG=$(hash_project_dir)
 PROJECTS_DIR="$HOME/.claude/projects/$SLUG"
 
-# Fallback: wenn Slug-Dir nicht existiert, ls -td neueste Projekt-Dir
+# ⛔ v5.69.0: HIER STAND EIN RUECKFALL AUF DAS NEUESTE PROJEKT.
+#    `[ ! -d "$PROJECTS_DIR" ] && PROJECTS_DIR=$(ls -td .../projects/*/ | head -1)`
+#    Fehlte der Slug-Ordner, schob er IRGENDEIN anderes Projekt unter — und
+#    der Sync haette den Chat eines FREMDEN PROJEKTS als Quelle genommen.
+#    ⭐ Nachgestellt 10.09.2026: 25 Projekt-Ordner lagen dort, gewaehlt wurde
+#       der nach Aenderungszeit juengste. `mind_transkript_pfad` faengt das
+#       NICHT — sie rechnet ihren Slug selbst, kommt leer zurueck, und der
+#       Rueckfall las dann aus dem fremden Ordner.
+#
+# ⛔ STREICHEN FUEGT KEIN VERHALTEN HINZU. Der Abbruch steht schon weiter
+#    unten (`kein Session-JSONL` -> exit 1); der Rueckfall hat ihn nur
+#    verhindert. ⭐ Ein ausgefallener Lauf hinterlaesst NICHTS, ein falsch
+#    gespeister hinterlaesst FALSCHES.
+#
+# ⚠ Der Ausloeser ist KEIN kaputter Slug: `slug_regression.py` bestand alle
+#   12 Faelle, und live trafen 3 von 3 echten Projekten. Es ist ein Projekt,
+#   in dem NIE eine Sitzung lief — dort gibt es nichts zu syncen, und der
+#   Abbruch ist die richtige Antwort, nicht die harte.
 if [ ! -d "$PROJECTS_DIR" ]; then
-  echo "WARN: Slug-Dir '$PROJECTS_DIR' nicht gefunden, fallback auf neuestes Projekt-Dir"
-  PROJECTS_DIR=$(ls -td "$HOME"/.claude/projects/*/ 2>/dev/null | head -1 | sed 's|/$||')
+  echo "ABBRUCH: kein Transkript-Ordner fuer dieses Projekt." >&2
+  echo "  erwartet: $PROJECTS_DIR" >&2
+  echo "  Das heisst: in diesem Projekt lief noch nie eine Claude-Sitzung," >&2
+  echo "  also gibt es auch nichts zu syncen. ⛔ KEIN kaputter Slug — nicht" >&2
+  echo "  danach suchen. Frueher wurde hier ein FREMDES Projekt untergeschoben." >&2
+  exit 1
 fi
 
 # Neueste JSONL (nicht Subagent-Files):

@@ -207,5 +207,63 @@ pruef "⭐ GEGENPROBE: bei Treffer ueber die Kennung KEINE Warnung" "nein" \
       "$(grep -q 'RUECKFALL gewaehlt' "$TMP/aus.txt" && echo ja || echo nein)"
 
 echo
+echo "=== 8) ⛔ v5.69.0: KEIN RUECKFALL AUF EIN FREMDES PROJEKT ==="
+# ⛔ Gemessen 10.09.2026: fehlte der Slug-Ordner, schob
+#    `[ ! -d "$PROJECTS_DIR" ] && PROJECTS_DIR=$(ls -td .../projects/*/ | head -1)`
+#    IRGENDEIN anderes Projekt unter — 25 lagen dort. `mind_transkript_pfad`
+#    faengt das NICHT: sie rechnet ihren Slug selbst, kommt leer zurueck, und
+#    der Rueckfall aus v5.68.0 las dann aus dem FREMDEN Ordner.
+# ⭐ Ein ausgefallener Lauf hinterlaesst nichts, ein falsch gespeister
+#    hinterlaesst Falsches. Deshalb Abbruch statt Ersatz.
+for _sk in mind-update mind-compact mind-session-log; do
+  _f="$R/skills/$_sk/SKILL.md"
+  # ⛔ GEZAEHLT WIRD DIE ZUWEISUNG AM ZEILENANFANG, NICHT DIE NENNUNG.
+  #   Die erste Fassung zaehlte die Zeichenkette schlechthin und wurde rot
+  #   am EIGENEN Kommentar, der zitiert, was entfernt WURDE. Sechstes
+  #   Vorkommen dieser Verwechslung in diesem Projekt — sie steht in
+  #   `env-vars.md` seit 27.08.2026 dokumentiert und trifft mich weiter.
+  pruef "$_sk: kein Rueckfall auf ein fremdes Projekt" "0" \
+        "$(grep -cE '^[[:space:]]*PROJECTS_DIR=[$][(]ls -td' "$_f")"
+  pruef "   ... sondern Abbruch" "1" \
+        "$(grep -c 'ABBRUCH: kein Transkript-Ordner' "$_f")"
+  # ⭐ AUFLAGE (a): die Meldung nennt den GRUND, nicht nur den Fehler — sonst
+  #    sucht der Leser nach einem kaputten Slug, den es nicht gibt.
+  pruef "   ... und nennt den GRUND (nie eine Sitzung)" "1" \
+        "$(grep -c 'nie eine Claude-Sitzung' "$_f")"
+  # ⚠ Desselben Grundes wegen: die AUSGABEFORM zaehlen, nicht jedes Vorkommen.
+  pruef "   ... und schliesst den kaputten Slug AUS" "1" \
+        "$(grep -c 'echo .*KEIN kaputter Slug' "$_f")"
+done
+
+echo
+echo "=== 9) ⭐ (d) NACHGESTELLT: Projekt ohne Slug-Ordner ==="
+# ⛔ Der ECHTE Block aus der SKILL.md, ausgeschnitten und gefahren.
+_ABB="$TMP/abbruch.sh"
+awk '/^# .* v5.69.0: HIER STAND EIN RUECKFALL/{an=1} an{print} an && /^fi$/{exit}' \
+  "$R/skills/mind-update/SKILL.md" | sed 's/\r$//' > "$_ABB"
+pruef "der Abbruch-Block liess sich ausschneiden" "ja" \
+      "$([ -s "$_ABB" ] && echo ja || echo nein)"
+bash -n "$_ABB" 2>/dev/null
+pruef "   ... und ist syntaktisch sauber" "0" "$?"
+
+_FEHLT="$TMP/gibt-es-nicht/projects/kein-slug"
+_AUS=$(PROJECTS_DIR="$_FEHLT" bash "$_ABB" 2>&1); _RC=$?
+pruef "⛔ fehlender Ordner -> Rueckgabe 1 (Abbruch)" "1" "$_RC"
+pruef "   ... die Meldung nennt den erwarteten Pfad" "ja" \
+      "$(printf '%s' "$_AUS" | grep -q 'kein-slug' && echo ja || echo nein)"
+pruef "   ... und den Grund" "ja" \
+      "$(printf '%s' "$_AUS" | grep -q 'nie eine Claude-Sitzung' && echo ja || echo nein)"
+# ⛔ DER FALL, DER ZAEHLT: PROJECTS_DIR darf danach NICHT auf ein fremdes
+#    Projekt zeigen. Frueher stand hier der juengste Ordner von 25.
+pruef "⛔ KEIN fremdes Projekt in der Ausgabe" "0" \
+      "$(printf '%s' "$_AUS" | grep -c 'C--CD-KOHLEKTIV')"
+
+# ⭐ GEGENPROBE: ist der Ordner DA, laeuft der Block durch und sagt nichts.
+_DA="$TMP/dabei"; mkdir -p "$_DA"
+_AUS2=$(PROJECTS_DIR="$_DA" bash "$_ABB" 2>&1); _RC2=$?
+pruef "⭐ GEGENPROBE: Ordner da -> Rueckgabe 0" "0" "$_RC2"
+pruef "   ... und keine Meldung" "" "$_AUS2"
+
+echo
 echo "  $GRUEN gruen · $ROT rot"
 [ "$ROT" -eq 0 ]
