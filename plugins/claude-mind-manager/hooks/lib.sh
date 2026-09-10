@@ -563,8 +563,19 @@ _resolve_memory_dir() {
   [ -d "$cand" ] && { echo "$cand"; return 0; }
 
   # (1) CLAUDE_CODE_REMOTE_MEMORY_DIR
-  if [ -n "$CLAUDE_CODE_REMOTE_MEMORY_DIR" ]; then
-    cand="$CLAUDE_CODE_REMOTE_MEMORY_DIR/projects/$slug/memory"
+  # ⛔ v5.70.0: `${VAR:-}` IST HIER PFLICHT, NICHT KOSMETIK. Ohne die
+  #    Absicherung starb diese Funktion unter `set -u` an dieser Zeile:
+  #      lib.sh:566: CLAUDE_CODE_REMOTE_MEMORY_DIR: unbound variable
+  #    Sie gab dann NICHTS aus und kam mit rc 1 zurueck — und die Wege (1),
+  #    (2) und (3) darunter waren damit unerreichbar.
+  #    ⚠ Vier Hooks laufen unter `set -u` (kontext-wache, plan-modus,
+  #      plan-pause, stop), und `kontext-wache.sh` erreicht ueber
+  #      `mind_kontext_bilanz` genau diesen Weg. Dort waren Worktree-Erkennung
+  #      und `autoMemoryDirectory` seit ihrer Einfuehrung TOT.
+  #    ⭐ Gemessen 10.09.2026: ohne `set -u` lieferte sie den eigenen Pfad,
+  #      mit `set -u` gar nichts. Derselbe Aufruf, zwei Ergebnisse.
+  if [ -n "${CLAUDE_CODE_REMOTE_MEMORY_DIR:-}" ]; then
+    cand="${CLAUDE_CODE_REMOTE_MEMORY_DIR:-}/projects/$slug/memory"
     [ -d "$cand" ] && { mind_log INFO "memory-dir via CLAUDE_CODE_REMOTE_MEMORY_DIR: $cand"; echo "$cand"; return 0; }
   fi
 
@@ -618,15 +629,43 @@ get_memory_dir() {
     return 0
   fi
 
-  # Ab hier: nichts gefunden. Fallback auf das neueste Projekt-Verzeichnis — unveraendert
-  # seit v3.2.2, samt Rueckgabewert 1 und stderr-Warnung.
-  local memory_dir projects_dir
-  projects_dir=$(ls -td "$HOME"/.claude/projects/*/ 2>/dev/null | head -1 | sed 's|/$||')
-  memory_dir="$projects_dir/memory"
+  # ⛔ v5.70.0: HIER STAND EIN RUECKFALL AUF DAS NEUESTE PROJEKT.
+  #      projects_dir=$(ls -td "$HOME"/.claude/projects/*/ | head -1)
+  #      memory_dir="$projects_dir/memory"
+  #    Er gab das `memory/` eines FREMDEN Projekts zurueck — mit rc 1 und
+  #    einer Warnung, aber gemessen werten drei der vier Aufrufer den
+  #    Rueckgabewert NICHT aus:
+  #      mind-all/SKILL.md:605   `|| MEMDIR=""`   -> abgesichert
+  #      mind-memory:151         ohne Auswertung  -> bekam ein FREMDES memory/
+  #      mind-update:175         ohne Auswertung  -> dito
+  #      lib.sh:1734 (mind_kontext_bilanz) ohne Auswertung, und mit 2>/dev/null
+  #    ⛔ `/mind-memory` SCHREIBT dorthin. Die globale Nutzerregel sagt: nie
+  #      in einem fremden Projektordner editieren.
+  #    ⭐ Der Vorfall steht in `references/slug_regression.py` in der eigenen
+  #      Kopfzeile — er ist nicht theoretisch.
+  #
+  # ⭐ WAS STATTDESSEN GILT: `_resolve_memory_dir` gibt am Ende den EIGENEN
+  #    Slug-Pfad zurueck — nicht existent, aber RICHTIG — und rc 1 dazu.
+  #    Der wird jetzt durchgereicht, samt Rueckgabewert und samt Warnung.
+  #    Wer den rc auswertet, verhaelt sich unveraendert; wer ihn ignoriert,
+  #    bekommt einen Pfad im RICHTIGEN Projekt. Ein `memory/` anzulegen, das
+  #    noch nicht existiert, ist die richtige Antwort — in ein fremdes zu
+  #    schreiben nie.
+  #
+  # ⚠ DIE WARNUNG BLEIBT und sagt den NEUEN Sachverhalt. Ein stiller
+  #   Wechsel waere von einem Treffer nicht zu unterscheiden.
+  local memory_dir
+  memory_dir=$(_resolve_memory_dir "$@" 2>/dev/null)
+  if [ -z "$memory_dir" ]; then
+    # ⛔ Sollte nach der set-u-Haertung nicht mehr vorkommen. Faellt es doch
+    #   aus, wird der Pfad hier aus demselben Slug gebaut — NIE aus einem
+    #   fremden Projekt.
+    memory_dir="$HOME/.claude/projects/$hash/memory"
+    mind_log WARN "_resolve_memory_dir lieferte nichts; Pfad aus dem Slug gebaut"
+  fi
 
-  # H2-Fix: stderr-Warnung damit Skill/User mismatch erkennt
-  mind_log WARN "Slug-Dir $hash nicht gefunden, fallback: $projects_dir"
-  echo "WARN: get_memory_dir Fallback (Slug-Mismatch) — verwende $projects_dir statt $hash" >&2
+  mind_log WARN "Memory-Verzeichnis existiert nicht: $memory_dir"
+  echo "WARN: get_memory_dir — Verzeichnis existiert nicht, Pfad ist $hash/memory" >&2
 
   echo "$memory_dir"
   return 1

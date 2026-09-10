@@ -6,10 +6,14 @@
 #    "memory lokal, memory global". `ablagen()` deckte VIER ab — Skills, Memory
 #    und die Ahnen-CLAUDE.md wurden NIE verglichen.
 #
-# ⛔ FREMDPROJEKT-SCHUTZ: `get_memory_dir` in lib.sh faellt bei Slug-Mismatch auf
-#    das NEUESTE FREMDE Projekt zurueck (lib.sh:545-548). `mind_snapshot` sichert
-#    seit v5.2.1 dagegen ab. `ablagen()` tat es nicht — dieselbe Luecke, andere
-#    Ebene. Marken aus einem fremden Projekt waeren als Duplikate gemeldet worden.
+# ⛔ FREMDPROJEKT-SCHUTZ: `get_memory_dir` in lib.sh FIEL bei Slug-Mismatch auf
+#    das NEUESTE FREMDE Projekt zurueck. `mind_snapshot` sichert seit v5.2.1
+#    dagegen ab. `ablagen()` tat es nicht — dieselbe Luecke, andere Ebene.
+#    Marken aus einem fremden Projekt waeren als Duplikate gemeldet worden.
+#    ✅ v5.70.0: der Rueckfall ist WEG. `get_memory_dir` reicht den eigenen
+#      Slug-Pfad durch — nicht existent, aber richtig. Abschnitt 5 unten haelt
+#      das fest, samt der set-u-Haertung, ohne die es leer geblieben waere.
+#    ⚠ Der Schutz in `ablagen()` bleibt trotzdem: er ist die zweite Linie.
 #
 # ⛔ GATE AUF DIE DICT-SCHLUESSEL, nicht auf die Bildschirmausgabe.
 #    (messung-vor-glauben.md §1: "Die Kontrolle prueft den MECHANISMUS, nicht die
@@ -169,6 +173,59 @@ janein "und liest dann NICHTS Globales" 0 "$(printf '%s
 # ⛔ Rueckgabewert OHNE Pipe messen — eine Pipe verschluckt ihn.
 python "$CD_W" --bereich "$D/gibt-es-nicht" > /dev/null 2>&1
 janein "toter Projektpfad bricht ab (rc=2)" 2 "$?"
+
+echo
+echo "== ⛔ v5.70.0: KEIN RUECKFALL AUF EIN FREMDES PROJEKT (Memory) =="
+# ⛔ `get_memory_dir` gab bei fehlendem Slug-Ordner das `memory/` eines
+#    FREMDEN Projekts zurueck. Gemessen: drei der vier Aufrufer werten den
+#    Rueckgabewert NICHT aus (mind-memory:151, mind-update:175, lib.sh:1734);
+#    nur mind-all:605 tut es. `/mind-memory` SCHREIBT dorthin.
+# ⭐ Diese Sammlung laeuft unter `set -u` — genau die Lage, in der der
+#    zweite Fehler sichtbar wird: ohne `${CLAUDE_CODE_REMOTE_MEMORY_DIR:-}`
+#    starb `_resolve_memory_dir` an einer unbound variable und gab NICHTS aus.
+# shellcheck disable=SC1090
+. "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" 2>/dev/null
+
+_P="$D/nie-benutzt"; mkdir -p "$_P"
+_S=$(hash_project_dir "$_P")
+janein "⛔ der Slug-Ordner fehlt wirklich" "nein" \
+       "$([ -d "$HOME/.claude/projects/$_S" ] && echo ja || echo nein)"
+
+# (b) Ausgabe ist der EIGENE Pfad, Rueckgabe 1, KEIN fremdes Projekt.
+_A=$(get_memory_dir "$_P" 2>/dev/null); _RA=$?
+janein "Rueckgabe 1 (nicht gefunden)" "1" "$_RA"
+janein "⛔ der EIGENE Slug steht im Pfad" "ja" \
+       "$(case "$_A" in *"$_S"*) echo ja ;; *) echo nein ;; esac)"
+janein "⛔ und KEIN fremdes Projekt" "0" \
+       "$(printf '%s' "$_A" | grep -c 'C--CD-KOHLEKTIV')"
+janein "   ... der Pfad ist nicht leer" "ja" \
+       "$([ -n "$_A" ] && echo ja || echo nein)"
+
+# ⚠ (Auflage 2) Die Warnung bleibt UND sagt den neuen Sachverhalt.
+_W=$(get_memory_dir "$_P" 2>&1 >/dev/null)
+janein "die stderr-Warnung bleibt" "ja" \
+       "$(printf '%s' "$_W" | grep -q 'WARN' && echo ja || echo nein)"
+janein "⛔ sie sagt NICHT mehr 'verwende <fremd>'" "0" \
+       "$(printf '%s' "$_W" | grep -c 'verwende')"
+janein "⭐ sondern: Verzeichnis existiert nicht" "ja" \
+       "$(printf '%s' "$_W" | grep -q 'existiert nicht' && echo ja || echo nein)"
+
+# (a-Teil) `_resolve_memory_dir` ueberlebt `set -u` — der zweite Fehler.
+_R=$(_resolve_memory_dir "$_P" 2>/dev/null)
+janein "⭐ _resolve_memory_dir liefert unter set -u einen Pfad" "ja" \
+       "$([ -n "$_R" ] && echo ja || echo nein)"
+janein "   ... und keine ungeschuetzte Variable mehr in lib.sh" "0" \
+       "$(grep -c '\[ -n "$CLAUDE_CODE_REMOTE_MEMORY_DIR" \]' "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh")"
+
+# (c) GEGENPROBE: Ordner da -> Rueckgabe 0, KEINE Warnung.
+_P2="$D/mit-ordner"; mkdir -p "$_P2"
+_S2=$(hash_project_dir "$_P2")
+mkdir -p "$HOME/.claude/projects/$_S2/memory"
+_B=$(get_memory_dir "$_P2" 2>/dev/null); _RB=$?
+janein "⭐ GEGENPROBE: Ordner da -> Rueckgabe 0" "0" "$_RB"
+_W2=$(get_memory_dir "$_P2" 2>&1 >/dev/null)
+janein "⭐ ... und KEINE Warnung" "" "$_W2"
+rm -rf "$HOME/.claude/projects/$_S2"
 
 rm -rf "$D"
 echo
