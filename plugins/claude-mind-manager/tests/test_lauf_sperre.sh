@@ -117,6 +117,35 @@ janein "⛔ Abbruch mit rc 0, nicht 1 (kein kaputter Lauf im Log)" "1" \
        "$(grep -c 'exit 0    # ⛔ 0, NICHT 1' "$SK")"
 
 echo
+echo "=== ⛔ Noras Befund 2: die Sperre steht VOR dem Snapshot ==="
+# ⛔ GEMESSEN in Palvedo: jeder abgewiesene Zweitlauf liess rund 464 KB
+#    Sicherung liegen — fuer einen Lauf, den es nie gab. Geprueft wird die
+#    REIHENFOLGE im Skill, denn der Effekt entsteht nur aus ihr.
+_MA="$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md"
+_ZS=$(grep -n 'mind_lauf_sperre "\$PROJ"' "$_MA" | head -1 | cut -d: -f1)
+_ZN=$(grep -n 'mind_snapshot "\$PROJ" "pre-mind-all"' "$_MA" | head -1 | cut -d: -f1)
+janein "die Sperre wird genommen" "1" "$([ -n "$_ZS" ] && echo 1 || echo 0)"
+janein "der Snapshot wird angelegt" "1" "$([ -n "$_ZN" ] && echo 1 || echo 0)"
+janein "⭐ und die Sperre steht ZUERST" "1" \
+       "$([ -n "$_ZS" ] && [ -n "$_ZN" ] && [ "$_ZS" -lt "$_ZN" ] && echo 1 || echo 0)"
+
+echo
+echo "=== ⛔ Noras Befund 4: die Sperre sagt, WER sie haelt ==="
+_P4=$(mktemp -d); mkdir -p "$_P4/.claude-mind"
+mind_lauf_sperre "$_P4" lauf-a "sitzung-XYZ" >/dev/null
+janein "die Kennung liegt in der Sperre" "sitzung-XYZ" \
+       "$(cat "$_P4/.claude-mind/mind-all.lock/sid" 2>/dev/null)"
+_ABW=$(mind_lauf_sperre "$_P4" lauf-b "sitzung-ANDERE" 2>&1)
+janein "⭐ und die Abweisung NENNT sie" "1" \
+       "$(printf '%s' "$_ABW" | grep -c 'sitzung-XYZ')"
+# ⚠ GEGENPROBE: ohne dritte Angabe bleibt es lesbar, statt leer zu sein.
+_P5=$(mktemp -d); mkdir -p "$_P5/.claude-mind"
+mind_lauf_sperre "$_P5" lauf-a >/dev/null
+janein "⚠ ohne Angabe steht 'unbekannt', nicht nichts" "unbekannt" \
+       "$(cat "$_P5/.claude-mind/mind-all.lock/sid" 2>/dev/null)"
+rm -rf "$_P4" "$_P5"
+
+echo
 echo "  $OK gruen, $ROT rot"
 [ "$ROT" -eq 0 ] || exit 1
 exit 0

@@ -127,6 +127,24 @@ if [ "$DRY_RUN" = "no" ] && type mind_sync_moeglich >/dev/null 2>&1; then
   fi
 fi
 
+# ⛔ v5.59.0: DIE SPERRE STEHT VOR DEM SNAPSHOT. Befund von Nora (Palvedo):
+#    der Snapshot entstand ZUERST, und jeder abgewiesene Zweitlauf liess rund
+#    464 KB liegen — eine Sicherung fuer einen Lauf, den es nie gab. Bei drei
+#    Sitzungen in einem Ordner summiert sich das mit jedem Versuch.
+# ⚠ DIE KENNUNG KANN DESHALB NICHT MEHR DER SNAPSHOT-NAME SEIN. Sie kommt
+#   jetzt aus Zeitstempel und Transkriptnamen; `mind_lauf_kennung` bleibt
+#   unveraendert fuer alle, die sie mit einem Snapshot rufen.
+if [ "$DRY_RUN" = "no" ]; then
+  LAUF="$(date +%Y%m%d-%H%M%S)-$(basename "${MIND_TP:-nosession}" .jsonl | tail -c 9)"
+  MIND_SID=$(basename "${MIND_TP:-nosession}" .jsonl)
+  if ! _SPERRE=$(mind_lauf_sperre "$PROJ" "$LAUF" "$MIND_SID"); then
+    echo "$_SPERRE" >&2
+    exit 0    # ⛔ 0, NICHT 1 — kein Fehler, sondern die richtige Antwort.
+              #   Ein Rueckgabewert 1 saehe im Log wie ein kaputter Lauf aus.
+  fi
+  trap 'mind_lauf_frei "$PROJ" "$LAUF"' EXIT
+fi
+
 if [ "$DRY_RUN" = "no" ]; then
   SNAPSHOT=$(mind_snapshot "$PROJ" "pre-mind-all") || {
     echo "ABBRUCH: Snapshot fehlgeschlagen — KEIN Skill wird gestartet." >&2; exit 1; }
@@ -180,15 +198,9 @@ fi
 #    ⚠ Kein flock (auf MSYS unzuverlaessig). `mkdir` ist atomar; auf diesem
 #      Aufbau gemessen: 40 gleichzeitig -> genau 1 gewinnt, Gegenprobe
 #      abgewiesen.
-LAUF=$(mind_lauf_kennung "${SNAPSHOT:-}")
-if [ "$DRY_RUN" = "no" ]; then
-  if ! _SPERRE=$(mind_lauf_sperre "$PROJ" "$LAUF"); then
-    echo "$_SPERRE" >&2
-    exit 0    # ⛔ 0, NICHT 1 — kein Fehler, sondern die richtige Antwort.
-              #   Ein Rueckgabewert 1 saehe im Log wie ein kaputter Lauf aus.
-  fi
-  trap 'mind_lauf_frei "$PROJ" "$LAUF"' EXIT
-fi
+# ⚠ v5.59.0: DIE SPERRE WIRD OBEN GENOMMEN, vor dem Snapshot. Hier stand sie
+#   bis v5.58.0 — also NACH einer Sicherung, die ein abgewiesener Lauf gar
+#   nicht braucht. Der Block ist umgezogen, nicht entfallen.
 
 # Kettenmarke — NUR wenn ein Snapshot existiert (C2-Fix: im Probelauf keine Marke,
 # sonst behauptet sie ein Netz, das es nicht gibt). Enthaelt den Snapshot-PFAD, damit die

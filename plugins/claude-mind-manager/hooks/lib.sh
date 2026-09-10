@@ -2106,7 +2106,7 @@ mind_lauf_sperre() {
   # $1 = Projekt, $2 = Laufkennung (basename des Snapshots)
   # -> 0 = Sperre gehoert JETZT uns · 1 = ein anderer Lauf haelt sie
   # Bei Rueckgabe 1 steht die Begruendung auf stdout.
-  local proj="${1:-}" lauf="${2:-unbekannt}" lock alt ts alter
+  local proj="${1:-}" lauf="${2:-unbekannt}" sid="${3:-}" lock alt ts alter asid
   [ -n "$proj" ] || return 1
   lock="$proj/.claude-mind/mind-all.lock"
   mkdir -p "$proj/.claude-mind" 2>/dev/null
@@ -2114,18 +2114,24 @@ mind_lauf_sperre() {
   if mkdir "$lock" 2>/dev/null; then
     printf '%s' "$lauf"        > "$lock/lauf" 2>/dev/null
     date +%s                   > "$lock/ts"   2>/dev/null
+    # ⛔ v5.59.0: WER die Sperre haelt, gehoert hinein. Befund von Nora
+    #    (Palvedo): bei drei Sitzungen in einem Ordner sagte die Abweisung
+    #    zwar "ein Lauf laeuft", aber nicht WELCHE Sitzung — und damit war
+    #    nicht entscheidbar, ob man auf sie warten oder sie wecken muss.
+    printf '%s' "${sid:-unbekannt}" > "$lock/sid" 2>/dev/null
     return 0
   fi
 
   # Belegt. Verwaist oder lebendig?
   alt=$(cat "$lock/lauf" 2>/dev/null)
+  asid=$(cat "$lock/sid" 2>/dev/null)
   ts=$(cat "$lock/ts" 2>/dev/null)
   case "$ts" in ''|*[!0-9]*) ts=0 ;; esac
   alter=$(( $(date +%s) - ts ))
 
   if [ "$ts" -gt 0 ] 2>/dev/null && [ "$alter" -lt "$MIND_LAUF_LOCK_MAXAGE" ] 2>/dev/null; then
-    printf 'ABBRUCH: /mind-all laeuft bereits in diesem Ordner (Lauf %s, seit %d min).\n' \
-      "${alt:-?}" "$(( alter / 60 ))"
+    printf 'ABBRUCH: /mind-all laeuft bereits in diesem Ordner (Lauf %s, Sitzung %s, seit %d min).\n' \
+      "${alt:-?}" "${asid:-unbekannt}" "$(( alter / 60 ))"
     printf 'Ein zweiter Lauf wuerde die Laufspur des ersten ueberschreiben — und ihre\n'
     printf 'Summe koennte die Sync-Schuld fuer Arbeit tilgen, die kein Lauf geleistet hat.\n'
     return 1
