@@ -199,6 +199,40 @@ else
   echo "         ⚠ Ein uebersprungener Fall ist KEIN bestandener."
 fi
 
+echo
+echo "== ⭐ v5.74.0: STUFE 2 — der AUSWEIS =="
+# ⛔ WOZU. Gemessen 10.09.2026: eine markenERHALTENDE Verdichtung entfernte 34 %
+#    von `werkzeuge-zuerst.md`, und das Gate meldete 100 %. Kein Fehler — die
+#    Zeile "Erwaehnung, nicht Treue" steht seit v5.3.0 darin. Nur konnte niemand
+#    SEHEN, wieviel dabei ungeprueft blieb.
+# ⛔ DER AUSWEIS IST KEIN GATE. Markenfreien Text zu entfernen ist genau das, was
+#    eine gute Verdichtung TUN soll. Er meldet eine Zahl, der Rueckgabewert
+#    bleibt unberuehrt. Das wird hier ausdruecklich geprueft.
+janein "der Vertrag nennt die DREI Stufen" "ja" \
+  "$(grep -q 'DREI Stufen' "$BP" 2>/dev/null && echo ja || echo nein)"
+janein "⛔ und dass Stufe 2 KEIN Gate ist" "ja" \
+  "$(grep -q 'KEIN Gate und wird nie eins' "$BP" 2>/dev/null && echo ja || echo nein)"
+
+_AD=$(mktemp -d "${TMPDIR:-/tmp}/auswXXXXXX")
+# ⭐ POSITIVKONTROLLE: markenfreie Zeilen weg, Marken bleiben — der blinde Fall.
+printf 'Der Aufruf `tools/rollback.py list` gilt seit 21.08.2026.\nDies ist ein erklaerender Satz ganz ohne jede marke darin.\nUnd noch einer, ebenfalls vollkommen frei von solchen dingen.\n' > "$_AD/quelle.md"
+printf 'Der Aufruf `tools/rollback.py list` gilt seit 21.08.2026.\n' > "$_AD/ziel.md"
+_AO=$(python "$VORLAGE" "$_AD/ziel.md" "$_AD/quelle.md" 2>&1); _ARC=$?
+janein "⭐ der AUSWEIS steht in der Ausgabe" "ja" \
+  "$(printf '%s' "$_AO" | grep -q 'AUSWEIS: markenfrei entfernt' && echo ja || echo nein)"
+janein "⭐ und nennt eine Menge GROESSER 0" "0" \
+  "$(printf '%s' "$_AO" | grep -c 'markenfrei entfernt: 0 B')"
+janein "⚠ er sagt, dass es KEIN Instrument geprueft hat" "ja" \
+  "$(printf '%s' "$_AO" | grep -q 'KEIN Instrument geprueft' && echo ja || echo nein)"
+janein "⛔ und er aendert den Rueckgabewert NICHT (Stufe 1 gruen)" "0" "$_ARC"
+
+# ⛔ NEGATIVKONTROLLE: nichts entfernt -> der Ausweis meldet trotzdem, statt zu
+#   schweigen. Ein stiller Ausweis ist von einem fehlenden nicht zu unterscheiden.
+_BO=$(python "$VORLAGE" "$_AD/quelle.md" "$_AD/quelle.md" 2>&1)
+janein "⛔ ohne Verlust meldet er 0 B statt zu SCHWEIGEN" "ja" \
+  "$(printf '%s' "$_BO" | grep -q 'markenfrei entfernt: 0 B' && echo ja || echo nein)"
+rm -rf "$_AD"
+
 rm -rf "$D" "$D2"
 echo
 echo "  $OK ok, $ROT rot"

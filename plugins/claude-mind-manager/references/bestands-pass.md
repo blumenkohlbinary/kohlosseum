@@ -120,6 +120,36 @@ der ein Verlust in Ordnung wäre.
 Stichwortwahl ist heuristisch — ein Punkt kann als offen erscheinen, obwohl er sinngemäß
 übertragen wurde. Deshalb listet das Gate sie einzeln.
 
+### ⭐ Die Zusicherung hat DREI Stufen — und Stufe 1 allein reicht nicht
+
+⛔ **Gemessen 10.09.2026** (`docs/plugin/coverage-empfindlichkeit.md`): eine
+**markenerhaltende** Verdichtung entfernte **34 %** von `werkzeuge-zuerst.md` — und das
+Gate meldete **100 %**. Das ist kein Fehler des Gates; es ist die Bauart einer guten
+Verdichtung. Sie behält genau das, wonach das Gate sucht.
+
+| Stufe | wer bürgt | Aussage |
+|---|---|---|
+| **1 maschinell, hart** | `coverage_gate.py` | keine **markierte** Aussage ist verschwunden. ⛔ 100 % oder rot |
+| **2 maschinell, ausweisend** | derselbe Aufruf, Zeile `AUSWEIS:` | **wieviel markenfreier Text entfernt wurde** — die Menge, die **kein** Instrument geprüft hat |
+| **3 menschlich** | der Leser | diese Menge wird **gelesen**, sonst gilt der Lauf als **ungeprüft** |
+
+**Pflichtzeile im Bericht jedes Verdichtungslaufs:**
+
+```
+coverage 78/78 (100 %)   ·   markenfrei entfernt: 3053 B von 4847 B (63,0 %)
+⚠ Diese 3053 B hat kein Instrument geprueft.
+```
+
+⛔ **Stufe 2 ist KEIN Gate und wird nie eins.** Markenfreien Text zu entfernen ist genau
+das, was eine gute Verdichtung **tun soll** — ein Schwellwert darauf würde jeden
+gelungenen Lauf anschwärzen. Sie **meldet eine Zahl**, sie urteilt nicht. Dieselbe Doktrin
+wie `cleaner_leitplanke.py`: Kandidaten, kein Urteil.
+
+⭐ **Das Vorbild steht im Haus: die Deckel-Schuld.** Man darf anlegen — man muss es
+**ausweisen**. Hier: man darf verdichten — man muss ausweisen, **wieviel davon ungeprüft
+blieb**. Der Nutzer hat „alle dürfen kürzen" gesagt; er hat nicht gesagt „ohne
+Rechenschaft".
+
 ### ⚠ Was das Gate NICHT leistet — und es wird nicht weggeredet
 
 - **Gemessen wird ERWÄHNUNG, nicht inhaltliche Treue.** Es schließt **Auslassungen** aus,

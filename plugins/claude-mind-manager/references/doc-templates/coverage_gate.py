@@ -42,6 +42,26 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="repla
 NEG_CONTROL = "zzznichtvorhandenerbegriff"
 
 
+# ⭐ DIE DREI MARKER-MUSTER STEHEN EINMAL. Sie werden von `checkpoints()` benutzt
+#    UND von `markenfreie_bytes()` darunter. Zwei Definitionen von "Marke" waeren
+#    zwei Instrumente, die sich widersprechen koennen — genau das, wovor
+#    `werkzeuge-zuerst.md` warnt. Die Muster sind woertlich die von v5.3.0.
+P_CODE = r"`([^`\n]{3,40})`"
+P_ZAHL = r"\b\d[\d.,]*\s?(?:%|K\b|T/line|tokens?\b|lines?\b|Zeilen\b)"
+P_NAME = r"\b(?:[A-Z][a-z]+[A-Z][A-Za-z]+|[A-Z]{4,})\b"
+
+
+def hat_marke(zeile: str) -> bool:
+    """Traegt diese Zeile etwas, das `checkpoints()` als Pruefpunkt zaehlen wuerde?"""
+    return bool(re.search(P_CODE, zeile) or re.search(P_ZAHL, zeile)
+                or re.search(P_NAME, zeile))
+
+
+def markenfreie_bytes(text: str) -> int:
+    """Bytes der Zeilen OHNE jede Marke — der Teil, den das Gate NICHT sieht."""
+    return sum(len(z.encode("utf-8")) for z in text.split("\n") if not hat_marke(z))
+
+
 def normalize(text: str) -> str:
     """Kleinschreibung + Umlaute/Akzente entfernen, damit ae/ä beide treffen."""
     text = text.lower()
@@ -81,20 +101,20 @@ def checkpoints(path: str):
     text = open(path, encoding="utf-8", errors="replace").read()
 
     # 1) Inline-Code — Bezeichner, Pfade, Frontmatter-Schluessel
-    for m in re.findall(r"`([^`\n]{3,40})`", text):
+    for m in re.findall(P_CODE, text):
         tok = normalize(m).strip()
         if len(tok) >= 4 and not tok.isdigit():
             out.append((f"`{m}`", (tok,)))
 
     # 2) Zahlen mit Aussage: Prozent, Tausender, K-Angaben, Dezimalwerte
-    for m in re.findall(r"\b\d[\d.,]*\s?(?:%|K\b|T/line|tokens?\b|lines?\b|Zeilen\b)", text):
+    for m in re.findall(P_ZAHL, text):
         tok = normalize(re.sub(r"\s+", "", m))
         num = re.match(r"[\d.,]+", tok)
         if num and len(num.group(0).strip(".,")) >= 2:
             out.append((m.strip(), (num.group(0).rstrip(".,"),)))
 
     # 3) Eigennamen: GrossKleinSchreibung oder Versalien, technisch/Produkt
-    for m in re.findall(r"\b(?:[A-Z][a-z]+[A-Z][A-Za-z]+|[A-Z]{4,})\b", text):
+    for m in re.findall(P_NAME, text):
         out.append((m, (normalize(m),)))
 
     uniq = []
@@ -135,6 +155,44 @@ def main(argv):
     pct = (100 * total_ok / total) if total else 0
     print(f"\nGESAMT: {total_ok}/{total} Pruefpunkte belegt ({pct:.1f} %)")
     print("HINWEIS: gemessen wurde ERWAEHNUNG, nicht inhaltliche Treue.")
+
+    # --- STUFE 2: der AUSWEIS (NEU 10.09.2026) ---------------------------
+    # ⛔ WARUM DAS NOETIG WURDE. Gemessen am 10.09.2026: eine markenERHALTENDE
+    #    Verdichtung entfernte **34 % von `werkzeuge-zuerst.md` — und dieses Gate
+    #    meldete 100 %**. Das ist kein Fehler; die Zeile darueber sagt seit jeher
+    #    "Erwaehnung, nicht Treue". Nur konnte niemand SEHEN, wieviel dabei
+    #    ungeprueft blieb.
+    #
+    # ⛔ DAS HIER IST KEIN GATE UND WIRD NIE EINS. Markenfreien Text zu entfernen
+    #    ist genau das, was eine gute Verdichtung TUN soll — ein Schwellwert
+    #    darauf wuerde jeden gelungenen Lauf anschwaerzen. Es MELDET eine Zahl.
+    #    Der Rueckgabewert bleibt unberuehrt.
+    #
+    # ⭐ DAS VORBILD IST DIE DECKEL-SCHULD: man darf anlegen, man muss es
+    #    ausweisen. Hier: man darf verdichten, man muss ausweisen, wieviel davon
+    #    kein Instrument geprueft hat.
+    try:
+        ziel_txt = open(argv[1], encoding="utf-8", errors="replace").read()
+        quell_txt = "".join(open(s, encoding="utf-8", errors="replace").read()
+                            for s in argv[2:])
+        mf_q = markenfreie_bytes(quell_txt)
+        mf_z = markenfreie_bytes(ziel_txt)
+        weg = mf_q - mf_z
+        if weg > 0:
+            anteil = (100.0 * weg / mf_q) if mf_q else 0.0
+            print(f"AUSWEIS: markenfrei entfernt: {weg} B von {mf_q} B ({anteil:.1f} %)")
+            print(f"⚠ Diese {weg} B hat KEIN Instrument geprueft — sie muessen gelesen"
+                  " werden, sonst gilt der Lauf als ungeprueft.")
+        else:
+            # ⚠ Auch das wird GESAGT. Ein stiller Ausweis ist von einem fehlenden
+            #   nicht zu unterscheiden — dieselbe Klasse wie ein Hook, der
+            #   schweigt, weil er tot ist.
+            print(f"AUSWEIS: markenfrei entfernt: 0 B von {mf_q} B "
+                  f"(Ziel traegt {-weg} B mehr)")
+    except OSError as e:
+        # ⛔ FAIL-OPEN, aber LAUT: der Ausweis darf das Gate nie toeten.
+        print(f"⚠ AUSWEIS nicht messbar ({e}) — die Stufe-1-Aussage gilt trotzdem.")
+
     return 0 if total_ok == total else 1
 
 
