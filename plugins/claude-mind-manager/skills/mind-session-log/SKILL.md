@@ -182,7 +182,38 @@ if [ ! -d "$PROJECTS_DIR" ]; then
 fi
 
 # Neueste JSONL (nicht Subagent-Files):
-JSONL=$(ls -t "$PROJECTS_DIR"/*.jsonl 2>/dev/null | grep -v '/subagents/' | head -1)
+# ⛔ v5.68.0: NICHT `ls -t | head -1`. Das ist die nach AENDERUNGSZEIT
+#    juengste Datei — bei mehreren Rollen im selben Ordner also die
+#    Sitzung, die GERADE schreibt. ⚠ Gemessen 10.09.2026: 17 Transkripte,
+#    drei Rollen. Die syncende Sitzung schreibt waehrend ihres Laufs am
+#    wenigsten — sie verliert dieses Rennen fast immer.
+#
+# ⭐ `mind_transkript_pfad` tut seit v5.66.0 genau das Richtige: sie
+#    adressiert `$CLAUDE_CODE_SESSION_ID.jsonl` direkt. Der Griff hier war
+#    ein NACHBAU davon — Klasse `instrument-nachgebaut`, 9 Vorkommen.
+#
+# ⛔ DER RUECKFALL MELDET SICH (Auflage). Ein stiller Fehlgriff darf nicht
+#    wie ein richtiger Griff aussehen: greift die Kennung nicht, steht das
+#    im Bericht, statt lautlos eine fremde Sitzung zu analysieren.
+JSONL=$(mind_transkript_pfad "${CLAUDE_PROJECT_DIR:-$(pwd)}" 2>/dev/null)
+_JQUELLE=kennung
+if [ -z "$JSONL" ] || [ ! -f "$JSONL" ]; then
+  JSONL=$(ls -t "$PROJECTS_DIR"/*.jsonl 2>/dev/null | grep -v '/subagents/' | head -1)
+  _JQUELLE=rueckfall
+elif [ -z "${CLAUDE_CODE_SESSION_ID:-}" ] \
+     || [ "$JSONL" != "$PROJECTS_DIR/$CLAUDE_CODE_SESSION_ID.jsonl" ]; then
+  # ⚠ Ein Treffer, der NICHT aus der eigenen Kennung stammt (Hook-Vorgabe
+  #   oder die alte cwd-Heuristik), ist ebenfalls ein Rueckfall — er kann
+  #   richtig sein, belegt ist er nicht.
+  _JQUELLE=rueckfall
+fi
+if [ "$_JQUELLE" = rueckfall ]; then
+  echo "⚠ TRANSKRIPT ueber den RUECKFALL gewaehlt, nicht ueber die eigene Kennung."
+  echo "  Gewaehlt: $(basename "${JSONL:-(nichts)}")"
+  echo "  CLAUDE_CODE_SESSION_ID: ${CLAUDE_CODE_SESSION_ID:-(leer)}"
+  echo "  ⛔ Bei mehreren Sitzungen im selben Ordner kann das eine FREMDE sein."
+  echo "     Das gehoert in den Bericht — nicht verschweigen."
+fi
 
 if [ -z "$JSONL" ]; then
   echo "FEHLER: Keine Session-JSONL gefunden in $PROJECTS_DIR"
