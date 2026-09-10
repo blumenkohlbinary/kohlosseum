@@ -2562,3 +2562,74 @@ mind_lauf_kennung() {
   if [ -z "$snap" ]; then printf 'probelauf'; return 0; fi
   printf '%s' "$(basename "$snap")"
 }
+
+# =============================================================================
+# VERDICHTEN — das Gate nach dem Agenten (v5.78.0)
+# =============================================================================
+# ⛔ WOZU. Nutzer-Auftrag 10.09.2026: Platz durch VERDICHTEN, ohne dass eine
+#    Einzelinformation verschwindet. Die Hand ist ein Agent je Datei; DIESES
+#    Gate entscheidet, ob sein Ergebnis angewendet wird.
+#
+# ⭐ Kalibriert 11.09.2026 an manager-chats.md (docs/plugin/verdichten-
+#    kalibrierung.md): Agent 5,65 %, Marker exakt, Stufe 3 sauber. Antons
+#    Handfassung (10,7 %) ist unter diesem Gate ROT — 2 ⛔, 5 ⚠, 3 Verbote
+#    verloren. Ein Instrument, das die Referenz des Auftraggebers anschwaerzt,
+#    weil sie es verdient, ist eines, dem man trauen kann.
+#
+# DREI HARTE PRUEFUNGEN, EINE WEICHE:
+#   1  coverage_gate.py mit --entfernt: Stufe 1 100 % UND kein unbenannter
+#      Marker-Verlust (⛔ ⚠ ⭐ ALLCAPS-Verbote). rc != 0 -> VERWERFEN.
+#   2  Ergebnis in BYTES kleiner als Original. Sonst VERWERFEN — ein Lauf,
+#      der nichts kuerzt, hat nichts getan.
+#   3  (nach dem Anwenden, im Skill) mind_kontext_bilanz BYTES kleiner als
+#      vorher. Sonst Snapshot zurueck — verschoben statt gekuerzt ist der
+#      Modularize-Fehler in neuem Gewand.
+#   w  Stufe 2 (markenfrei entfernt) wird AUSGEWIESEN, nie geurteilt.
+#      ⚠ Bei Umformulierung nur Groessenordnung: die Zaehlung ist zeilenweise,
+#        Text wandert ueber Zeilengrenzen. Gemessen: 3 045 B "entfernt" bei
+#        801 B Gesamtverlust. Der Zusatz steht deshalb IM Bericht.
+#
+# Aufruf: mind_verdichtung_pruefen <original> <ergebnis> <bericht> [name]
+# Ausgabe: die Berichtszeilen; Rueckgabe 0 = anwenden, 1 = verwerfen,
+#          3 = nicht messbar (Gate fehlt) — KEIN bestandenes Gate.
+mind_verdichtung_pruefen() {
+  local orig="${1:-}" erg="${2:-}" ber="${3:-}" name="${4:-}"
+  local gate="${CLAUDE_PLUGIN_ROOT:-}/references/doc-templates/coverage_gate.py"
+  [ -n "$name" ] || name=$(basename "$orig")
+  [ -f "$orig" ] && [ -f "$erg" ] || { echo "⛔ VERDICHTUNG $name: Original oder Ergebnis fehlt — nicht messbar."; return 3; }
+  [ -f "$gate" ] || { echo "⛔ VERDICHTUNG $name: coverage_gate.py fehlt unter $gate — nicht messbar."; return 3; }
+  local b_vor b_nach out rc
+  b_vor=$(wc -c < "$orig" | tr -d ' '); b_nach=$(wc -c < "$erg" | tr -d ' ')
+
+  # 1 — Stufe 1 + Marker, mit der benannten Oeffnung
+  if [ -n "$ber" ] && [ -f "$ber" ]; then
+    out=$(python "$gate" "$erg" "$orig" --entfernt "$ber" 2>&1); rc=$?
+  else
+    out=$(python "$gate" "$erg" "$orig" 2>&1); rc=$?
+  fi
+  local deck marker ausw
+  deck=$(printf '%s\n' "$out"   | sed -n 's/^GESAMT: \([0-9]*\/[0-9]*\).*(\([0-9.]* %\)).*/\1  \2/p' | head -1)
+  marker=$(printf '%s\n' "$out" | sed -n 's/^MARKER: //p' | head -1)
+  ausw=$(printf '%s\n' "$out"   | sed -n 's/^AUSWEIS: markenfrei entfernt: //p' | head -1)
+
+  # --- der Bericht: drei Zeilen, keine weniger ---
+  printf '%-14s Dauerkontext  %s -> %s B  (%+d B, %.1f %%)\n' "$name" "$b_vor" "$b_nach" \
+    "$((b_nach - b_vor))" "$(awk "BEGIN{printf \"%.1f\", ($b_nach-$b_vor)*100/$b_vor}")"
+  printf '%-14s Stufe 1       coverage %s   Marker %s\n' "" "${deck:-?}" "${marker:-?}"
+  printf '%-14s Stufe 2       markenfrei entfernt %s  ⚠ ungeprueft\n' "" "${ausw:-0 B}"
+  printf '%-14s               ⚠ Stufe 2 ist bei Umformulierung nur GROESSENORDNUNG (zeilenweise gezaehlt)\n' ""
+  printf '%s\n' "$out" | grep -E '^⚠ AUSWEIS: ⛔-Absaetze' | sed 's/^/               /'
+
+  # --- die Urteile ---
+  if [ "$rc" -ne 0 ]; then
+    printf '%s\n' "$out" | grep -E 'MARKER VERLOREN|OFFEN ' | head -6 | sed 's/^/               /'
+    echo "               ⛔ VERWERFEN: Stufe 1 oder Marker (rc $rc)."
+    return 1
+  fi
+  if [ "$b_nach" -ge "$b_vor" ]; then
+    echo "               ⛔ VERWERFEN: nicht kleiner ($b_vor -> $b_nach B). Ein Lauf, der nichts kuerzt, hat nichts getan."
+    return 1
+  fi
+  echo "               ✅ anwenden — danach mind_kontext_bilanz gegen vorher, sonst Snapshot zurueck."
+  return 0
+}

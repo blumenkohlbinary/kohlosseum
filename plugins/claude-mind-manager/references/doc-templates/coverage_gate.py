@@ -125,9 +125,69 @@ def checkpoints(path: str):
     return uniq
 
 
+# ⛔ DIE BREMSEN-ZEICHEN SIND KEINE MARKE — gemessen 11.09.2026 an der Kalibrierung
+#    des Verdichtens: eine Handfassung verlor 2 ⛔ und 5 ⚠, drei ALLCAPS-Verbote
+#    wurden Kleinschreibung, und dieses Gate meldete 78/78. P_CODE/P_ZAHL/P_NAME
+#    sehen ⛔, ⚠, ⭐ nicht, und NIE/NUR/MUSS/KEIN sind kuerzer als die vier
+#    Buchstaben, die P_NAME verlangt. Ein Lauf konnte also jedes Verbotszeichen
+#    entfernen und 100 % melden.
+# ⭐ IN das Instrument gebaut, nicht daneben — dieselbe Entscheidung wie bei
+#    Stufe 2: dann gilt es fuer den Wissenstransfer genauso wie fuers Verdichten.
+# ⛔ HART mit EINER OEFFNUNG: ein Marker DARF verschwinden, wenn er im Bericht
+#    EINZELN BENANNT ist (`--entfernt <bericht.md>`, Zeilen wie
+#    `entfernt: ⛔ „Die sync-Rolle ist …“`). Zaehlung minus benannte = 0, sonst rot.
+#    Ein Gate, das jede Entfernung verbietet, verbietet richtiges Aufraeumen; eines,
+#    das sie STILL durchlaesst, ist Modus E. Benannt ist die Deckel-Doktrin:
+#    erlaubt, ausgewiesen.
+MARKER = (("⛔", "⛔"), ("⚠", "⚠"), ("⭐", "⭐"))
+P_VERBOT = r"\b(?:NIE|NIEMALS|NUR|MUSS|KEINE?|NEVER|MUST|ALWAYS)\b"
+
+
+def marker_zaehlung(text: str):
+    z = {name: text.count(zeichen) for name, zeichen in MARKER}
+    z["VERBOT"] = len(re.findall(P_VERBOT, text))
+    # weich, nur Ausweis: Absaetze, die mit ⛔ BEGINNEN — geht einer in einem
+    # Nachbarn auf, sinkt diese Zahl, waehrend die ⛔-Zaehlung gleich bleiben kann.
+    z["⛔-Absaetze"] = sum(1 for a in re.split(r"\n\s*\n", text)
+                          if a.lstrip().startswith("⛔"))
+    return z
+
+
+def benannte_entfernungen(pfad):
+    """Wie viele Marker der Bericht als 'entfernt: <zeichen>' EINZELN benennt."""
+    out = {name: 0 for name, _ in MARKER}
+    out["VERBOT"] = 0
+    if not pfad:
+        return out
+    try:
+        t = open(pfad, encoding="utf-8", errors="replace").read()
+    except OSError:
+        return out
+    for zeile in t.splitlines():
+        if not re.match(r"\s*entfernt\s*:", zeile):
+            continue
+        rest = zeile.split(":", 1)[1]
+        for name, zeichen in MARKER:
+            if zeichen in rest:
+                out[name] += 1
+        if re.search(P_VERBOT, rest):
+            out["VERBOT"] += 1
+    return out
+
+
 def main(argv):
+    # --entfernt <datei> herausloesen, bevor die Positionsargumente gelesen werden
+    entfernt_pfad = None
+    argv = list(argv)
+    if "--entfernt" in argv:
+        i = argv.index("--entfernt")
+        if i + 1 < len(argv):
+            entfernt_pfad = argv[i + 1]
+            del argv[i:i + 2]
+        else:
+            del argv[i]
     if len(argv) < 3:
-        print("Aufruf: coverage_gate.py <ziel.md> <quelle.md> [...]")
+        print("Aufruf: coverage_gate.py <ziel.md> <quelle.md> [...] [--entfernt <bericht.md>]")
         return 2
 
     target = normalize(open(argv[1], encoding="utf-8", errors="replace").read())
@@ -193,6 +253,34 @@ def main(argv):
         # ⛔ FAIL-OPEN, aber LAUT: der Ausweis darf das Gate nie toeten.
         print(f"⚠ AUSWEIS nicht messbar ({e}) — die Stufe-1-Aussage gilt trotzdem.")
 
+    # --- MARKER-ZAEHLUNG (NEU 11.09.2026) — hart, mit der benannten Oeffnung ---
+    marker_rot = False
+    try:
+        mq = marker_zaehlung(quell_txt)
+        mz = marker_zaehlung(ziel_txt)
+        benannt = benannte_entfernungen(entfernt_pfad)
+        teile = []
+        for k in ("⛔", "⚠", "⭐", "VERBOT"):
+            fehl = max(0, mq[k] - mz[k])
+            offen = fehl - benannt[k]
+            teile.append(f"{k} {mq[k]}->{mz[k]}" + (f" (benannt {benannt[k]})" if benannt[k] else ""))
+            if offen > 0:
+                marker_rot = True
+                print(f"⛔ MARKER VERLOREN: {offen}x {k} weniger als in der Quelle, "
+                      f"und im Bericht NICHT benannt.")
+        print("MARKER: " + " · ".join(teile) + ("" if marker_rot else "   OK"))
+        # weich — nur Ausweis, kein Rueckgabewert
+        if mz["⛔-Absaetze"] < mq["⛔-Absaetze"]:
+            print(f"⚠ AUSWEIS: ⛔-Absaetze {mq['⛔-Absaetze']} -> {mz['⛔-Absaetze']} — "
+                  f"mindestens einer ist in einem Nachbarn aufgegangen. Kein Gate, ein Blick.")
+        if marker_rot:
+            print("   Ein Bremsen-Zeichen darf verschwinden — aber nur BENANNT:"
+                  " `entfernt: ⛔ „…“` im Bericht, dann --entfernt <bericht>.")
+    except NameError:
+        print("⚠ MARKER nicht messbar — Quelltexte fehlen.")
+
+    if marker_rot:
+        return 1
     return 0 if total_ok == total else 1
 
 

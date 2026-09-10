@@ -150,6 +150,65 @@ wie `cleaner_leitplanke.py`: Kandidaten, kein Urteil.
 blieb**. Der Nutzer hat „alle dürfen kürzen" gesagt; er hat nicht gesagt „ohne
 Rechenschaft".
 
+### ⭐ DER LAUF — eine Datei, ein Agent, drei Gates (v5.78.0)
+
+**Kalibriert 11.09.2026** an `manager-chats.md` (`docs/plugin/verdichten-kalibrierung.md`):
+Agent −5,65 %, Marker exakt, Stufe 3 sauber. Antons Handfassung (−10,7 %) ist unter diesem
+Gate **rot** — 2 ⛔, 5 ⚠, 3 Verbote verloren. Ein Instrument, das die Referenz des
+Auftraggebers anschwärzt, weil sie es verdient, ist eines, dem man trauen kann.
+
+```bash
+# 0  Snapshot — der Rückweg, BEVOR irgendetwas passiert
+SNAP=$(mind_snapshot "$PROJ" "pre-verdichten") || exit 1
+VORHER=$(mind_kontext_bilanz "$PROJ" | sed -n 's/.*BYTES=\([0-9]*\).*/\1/p')
+
+# 1  EIN Agent je Datei: model sonnet, Denkstufe low, EIN Auftrag, die Datei benannt.
+#    ⛔ Höchstens 2 gleichzeitig. Rückgabe: <ergebnis>.md und <bericht>.md im Scratchpad.
+#    Der Auftrag trägt WÖRTLICH die Regeln aus dem Kasten unten — der Agent sieht nichts.
+
+# 2  Das Gate — entscheidet, ob angewendet wird
+mind_verdichtung_pruefen "$DATEI" "$ERGEBNIS" "$BERICHT" || { echo "verworfen"; exit 0; }
+
+# 3  Anwenden, dann das ERFOLGSMASS — und zurück, wenn es nicht kleiner wurde
+cp "$ERGEBNIS" "$DATEI"
+NACHHER=$(mind_kontext_bilanz "$PROJ" | sed -n 's/.*BYTES=\([0-9]*\).*/\1/p')
+if [ "$NACHHER" -ge "$VORHER" ]; then
+  echo "⛔ Dauerkontext nicht kleiner ($VORHER -> $NACHHER B) — Snapshot zurück. Verschoben statt gekürzt."
+  python tools/rollback.py restore "$(basename "$SNAP")"
+fi
+```
+
+**Der Kasten für den Agenten — wörtlich in den Auftrag:**
+
+| darf | darf NICHT |
+|---|---|
+| Sätze umformulieren und kürzen — **auch** in ⛔/⚠/⭐-Absätzen | Zahlen, Daten, Code-Spans, Pfade, Nutzer-Zitate ändern |
+| Doppelungen zusammenziehen | ALLCAPS-Verbote (NIE, NUR, MUSS, KEIN …) entfernen oder klein schreiben |
+| Herleitungen auf Datum + Zahl eindampfen | die **Anzahl** von ⛔ ⚠ ⭐ verringern — er zählt am Ende nach |
+| einen ⛔/⚠/⭐-Absatz ganz entfernen, wenn er überholt ist — **nur benannt:** `entfernt: ⛔ „…"` im Bericht | einen ⛔-Absatz in einen Nachbarn einschmelzen |
+| ⭐ **benannte Überholt-Kandidaten** des Aufrufers entfernen (aus dem Deckel-Ausweis, aus `cleaner_belege.py`) — benannt | raten, was überholt ist. ⛔ Was nur in einer **anderen** Datei steht, kann er nicht wissen — Kalibrierung: „sync-Rolle ist ABSPRACHE" war laut `rollen.md` hinfällig, der Agent sah einen Absatz mit eigener Aussage und ließ ihn, zu Recht |
+
+⛔ **Das Kriterium für eine Bremse ist das ⛔ am Absatzanfang** — nicht NUR/KEIN im Absatz.
+Die Wörter stehen in Prosa ständig; der erste Agent hielt daran 19 freie Absätze für Bremsen
+und erreichte 0,2 %.
+
+**Der Bericht — drei Zeilen, `mind_verdichtung_pruefen` schreibt sie:**
+
+```
+<datei>   Dauerkontext  <vorher> -> <nachher> B  (<-n> B, <p> %)
+          Stufe 1       coverage <k>/<k>  100 %   Marker ⛔ n->n · ⚠ n->n · ⭐ n->n · VERBOT n->n
+          Stufe 2       markenfrei entfernt <n> B von <m> B  ⚠ ungeprüft
+                        ⚠ bei Umformulierung nur GRÖSSENORDNUNG (zeilenweise gezählt)
+```
+
+⚠ **Der Stufe-2-Zusatz steht im Bericht, nicht nur in der Doku:** die Zählung ist zeilenweise,
+umformulierter Text wandert über Zeilengrenzen. Gemessen: **3 045 B „entfernt" bei 801 B
+Gesamtverlust.** Eine Zahl ohne den Zusatz zitiert jemand.
+
+⛔ **Kosten, gemessen:** 274 063 Token, 43 Werkzeugaufrufe, 930 s — für 14 KB. Die Zählpflicht
+ist Arbeit. **Deshalb: die GRÖSSTE Datei zuerst, eine je Lauf** — dort ist das Verhältnis
+Ertrag zu Token am besten. Nicht die kleinen, „weil sie billig sind".
+
 ### ⚠ Was das Gate NICHT leistet — und es wird nicht weggeredet
 
 - **Gemessen wird ERWÄHNUNG, nicht inhaltliche Treue.** Es schließt **Auslassungen** aus,

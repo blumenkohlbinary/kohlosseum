@@ -27,6 +27,7 @@ cleaner_tor
 ladeprotokoll_auswertung
 mind_kontext_bilanz
 mind_snapshot
+verdichten
 ```
 
 **Vor dem ersten Schritt, ohne Ausnahme:**
@@ -36,8 +37,8 @@ mind_snapshot
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.77.0"
-mind_schritt_start "$PROJ" mind-rules bestandsaufnahme cleaner_duplikate cleaner_stichprobe ladeprotokoll_auswertung mind_kontext_bilanz mind_snapshot
+MIND_SKILL_VERSION="5.78.0"
+mind_schritt_start "$PROJ" mind-rules bestandsaufnahme cleaner_duplikate cleaner_stichprobe ladeprotokoll_auswertung mind_kontext_bilanz mind_snapshot verdichten
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
@@ -610,8 +611,9 @@ Gemessen: der **immer geladene** Kontext wuchs an EINEM Tag um **+21 %** auf 2 6
 und 138 Anweisungen — bei einer Schwelle von ~400 Zeilen und ~100–150 Anweisungen.
 `/mind-all` trägt nach, **niemand sieht zurück**. Dieser Schritt sieht zurück.
 
-⛔ **Er MELDET. Er schneidet nicht, verschiebt nicht, löscht nicht.** Handeln bleibt
-`/mind-cleaner`, dessen Nicht-Autonomie (Nutzer-Entscheidung 24.08.2026) unberührt bleibt.
+⛔ **Er MELDET. Er schneidet nicht, verschiebt nicht, löscht nicht** — mit **einer** Ausnahme
+seit v5.78.0, Step 9b unten. Der tiefe Schnitt bleibt `/mind-cleaner`, dessen
+Nicht-Autonomie (Nutzer-Entscheidung 24.08.2026) unberührt bleibt.
 
 **Die vollständige Vorschrift steht in
 [references/bestands-pass.md](../../references/bestands-pass.md)** — Bilanz, Stichprobe, die
@@ -671,3 +673,39 @@ ausfiel, sehen von außen identisch aus. Dieselbe Lehre wie v5.3.1 und die Agent
 ⚠ **Fail-open:** fehlt ein Werkzeug oder stürzt es ab, wird `UNGEPRUEFT: <werkzeug>`
 gemeldet und der Skill **läuft weiter**. Ein Bestands-Pass darf nie einen Sync töten.
 
+
+## Step 9b: ⭐ VERDICHTEN — die eine Datei, die am meisten kostet (NEU v5.78.0)
+
+**Nutzer-Entscheidung 10.09.2026:** *„alle dürfen kürzen nur mind cleaner macht es tiefer
+und genauer"* — und: *„es soll nicht alles vollpumpen"*.
+
+⛔ **`mind-rules` ist der ERSTE Träger, weil hier die teuersten Dateien liegen:** sieben
+Projekt-Rules = **61 %** des Dauerkontexts (56 100 von 92 100 Token, gemessen 10.09.2026).
+Die anderen vier Skills folgen, wenn dieser Schritt hier steht.
+
+**Die vollständige Vorschrift — Agent, Kasten, Gate, Bericht — steht in
+[references/bestands-pass.md](../../references/bestands-pass.md), Abschnitt „VERDICHTEN".
+Lies sie.** Hier nur, was für diesen Skill gilt:
+
+| | |
+|---|---|
+| **Kandidat** | die **GRÖSSTE** Datei unter `$PROJ/.claude/rules/` in Bytes — **eine je Lauf** |
+| **⛔ nie** | `rollen.md` (gehört dem manager) · Dateien mit `paths:` (laden ohnehin nicht immer) |
+| **Überholt-Kandidaten** | aus dem Deckel-Ausweis der Datei und `cleaner_belege.py` — **benannt** an den Agenten |
+| **verwerfen, wenn** | Stufe 1 < 100 % · Marker unbenannt verloren · nicht kleiner · Dauerkontext nach dem Anwenden nicht kleiner |
+
+```bash
+# Kandidat: die groesste Rule, ohne rollen.md
+DATEI=$(ls -S "$PROJ"/.claude/rules/*.md 2>/dev/null | grep -v '/rollen\.md$' | head -1)
+[ -n "$DATEI" ] || { echo "VERDICHTEN: keine Kandidatin"; }
+# ... dann exakt der Lauf aus bestands-pass.md: Snapshot -> Agent -> mind_verdichtung_pruefen
+#     -> anwenden -> mind_kontext_bilanz gegen vorher -> sonst rollback.py restore
+```
+
+⛔ **Der Bericht dieses Schritts sind die drei Zeilen aus `mind_verdichtung_pruefen`** — oder
+die Zeile `verworfen: <grund>`. **Kein Bericht = der Schritt lief nicht** (Quittung:
+`mind_schritt verdichten fehler:...`).
+
+⚠ **Was dieser Schritt nicht ist:** kein Umzug nach ANLEITUNG/BELEG auf D1-Basis — die
+Klassen sind durchgefallen (`docs/plugin/d1-trefferquote.md`). Der Agent verschiebt nur
+Belege, und nur mit Doppelzeiger an den Ort aus `docs/plugin/wohin-gehoert-es.md`.

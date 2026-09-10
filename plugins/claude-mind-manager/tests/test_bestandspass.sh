@@ -231,6 +231,47 @@ janein "⛔ und er aendert den Rueckgabewert NICHT (Stufe 1 gruen)" "0" "$_ARC"
 _BO=$(python "$VORLAGE" "$_AD/quelle.md" "$_AD/quelle.md" 2>&1)
 janein "⛔ ohne Verlust meldet er 0 B statt zu SCHWEIGEN" "ja" \
   "$(printf '%s' "$_BO" | grep -q 'markenfrei entfernt: 0 B' && echo ja || echo nein)"
+
+echo
+echo "== ⛔ v5.78.0: DIE BREMSEN-ZEICHEN SIND JETZT EINE MARKE =="
+# ⛔ ANLASS. Kalibrierung des Verdichtens, 11.09.2026: eine Handfassung verlor
+#    2 ⛔ und 5 ⚠, drei ALLCAPS-Verbote wurden Kleinschreibung — und dieses Gate
+#    meldete 78/78. P_CODE/P_ZAHL/P_NAME sehen ⛔ ⚠ ⭐ nicht, und NIE/NUR/MUSS
+#    sind kuerzer als die vier Buchstaben, die P_NAME verlangt.
+# ⭐ HART mit EINER OEFFNUNG: ein Marker darf verschwinden, wenn er im Bericht
+#    EINZELN benannt ist (`--entfernt <bericht>`). Sonst rot.
+_MD=$(mktemp -d "${TMPDIR:-/tmp}/markXXXXXX")
+printf '⛔ NIE ohne Sicherung loeschen.\n\n⚠ Die Rotation haelt nur `KEEP=3`.\n\n⭐ Der Aufruf ist `tools/rollback.py list`.\n\nEin Satz ohne Zeichen.\n' > "$_MD/q.md"
+# (a) alle Zeichen da -> gruen
+cp "$_MD/q.md" "$_MD/z_ok.md"
+python "$VORLAGE" "$_MD/z_ok.md" "$_MD/q.md" >/dev/null 2>&1
+janein "alle Zeichen erhalten -> Rueckgabe 0" "0" "$?"
+# (b) ⛔-Absatz weg, NICHT benannt -> ROT
+printf '⚠ Die Rotation haelt nur `KEEP=3`.\n\n⭐ Der Aufruf ist `tools/rollback.py list`.\n\nEin Satz ohne Sicherung loeschen NIE.\n' > "$_MD/z_weg.md"
+_MO=$(python "$VORLAGE" "$_MD/z_weg.md" "$_MD/q.md" 2>&1); _MRC=$?
+janein "⛔ ein ⛔ verschwunden, unbenannt -> Rueckgabe 1" "1" "$_MRC"
+janein "   ... und die Ausgabe sagt MARKER VERLOREN" "ja" \
+  "$(printf '%s' "$_MO" | grep -q 'MARKER VERLOREN: 1x' && echo ja || echo nein)"
+janein "   ... waehrend Stufe 1 weiter 100 % meldet (das Loch, das es schliesst)" "ja" \
+  "$(printf '%s' "$_MO" | grep -q '(100.0 %)' && echo ja || echo nein)"
+# (c) derselbe Verlust, BENANNT -> gruen
+printf 'entfernt: ⛔ „NIE ohne Sicherung loeschen“\n' > "$_MD/bericht.md"
+python "$VORLAGE" "$_MD/z_weg.md" "$_MD/q.md" --entfernt "$_MD/bericht.md" >/dev/null 2>&1
+janein "⭐ derselbe Verlust, im Bericht BENANNT -> Rueckgabe 0" "0" "$?"
+# (d) VERBOT-Wort klein geschrieben -> ROT (NIE -> nie)
+printf '⛔ nie ohne Sicherung loeschen.\n\n⚠ Die Rotation haelt nur `KEEP=3`.\n\n⭐ Der Aufruf ist `tools/rollback.py list`.\n\nEin Satz ohne Zeichen.\n' > "$_MD/z_klein.md"
+python "$VORLAGE" "$_MD/z_klein.md" "$_MD/q.md" >/dev/null 2>&1
+janein "⛔ NIE zu nie geworden -> Rueckgabe 1" "1" "$?"
+# (e) ⛔-Absatz in Nachbarn aufgegangen: Zeichen erhalten, Absatz weg -> AUSWEIS, kein Rot
+# ⚠ Die erste Fixture legte "⛔ … ⚠ …" zusammen — der Absatz BEGANN weiter mit ⛔
+#   und war damit kein aufgegangener. Aufgegangen heisst: das ⛔ steht jetzt
+#   mitten in einem Absatz, der mit etwas anderem beginnt.
+printf '⚠ Die Rotation haelt nur `KEEP=3`. ⛔ NIE ohne Sicherung loeschen.\n\n⭐ Der Aufruf ist `tools/rollback.py list`.\n\nEin Satz ohne Zeichen.\n' > "$_MD/z_merge.md"
+_EO=$(python "$VORLAGE" "$_MD/z_merge.md" "$_MD/q.md" 2>&1); _ERC=$?
+janein "⚠ Absatz aufgegangen, Zeichen erhalten -> Rueckgabe 0 (weich)" "0" "$_ERC"
+janein "   ... aber der AUSWEIS nennt es" "ja" \
+  "$(printf '%s' "$_EO" | grep -q 'in einem Nachbarn aufgegangen' && echo ja || echo nein)"
+rm -rf "$_MD"
 rm -rf "$_AD"
 
 rm -rf "$D" "$D2"

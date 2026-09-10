@@ -31,7 +31,7 @@ mind_debug_write
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.77.0"
+MIND_SKILL_VERSION="5.78.0"
 mind_schritt_start "$PROJ" mind-learnings learnings_quellen learnings_scan mind_debug_write
 ```
 
