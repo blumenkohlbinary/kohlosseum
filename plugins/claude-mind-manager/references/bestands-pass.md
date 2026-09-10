@@ -24,13 +24,53 @@ autonom** (Nutzer-Entscheidung 24.08.2026). Es kann also nicht der Weg sein, auf
 Bestand routinemäßig geprüft wird. Deshalb prüft ihn jeder Skill selbst — klein, regelmäßig,
 und **ohne zu handeln**.
 
-## ⛔ Die Grenze, und sie ist die wichtigste Zeile hier
+## ⛔ Die Grenze — am 10.09.2026 verschoben, und zwar um genau EINE Klasse
 
-> **Der Pass MELDET. Er schneidet nicht, verschiebt nicht, löscht nicht.**
+> **Nutzer-Entscheidung, wörtlich:** *„alle dürfen kürzen nur mind cleaner macht es tiefer
+> und genauer wichtig es müssen richtige kriterien ausgearbeitet werden was bleiben soll"*
 
-Handeln bleibt `/mind-cleaner`. Dessen Nicht-Autonomie wird hiervon **nicht** berührt.
-Wer diese Grenze aufweicht, macht aus fünf meldenden Skills fünf schneidende — und genau
-das hat der Nutzer bei `/mind-cleaner` ausdrücklich abgelehnt.
+⛔ **Hier stand bis dahin: „Der Pass MELDET. Er schneidet nicht, verschiebt nicht, löscht
+nicht."** Der Satz gilt weiter — für alles, was unten nicht ausdrücklich erlaubt ist.
+
+### ⭐ Was ein Skill kürzen darf, und warum nur das
+
+Gemessen 10.09.2026 an beschriftetem Material, das niemand dafür präpariert hat
+(`docs/plugin/d1-trefferquote.md`). D1 hat drei Klassen; **eine** besteht ihre
+Positivkontrolle:
+
+```
+BREMSE     Leitplanke 34 %  gegen Command-Volltext  7 %   Faktor 4,9  -> trägt
+ANLEITUNG  Volltext   26 %  gegen Leitplanke       25 %   1 Punkt     -> trägt NICHT
+BELEG      Archiv     12 %  gegen Volltext         13 %   −1 Punkt    -> VERKEHRT HERUM
+```
+
+⛔ **Deshalb wird NICHT nach Klasse umgezogen, sondern nach SUBTRAKTION:**
+
+> **Was `BREMSE` markiert, BLEIBT. Der Rest des Absatzes darf gehen.**
+
+⭐ **Das ist der ganze Trick und der Grund, warum überhaupt gehandelt werden darf:** man
+muss nur der Klasse trauen, die bestanden hat. Ob der Rest „ein Beleg" oder „eine
+Anleitung" ist, wird gar nicht behauptet — er ist schlicht **nicht die Bremse**.
+
+| erlaubt | ⛔ verboten |
+|---|---|
+| einen als **`TEILBAR`** markierten Absatz teilen: Bremse bleibt, Rest ins Archiv | umziehen, **weil** D1 den Absatz `ANLEITUNG` nennt |
+| dabei den **Doppelzeiger** setzen — Command **und** Pfad | umziehen, **weil** D1 ihn `BELEG` nennt |
+| die Entlastung in **Bytes** melden | `UNBESTIMMT` anfassen — der Ort bleibt |
+
+⚠ **Der teuerste Fehlgriff, den diese Regel verhindert:** D1 nennt **25 %** der
+Leitplanken-Absätze `ANLEITUNG`, also *„gehört in den Command"*. Genau die hat der Nutzer
+selbst als Leitplanke stehengelassen. **Eine Hand, die nach `ANLEITUNG` umzieht, räumt
+seine Bremsen aus.**
+
+⛔ **Der tiefe Schnitt bleibt `/mind-cleaner`**, dessen Nicht-Autonomie unberührt ist
+(Bericht → OK → Plan → OK, 24.08.2026). Was die fünf dürfen, ist der flache Schnitt an
+einem Absatz, den ein **gedecktes** Merkmal ausweist.
+
+⭐ **Das Erfolgsmaß ist neu:** nicht die Zeilenzahl der Wurzeldatei, sondern der **immer
+ladende Anteil in BYTES**. Ein Lauf, der 40 Zeilen von einer immer-ladenden Datei in eine
+andere immer-ladende schiebt, hat **0** erreicht — und meldet das mit der Zahl.
+Das Umzugs-Gate `ENTLASTUNG` (v5.71.0) prüft genau das.
 
 ⭐ **Warum ein bloßes Melden trotzdem wirkt:** dieselbe Mechanik wie bei der Agent-Quittung.
 Die zwingt keinen Agenten zu arbeiten — sie macht sein **Fehlen sichtbar**. Das hat gereicht.

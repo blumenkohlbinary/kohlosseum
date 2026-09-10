@@ -23,11 +23,24 @@ hat() { case "$3" in *"$2"*) GRUEN=$((GRUEN+1)); echo "  [ok ] $1";;
   *) ROT=$((ROT+1)); echo "  [ROT] $1 — '$2' fehlt";; esac; }
 
 SK="$TMP/skills/beispiel"; mkdir -p "$SK"
+# ⛔ v5.71.0: DIE FIXTURE IST GEWACHSEN, DAS GATE IST NICHT GELOCKERT.
+#    Das neue Gate ENTLASTUNG verlangt, dass die Kurz-Rule in BYTES kleiner
+#    wird. Mit den zwei kurzen Zeilen Herleitung war der PFLICHT-Doppelzeiger
+#    laenger als der ganze ausgelagerte Inhalt — der Umzug machte die immer
+#    ladende Datei GROESSER. Die Herleitung traegt jetzt echte Saetze, so wie
+#    in einer wirklichen Regeldatei.
+# ⭐ Dritte Fixture derselben Form. Alle drei entstanden, als der Vertrag nur
+#    fragte "ist etwas verloren gegangen?" und nie "ist etwas leichter
+#    geworden?".
+# ⚠ WORTGLEICH in alt und SKILL, sonst bricht das INHALT-Gate an den Marken.
 cat > "$TMP/alt.md" <<'MD'
 # Beispiel
 ⛔ NIE ohne Sicherung loeschen.
-Die Herleitung: gemessen am 21.08.2026 lagen dort 32 MB.
-Der Aufruf lautet `python tools/rollback.py list`.
+Die Herleitung: gemessen am 21.08.2026 lagen in neun Transkript-Kopien 32 MB,
+weil die Rotation an `xargs` und einem Leerzeichen im Pfad still scheiterte.
+Die Gegenprobe gegen den alten Stand loeschte 0 von 7 Dateien.
+Der Aufruf lautet `python tools/rollback.py list`, und er zeigt beide Ablagen:
+`.claude-mind/backups/` von Hand und `.claude-mind/snapshots/` vom Werkzeug.
 MD
 cat > "$SK/SKILL.md" <<'MD'
 ---
@@ -35,8 +48,11 @@ name: beispiel
 description: Ein Beispiel-Command fuer den Prueflauf des Doppelzeiger-Gates, lang genug fuer die Beschreibungsgrenze.
 ---
 # Beispiel — Volltext
-Die Herleitung: gemessen am 21.08.2026 lagen dort 32 MB.
-Der Aufruf lautet `python tools/rollback.py list`.
+Die Herleitung: gemessen am 21.08.2026 lagen in neun Transkript-Kopien 32 MB,
+weil die Rotation an `xargs` und einem Leerzeichen im Pfad still scheiterte.
+Die Gegenprobe gegen den alten Stand loeschte 0 von 7 Dateien.
+Der Aufruf lautet `python tools/rollback.py list`, und er zeigt beide Ablagen:
+`.claude-mind/backups/` von Hand und `.claude-mind/snapshots/` vom Werkzeug.
 MD
 
 # --- Kurz-Rule A: nennt PFAD und COMMAND (der Doppelzeiger) ----------------

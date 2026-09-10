@@ -52,8 +52,27 @@ T=$(mktemp -d) || exit 1
 trap 'rm -rf "$T"' EXIT
 mkdir -p "$T/skills/probe"
 
-printf -- '---\ndescription: x\n---\n# A\n\nEins\n\nZwei\n\nDrei\n\nVier\n\nFuenf\n' > "$T/alt.md"
-printf -- '---\nname: probe\ndescription: Beschreibt ausfuehrlich genug worum es geht und nennt die Auslesewoerter\n---\n# A\n\nZwei\n\nDrei\n\nVier\n\nFuenf\n' > "$T/skills/probe/SKILL.md"
+# ⛔ v5.71.0: DIE FIXTURE IST GEWACHSEN, DAS GATE IST NICHT GELOCKERT — derselbe
+#    Griff wie in v5.39.0 elf Zeilen weiter unten, und aus demselben Grund.
+#    Das neue Gate ENTLASTUNG verlangt, dass die Kurz-Rule in BYTES kleiner wird.
+#    Mit den alten Ein-Wort-Absaetzen ("Zwei", "Drei", ...) war der PFLICHT-
+#    Doppelzeiger laenger als der gesamte ausgelagerte Inhalt — der Umzug machte
+#    die immer ladende Datei GROESSER und war damit genau der Fall, den der
+#    Nutzer als "ihr stopft alles voll" gemeldet hat.
+# ⭐ Drei Fixtures hatten diese Form (hier, test_doppelzeiger.sh und der
+#    Selbsttest in cleaner_umzug.py). Alle drei entstanden, als der Vertrag nur
+#    fragte "ist etwas verloren gegangen?" — keine fragte je "ist etwas
+#    leichter geworden?".
+# ⚠ Die Absaetze sind WORTGLEICH in alt und skill, sonst bricht das INHALT-Gate
+#   an den Marken. "Eins" bleibt kurz: der Absatz bleibt in der Leitplanke.
+_Z2='Zwei - die Herleitung samt Messreihe vom 21.08.2026, mit allen Zahlen und der Gegenprobe.'
+_Z3='Drei - die vollstaendige Bedienung mit jedem Schalter und den drei Fallen darin.'
+_Z4='Vier - der Vorfall, aus dem die Regel entstand, mit Datum und Belegen.'
+_Z5='Fuenf - was danach anders gemacht wurde und woran man merkt, dass es wirkt.'
+printf -- '---\ndescription: x\n---\n# A\n\nEins\n\n%s\n\n%s\n\n%s\n\n%s\n' \
+  "$_Z2" "$_Z3" "$_Z4" "$_Z5" > "$T/alt.md"
+printf -- '---\nname: probe\ndescription: Beschreibt ausfuehrlich genug worum es geht und nennt die Auslesewoerter\n---\n# A\n\n%s\n\n%s\n\n%s\n\n%s\n' \
+  "$_Z2" "$_Z3" "$_Z4" "$_Z5" > "$T/skills/probe/SKILL.md"
 
 # Der gute Fall: DOPPELZEIGER (Pfad UND Command), keine Ladebedingung,
 # nichts verloren.

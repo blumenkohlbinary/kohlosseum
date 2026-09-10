@@ -8,10 +8,17 @@ Geprueft wird ein Tripel: die ALTE Regel, die zurueckbleibende KURZ-Rule und der
 neue SKILL. Vier Gates, alle muessen halten. Ein gebrochenes Gate heisst: NICHT
 umziehen, listen.
 
-## Die vier Gates
+## Die Gates
 
-  1 ERHALTUNG    Inhaltszeilen(Kurz) + Inhaltszeilen(Skill) >= Inhaltszeilen(Alt)
+  1a ERHALTUNG   Inhaltszeilen(Kurz) + Inhaltszeilen(Skill) >= Inhaltszeilen(Alt)
                  Frontmatter zaehlt nicht mit, Leerzeilen auch nicht.
+
+  1b ⭐ ENTLASTUNG (NEU v5.71.0)  Die Kurz-Rule ist in BYTES kleiner als die alte.
+                 ⛔ Ohne dieses Gate war ein Umzug moeglich, der NICHTS entlastet:
+                 1a zaehlt ueber beide Orte und ist blind dafuer, ob der IMMER
+                 LADENDE Anteil gesunken ist. Genau das ist aber das Ziel.
+                 ⚠ Es fordert kein Mass, nur eine Richtung — eine Mindestquote
+                 waere eine gesetzte Zahl.
 
   2 ERREICHBARKEIT  Die Kurz-Rule traegt KEIN `paths:`/`globs:` — sie muss IMMER
                  laden. Eine Leitplanke mit Ladebedingung ist keine.
@@ -258,9 +265,32 @@ def pruefe(alt_p, kurz_p, skill_p):
 
     gates = []
 
-    # --- 1 ERHALTUNG ------------------------------------------------------
+    # --- 1a ERHALTUNG -----------------------------------------------------
     gates.append(("ERHALTUNG", k_n + s_n >= a_n,
                   "Kurz %d + Skill %d = %d gegen Alt %d" % (k_n, s_n, k_n + s_n, a_n)))
+
+    # --- 1b ⭐ ENTLASTUNG (NEU v5.71.0) -----------------------------------
+    # ⛔ HIER FEHLTE DAS EIGENTLICHE ZIEL. Gate 1a zaehlt ueber BEIDE Orte und
+    #    ist damit blind fuer den einzigen Fall, der zaehlt: ob der IMMER
+    #    LADENDE Anteil kleiner geworden ist.
+    #
+    #    Gemessen am eigenen Bestand (10.09.2026, `/context`): der Dauerkontext
+    #    kostet 92 100 Token, davon 56 100 die sieben Projekt-Rules. Ein Umzug,
+    #    der die Kurz-Rule so lang laesst wie vorher, hat davon NICHTS geholt —
+    #    und bestand bis heute alle vier Gates.
+    #
+    # ⭐ DAS ERFOLGSMASS SIND BYTES, NICHT ZEILEN. Zeilen sind durch Umbruch zu
+    #    erschleichen; dieselbe Einheit benutzt schon `MIND_DECKEL_WARN_BYTES`.
+    #    Umrechnung Token ~ Bytes / 1,917 (zweimal geeicht: 03.09. gegen
+    #    /context, 10.09. gegen echte Anbieter-Zahlen, 0,3 % Abweichung).
+    #
+    # ⚠ Das Gate sagt NICHT, wie stark gekuerzt werden muss. Es sagt nur, dass
+    #   ueberhaupt gekuerzt wurde. Eine Mindestquote waere eine gesetzte Zahl,
+    #   und dieses Projekt hat genug davon zurueckgebaut.
+    a_b, k_b = len(alt.encode("utf-8")), len(kurz.encode("utf-8"))
+    gates.append(("ENTLASTUNG", k_b < a_b,
+                  "immer ladend: %d B -> %d B  (%+d B, %+d Token)"
+                  % (a_b, k_b, k_b - a_b, round((k_b - a_b) / 1.917))))
 
     # ⛔ Ein offenes Frontmatter macht die Zaehlung unbrauchbar und muss den
     #    Lauf brechen — sonst besteht das Gate, weil nichts gezaehlt wurde.
@@ -438,11 +468,35 @@ def selbsttest():
             fh.write(text)
         return p
 
-    alt = schreib("alt.md", "---\ndescription: x\n---\n# A\n\nEins\n\nZwei\n\nDrei\n\nVier\n")
+    # ⛔ v5.71.0: DIE FIXTURE IST GEWACHSEN, DAS GATE IST NICHT GELOCKERT.
+    #    Genau derselbe Griff wie in v5.39.0 acht Zeilen weiter unten, und aus
+    #    demselben Grund: ein NEUER Vertrag macht eine alte Fixture unrealistisch.
+    #
+    #    Das neue Gate ENTLASTUNG verlangt, dass die Kurz-Rule in BYTES kleiner
+    #    wird. Die alte Fixture war **vier Woerter lang** ("Eins Zwei Drei Vier").
+    #    Der Doppelzeiger, den Gate PFAD und Gate COMMAND zur PFLICHT machen,
+    #    ist laenger als der gesamte ausgelagerte Inhalt — der Umzug machte die
+    #    immer ladende Datei also GROESSER.
+    #
+    # ⭐ Das ist kein Messfehler, sondern der Fall, den der Nutzer gemeldet hat:
+    #    ein Umzug, der mehr Zeiger anlegt als er Inhalt wegnimmt, ist ein
+    #    Zuwachs. In einer echten Regeldatei kommt er kaum vor; in einer Fixture
+    #    aus vier Woertern ist er der Normalfall.
+    # ⚠ Deshalb tragen `Eins`/`Zwei`/`Drei` jetzt echte Absaetze — WORTGLEICH in
+    #   `alt` und `skill`, sonst bricht das INHALT-Gate an den Marken.
+    _E = ("Eins — die Herleitung dieser Regel samt Messreihe vom 21.08.2026, "
+          "mit allen Zahlen und der Gegenprobe, die sie traegt.\n")
+    _Z = ("Zwei — die vollstaendige Bedienung mit jedem Schalter, jedem Pfad "
+          "und den drei Fallen, die dabei Stunden gekostet haben.\n")
+    _D = ("Drei — der Vorfall, aus dem die Regel entstand, mit Datum, Belegen "
+          "und dem, was danach anders gemacht wurde.\n")
+    alt = schreib("alt.md",
+                  "---\ndescription: x\n---\n# A\n\n" + _E + "\n" + _Z + "\n" + _D
+                  + "\nVier\n")
     skill = schreib("skills/beispiel/SKILL.md",
                     "---\nname: beispiel\ndescription: Sagt genau worum es geht und "
                     "nennt die Woerter die ein Nutzer wirklich benutzt\n---\n"
-                    "# A\n\nEins\n\nZwei\n\nDrei\n")
+                    "# A\n\n" + _E + "\n" + _Z + "\n" + _D)
 
     # v5.39.0: `cmd_drin` kam dazu. Bis v5.38.0 nannte die Fixture
     # "alles gut" NUR den Pfad — unter dem neuen Vertrag ist das ein

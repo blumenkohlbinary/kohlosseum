@@ -163,6 +163,29 @@ _D1_ORT = {
     "UNBESTIMMT": "⚠ Mensch entscheidet",
 }
 
+# ⛔ v5.71.0 — DREI BAUFORMEN, DIE NIE GETEILT WERDEN. Sie sind an der FORM
+#    erkennbar, nicht am Inhalt, und deshalb mechanisch pruefbar.
+#
+#    (1) DOPPELZEIGER  — die Pflicht-Bauform aus ZIEL 3: "steht im Command X,
+#        wird er nicht angeboten, lies <pfad>". Er nennt eine Herleitung
+#        (BELEG-Merkmal) UND einen Aufruf (ANLEITUNG-Merkmal) und ist damit
+#        per Bauart ein Doppeltreffer. ⛔ Ihn zu teilen hiesse, den Zeiger zu
+#        zerlegen, der das Auslagern ueberhaupt traegt.
+#    (2) TABELLE       — eine mittendrin entnommene Zeile zerreisst sie.
+#        Dieselbe Sperre kennt `cleaner_rebuild.py` schon.
+#    (3) GERUEST       — die Rueckhol-Kopfzeile, die `cleaner_ratsche.py` in
+#        jede Archivdatei schreibt. Maschinell erzeugt: das aendert man beim
+#        ERZEUGER, nicht im Bestand.
+#
+# ⭐ Gemessen 10.09.2026 an allen 69 Doppeltreffern des eigenen Bestands
+#    (`Learnings/d1_die_69.py`): 15 = 22 % waeren falsch vorgeschlagen worden.
+_D1_UNTEILBAR = re.compile(
+    r"steh(t|en) im Command|Wird er nicht angeboten|direkt lesen"
+    r"|Volltext[^.]{0,40}Command"                       # (1) Doppelzeiger
+    r"|^\s*\|.*\|"                                      # (2) Tabelle
+    r"|entarchiviere|NICHTS ist geloescht|dorthin verschoben am",  # (3) Geruest
+    re.M)
+
 
 # ⛔ DIE LAENGE TRENNT, DAS ZEICHEN ALLEIN NICHT — Positivkontrolle 07.09.2026.
 #    Die erste Fassung nahm ⛔/NIE/MUSS als alleiniges Merkmal. Sie fiel durch:
@@ -222,11 +245,24 @@ def d1_datei(pfad):
         #    echte Fall — "NIE X, gemessen am 21.08." gehoert AUFGETEILT, nicht
         #    ganz verschoben und nicht ganz behalten. Ohne diesen Hinweis wuerde
         #    der ganze Absatz als Bremse in rules/ bleiben, samt Herleitung.
-        # ⭐ TEILBAR hat jetzt ZWEI Faelle, und der zweite ist der haeufigere:
+        # ⭐ TEILBAR hat jetzt DREI Faelle, der dritte ist neu (v5.71.0):
         #    (1) kurze Bremse mit eingebautem Beleg -> Beleg ins Archiv
         #    (2) LANGER Absatz mit Verbotszeichen   -> die Bremse herausschneiden
+        #    (3) BELEG **und** ANLEITUNG zugleich   -> fiel bisher in UNBESTIMMT
+        #
+        # ⛔ FALL (3) NUR MIT `_D1_UNTEILBAR` — die Begruendung steht dort.
+        #    Ohne den Ausschluss waeren 15 von 69 Vorschlaegen falsch (22 %),
+        #    darunter der Doppelzeiger, den ZIEL 3 zur Pflicht macht.
+        # ⚠ Fall (3) MARKIERT nur, wie (1) und (2) — er schneidet nicht. Ein
+        #   falscher Vorschlag ist kein falscher Schnitt. Er wird aber einem
+        #   Menschen vorgelegt, und der handelt danach.
+        b_und_a = (k == "UNBESTIMMT"
+                   and bool(_D1_BELEG.search(a))
+                   and bool(_D1_ANLEITUNG.search(a))
+                   and not _D1_UNTEILBAR.search(a))
         teilbar = ((k == "BREMSE" and bool(_D1_BELEG.search(a)))
-                   or (k == "ANLEITUNG" and bool(_D1_BREMSE.search(a))))
+                   or (k == "ANLEITUNG" and bool(_D1_BREMSE.search(a)))
+                   or b_und_a)
         zeilen.append({"nr": i, "klasse": k, "teilbar": teilbar,
                        "zeilen": a.count("\n") + 1,
                        "kurz": " ".join(a.split())[:64]})

@@ -311,7 +311,11 @@ darin steht. `10.10.10.1 ZUERST, sonst ist das ein BEFUND` **ist** die Bremse.
 Bedeutungsfrage; mechanisch entscheidbar sind nur Formmerkmale. Die Liste sieht ein Mensch
 durch — genau wie beim COMMAND-Vorschlag aus Step 3.
 
-## Step 5: Umziehen — vier Gates, alle müssen halten
+## Step 5: Umziehen — die Gates, alle müssen halten
+
+⛔ **Hier stand „vier Gates", während die Tabelle darunter fünf führte** — falsch seit
+v5.24.0, als `INHALT` dazukam. Eine Zahl in einer Überschrift veraltet lautlos; deshalb
+steht hier keine mehr. Wer zählt, zählt die Tabelle.
 
 ```bash
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_umzug.py" \
@@ -321,6 +325,7 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_umzug.py" \
 | Gate | prüft |
 |---|---|
 | **ERHALTUNG** | `Zeilen(Kurz) + Zeilen(Skill) ≥ Zeilen(Alt)` — Umziehen verschiebt, es kürzt nicht |
+| ⭐ **ENTLASTUNG** (NEU v5.71.0) | die Kurz-Rule ist in **BYTES** kleiner als die alte. ⛔ Ohne dieses Gate bestand ein Umzug, der **nichts entlastet**, alle übrigen: `ERHALTUNG` zählt über beide Orte und ist blind dafür, ob der **immer ladende** Anteil gesunken ist. ⚠ Es fordert eine Richtung, kein Maß — eine Mindestquote wäre eine gesetzte Zahl |
 | **ERREICHBARKEIT** | die Kurz-Rule trägt **kein** `paths:`/`globs:` — eine Leitplanke mit Ladebedingung ist keine |
 | ⭐ **PFAD** | die Kurz-Rule nennt den **Zielpfad wörtlich** |
 | **BESCHREIBUNG** | ≥ 40 Zeichen, und Name+description unter der Kappung bei **1 536** `[DOKU]` |
