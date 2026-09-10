@@ -164,6 +164,41 @@ janein "Quittung landet in analyzed-scopes" "ja" \
      >/dev/null 2>&1; grep -q '^bestand=mind-rules:2/3' "$P2/.claude-mind/analyzed-scopes" \
      && echo ja || echo nein)"
 
+echo
+echo "== ⭐ v5.72.0: DER VERDICHTUNGS-VERTRAG =="
+# ⛔ WOZU. Der Vertrag sagt "wer die eine Kopie aendert, aendert die andere mit" —
+#    und eine Regel ohne Durchsetzung ist genau das, was `kontext-anlegen.md`
+#    verbietet: was erzwungen werden MUSS, gehoert in einen Test, nicht in Prosa.
+#    Zwei Kopien, die auseinanderlaufen, heissen: ab jetzt widersprechen sich
+#    zwei Messungen und niemand weiss, welche gilt.
+BP="$CLAUDE_PLUGIN_ROOT/references/bestands-pass.md"
+janein "der Verdichtungs-Vertrag steht in bestands-pass.md" "ja" \
+  "$(grep -q 'VERDICHTEN' "$BP" 2>/dev/null && echo ja || echo nein)"
+janein "⛔ er nennt den PLUGIN-Pfad, nicht tools/" "ja" \
+  "$(grep -q 'references/doc-templates/coverage_gate.py' "$BP" 2>/dev/null && echo ja || echo nein)"
+janein "⛔ KEINE Schwelle — 100 % oder rot" "ja" \
+  "$(grep -qi 'KEINE SCHWELLE' "$BP" 2>/dev/null && echo ja || echo nein)"
+janein "⚠ und er nennt die Grenze: Erwaehnung, nicht Treue" "ja" \
+  "$(grep -q 'nicht inhaltliche Treue' "$BP" 2>/dev/null && echo ja || echo nein)"
+
+# ⭐ Die Vorlage MUSS im Plugin liegen — ein Skill darf sich nicht darauf
+#    verlassen, dass `mind-files` sie je in ein Projekt installiert hat.
+VORLAGE="$CLAUDE_PLUGIN_ROOT/references/doc-templates/coverage_gate.py"
+janein "die Vorlage liegt im Plugin" "ja" \
+  "$([ -f "$VORLAGE" ] && echo ja || echo nein)"
+janein "⛔ sie traegt ihre Gegenprobe IM LAUF (Rueckgabe 3)" "ja" \
+  "$(grep -q 'Kontrollbegriff\|return 3\|exit(3)\|sys.exit(3)' "$VORLAGE" 2>/dev/null && echo ja || echo nein)"
+
+# ⛔ Und sie muss mit der installierten Kopie uebereinstimmen, falls es eine gibt.
+INST="${CLAUDE_PROJECT_DIR:-}/tools/coverage_gate.py"
+if [ -f "$VORLAGE" ] && [ -f "$INST" ]; then
+  janein "⛔ Vorlage und installierte Kopie sind GLEICH" "ja" \
+    "$(cmp -s "$VORLAGE" "$INST" && echo ja || echo nein)"
+else
+  echo "  [--- ] UEBERSPRUNGEN: keine installierte Kopie unter tools/ vorhanden."
+  echo "         ⚠ Ein uebersprungener Fall ist KEIN bestandener."
+fi
+
 rm -rf "$D" "$D2"
 echo
 echo "  $OK ok, $ROT rot"

@@ -72,6 +72,66 @@ ladende Anteil in BYTES**. Ein Lauf, der 40 Zeilen von einer immer-ladenden Date
 andere immer-ladende schiebt, hat **0** erreicht — und meldet das mit der Zahl.
 Das Umzugs-Gate `ENTLASTUNG` (v5.71.0) prüft genau das.
 
+---
+
+## ⭐ VERDICHTEN — der zweite Weg, und er braucht KEINE Schutzliste
+
+> **Nutzer-Auftrag 10.09.2026:** Platz entsteht nicht nur durch Wegräumen, sondern durch
+> **Verdichten** und **Zusammenführen** — ohne dass eine Einzelinformation verschwindet.
+
+⛔ **Die naheliegende Bauform ist gemessen ausgeschlossen.** Man könnte vorher
+klassifizieren, was stehenbleiben muss. Gemessen 10.09.2026
+(`docs/plugin/d1-trefferquote.md`): eine Schutzliste auf `BREMSE` **übersieht 40 %** der
+Leitplanken-Absätze, 28 % davon tragen **kein Formmerkmal** und sind über die Form
+grundsätzlich nicht erreichbar.
+
+> ⭐ **Deshalb nicht vorher KLASSIFIZIEREN, sondern hinterher NACHWEISEN.**
+> Verdichten läuft frei. Danach misst ein Instrument, ob jede Einzelaussage des Originals
+> im Ergebnis wiederzufinden ist.
+
+⭐ **Der Unterschied ist grundsätzlich:** eine Schutzliste muss **vollständig** sein — bei
+60 % Reichweite unmöglich. Eine Nachweisprobe muss nur **Marken** finden, die eine
+Umformulierung überleben. Genau darauf ist das Gate gebaut: Code-Spans, Zahlen mit
+Einheit, ALLCAPS-Namen. ⛔ Fließtext-Substantive **bewusst nicht** — die verschwinden beim
+Umschreiben, und das Werkzeug war deswegen schon zweimal blind.
+
+### Der Pflichtschritt
+
+```bash
+python "$CLAUDE_PLUGIN_ROOT/references/doc-templates/coverage_gate.py" \
+       <ergebnis.md> <original.md>
+```
+
+⛔ **Diesen Pfad benutzen, nicht `tools/coverage_gate.py`.** Die Datei unter `tools/` ist
+die **installierte Kopie** in einem Nutzerprojekt — `mind-files` legt sie dort an, wenn das
+Projekt eine bekommt. ⚠ Ein Skill darf sich nicht darauf verlassen, dass sie existiert;
+die **Vorlage im Plugin** ist immer da. Beide sind heute bytegleich, und **wer eine von
+beiden ändert, ändert die andere mit** — sonst widersprechen sich zwei Messungen.
+
+| Rückgabe | heißt |
+|---|---|
+| **0** | alle Prüfpunkte belegt |
+| **1** | offene Punkte, **einzeln gelistet** |
+| ⛔ **3** | **Messung UNGÜLTIG** — die Negativkontrolle im Lauf hat angeschlagen. Kein bestandenes Gate, kein Ergebnis |
+
+⛔ **KEINE SCHWELLE. 100 % oder rot.** „Ohne Verlust" ist binär. Es gibt keine Quote, ab
+der ein Verlust in Ordnung wäre.
+⛔ **Ein offener Punkt wird EINZELN angesehen, nie pauschal nachgetragen.** Die
+Stichwortwahl ist heuristisch — ein Punkt kann als offen erscheinen, obwohl er sinngemäß
+übertragen wurde. Deshalb listet das Gate sie einzeln.
+
+### ⚠ Was das Gate NICHT leistet — und es wird nicht weggeredet
+
+- **Gemessen wird ERWÄHNUNG, nicht inhaltliche Treue.** Es schließt **Auslassungen** aus,
+  nicht **Verfälschungen**. Ein Stichwort kann dastehen, während der Punkt verstümmelt
+  übertragen wurde.
+- ⭐ **Deshalb braucht es die zweite Richtung daneben:** *nichts wird erfunden*. Die Methode
+  dafür liegt in einem fremden Projekt (`tools/erfindungsprobe.py`) — ⛔ **Methode
+  übernehmen, nicht nachbauen; lesen ja, editieren nie.**
+- ⚠ **Die absolute Prozentzahl allein ist wertlos.** Aussagekräftig ist der **Zuwachs**
+  gegen den Vorher-Stand. Bleibt die Zahl gleich, ist nichts angekommen — egal wie hoch
+  sie ist.
+
 ⭐ **Warum ein bloßes Melden trotzdem wirkt:** dieselbe Mechanik wie bei der Agent-Quittung.
 Die zwingt keinen Agenten zu arbeiten — sie macht sein **Fehlen sichtbar**. Das hat gereicht.
 
