@@ -50,6 +50,20 @@ mind_schritt <name> "fehler:<grund>"      -1       "$PROJ"
 der legitim entfaellt (`--dry-run`, kein Git, kein Quellbaum), ist kein Fehler — aber
 sein Entfallen gehoert in den Bericht statt zu verschwinden.
 
+⛔ **v5.67.0: EINEN PFLICHTSCHRITT AUSZULASSEN, WEIL ER TEUER AUSSIEHT, IST VERBOTEN.**
+Nutzer-Auftrag 10.09.2026: *„die sollen alles fahren"*. ⭐ Die Trennlinie:
+
+| | |
+|---|---|
+| ⛔ **verboten** | gar nicht **starten**, aus Ruecksicht auf Kontext, Zeit oder Kosten |
+| ✅ **erlaubt** | starten und **scheitern lassen** — `bytes:0` faengt die Bilanz |
+
+Ein gestarteter Agent, der stirbt, ist ein **Befund**. Ein nie gestarteter ist eine
+**Luecke, die wie ein Ergebnis aussieht**. ⚠ „Ressourcengrund" ist deshalb **kein**
+zulaessiger `uebersprungen:`-Grund — er stand in keinem Skill und ist beim Lauf
+entstanden. Seit v5.67.0 macht eine Teilabdeckung den Lauf zum **Teilsync**: die
+Schuld bleibt liegen, bis wirklich alles gefahren ist.
+
 ⭐ **`gelaufen:5/11` ist die TEILABDECKUNG und der Anlass dieses Baus.** Am 30.08.2026
 lief `cleaner_leitplanke.py` ueber 5 von 11 Dateien und wurde als **Bereichspruefung**
 berichtet. Der Fehler war nicht ein fehlender Aufruf, sondern ein gelaufener, der
@@ -689,7 +703,33 @@ _SC="$PROJ/.claude-mind/analyzed-scopes"
 _BEST=$(grep -c '^bestand=' "$_SC" 2>/dev/null); _BEST=${_BEST:-0}
 case "$_BEST" in ''|*[!0-9]*) _BEST=0 ;; esac
 
-UMFANG="$_SKILL_IST/$_SKILL_SOLL skills $_DIS/$_AGENT_SOLL agents $_BEST/5 bestand"
+# ⛔ v5.67.0: DIE ABDEKUNG ZAEHLT MIT — Nutzer-Auftrag 10.09.2026, woertlich:
+#    "rita und nora sind fertig und nicht komplett gefahren das darf nicht sein
+#     die sollen alles fahren".
+#
+# DER FALL, an dem es auffiel: Ritas Lauf vom 13:25 liess den
+# context-analyzer-Dispatch in `mind-claudemd` aus und quittierte ihn korrekt
+# als Teilabdeckung `1/2`. Der Lauf zaehlte trotzdem `5/5 skills 4/4 agents`,
+# hinterliess KEINE Schuld und galt als beglichen. Sie hat es gesagt; das
+# Werkzeug hat sie durchgewunken.
+#
+# ⭐ ES BRAUCHT KEIN NEUES FELD UND KEINE AENDERUNG AN `mind_sync_voll`:
+#    die zerlegt `umfang=` schon in a/b-Paare und macht aus jedem a<b einen
+#    Teilsync. Ein angehaengtes `<voll>/<gesamt> abdeckung` wirkt sofort —
+#    derselbe Trick wie beim Bestands-Pass in v5.22.0.
+#
+# ⚠ GEZAEHLT WERDEN SCHRITTE, NICHT SKILLS. Die Bilanz kennt Schrittnamen,
+#   keine Skillnamen; ein Skill mit zwei halben Schritten waere sonst falsch
+#   verrechnet. Jede Teilabdeckung macht a<b — mehr braucht das Tor nicht.
+# ⛔ `--alle` IST HIER PFLICHT. Ohne den Schalter saehe die Bilanz nur den
+#    LETZTEN Block (mind-update) — und genau so ist Ritas Beleg verschwunden.
+_ABD=$(mind_schritt_bilanz "$PROJ" --alle 2>/dev/null)
+_ATEIL=$(printf '%s' "$_ABD" | sed -n 's/.*TEIL=\([0-9]*\).*/\1/p' | head -1)
+_AGEL=$(printf '%s' "$_ABD"  | sed -n 's/.*GELAUFEN=\([0-9]*\).*/\1/p' | head -1)
+case "${_ATEIL:-}" in ''|*[!0-9]*) _ATEIL=0 ;; esac
+case "${_AGEL:-}"  in ''|*[!0-9]*) _AGEL=0 ;; esac
+
+UMFANG="$_SKILL_IST/$_SKILL_SOLL skills $_DIS/$_AGENT_SOLL agents $_BEST/5 bestand $((_AGEL - _ATEIL))/$_AGEL abdeckung"
 
 # ⚠ Ein Skill OHNE Quittung ist ungeprueft — und das muss im Merker stehen,
 #   nicht nur in der Zahl. Sonst weiss der naechste Lauf, DASS etwas fehlte,
@@ -715,6 +755,18 @@ UNGEPRUEFT="${UNGEPRUEFT%,}"
 # strenger, ein leeres aendert nichts. Fail-safe-Richtung bleibt also gleich.
 if [ -n "${UNGEPRUEFT_BESTAND:-}" ]; then
   UNGEPRUEFT="${UNGEPRUEFT:+$UNGEPRUEFT,}$UNGEPRUEFT_BESTAND"
+fi
+
+# ⛔ v5.67.0: WELCHE Schritte nur halb abdeckten — nicht nur DASS welche.
+#    Sonst weiss der naechste Lauf, dass etwas fehlte, aber nicht was: derselbe
+#    blinde Fleck, den v5.19.0 bei den Agents und v5.22.0 beim Bestand behoben hat.
+# ⚠ KEINE Pipe in eine Schleife (Subshell). Die Namen kommen aus der
+#   TEILABDECKUNG-Zeile: ` <name> <a>/<b> <name> <a>/<b> …` — jedes zweite Wort.
+_TNAMEN=$(printf '%s' "$_ABD" | sed -n 's/^ *TEILABDECKUNG://p' \
+          | tr ' ' '\n' | grep -v '/' | grep -v '^$' | sort -u | tr '\n' ',')
+_TNAMEN="${_TNAMEN%,}"
+if [ -n "$_TNAMEN" ]; then
+  UNGEPRUEFT="${UNGEPRUEFT:+$UNGEPRUEFT,}abdeckung-${_TNAMEN//,/,abdeckung-}"
 fi
 ```
 

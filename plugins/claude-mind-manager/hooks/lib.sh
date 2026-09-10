@@ -1841,11 +1841,55 @@ _mind_schritt_pfad() {
 #    mind-compact und mind-session-log haben null Pflichtaufrufe; sie bekommen
 #    trotzdem einen Start-Eintrag. Ein Skill ohne Quittung waere von einem mit
 #    vergessener Quittung nicht zu unterscheiden.
+# ⛔ v5.67.0: DIE QUITTUNG WIRD ANGEHAENGT, NICHT GELEERT.
+#
+# HIER STAND `: > "$q"`. Die Quittung ist EINE Datei je PROJEKT, und in einer
+# `/mind-all`-Kette starten FUENF Skills nacheinander — jeder leerte sie. Am
+# Ende eines Laufs stand nur noch der LETZTE Skill darin.
+#
+# ⭐ GEMESSEN AN EINEM ECHTEN LAUF (Rita, 10.09.2026 13:25): sie hatte in
+#    `mind-claudemd` eine Teilabdeckung `1/2` korrekt quittiert und in ihrem
+#    Bericht genannt. Nach dem Lauf:
+#      .claude-mind/schritt-quittung.jsonl -> 7 Zeilen, START skill=mind-update
+#    Der Beleg war physisch weg, bevor irgendetwas ihn auswerten konnte.
+#
+# ⛔ VIERTER FALL DERSELBEN KLASSE — ein Merker liegt PROJEKTWEIT und meint
+#    einen einzelnen Abschnitt: `transkript-pfad` (v5.66.0), `analyzed-scopes`
+#    (v5.30.0), `UEBERGABE` (v5.61.0), und hier. Die Klasse ist EINMAL
+#    beschrieben, in `.claude/rules/hooks.md`; hier steht nur der Fall.
+#
+# ⭐ DAS MUSTER IST ERPROBT: `OPEN` haengt seit v5.56.0 an, eine Zeilengruppe
+#    je Rettung. Hier: eine Gruppe je Skill.
+#
+# ⚠ WANN TROTZDEM GELEERT WIRD — zwei Faelle, beide noetig:
+#   (1) KEINE Kette: liegt kein `analyzed-scopes`, laeuft ein Einzelskill, und
+#       der soll wie bisher mit einer frischen Datei beginnen.
+#   (2) NOTBREMSE bei 500 Zeilen: bleibt eine Kettenmarke liegen (der C1-Fall,
+#       vor dem mind-all Step 2.9 warnt), waechst die Datei sonst ewig.
+#       ⛔ Das Leeren wird dann PROTOKOLLIERT — eine stille Notbremse waere
+#       von einem Datenverlust nicht zu unterscheiden.
 mind_schritt_start() {
   local q; q=$(_mind_schritt_pfad "${1:-}")
+  local proj="${1:-${CLAUDE_PROJECT_DIR:-$(pwd)}}"
   local skill="${2:-unbekannt}"; shift 2 2>/dev/null || shift $#
   mkdir -p "$(dirname "$q")" 2>/dev/null || return 1
-  : > "$q" || return 1
+  local kette=0 zeilen=0
+  # ⛔ NUR `analyzed-scopes`, NICHT `.done`. Die `.done` bleibt nach jedem
+  #    Lauf liegen (Step 2.9 benennt nur um) — sie mitzuzaehlen hiesse, die
+  #    Quittung nach dem ERSTEN Kettenlauf nie wieder zu leeren.
+  # ⭐ Die Reihenfolge traegt das: `/mind-all` ruft `mind_schritt_start` in
+  #    Step -1, `analyzed-scopes` entsteht erst in Step 0. Der Kettenanfang
+  #    leert also, die fuenf Skills danach haengen an.
+  [ -f "$proj/.claude-mind/analyzed-scopes" ] && kette=1
+  if [ -f "$q" ]; then
+    zeilen=$(grep -c '' "$q" 2>/dev/null)
+    case "$zeilen" in ''|*[!0-9]*) zeilen=0 ;; esac
+  fi
+  if [ "$kette" -eq 0 ] || [ "$zeilen" -ge 500 ] 2>/dev/null; then
+    [ "$kette" -eq 1 ] && [ "$zeilen" -ge 500 ] 2>/dev/null && \
+      mind_log WARN "schritt-quittung bei $zeilen Zeilen geleert (Notbremse, Kettenmarke liegt)"
+    : > "$q" || return 1
+  fi
   printf '{"ereignis":"start","skill":"%s","erwartet":"%s","ts":"%s"}\n' \
     "$skill" "$*" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$q"
 }
@@ -1858,6 +1902,17 @@ mind_schritt_start() {
 # ⭐ `gelaufen:5/11` ist die TEILABDECKUNG und der eigentliche Anlass dieses Baus:
 #   der Fehler war nicht ein fehlender Aufruf, sondern ein gelaufener, der weniger
 #   abdeckte als der Bericht behauptete.
+#
+# ⛔ v5.67.0 — EINEN PFLICHTSCHRITT AUSZULASSEN, WEIL ER TEUER AUSSIEHT, IST
+#    VERBOTEN. Nutzer-Auftrag 10.09.2026: "die sollen alles fahren".
+#    ⭐ DIE TRENNLINIE:
+#       verboten = gar nicht STARTEN, aus Ruecksicht auf Kontext oder Zeit
+#       erlaubt  = starten und SCHEITERN lassen — `bytes:0` faengt die Bilanz
+#    Ein gestarteter Agent, der stirbt, ist ein BEFUND. Ein nie gestarteter ist
+#    eine LUECKE, die wie ein Ergebnis aussieht (mind-all, seit v5.7.1).
+#    ⚠ `uebersprungen:<grund>` bleibt gueltig fuer Schritte, die ihren
+#      GEGENSTAND nicht haben (kein Git, kein Quellbaum, --dry-run). Ein
+#      vorhandener Gegenstand plus ein Sparwunsch ist kein solcher Grund.
 mind_schritt() {
   local q; q=$(_mind_schritt_pfad "${4:-}")
   local name="${1:-?}" status="${2:-gelaufen}" bytes="${3:-}"
@@ -1874,9 +1929,15 @@ mind_schritt() {
 # Rueckgabe: 0 = jeder erwartete Schritt ist quittiert und keiner gescheitert
 #            1 = mindestens einer fehlt, scheiterte oder kam leer zurueck
 #            2 = GAR KEINE QUITTUNG — der Lauf hat nie begonnen zu quittieren
+# ⛔ v5.67.0: ZWEI SICHTEN AUF DIESELBE DATEI.
+#   ohne Flag  -> der LETZTE Start-Block. Ein Skill sieht SICH, wie bisher.
+#   --alle     -> alle Bloecke. Das liest `/mind-all` am Ende der Kette.
+# ⚠ Ohne die Trennung haette das Anhaengen aus Teil A den Selbst-Check jedes
+#   Skills veraendert: er saehe die Schritte seiner Vorgaenger als eigene.
 mind_schritt_bilanz() {
   local q; q=$(_mind_schritt_pfad "${1:-}")
-  local erwartet="" n_erw=0 gel=0 ueb=0 feh=0 leer=0
+  local alle=0; [ "${2:-}" = "--alle" ] && alle=1
+  local erwartet="" n_erw=0 gel=0 ueb=0 feh=0 leer=0 n_teil=0
   local zeile name status bytes fehlt="" teil="" ueberliste="" fehlliste="" leerliste=""
 
   if [ ! -f "$q" ]; then
@@ -1886,14 +1947,28 @@ mind_schritt_bilanz() {
     return 2
   fi
 
-  erwartet=$(grep -m1 '"ereignis":"start"' "$q" 2>/dev/null \
+  # ⛔ Der AUSSCHNITT entscheidet, nicht die Datei. Ohne `--alle` gilt alles
+  #    ab der LETZTEN Start-Zeile; mit `--alle` die ganze Datei.
+  local ab=1
+  if [ "$alle" -eq 0 ]; then
+    ab=$(grep -n '"ereignis":"start"' "$q" 2>/dev/null | tail -1 | cut -d: -f1)
+    case "$ab" in ''|*[!0-9]*) ab=1 ;; esac
+  fi
+  local ausschnitt="${TMPDIR:-/tmp}/.mind_schritt_a$$"
+  sed -n "${ab},\$p" "$q" 2>/dev/null > "$ausschnitt"
+
+  erwartet=$(grep -m1 '"ereignis":"start"' "$ausschnitt" 2>/dev/null \
              | sed 's/.*"erwartet":"\([^"]*\)".*/\1/')
+  # ⚠ Mit `--alle` sind mehrere Start-Zeilen da; `erwartet` traegt dann die des
+  #   ERSTEN Skills. Das ist gewollt: die Namensliste dient nur der FEHLT-Pruefung,
+  #   und die faehrt `/mind-all` ueber seine eigene Kettenmarke, nicht hierueber.
   # ⛔ Merkdatei statt Pipe: eine `while ... | read`-Schleife laeuft in einer
   #    Subshell, und alle Zaehler waeren danach wieder 0. Derselbe Fehler steckt
   #    schon zweimal in dieser Datei (mind_check_tools_have_rules, Step 0 von
   #    mind-all) und ist beide Male teuer gewesen.
   local mt="${TMPDIR:-/tmp}/.mind_schritt_$$"
-  grep '"ereignis":"schritt"' "$q" 2>/dev/null > "$mt"
+  grep '"ereignis":"schritt"' "$ausschnitt" 2>/dev/null > "$mt"
+  rm -f "$ausschnitt"
 
   while IFS= read -r zeile; do
     [ -n "$zeile" ] || continue
@@ -1903,7 +1978,8 @@ mind_schritt_bilanz() {
     case "$status" in
       uebersprungen*) ueb=$((ueb+1)); ueberliste="$ueberliste $name(${status#uebersprungen:})" ;;
       fehler*)        feh=$((feh+1)); fehlliste="$fehlliste $name(${status#fehler:})" ;;
-      gelaufen:*)     gel=$((gel+1)); teil="$teil $name ${status#gelaufen:}" ;;
+      gelaufen:*)     gel=$((gel+1)); n_teil=$((n_teil+1))
+                      teil="$teil $name ${status#gelaufen:}" ;;
       *)              gel=$((gel+1)) ;;
     esac
     # 0 Bytes ist ein ERGEBNIS. -1 heisst "nicht gemessen" und zaehlt nicht.
@@ -1919,7 +1995,9 @@ mind_schritt_bilanz() {
   done
   rm -f "$mt"
 
-  echo "ERWARTET=$n_erw GELAUFEN=$gel UEBERSPRUNGEN=$ueb FEHLER=$feh LEER=$leer"
+  # ⛔ `TEIL=` ist MASCHINENLESBAR und dafuer da: `/mind-all` soll die Zahl
+  #    lesen koennen, ohne die Prosa darunter zu parsen.
+  echo "ERWARTET=$n_erw GELAUFEN=$gel UEBERSPRUNGEN=$ueb FEHLER=$feh LEER=$leer TEIL=$n_teil"
   [ -n "$ueberliste" ] && echo "  UEBERSPRUNGEN:$ueberliste"
   # ⭐ Teilabdeckung ist ein EIGENER Zustand, nicht "gelaufen". 5/11 ist eine
   #    gueltige Antwort; sie als 11/11 zu berichten ist es nicht.
@@ -1950,7 +2028,18 @@ mind_schritt_bilanz() {
     fi
   fi
 
-  [ -z "$fehlt" ] && [ "$feh" -eq 0 ] && [ "$leer" -eq 0 ]
+  # ⛔ v5.67.0: EINE TEILABDECKUNG IST KEIN ERFOLG.
+  #    Hier stand `[ -z "$fehlt" ] && [ "$feh" -eq 0 ] && [ "$leer" -eq 0 ]` —
+  #    `teil` kam NICHT vor. Die Funktion druckte `TEILABDECKUNG:` und gab
+  #    danach 0 zurueck. Ihr eigener Kommentar zwanzig Zeilen weiter oben sagt:
+  #    "5/11 ist eine gueltige Antwort; sie als 11/11 zu berichten ist es nicht."
+  #    Genau das tat der Rueckgabewert.
+  # ⚠ RICHTUNG: das macht die Pruefung STRENGER, nie milder.
+  # ⛔ UND RUECKGABE 2 BLEIBT UNTERSCHEIDBAR: 2 heisst "gar keine Quittung"
+  #    (der Lauf hat nie begonnen zu quittieren), 1 heisst "quittiert, aber
+  #    unvollstaendig". Wer beides zu 1 verschmilzt, verliert die Unterscheidung
+  #    zwischen einem toten und einem halben Lauf.
+  [ -z "$fehlt" ] && [ "$feh" -eq 0 ] && [ "$leer" -eq 0 ] && [ -z "$teil" ]
 }
 
 # ===== v5.28.0: Plan-Pause — /mind-all schweigt, solange ein Plan laeuft ======

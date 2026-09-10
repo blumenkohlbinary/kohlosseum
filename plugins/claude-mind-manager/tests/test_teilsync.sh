@@ -106,6 +106,22 @@ P=$(neu_projekt)
 janein "kein sync-stand -> vollstaendig" voll "$(voll_p "$P/.claude-mind/rescued/sync-stand")"
 rm -rf "$P"
 
+# --- ⭐ v5.67.0: das Paar `abdeckung` ------------------------------------
+#     ⛔ Hier wird der PARSER geprueft, nicht der Ablauf: `mind_sync_voll`
+#     muss ein VIERTES a/b-Paar genauso sehen wie die drei bekannten. Genau
+#     darauf beruht Teil C von v5.67.0 — es kam ohne eine einzige Zeile in
+#     `mind_sync_voll` aus, und dieser Fall haelt das fest.
+#     ⚠ Der ABLAUF (Ritas Lauf) steht in tests/test_schritt_quittung.sh.
+P=$(neu_projekt); stand "$P" "5/5 skills 4/4 agents 5/5 bestand 4/5 abdeckung"
+janein "⛔ 4/5 abdeckung -> Teilsync, obwohl alles andere voll ist" teil \
+       "$(voll_p "$P/.claude-mind/rescued/sync-stand")"
+rm -rf "$P"
+# ⭐ GEGENPROBE: volle Abdeckung darf NICHT zum Teilsync machen.
+P=$(neu_projekt); stand "$P" "5/5 skills 4/4 agents 5/5 bestand 5/5 abdeckung"
+janein "⭐ GEGENPROBE: 5/5 abdeckung -> vollstaendig" voll \
+       "$(voll_p "$P/.claude-mind/rescued/sync-stand")"
+rm -rf "$P"
+
 echo "--- B · ⛔ mind_sync_frisch ist ENTFALLEN (v5.65.0) ---"
 # ⛔ HIER STANDEN VIER FAELLE ueber den ZUWACHS seit dem Sync. Nutzer-
 #    Entscheidung 10.09.2026: "die sollen garnicht mehr tokens messen das soll

@@ -48,6 +48,20 @@ mind_schritt <name> "fehler:<grund>"      -1       "$PROJ"
 der legitim entfaellt (`--dry-run`, kein Git, kein Quellbaum), ist kein Fehler — aber
 sein Entfallen gehoert in den Bericht statt zu verschwinden.
 
+⛔ **v5.67.0: EINEN PFLICHTSCHRITT AUSZULASSEN, WEIL ER TEUER AUSSIEHT, IST VERBOTEN.**
+Nutzer-Auftrag 10.09.2026: *„die sollen alles fahren"*. ⭐ Die Trennlinie:
+
+| | |
+|---|---|
+| ⛔ **verboten** | gar nicht **starten**, aus Ruecksicht auf Kontext, Zeit oder Kosten |
+| ✅ **erlaubt** | starten und **scheitern lassen** — `bytes:0` faengt die Bilanz |
+
+Ein gestarteter Agent, der stirbt, ist ein **Befund**. Ein nie gestarteter ist eine
+**Luecke, die wie ein Ergebnis aussieht**. ⚠ „Ressourcengrund" ist deshalb **kein**
+zulaessiger `uebersprungen:`-Grund — er stand in keinem Skill und ist beim Lauf
+entstanden. Seit v5.67.0 macht eine Teilabdeckung den Lauf zum **Teilsync**: die
+Schuld bleibt liegen, bis wirklich alles gefahren ist.
+
 ⭐ **`gelaufen:5/11` ist die TEILABDECKUNG und der Anlass dieses Baus.** Am 30.08.2026
 lief `cleaner_leitplanke.py` ueber 5 von 11 Dateien und wurde als **Bereichspruefung**
 berichtet. Der Fehler war nicht ein fehlender Aufruf, sondern ein gelaufener, der

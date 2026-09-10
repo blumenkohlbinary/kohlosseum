@@ -39,7 +39,9 @@ lauf() {  # $1 = Skriptrumpf, der die Quittung fuellt -> Ausgabe der Bilanz
 
 echo "== 1/9  Vollstaendiger Lauf =="
 A=$(lauf 'mind_schritt_start "$D" x a b; mind_schritt a gelaufen 10 "$D"; mind_schritt b gelaufen 20 "$D"')
-janein "Zeile 1 stimmt" "ERWARTET=2 GELAUFEN=2 UEBERSPRUNGEN=0 FEHLER=0 LEER=0" "$(echo "$A" | head -1)"
+# ⛔ v5.67.0: `TEIL=` gehoert in die Kopfzeile — maschinenlesbar,
+#    damit `/mind-all` die Zahl nicht aus der Prosa parsen muss.
+janein "Zeile 1 stimmt" "ERWARTET=2 GELAUFEN=2 UEBERSPRUNGEN=0 FEHLER=0 LEER=0 TEIL=0" "$(echo "$A" | head -1)"
 janein "Rueckgabe 0" "RC=0" "$(echo "$A" | grep '^RC=')"
 # ⛔ NEGATIVKONTROLLE: ein vollstaendiger Lauf darf NICHTS melden.
 janein "meldet KEIN FEHLT" "nein" "$(echo "$A" | grep -q 'FEHLT' && echo ja || echo nein)"
@@ -145,6 +147,87 @@ janein "⭐ das ALTER der letzten Quittung steht daneben" "ja" \
 V=$(lauf 'mind_schritt_start "$D" x eins zwei; mind_schritt eins gelaufen 10 "$D"; mind_schritt zwei gelaufen 10 "$D"')
 janein "⛔ vollstaendig quittiert -> weder FEHLT noch Alter" "nein" \
        "$(echo "$V" | grep -qE 'FEHLT|letzte Quittung' && echo ja || echo nein)"
+
+echo
+echo "== ⛔ v5.67.0: EINE TEILABDECKUNG IST KEIN ERFOLG =="
+# ⛔ Nutzer-Auftrag 10.09.2026: "die sollen alles fahren". Bis v5.66.0 gab
+#    die Bilanz bei einer Teilabdeckung 0 zurueck — sie DRUCKTE
+#    "TEILABDECKUNG:" und meldete daneben Erfolg. Ihr eigener Kommentar sagt:
+#    "5/11 als 11/11 zu berichten ist es nicht."
+T1=$(lauf 'mind_schritt_start "$D" x a; mind_schritt a "gelaufen:1/2" 100 "$D"')
+janein "⛔ Teilabdeckung -> Rueckgabe NICHT 0" "nein" \
+       "$(echo "$T1" | grep -q '^RC=0$' && echo ja || echo nein)"
+janein "   ... naemlich 1" "RC=1" "$(echo "$T1" | grep '^RC=')"
+janein "   ... und TEIL=1 steht in der Kopfzeile" "ja" \
+       "$(echo "$T1" | head -1 | grep -q 'TEIL=1' && echo ja || echo nein)"
+janein "   ... und die Zeile TEILABDECKUNG bleibt" "ja" \
+       "$(echo "$T1" | grep -q 'TEILABDECKUNG' && echo ja || echo nein)"
+# ⭐ DIE GEGENPROBE, ohne die der Fall nur "immer teil" hiesse.
+T2=$(lauf 'mind_schritt_start "$D" x a; mind_schritt a gelaufen 100 "$D"')
+janein "⭐ GEGENPROBE: ohne Teilabdeckung Rueckgabe 0" "RC=0" "$(echo "$T2" | grep '^RC=')"
+janein "   ... und TEIL=0" "ja" \
+       "$(echo "$T2" | head -1 | grep -q 'TEIL=0' && echo ja || echo nein)"
+# ⛔ RUECKGABE 2 BLEIBT UNTERSCHEIDBAR (Auflage): 2 = gar keine Quittung,
+#    1 = quittiert, aber unvollstaendig. Wer beides zu 1 verschmilzt, kann
+#    einen toten Lauf nicht mehr von einem halben trennen.
+T3=$(lauf 'true')
+janein "⛔ keine Quittung bleibt Rueckgabe 2" "RC=2" "$(echo "$T3" | grep '^RC=')"
+
+echo
+echo "== ⛔ v5.67.0: DIE QUITTUNG WIRD ANGEHAENGT, NICHT GELEERT =="
+# ⛔ Gemessen an Ritas Lauf vom 10.09.2026: nach fuenf Skills stand nur noch
+#    der letzte in der Datei. Ihre Teilabdeckung aus mind-claudemd war weg.
+K=$( D=$(mktemp -d); mkdir -p "$D/.claude-mind"
+     # shellcheck disable=SC1090
+     . "$LIB" >/dev/null 2>&1
+     : > "$D/.claude-mind/analyzed-scopes"          # die Kette laeuft
+     for s in eins zwei drei vier fuenf; do
+       mind_schritt_start "$D" "$s" a >/dev/null 2>&1
+       mind_schritt a gelaufen 10 "$D" >/dev/null 2>&1
+     done
+     grep -c '"ereignis":"start"' "$D/.claude-mind/schritt-quittung.jsonl"
+     rm -rf "$D" )
+janein "⛔ fuenf Skills -> fuenf Bloecke, nicht einer" "5" "$K"
+# ⭐ GEGENPROBE: OHNE Kettenmarke wird weiter geleert — ein Einzelaufruf
+#    beginnt frisch, wie vor v5.67.0.
+K2=$( D=$(mktemp -d); mkdir -p "$D/.claude-mind"
+      # shellcheck disable=SC1090
+      . "$LIB" >/dev/null 2>&1
+      for s in eins zwei; do
+        mind_schritt_start "$D" "$s" a >/dev/null 2>&1
+        mind_schritt a gelaufen 10 "$D" >/dev/null 2>&1
+      done
+      grep -c '"ereignis":"start"' "$D/.claude-mind/schritt-quittung.jsonl"
+      rm -rf "$D" )
+janein "⭐ GEGENPROBE: ohne Kette wird geleert" "1" "$K2"
+
+echo
+echo "== ⭐ RITAS LAUF, NACHGESTELLT (die Auflage, die zaehlt) =="
+# ⛔ `4/4 agents` PLUS eine Teilabdeckung MUSS Teilsync ergeben. Ein Fall,
+#    der nur zusichert "TEIL wird gedruckt", faengt genau diesen Fehler nicht:
+#    Rita hat ihre Auslassung korrekt quittiert UND gemeldet, und der Lauf galt
+#    trotzdem als beglichen.
+R=$( D=$(mktemp -d); mkdir -p "$D/.claude-mind"
+     # shellcheck disable=SC1090
+     . "$LIB" >/dev/null 2>&1
+     : > "$D/.claude-mind/analyzed-scopes"
+     for s in mind-claudemd mind-memory mind-rules mind-files mind-update; do
+       mind_schritt_start "$D" "$s" schrittX >/dev/null 2>&1
+       if [ "$s" = "mind-claudemd" ]; then
+         mind_schritt schrittX "gelaufen:1/2" 100 "$D" >/dev/null 2>&1
+       else
+         mind_schritt schrittX gelaufen 100 "$D" >/dev/null 2>&1
+       fi
+     done
+     _A=$(mind_schritt_bilanz "$D" --alle 2>/dev/null)
+     _T=$(printf '%s' "$_A" | sed -n 's/.*TEIL=\([0-9]*\).*/\1/p' | head -1)
+     _G=$(printf '%s' "$_A" | sed -n 's/.*GELAUFEN=\([0-9]*\).*/\1/p' | head -1)
+     printf 'ts=x\numfang=5/5 skills 4/4 agents 5/5 bestand %s/%s abdeckung\n' \
+       "$(( _G - _T ))" "$_G" > "$D/.claude-mind/sync-stand"
+     if mind_sync_voll "$D/.claude-mind/sync-stand" >/dev/null 2>&1; then
+       echo voll; else echo teil; fi
+     rm -rf "$D" )
+janein "⛔ 5/5 Skills, 4/4 Agents, EINE Teilabdeckung -> TEILSYNC" "teil" "$R"
 
 echo
 echo "  $OK ok, $ROT rot"
