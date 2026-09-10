@@ -21,6 +21,7 @@ allowed-tools: Read Glob Grep Edit Write Bash
 ```
 PFLICHTSCHRITTE
 bestandsaufnahme
+bestandszahlen_kandidaten
 cleaner_duplikate
 cleaner_stichprobe
 cleaner_tor
@@ -37,8 +38,8 @@ verdichten
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.78.0"
-mind_schritt_start "$PROJ" mind-rules bestandsaufnahme cleaner_duplikate cleaner_stichprobe ladeprotokoll_auswertung mind_kontext_bilanz mind_snapshot verdichten
+MIND_SKILL_VERSION="5.79.0"
+mind_schritt_start "$PROJ" mind-rules bestandsaufnahme bestandszahlen_kandidaten cleaner_duplikate cleaner_stichprobe ladeprotokoll_auswertung mind_kontext_bilanz mind_snapshot verdichten
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
@@ -634,6 +635,11 @@ source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 # 1) PFLICHTZEILE — sie MUSS woertlich in den Self-Check-Block des Berichts.
 #    ⛔ Nicht nur erwaehnen: die Zeile selbst, mit beiden Zahlenpaaren.
 mind_kontext_bilanz "$PROJ" --vergleichen
+
+# 1b) Art 6 (v5.79.0): ungegatete BESTANDSZAHLEN als Kandidaten — die Meldezeile
+#     `BESTANDSZAHLEN: …` in den Bericht. ⛔ Er urteilt nie, rc immer 0; die Liste
+#     sieht ein Mensch an. Gefunden hat er am 11.09.2026 die „45 Skill“ des Tages.
+python "$CLAUDE_PLUGIN_ROOT/references/bestandszahlen_kandidaten.py" "$PROJ" --global
 
 # 2) Stichprobe: 3 Einträge, die am längsten ungeprüft sind (max. 15 je Kettenlauf)
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_stichprobe.py" "$PROJ" \

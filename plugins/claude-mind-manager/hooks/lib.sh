@@ -2618,7 +2618,7 @@ mind_verdichtung_pruefen() {
   printf '%-14s Stufe 1       coverage %s   Marker %s\n' "" "${deck:-?}" "${marker:-?}"
   printf '%-14s Stufe 2       markenfrei entfernt %s  ⚠ ungeprueft\n' "" "${ausw:-0 B}"
   printf '%-14s               ⚠ Stufe 2 ist bei Umformulierung nur GROESSENORDNUNG (zeilenweise gezaehlt)\n' ""
-  printf '%s\n' "$out" | grep -E '^⚠ AUSWEIS: ⛔-Absaetze' | sed 's/^/               /'
+  printf '%s\n' "$out" | grep -E '^⚠ AUSWEIS: ⛔-Absaetze|^⚠ BENENNUNG LEER' | sed 's/^/               /'
 
   # --- die Urteile ---
   if [ "$rc" -ne 0 ]; then

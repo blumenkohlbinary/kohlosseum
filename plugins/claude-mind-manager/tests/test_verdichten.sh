@@ -123,6 +123,16 @@ janein "   ... Marker-Zeile zeigt '(benannt 1)'" "ja" \
 printf 'entfernt: ⚠ „irgendwas“\n' > "$D/falsch.md"
 sed -i 's/^⛔ NIE/NIE/' "$D/weg.md"
 janein "⛔ benanntes ⚠ deckt kein verlorenes ⛔ -> Rueckgabe 1" "1" "$(rc_von "$D/weg.md" "$D/falsch.md")"
+# ⛔ v5.79.0: eine Benennung wird ABGEGLICHEN, nicht nur gezaehlt. Gemessen am
+#    ersten echten Lauf (hooks.md, 11.09.2026): der Agent benannte zwei ⚠ als
+#    entfernt, die nur UMFORMULIERT waren — das Gate war zufrieden. Eine
+#    Ueberbenennung koennte so einen echten Verlust decken.
+cp "$D/orig.md" "$D/noch.md"
+sed -i '/^⚠ Die Rotation/,/^$/d' "$D/noch.md"          # ⚠ weg …
+printf 'entfernt: ⚠ „Der Aufruf ist“
+' > "$D/leer.md"     # … aber der ⭐-Absatz benannt, der noch da ist
+janein "⛔ Benennung eines NOCH VORHANDENEN Absatzes deckt nichts -> Rueckgabe 1" "1" "$(rc_von "$D/noch.md" "$D/leer.md")"
+janein "   ... und die Ausgabe sagt BENENNUNG LEER" "ja"   "$(lauf "$D/noch.md" "$D/leer.md" | grep -q 'BENENNUNG LEER' && echo ja || echo nein)"
 
 echo
 echo "=============================================================================="

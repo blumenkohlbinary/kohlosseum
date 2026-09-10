@@ -191,6 +191,11 @@ fi
 ⛔ **Das Kriterium für eine Bremse ist das ⛔ am Absatzanfang** — nicht NUR/KEIN im Absatz.
 Die Wörter stehen in Prosa ständig; der erste Agent hielt daran 19 freie Absätze für Bremsen
 und erreichte 0,2 %.
+⛔ **Gezählt wird jedes ⛔/⚠/⭐-ZEICHEN, auch in Codeblöcken und Tabellen** — nicht nur
+Absätze. Jedes entfernte wird benannt, und **eine Benennung zählt nur, wenn ihr Zitat im Ergebnis
+nicht mehr vorkommt** (v5.79.0). Gemessen am ersten echten Lauf (`hooks.md`, 11.09.2026): drei
+⛔ in einem Codeblock unbenannt → rot; zwei ⚠ als entfernt benannt, aber nur umformuliert →
+das alte Gate war zufrieden.
 
 **Der Bericht — drei Zeilen, `mind_verdichtung_pruefen` schreibt sie:**
 
@@ -247,6 +252,26 @@ Tokens — eine ganz andere Größe. `MEMORY.md` selbst zählt sehr wohl mit.
 
 ⚠ **Die Anweisungszahl ist eine Heuristik** (Zeilen mit `MUST`/`NEVER`/`ALWAYS`/⛔). Als
 Trend brauchbar, als Absolutwert nicht. **So auch berichten**, nicht als harte Zahl.
+
+### 1b · Art 6 — ungegatete Bestandszahlen, als KANDIDATEN (v5.79.0)
+
+```bash
+python "$CLAUDE_PLUGIN_ROOT/references/bestandszahlen_kandidaten.py" "$PROJ" --global
+```
+
+```
+BESTANDSZAHLEN: 63 Kandidaten · 17 datiert · 28 gegatet · 18 UNGEGATET+UNDATIERT — ein Mensch sieht sie an, kein Gate
+  CLAUDE.md:159                    45 Skill           … alle 45 Skill-Beschreibungen …
+```
+
+⛔ **Er urteilt nie, Rückgabe immer 0.** Gemessen 11.09.2026 (`docs/plugin/art6-bestandszahlen.md`):
+der Versuch, Kandidaten mechanisch als FALSCH zu werten, lag **8 von 8** Mal daneben — jeder
+„Fehler“ war ein Referenten-Fehler (*die fünf Context-Skills* sind nicht *alle zehn Skills*).
+Finden geht, urteilen nicht. Dieselbe Doktrin wie `cleaner_leitplanke.py`.
+⭐ **Was ohne Urteil wegfällt:** datiert (Datum oder Version auf derselben Zeile — ein
+Protokoll sagt „damals“) und gegatet (`**<n>** |` in einer Tabelle, das Format von `zaehl_gate.py`).
+Messwerte (Zeilen, Byte, Tokens, Sekunden) sind keine Bestandszahlen; „Zeilen“ nur als Limit.
+⚠ Die Meldezeile gehört in den Bericht — auch bei `0 Kandidaten`. Erster Träger: `mind-rules`.
 
 ## 2 · Die Stichprobe — 3 Einträge, die am längsten ungeprüft sind
 

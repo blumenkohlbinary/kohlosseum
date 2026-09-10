@@ -153,10 +153,23 @@ def marker_zaehlung(text: str):
     return z
 
 
-def benannte_entfernungen(pfad):
-    """Wie viele Marker der Bericht als 'entfernt: <zeichen>' EINZELN benennt."""
+# ⛔ EINE BENENNUNG WIRD ABGEGLICHEN, NICHT NUR GEZAEHLT — gemessen 11.09.2026 am
+#    ersten echten Lauf (`hooks.md`): der Agent benannte zwei ⚠-Absaetze als
+#    entfernt, die er nur UMFORMULIERT hatte — das ⚠ stand noch. Das Gate sah
+#    "⚠ 21->20, benannt 3" und war zufrieden. Eine Ueberbenennung haette so einen
+#    echten, unbenannten Verlust decken koennen. Deshalb zaehlt eine Benennung
+#    nur, wenn der zitierte Absatzanfang im ERGEBNIS nicht mehr vorkommt.
+# ⚠ Was das NICHT faengt: eine erfundene Benennung („xyz“). Die sieht Stufe 3.
+P_ZITAT = r"[„\"“”'‚‘]\s*(.+?)\s*[“”\"‘’']?\s*$"
+
+
+def benannte_entfernungen(pfad, ziel_text=None):
+    """Wie viele Marker der Bericht als 'entfernt: <zeichen> „…“' EINZELN benennt.
+    Mit `ziel_text` zaehlt eine Benennung nur, wenn ihr Zitat dort NICHT mehr steht;
+    `leer` fuehrt die verworfenen Benennungen (Zitat noch vorhanden)."""
     out = {name: 0 for name, _ in MARKER}
     out["VERBOT"] = 0
+    out["leer"] = []
     if not pfad:
         return out
     try:
@@ -167,6 +180,12 @@ def benannte_entfernungen(pfad):
         if not re.match(r"\s*entfernt\s*:", zeile):
             continue
         rest = zeile.split(":", 1)[1]
+        if ziel_text is not None:
+            m = re.search(P_ZITAT, rest)
+            zitat = m.group(1).strip() if m else ""
+            if zitat and zitat in ziel_text:
+                out["leer"].append(rest.strip())
+                continue
         for name, zeichen in MARKER:
             if zeichen in rest:
                 out[name] += 1
@@ -258,7 +277,9 @@ def main(argv):
     try:
         mq = marker_zaehlung(quell_txt)
         mz = marker_zaehlung(ziel_txt)
-        benannt = benannte_entfernungen(entfernt_pfad)
+        benannt = benannte_entfernungen(entfernt_pfad, ziel_txt)
+        for z in benannt["leer"]:
+            print(f"⚠ BENENNUNG LEER (Zitat steht noch im Ergebnis, zaehlt nicht): {z}")
         teile = []
         for k in ("⛔", "⚠", "⭐", "VERBOT"):
             fehl = max(0, mq[k] - mz[k])
