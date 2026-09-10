@@ -63,9 +63,17 @@ FROZEN=$(mind_transkript_pfad "$P")                            # Step 0
 printf '%s|fremde|2' "$B" > "$P/.claude-mind/transkript-pfad"  # fremde Sitzung dazwischen
 pruef "⭐ eingefroren -> weiter MEIN Transkript" "$A" "$(mind_transkript_pfad "$P" "$FROZEN")"
 
-# Und die Zahl, die daran haengt, ist die eigene:
-pruef "   ... und die Tokenzahl ist meine (111, nicht 999)" \
-      111 "$(mind_kontext_tokens "$(mind_transkript_pfad "$P" "$FROZEN")")"
+# ⛔ v5.65.0: HIER HING EINE TOKENZAHL DARAN ("meine 111, nicht die fremde
+#    999"). `mind_kontext_tokens` ist entfallen — und zwar GENAU WEGEN dieses
+#    Falls: der Merker liegt je PROJEKT, und bei mehreren Rollen im Ordner
+#    gewinnt der Letzte. Das Einfrieren aus v5.38.0 verkleinerte das Rennfenster,
+#    es schloss es nie ("EIN REST BLEIBT und wird nicht weggeredet").
+#    Gemessen 10.09.2026 in `APP - Palvedo`: fuenf Transkripte, die sync-Sitzung
+#    bei ~130 000, gemeldet 721 405.
+# ⭐ WAS BLEIBT: der PFAD wird weiter eingefroren — er traegt die Lauf-Kennung
+#    und die Sitzungskennung der Laufsperre. Der Fall darueber sichert das ab.
+pruef "⛔ keine Tokenzahl haengt mehr daran" "weg" \
+      "$(type mind_kontext_tokens >/dev/null 2>&1 && echo da || echo weg)"
 
 echo
 echo "=== 6) prompt-submit.sh schreibt das neue Format ==="

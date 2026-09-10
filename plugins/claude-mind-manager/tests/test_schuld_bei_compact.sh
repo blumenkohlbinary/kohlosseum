@@ -1,19 +1,38 @@
 #!/usr/bin/env bash
-# Die Sync-Schuld darf nicht verschwinden, weil zugleich eine Kompaktierung
-# aussteht (v5.50.0).
+# Die Sync-Schuld trägt jetzt ALLES allein (v5.65.0).
 #
-# ⛔ DER FEHLER WAR STRUKTURELL, NICHT ZUFAELLIG. `prompt-submit.sh` ist eine
-#    Kette aus `if … exit 0`. Der COMPACT-FAELLIG-Zweig steigt aus, die
-#    Schuld-Meldung steht 150 Zeilen weiter unten — sie wurde bei BEIDEN
-#    Merkern nie erreicht.
+# ⛔ WAS DIESE SAMMLUNG WAR (v5.50.0): `prompt-submit.sh` ist eine Kette aus
+#    `if … exit 0`. Der COMPACT-FAELLIG-Zweig stieg aus, die Schuld-Meldung
+#    stand 150 Zeilen weiter unten — bei BEIDEN Merkern wurde sie nie erreicht.
+#    Der Fix war, die Schuld MIT in die Kompaktierungs-Meldung zu nehmen.
 #
-# ⚠ DER AUSSTIEG IST RICHTIG: ein Hook gibt genau EINEN `additionalContext`
-#   aus. Falsch war, dass die eine Meldung nur eine der beiden Tatsachen trug.
+# ⭐ WAS SIE JETZT IST: `COMPACT-FAELLIG` ist entfallen (er entstand nur
+#    token-getriggert, Nutzer-Entscheidung 10.09.2026). Damit gibt es nur noch
+#    EINEN Weg — und die Frage kehrt sich um: trägt er allein, was die
+#    zusammengelegte Meldung trug?
 #
-# ⛔ UND ES IST DER HAEUFIGE FALL, nicht der seltene: ein token-erzwungener
-#    Sync bekommt oberhalb von MIND_AGENT_HALB_TOKENS null Agenten, ist damit
-#    per Konstruktion ein Teilsync (OPEN mit grund=teilsync) und setzt zugleich
-#    COMPACT-FAELLIG.
+# ⛔ WO DIE ZUSICHERUNGEN GEBLIEBEN SIND:
+#
+#    | war (v5.50.0)                     | ist                                |
+#    |-----------------------------------|------------------------------------|
+#    | beide Merker -> beide Tatsachen   | ⛔ gegenstandslos — es gibt nur     |
+#    |                                   |   noch einen Merker. Abschnitt 1   |
+#    |                                   |   prüft, dass der EINE alles trägt.|
+#    | EINE gültige JSON-Ausgabe         | ⭐ BLEIBT — Abschnitt 2.            |
+#    | ohne Schuld keine erfinden        | ⭐ BLEIBT — Abschnitt 3.            |
+#    | OPEN ohne grund= erfindet keinen  | ⭐ BLEIBT — Abschnitt 4.            |
+#    | eine Altlast-Datei wirkt          | ⭐ umgekehrt — Abschnitt 5:         |
+#    |                                   |   sie wirkt NICHT mehr.            |
+#
+# ⛔ JEDER FALL BEKOMMT EIN EIGENES PROJEKT. Die alte Fassung teilte eines für
+#    alle fünf — das ging nur, solange der COMPACT-Zweig vorher aussteig. Über
+#    den Schuld-Zweig setzt der Hook `OPEN.seen-<sid>`, und ab dem zweiten Fall
+#    schwieg er turnusmäßig. ⭐ Ein Prüffall, der am Zustand des vorigen hängt,
+#    misst nicht mehr, was er behauptet.
+#
+# ⭐ GEGENPROBE: Abschnitt 5 ist gegen v5.64.0 ROT.
+#
+# Aufruf:  CLAUDE_PLUGIN_ROOT=<paket> bash tests/test_schuld_bei_compact.sh
 set -u
 R="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 PS="$R/hooks/prompt-submit.sh"
@@ -28,22 +47,34 @@ hat() { case "$3" in *"$2"*) GRUEN=$((GRUEN+1)); echo "  [ok ] $1";;
 nicht() { case "$3" in *"$2"*) ROT=$((ROT+1)); echo "  [ROT] $1 — '$2' steht drin";;
   *) GRUEN=$((GRUEN+1)); echo "  [ok ] $1";; esac; }
 
-P="$TMP/proj"; mkdir -p "$P/.claude-mind/rescued"
-echo '{"cwd":"'"$P"'","session_id":"t1"}' > "$TMP/in.json"
-lauf() { CLAUDE_PLUGIN_ROOT="$R" CLAUDE_PROJECT_DIR="$P" \
-         bash "$PS" < "$TMP/in.json" 2>/dev/null; }
+neu_projekt() {   # jeder Fall bekommt sein eigenes — siehe Kopf
+  # ⛔ KEIN Zaehler in der Elternschale. `P=$(neu_projekt)` laeuft in einer
+  #   SUBSHELL — ein `n=$((n+1))` darin ist beim naechsten Aufruf wieder weg,
+  #   und alle Faelle bekaemen DASSELBE Verzeichnis. Genau das ist beim Bau
+  #   dieser Fassung passiert: die Faelle 4 und 5 wurden rot, weil Fall 1
+  #   bereits `OPEN.seen-t1` gesetzt hatte. Die Falle steht in
+  #   `~/.claude/rules/shell-windows.md` als erste der stillen.
+  local d; d=$(mktemp -d "$TMP/pXXXXXX")
+  mkdir -p "$d/.claude-mind/rescued"; touch "$d/.claude-mind/rescued/x_chat.md"
+  printf '%s' "$d"
+}
+schuld() {        # projekt [grund] [ungepruef]
+  { printf 'path=%s/.claude-mind/rescued/x_chat.md\n' "$1"
+    [ -n "${2:-}" ] && printf 'grund=%s\n' "$2"
+    [ -n "${3:-}" ] && printf 'ungepruef=%s\n' "$3"
+  } > "$1/.claude-mind/rescued/OPEN"
+}
+lauf() { printf '{"cwd":"%s","session_id":"t1"}' "$1" \
+  | CLAUDE_PLUGIN_ROOT="$R" CLAUDE_PROJECT_DIR="$1" bash "$PS" 2>/dev/null; }
 
-echo "=== 1) ⭐ POSITIVKONTROLLE: beide Merker -> beide Tatsachen ==="
-printf 'path=%s/x_chat.md\ngrund=teilsync\nungepruef=claude-md,memory\n' \
-  "$P/.claude-mind/rescued" > "$P/.claude-mind/rescued/OPEN"
-touch "$P/.claude-mind/rescued/x_chat.md" "$P/.claude-mind/rescued/COMPACT-FAELLIG"
-A=$(lauf)
-hat "die Kompaktierung wird genannt" "compact" "$A"
-hat "⛔ die SCHULD auch" "SYNC-SCHULD" "$A"
-hat "   ... mit dem Grund" "teilsync" "$A"
-hat "   ... und den UNGEPRUEFTEN Bereichen" "claude-md" "$A"
+echo "=== 1) ⭐ POSITIVKONTROLLE: der EINE Weg trägt alles ==="
+P=$(neu_projekt); schuld "$P" teilsync "claude-md,memory"
+A=$(lauf "$P")
+hat "die Schuld wird gemeldet"                  "Sync-Schuld" "$A"
+hat "   ... mit dem Grund"                      "teilsync"    "$A"
+hat "   ... und den UNGEPRUEFTEN Bereichen"     "claude-md"   "$A"
 hat "   ... als ungeprueft, nicht als unauffaellig" "UNGEPRUEFT" "$A"
-hat "   ... und dass sie die Kompaktierung ueberlebt" "bleibt danach bestehen" "$A"
+hat "   ... und mit dem Weg heraus"             "/mind-all"   "$A"
 
 echo
 echo "=== 2) ⛔ Es bleibt EINE gueltige JSON-Ausgabe ==="
@@ -57,26 +88,35 @@ fi
 
 echo
 echo "=== 3) ⛔ NEGATIVKONTROLLE: ohne Schuld wird keine behauptet ==="
-rm -f "$P/.claude-mind/rescued/OPEN"
-B=$(lauf)
-hat "die Kompaktierung wird weiter genannt" "compact" "$B"
-nicht "⛔ aber KEINE Schuld erfunden" "SYNC-SCHULD" "$B"
+P=$(neu_projekt)
+B=$(lauf "$P")
+nicht "keine Schuld erfunden" "SYNC-SCHULD" "$B"
 nicht "   ... und kein TEILSYNC" "TEILSYNC" "$B"
 
 echo
-echo "=== 4) ⭐ Ohne COMPACT-FAELLIG bleibt der alte Weg unveraendert ==="
-rm -f "$P/.claude-mind/rescued/COMPACT-FAELLIG"
-printf 'path=%s/x_chat.md\n' "$P/.claude-mind/rescued" > "$P/.claude-mind/rescued/OPEN"
-C=$(lauf)
-hat "die Schuld wird ueber den eigenen Zweig gemeldet" "Sync-Schuld" "$C"
+echo "=== 4) ⛔ Eine OPEN ohne grund= behauptet keinen Teilsync ==="
+P=$(neu_projekt); schuld "$P"
+D=$(lauf "$P")
+hat   "die Schuld steht da"              "Sync-Schuld" "$D"
+nicht "   ... aber ohne erfundenen Grund" "Grund:"      "$D"
+nicht "   ... und ohne erfundene Bereiche" "UNGEPRUEFT" "$D"
 
 echo
-echo "=== 5) ⛔ Eine OPEN ohne grund= behauptet keinen Teilsync ==="
-touch "$P/.claude-mind/rescued/COMPACT-FAELLIG"
-D=$(lauf)
-hat "die Schuld steht da" "SYNC-SCHULD" "$D"
-nicht "   ... aber ohne erfundenen Grund" "Grund:" "$D"
-nicht "   ... und ohne erfundene Bereiche" "UNGEPRUEFT" "$D"
+echo "=== 5) ⛔ Eine COMPACT-FAELLIG-Altlast wirkt NICHT mehr ==="
+# ⛔ Der Merker ist in v5.65.0 entfallen. Eine liegengebliebene Datei aus einer
+#   aelteren Fassung darf weder eine Meldung ausloesen noch die Schuld-Meldung
+#   verdraengen. ⭐ GEGEN DEN ALTEN STAND ROT — dort verdraengte sie sie genau.
+P=$(neu_projekt); schuld "$P" teilsync "rules"
+printf 'ts=2026-09-10 12:00:00\ntokens=772345\n' > "$P/.claude-mind/rescued/COMPACT-FAELLIG"
+E=$(lauf "$P")
+hat   "die SCHULD wird trotzdem gemeldet"        "Sync-Schuld" "$E"
+hat   "   ... mit Grund"                          "teilsync"    "$E"
+nicht "⛔ und KEINE Bitte um eine Kompaktierung"  "Kompaktierung steht aus" "$E"
+
+P=$(neu_projekt)
+printf 'ts=2026-09-10 12:00:00\n' > "$P/.claude-mind/rescued/COMPACT-FAELLIG"
+F=$(lauf "$P")
+nicht "⛔ allein liegend loest sie gar nichts aus" "Kompaktierung steht aus" "$F"
 
 echo
 echo "  $GRUEN gruen · $ROT rot"

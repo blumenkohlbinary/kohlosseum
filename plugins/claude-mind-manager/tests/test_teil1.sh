@@ -42,29 +42,37 @@ export MIND_SYNC_AT_TOKENS=800000
 export MIND_SYNC_FORCE_TOKENS=840000
 export CLAUDE_PROJECT_DIR="$T/proj"
 
-echo "=== 1 · Schwelle der MAHNUNG (prompt-submit) ==="
+echo "=== 1 · ⛔ ES GIBT KEINE MAHN-SCHWELLE MEHR (v5.65.0) ==="
+# ⛔ Nutzer-Entscheidung 10.09.2026: "die sollen garnicht mehr tokens messen
+#    das soll komplett raus". Hier standen drei Faelle ueber den Umschlagpunkt
+#    799 999 / 800 000 und drei weitere in Abschnitt 2 und 4.
+#
+# ⭐ DER STAERKSTE FALL DER SAMMLUNG STEHT OBEN IM KOPF: `MIND_SYNC_AT_TOKENS`
+#    und `MIND_SYNC_FORCE_TOKENS` bleiben GESETZT. Selbst mit gesetztem Regler
+#    und einem Transkript weit ueber der alten Schwelle passiert nichts mehr.
+#    Ein Fall, der die Regler vorher leert, wuerde das nicht messen.
+# ⛔ GEGEN DEN ALTEN STAND ROT.
 mach_transkript "$T/t799.jsonl" 799999
 mach_transkript "$T/t800.jsonl" 800000
-pruef "799 999 -> still"      "$(ruf_prompt "$T/t799.jsonl" | grep -c 'Token')" "0"
-# ⛔ Auf den MECHANISMUS pruefen, nicht auf den Wortlaut. Die erste Fassung suchte
-#    'JETZT /mind-all' und wurde rot, als der Text in v5.9.3 entschaerft wurde — obwohl
-#    der Hook einwandfrei feuerte. Eine Zusicherung gegen Formulierungen bricht bei
-#    jeder Textpflege.
-pruef "800 000 -> mahnt"      "$(ruf_prompt "$T/t800.jsonl" | grep -c '/mind-all')" "1"
-pruef "800 000 -> nennt die Zahl" "$(ruf_prompt "$T/t800.jsonl" | grep -c '800000')" "1"
+mach_transkript "$T/t950.jsonl" 950000
+pruef "799 999 -> still"                      "$(ruf_prompt "$T/t799.jsonl" | grep -c '/mind-all')" "0"
+pruef "⛔ 800 000 -> AUCH still"               "$(ruf_prompt "$T/t800.jsonl" | grep -c '/mind-all')" "0"
+pruef "⛔ 950 000 -> immer noch still"         "$(ruf_prompt "$T/t950.jsonl" | grep -c '/mind-all')" "0"
+pruef "⛔ und keine Zahl in der Ausgabe"       "$(ruf_prompt "$T/t950.jsonl" | grep -c '950000')" "0"
 
 echo
-echo "=== 2 · ⛔ DER ZWANG IST ENTFALLEN — die Mahnung traegt allein ==="
-# ⛔ v5.55.0: MIND_SYNC_FORCE_TOKENS wird von keinem Hook mehr gelesen.
-#    Die Zusicherung "840 000 -> Block" ist nicht weggelassen, sondern
-#    umgezogen: oberhalb der Schwelle MAHNT prompt-submit.sh weiter.
-mach_transkript "$T/t839.jsonl" 839999
+echo "=== 2 · ⛔ Weder Zwang noch Mahnung — stop.sh schweigt ganz ==="
+# ⛔ v5.55.0 nahm den Block, v5.65.0 die Mahnung. Die alte Zusicherung
+#    "840 000 -> die Mahnung kommt weiter" hat damit ihr Ziel verloren.
+# ⭐ WOHIN SIE GING: nirgendwohin, und das ist die Entscheidung. Gemahnt wird
+#    an ARBEIT statt an Fuellstand — offene Schuld (Abschnitt 6) und der
+#    Commit-Zaehler in prompt-submit.sh. Beides misst, was getan wurde.
 mach_transkript "$T/t840.jsonl" 840000
 pruef "839 999 -> kein Block" "$(ruf_stop "$T/t839.jsonl" | grep -c 'decision')" "0"
-pruef "⛔ 840 000 -> AUCH kein Block mehr" "$(ruf_stop "$T/t840.jsonl" | grep -c 'decision')" "0"
-pruef "⭐ 840 000 -> die Mahnung kommt weiter" "$(ruf_prompt "$T/t840.jsonl" | grep -c '/mind-all')" "1"
+pruef "⛔ 840 000 -> kein Block" "$(ruf_stop "$T/t840.jsonl" | grep -c 'decision')" "0"
+pruef "⛔ 840 000 -> auch keine Mahnung" "$(ruf_prompt "$T/t840.jsonl" | grep -c '/mind-all')" "0"
+mach_transkript "$T/t839.jsonl" 839999
 
-echo
 echo "=== 3 · Transkript OHNE usage -> KEINE Aussage, nicht 0 ==="
 printf '{"type":"user"}\n{"foo":1}\n' > "$T/leer.jsonl"
 pruef "kein usage -> keine Mahnung" "$(ruf_prompt "$T/leer.jsonl" | grep -c 'Token')" "0"
@@ -72,38 +80,29 @@ pruef "kein usage -> kein Block"    "$(ruf_stop  "$T/leer.jsonl" | grep -c 'deci
 pruef "fehlendes Transkript -> still" "$(ruf_prompt "$T/gibtsnicht.jsonl" | grep -c 'Token')" "0"
 
 echo
-echo "=== 4 · sync-stand macht still — solange er FRISCH ist (v5.11.0) ==="
-# ⛔ VERTRAGSAENDERUNG v5.11.0, auf NUTZER-MELDUNG. Bis v5.10.0 genuegte die
-# blosse EXISTENZ des Merkers. Sein einziger Verbraucher (pre-compact.sh) feuert
-# aber seit `autoCompactEnabled: false` (v5.7.7) nur noch bei einem VON HAND
-# getippten /compact -- ein Merker lag damit ewig und schaltete die ganze Kette
-# DAUERHAFT stumm.
-#   GEMESSEN 21.08.2026: Merker seit 08:00 in `APP - Palvedo`, die Sitzung dort
-#   bei 950 000 Tokens, kein /mind-all, und auf Nachfrage die korrekte Antwort
-#   "mechanisch steht nichts aus". Die Mechanik hat die Wahrheit gesagt; der
-#   Merker war schuld.
-# Seither zaehlt der ZUWACHS (mind_sync_frisch). Die ersten beiden Zusicherungen
-# unten sichern den urspruenglichen Zweck weiter ab -- ein frischer Merker
-# schweigt. Die zwei darunter sind NEU und wuerden den alten Stand rot machen.
+echo "=== 4 · ⛔ sync-stand entscheidet nichts mehr ueber Tokens ==="
+# ⛔ HIER STANDEN VIER FAELLE ueber `mind_sync_frisch` (frisch = still,
+#    verbraucht = laut, gemessen am ZUWACHS). Die Funktion ist in v5.65.0
+#    entfallen; ohne `tokens=` im Merker konnte sie nur noch EINE Antwort
+#    geben, und ihr einziger Aufrufer war die Token-Mahnung.
+#
+# ⭐ WAS DER MERKER NOCH TUT: er sagt `pre-compact.sh`, ob ein VOLLER Sync
+#    lief (`umfang=`/`ungepruef=`) — sonst entsteht dort eine Schuld. Das ist
+#    `mind_sync_voll`, abgesichert in tests/test_teilsync.sh Abschnitt A und C.
+# ⚠ WAS AUFHOERT: der Merker loest sich nicht mehr selbst auf. Verbraucht
+#   wird er von pre-compact.sh — der Zustand von v5.7.0 bis v5.10.0.
 SS="$T/proj/.claude-mind/rescued/sync-stand"
 
-# ⛔ v5.55.0: gemessen wird an der MAHNUNG statt am Block. Der Vertrag
-#    (frisch = still, verbraucht = laut) ist derselbe; nur der Traeger hat
-#    gewechselt. Ohne diesen Umzug waere `mind_sync_frisch` unbewacht — die
-#    Funktion, wegen der v5.11.0 ueberhaupt entstanden ist.
-printf 'ts=jetzt\ntokens=838000\n' > "$SS"            # 2k Zuwachs -> frisch
-pruef "frischer sync-stand -> keine Mahnung" "$(ruf_prompt "$T/t840.jsonl" | grep -c '/mind-all')" "0"
-pruef "frischer sync-stand -> kein Block"    "$(ruf_stop  "$T/t840.jsonl" | grep -c 'decision')" "0"
-
-printf 'ts=2026-08-21 08:00:00\n' > "$SS"              # Alt-Merker, keine Zahl
-pruef "Alt-Merker ohne tokens= -> Mahnung kommt" "$(ruf_prompt "$T/t840.jsonl" | grep -c '/mind-all')" "1"
-
-printf 'ts=jetzt\ntokens=700000\n' > "$SS"            # 140k Zuwachs -> faellig
-pruef "140k Zuwachs seit dem Sync -> Mahnung kommt" "$(ruf_prompt "$T/t840.jsonl" | grep -c '/mind-all')" "1"
+# ⛔ Ein Merker mit ALTEM Inhalt (tokens=) darf nichts mehr bewirken — in
+#   KEINE Richtung. Das ist die Umkehrung beider alten Faelle in einem.
+printf 'ts=jetzt\ntokens=700000\n' > "$SS"           # 140k Zuwachs: mahnte frueher
+pruef "⛔ Alt-Merker mit tokens= -> trotzdem still" "$(ruf_prompt "$T/t840.jsonl" | grep -c '/mind-all')" "0"
+printf 'ts=2026-08-21 08:00:00\n' > "$SS"             # ohne Zahl: mahnte frueher
+pruef "⛔ Merker ohne tokens= -> trotzdem still"    "$(ruf_prompt "$T/t840.jsonl" | grep -c '/mind-all')" "0"
+pruef "⛔ und kein Block"                          "$(ruf_stop  "$T/t840.jsonl" | grep -c 'decision')" "0"
 
 rm -f "$SS"
 
-echo
 echo "=== 5 · Uebergabe nach der Kompaktierung ==="
 cat > "$T/proj/.claude-mind/rescued/as.json" <<'JSON'
 {"total_events": 42, "top_n": 5, "long_session": false,

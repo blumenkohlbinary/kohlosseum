@@ -106,34 +106,22 @@ P=$(neu_projekt)
 janein "kein sync-stand -> vollstaendig" voll "$(voll_p "$P/.claude-mind/rescued/sync-stand")"
 rm -rf "$P"
 
-echo "--- B · mind_sync_frisch: schweigt die Mahnung? ---"
-
-# --- 8 · Vollmerker, kleiner Zuwachs -> frisch (GEGENKONTROLLE) -----------
-P=$(neu_projekt); stand "$P" "5/5 skills 4/4 agents"
-janein "voll + Zuwachs 10k -> frisch (schweigt)" frisch \
-       "$(frisch_p "$P/.claude-mind/rescued/sync-stand" 110000)"
-rm -rf "$P"
-
-# --- 9 · Teilmerker, GLEICHER Zuwachs -> verbraucht -----------------------
-#     Der einzige Unterschied zu Fall 8 ist umfang=. Damit misst der Fall genau
-#     die neue Bedingung und nichts sonst.
-P=$(neu_projekt); stand "$P" "5/5 skills 0/4 agents"
-janein "teil + Zuwachs 10k -> verbraucht (mahnt weiter)" verbraucht \
-       "$(frisch_p "$P/.claude-mind/rescued/sync-stand" 110000)"
-rm -rf "$P"
-
-# --- 10 · bestehendes Verhalten bleibt: ohne tokens= verbraucht -----------
-P=$(neu_projekt)
-printf 'ts=x\numfang=5/5 skills 4/4 agents\n' > "$P/.claude-mind/rescued/sync-stand"
-janein "voll, aber ohne tokens= -> verbraucht (v5.11.0 unveraendert)" verbraucht \
-       "$(frisch_p "$P/.claude-mind/rescued/sync-stand" 110000)"
-rm -rf "$P"
-
-# --- 11 · bestehendes Verhalten bleibt: ohne Messung wird nicht gemahnt ---
-P=$(neu_projekt); stand "$P" "5/5 skills 4/4 agents"
-janein "voll, jetzt-Wert unlesbar -> frisch (keine Zahl ist keine Null)" frisch \
-       "$(frisch_p "$P/.claude-mind/rescued/sync-stand" "")"
-rm -rf "$P"
+echo "--- B · ⛔ mind_sync_frisch ist ENTFALLEN (v5.65.0) ---"
+# ⛔ HIER STANDEN VIER FAELLE ueber den ZUWACHS seit dem Sync. Nutzer-
+#    Entscheidung 10.09.2026: "die sollen garnicht mehr tokens messen das soll
+#    komplett raus". Ohne `tokens=` im Merker konnte die Funktion nur noch EINE
+#    Antwort geben, und ihr einziger Aufrufer (die Token-Mahnung) ist mit
+#    entfallen — also geht sie ganz.
+#
+# ⭐ IHRE TRAGENDE ZUSICHERUNG STAND NIE IN IHR: "ein TEILSYNC ist kein Sync"
+#    entscheidet `mind_sync_voll`. Das ist Abschnitt A dieser Sammlung, direkt
+#    darueber, und Abschnitt C prueft die Folge (die Schuld entsteht).
+#    Die Kette ist damit LUECKENLOS geblieben, nur um eine Stufe kuerzer.
+# ⛔ UMGEKEHRT STATT GELOESCHT — gegen den alten Stand ROT.
+if type mind_sync_frisch >/dev/null 2>&1; then N=definiert; else N=weg; fi
+janein "mind_sync_frisch ist nicht mehr definiert" weg "$N"
+janein "kein Hook ruft sie noch auf" 0 \
+       "$(grep -rhoE 'mind_sync_frisch "' "$CLAUDE_PLUGIN_ROOT/hooks/" 2>/dev/null | wc -l | tr -d ' ')"
 
 echo "--- C · pre-compact.sh: entsteht die Schuld? ---"
 

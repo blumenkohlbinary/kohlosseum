@@ -155,11 +155,19 @@ sauber; schuld
 pruef "fremde Kennung ebenfalls (fail-safe)" "nein" "$(still_ps "$FREMD")"
 
 echo
-echo "=== 11) COMPACT-FAELLIG: still fuer den arbeiter, laut fuer den sync ==="
+echo "=== 11) ⛔ COMPACT-FAELLIG ist ENTFALLEN — still fuer JEDE Rolle ==="
+# ⛔ v5.65.0: der Merker entstand nur token-getriggert und faellt mit der
+#    Token-Messung. Der zweite Fall hiess "sync: die Bitte kommt" und hat sein
+#    ZIEL verloren — es gibt keine Bitte mehr, fuer niemanden.
+# ⭐ UMGEKEHRT STATT GELOESCHT: eine liegengebliebene Altlast-Datei aus
+#    v5.64.0 darf KEINE Rolle mehr zum Reden bringen. Gegen den alten Stand ist
+#    der zweite Fall ROT.
+# ⚠ Der Preis steht in tests/test_compact_faellig.sh: niemand bittet mehr um
+#   eine Kompaktierung. Das traegt die Auto-Kompaktierung.
 sauber; touch "$P/.claude-mind/rescued/COMPACT-FAELLIG"
 pruef "arbeiter: keine Bitte um /compact" "ja"   "$(still_ps "$ARB")"
 sauber; touch "$P/.claude-mind/rescued/COMPACT-FAELLIG"
-pruef "sync: die Bitte kommt"             "nein" "$(still_ps "$SYNC")"
+pruef "⛔ sync: AUCH keine Bitte mehr"      "ja"   "$(still_ps "$SYNC")"
 
 echo
 echo "=== 12) ⭐ DIE UEBERGABE BLEIBT — auch fuer den arbeiter ==="

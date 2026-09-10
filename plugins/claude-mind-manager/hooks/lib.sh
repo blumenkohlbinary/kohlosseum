@@ -75,22 +75,24 @@ mind_append() {
   fi
 }
 
-# --- mind_kontext_tokens: wie voll ist der Kontext GERADE? (NEU v5.7.0) ---
+# ===== v5.65.0: HIER STAND `mind_kontext_tokens` ============================
+# ⛔ Nutzer-Entscheidung 10.09.2026: "die sollen garnicht mehr tokens messen
+#    das soll komplett raus ea nervt ihr seit zu bloed zum messrn".
 #
-# Liest die letzte Zeile des Transkripts, die ein 'usage'-Objekt traegt, und summiert
-# input_tokens + cache_creation_input_tokens + cache_read_input_tokens.
+# Sie las die letzte `usage`-Zeile eines Transkripts und summierte drei Felder.
+# Die MESSUNG war richtig — falsch war, WELCHES Transkript sie bekam. Der Pfad
+# kam aus `mind_transkript_pfad`, und der Merker dahinter liegt je PROJEKT.
+# Bei mehreren Rollen im selben Ordner gewinnt der Letzte. Gemessen 10.09.2026
+# in `APP - Palvedo`: fuenf aktive Transkripte, die sync-Sitzung bei ~130 000,
+# gemeldet 721 405.
 #
-# ⛔ references/token-budget-formulas.md behauptete bis v5.7.0 "No Programmatic Token Access"
-#    und "token counts are undocumented". BEIDES WIDERLEGT, gemessen 21.08.2026: 2 062 von
-#    5 044 Transkriptzeilen tragen 'usage', die Summe der letzten ergab 401 533 — plausibel
-#    und mit dem Verlauf konsistent.
-#
-# ⚠ KEINE Zahl ist KEINE Null. Ist nichts lesbar, gibt die Funktion NICHTS aus und
-#    Rueckgabewert 1 zurueck. Wer hier 0 zurueckgaebe, meldete "Kontext leer" statt "unbekannt"
-#    — und der Ausloeser wuerde nie feuern, ohne dass es auffiele.
-#
-# Args: $1 = Transkript-Pfad (JSONL)
-# Ausgabe: die Tokenzahl auf stdout · Rueckgabe: 0 = gemessen · 1 = keine Aussage moeglich
+# ⭐ WAS AN IHRE STELLE TRITT: nichts. Es gibt keinen Ablauf mehr, der eine
+#    Tokenzahl braucht. Das Teilsync-Verbot misst seit v5.64.0 HINTERHER an
+#    `umfang=`/`ungepruef=`; die Deckel-Schuld misst BYTES im Dateisystem
+#    (`kontext-wache.sh`) und trifft ihren Gegenstand.
+# ⚠ Der Eich-Faktor 1,917 B/Token bleibt in `werkzeuge-zuerst.md` stehen —
+#   als Umrechnung fuer einen Menschen, nicht als Ablauf-Entscheidung.
+
 # --- mind_transkript_pfad: das Transkript DIESER Sitzung ----------------------
 #
 # ⛔ DER BUG, den diese Funktion behebt — gemessen 03.09.2026.
@@ -226,32 +228,6 @@ mind_sync_modell_aus() {
     case "$m" in *"$wort"*) return 0 ;; esac
   done
   return 1
-}
-
-mind_kontext_tokens() {
-  local tp="$1" py out
-  [ -n "$tp" ] && [ -f "$tp" ] || return 1
-  py=$(command -v python3 2>/dev/null || command -v python 2>/dev/null) || return 1
-  [ -n "$py" ] || return 1
-  out=$("$py" -c '
-import json, sys
-letzte = None
-try:
-    with open(sys.argv[1], "rb") as f:
-        for roh in f:
-            try: e = json.loads(roh.decode("utf-8", "replace"))
-            except Exception: continue
-            u = (e.get("message") or {}).get("usage") or e.get("usage")
-            if isinstance(u, dict) and u.get("input_tokens") is not None:
-                letzte = u
-except Exception:
-    sys.exit(1)
-if not letzte: sys.exit(1)
-print(sum(int(letzte.get(k) or 0) for k in
-          ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")))
-' "$tp" 2>/dev/null) || return 1
-  case "$out" in ''|*[!0-9]*) return 1 ;; esac
-  echo "$out"
 }
 
 # --- mind_init: Standard preamble for hooks ---
@@ -1192,45 +1168,25 @@ mind_sync_voll() {
   [ "$teil" -eq 0 ]
 }
 
-# ==========================================================================
-# mind_sync_frisch  (NEU v5.11.0)
-# ==========================================================================
-# ⛔ Ein Merker, dessen Verbraucher nie laeuft, ist eine Dauersperre.
+# ===== v5.65.0: HIER STAND `mind_sync_frisch` ===============================
+# ⛔ Sie fragte "ist der `sync-stand` noch frisch?" und beantwortete das am
+#    ZUWACHS des Kontexts seit dem Sync (`MIND_SYNC_DELTA`, Vorgabe 60 000).
 #
-# `sync-stand` wird AUSSCHLIESSLICH von pre-compact.sh weggeraeumt. Seit
-# v5.7.7 (`autoCompactEnabled: false`, Nutzerentscheidung) feuert der aber nur
-# noch bei einem VON HAND getippten /compact. Wer den nie tippt, hat nach dem
-# ersten /mind-all einen Merker, der ewig liegen bleibt -- und Token-Mahnung
-# wie Token-Zwang schweigen dauerhaft.
+# ⚠ ANTONS AUFTRAG SAGTE "das Delta in mind_sync_frisch". Sie geht trotzdem
+#   GANZ, und das ist eine bewusste Abweichung, kein Versehen: ohne `tokens=`
+#   im Merker faellt sie in `case "$beim" in ''|*[!0-9]*) return 1` — sie
+#   koennte nur noch EINE Antwort geben ("verbraucht"), und ihr einziger
+#   Aufrufer (die Token-Mahnung in `prompt-submit.sh`) entfaellt im selben
+#   Zug. Eine Funktion mit einer Antwort und ohne Aufrufer ist ein Halbfix,
+#   und genau die Klasse hat dieses Projekt viermal getroffen.
 #
-# GEMESSEN 21.08.2026: der Merker lag seit 08:00 in `APP - Palvedo`, die
-# Sitzung dort lief auf 950 000 Tokens, und auf die Frage, warum kein
-# /mind-all komme, war die Antwort korrekt "mechanisch steht nichts aus".
-# Die Mechanik hat die Wahrheit gesagt; der Merker war schuld.
+# ⭐ IHRE TRAGENDE ZUSICHERUNG BLEIBT und stand nie in ihr: "ein TEILSYNC ist
+#    kein Sync" entscheidet `mind_sync_voll` (oben), abgesichert in
+#    `tests/test_teilsync.sh`. `mind_sync_frisch` hat sie nur weitergereicht.
 #
-# Deshalb zaehlt nicht mehr die EXISTENZ des Merkers, sondern der ZUWACHS
-# seit dem Sync. Das misst, was der Merker eigentlich meint -- "gerade eben
-# gelaufen, nicht schon wieder mahnen" -- und loest sich von selbst auf,
-# sobald wieder Arbeit dazugekommen ist.
-#
-# Rueckgabe 0 = frisch (schweigen)  ·  1 = verbraucht (mahnen/blocken)
-mind_sync_frisch() {
-  local stand="$1" jetzt="$2" delta="${MIND_SYNC_DELTA:-60000}" beim
-  [ -f "$stand" ] || return 1
-  # v5.19.0: ein TEILSYNC ist kein Sync. Er darf die Mahnung nicht stumm
-  # schalten -- sonst schweigt die Kette genau dann, wenn am meisten fehlt.
-  # Wirkt sofort in derselben Sitzung, ohne Umweg ueber eine Kompaktierung.
-  mind_sync_voll "$stand" || return 1
-  beim=$(grep -m1 '^tokens=' "$stand" 2>/dev/null | cut -d= -f2-)
-  # Merker aus einer Fassung vor v5.11.0 traegt keine Zahl. Ihn als "frisch"
-  # zu behandeln waere genau die Dauersperre -- also gilt er als VERBRAUCHT.
-  # Der Bestand heilt sich damit beim ersten Lauf selbst.
-  case "$beim" in ''|*[!0-9]*) return 1;; esac
-  # Ohne Messung wird NICHT gemahnt (dieselbe Linie wie ueberall sonst:
-  # keine Zahl ist keine Null).
-  case "$jetzt" in ''|*[!0-9]*) return 0;; esac
-  [ $((jetzt - beim)) -lt "$delta" ]
-}
+# ⛔ WAS DAMIT AUFHOERT: der `sync-stand` loest sich nicht mehr von selbst
+#    auf. Er wird verbraucht, wenn `pre-compact.sh` laeuft — also bei der
+#    naechsten Kompaktierung. Das ist der Zustand von v5.7.0 bis v5.10.0.
 
 # ==========================================================================
 # mind_classify_path / mind_pfad_lebt  (NEU v5.11.0)

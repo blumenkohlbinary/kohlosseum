@@ -43,31 +43,24 @@ T=$(mktemp -d) || exit 1
 trap 'rm -rf "$T"' EXIT
 
 echo "=============================================================================="
-echo "  1) mind_kontext_tokens — keine Zahl ist KEINE Null"
+echo "  1) ⛔ mind_kontext_tokens ist ENTFALLEN (v5.65.0)"
 echo "=============================================================================="
-# Ein Transkript mit zwei usage-Zeilen. Gezaehlt wird die LETZTE, als Summe aus
-# input + cache_creation + cache_read.
-TR="$T/t.jsonl"
-printf '%s\n' '{"message":{"usage":{"input_tokens":10,"cache_creation_input_tokens":5,"cache_read_input_tokens":1}}}' > "$TR"
-printf '%s\n' '{"message":{"usage":{"input_tokens":100,"cache_creation_input_tokens":20,"cache_read_input_tokens":3}}}' >> "$TR"
-pruefe "letzte usage-Zeile, alle drei Felder summiert" "$(mind_kontext_tokens "$TR")" "123"
-
-# ⛔ DIE ZUSICHERUNG, DIE ZAEHLT. Ein Transkript ohne usage darf NICHT 0 liefern,
-#    sonst schweigen Mahnung und Zwang genau dann, wenn die Messung kaputt ist.
-printf '%s\n' '{"message":{"content":"kein usage hier"}}' > "$T/leer.jsonl"
-AUS=$(mind_kontext_tokens "$T/leer.jsonl"); RC=$?
-pruefe "ohne usage: KEINE Ausgabe" "${AUS:-LEER}" "LEER"
-pruefe "ohne usage: Rueckgabe 1"   "$RC" "1"
-
-mind_kontext_tokens "$T/gibtsnicht.jsonl" >/dev/null 2>&1
-pruefe "fehlende Datei: Rueckgabe 1" "$?" "1"
-mind_kontext_tokens "" >/dev/null 2>&1
-pruefe "leeres Argument: Rueckgabe 1" "$?" "1"
-
-# Kaputte JSON-Zeilen duerfen die intakten nicht mitreissen.
-printf '%s\n' 'KEIN JSON' > "$T/mix.jsonl"
-printf '%s\n' '{"message":{"usage":{"input_tokens":7}}}' >> "$T/mix.jsonl"
-pruefe "kaputte Zeile wird uebersprungen" "$(mind_kontext_tokens "$T/mix.jsonl")" "7"
+# ⛔ HIER STANDEN SECHS FAELLE ueber die Tokenmessung, darunter die tragende
+#    "keine Zahl ist KEINE Null". Sie haben ihr ZIEL verloren, weil es keinen
+#    Ablauf mehr gibt, der eine Tokenzahl braucht — Nutzer-Entscheidung
+#    10.09.2026: "die sollen garnicht mehr tokens messen das soll komplett raus".
+#
+# ⭐ UMGEKEHRT STATT GELOESCHT. Ohne diesen Fall koennte die Funktion
+#    zurueckkommen, ohne dass es auffaellt. ⛔ GEGEN DEN ALTEN STAND ROT.
+#
+# ⚠ WOHIN DIE ZUSICHERUNG GING: nirgendwohin, und das ist richtig. "Keine
+#   Zahl ist keine Null" schuetzte einen AUSLOESER vor einer kaputten Messung.
+#   Es gibt keinen solchen Ausloeser mehr; das Teilsync-Verbot misst seit
+#   v5.64.0 HINTERHER an der Agent-Quittung (`tests/test_teilsync.sh`).
+type mind_kontext_tokens >/dev/null 2>&1
+pruefe "mind_kontext_tokens ist nicht mehr definiert" "$?" "1"
+pruefe "kein Hook ruft sie noch auf" \
+  "$(grep -rhoE 'mind_kontext_tokens "' "$CLAUDE_PLUGIN_ROOT/hooks/" 2>/dev/null | wc -l | tr -d ' ')" "0"
 
 echo
 echo "=============================================================================="

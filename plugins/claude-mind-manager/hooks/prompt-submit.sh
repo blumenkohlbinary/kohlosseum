@@ -218,91 +218,39 @@ fi
 # `MIND_NOTFALL_TOKENS` wird nicht mehr gelesen. Die Variable darf in settings.json
 # stehen bleiben; sie tut nichts mehr.
 
-_CFA="$PROJ/.claude-mind/rescued/COMPACT-FAELLIG"
-if [ -f "$_CFA" ] && [ "$_ROLLE_STILL" != "ja" ]; then
-  _CFT=$(grep -m1 '^ts=' "$_CFA" 2>/dev/null | cut -d= -f2-)
-  # ⛔ Als JSON ausgeben und AUSSTEIGEN — nicht per echo weiterlaufen. (v5.7.6)
-  #    Die erste Fassung schrieb Klartext und lief weiter; kam danach die OPEN-Erinnerung
-  #    als JSON, standen Klartext UND JSON im selben stdout eines einzigen Hook-Aufrufs.
-  #    Das ist kein gueltiges JSON mehr, und der strukturierte additionalContext wirkt
-  #    dann nur noch als literaler Text. Der UEBERGABE-Block darueber macht es seit jeher
-  #    richtig; nur dieser scherte aus.
-  _MSGC="[Mind Manager] Kompaktierung steht aus: /mind-all lief um ${_CFT:-?}, seither wurde
-nicht kompaktiert. Den Nutzer bitten, /compact zu tippen — der Sync-Ertrag von 40-60k
-Tokens wandert sonst in das naechste Kontextfenster.
+# ===== v5.65.0: HIER STAND DIE BITTE UM /compact ============================
+# ⛔ Der Merker `COMPACT-FAELLIG` entstand AUSSCHLIESSLICH token-getriggert
+#    (mind-all 2.96a, `[ "$_MTOK" -ge "$_MSCHW" ]`) — nachgesehen, nicht
+#    geglaubt: es gab keinen zweiten Entstehungsweg. Mit der Token-Messung
+#    faellt er deshalb mit.
+#
+# ⚠ DER PREIS, ausgewiesen statt verschwiegen: dies war das EINZIGE, was je
+#   um eine Kompaktierung gebeten hat. Ab jetzt bittet niemand. Folgenlos
+#   solange die Auto-Kompaktierung scharf ist (`env-vars.md`: seit 23.08.2026
+#   scharf, drei Messwerte bei ~966 000 aus zwei Projekten). Waere sie aus,
+#   liefe die Sitzung in die Wand: `pre-compact.sh` feuert nie, und dann gibt
+#   es keine Chat-Rettung, kein RESUME, keinen Arbeitsstand.
+#
+# ⭐ EINE ZUSICHERUNG AUS v5.50.0 VERLIERT IHR ZIEL, und das ist der Gewinn:
+#    "liegt ZUGLEICH eine Sync-Schuld, muss sie MIT in diese Meldung". Sie
+#    existierte, weil dieser Block mit `exit 0` ausstieg und die Schuld-Meldung
+#    150 Zeilen weiter unten deshalb NIE erreicht wurde. Ohne den Block gibt es
+#    nur noch einen Weg, und der traegt die Schuld ohnehin.
 
-Eine Kompaktierung ist NICHT ausloesbar: weder aus einem Hook noch vom Assistenten.
-Nur der Mensch kann /compact eingeben."
-  # ⭐ v5.50.0: liegt ZUGLEICH eine Sync-Schuld, muss sie MIT in diese Meldung.
-  #   Ein Hook gibt genau EINE aus und steigt aus — der Ausstieg ist richtig,
-  #   falsch war, dass die Meldung nur eine der beiden Tatsachen trug. Die
-  #   Schuld-Meldung steht 150 Zeilen weiter unten und wurde nie erreicht.
-  # ⛔ Genau dieser Zustand ist der HAEUFIGE: ein token-erzwungener Sync bekommt
-  #   oberhalb von MIND_AGENT_HALB_TOKENS null Agenten, ist damit per
-  #   Konstruktion ein Teilsync UND setzt COMPACT-FAELLIG.
-  _ZUSATZ=""
-  if [ -f "$OPEN" ]; then
-    _ZG=$(grep -m1 '^grund=' "$OPEN" 2>/dev/null | cut -d= -f2-)
-    _ZU=$(grep -m1 '^ungepruef=' "$OPEN" 2>/dev/null | cut -d= -f2-)
-    _ZN=$(grep -c '^path=' "$OPEN" 2>/dev/null)
-    case "${_ZN:-}" in ''|*[!0-9]*) _ZN=0 ;; esac
-    _ZUSATZ="
-
-⛔ ZUSAETZLICH steht eine SYNC-SCHULD offen — sie ist mit der Kompaktierung
-nicht erledigt und bleibt danach bestehen."
-    [ "$_ZN" -gt 0 ] 2>/dev/null && _ZUSATZ="$_ZUSATZ
-  offene Rettungen: $_ZN"
-    [ -n "${_ZG:-}" ] && _ZUSATZ="$_ZUSATZ
-  Grund: $_ZG"
-    [ -n "${_ZU:-}" ] && _ZUSATZ="$_ZUSATZ
-  ⚠ TEILSYNC — diese Bereiche sind UNGEPRUEFT, nicht unauffaellig: $_ZU"
-    _slog INFO "Schuld in die COMPACT-Meldung aufgenommen (grund=${_ZG:-?})"
-  fi
-  _MSGC="$_MSGC$_ZUSATZ"
-  _slog INFO "COMPACT-FAELLIG gemeldet (seit ${_CFT:-?})"
-  if command -v jq >/dev/null 2>&1; then
-    jq -nc --arg ctx "$_MSGC" \
-      '{hookSpecificOutput:{hookEventName:"UserPromptSubmit", additionalContext:$ctx}}'
-  else
-    echo "$_MSGC"
-  fi
-  exit 0
-fi
-
-_SCHWELLE="${MIND_SYNC_AT_TOKENS:-0}"
-_STAND="$PROJ/.claude-mind/rescued/sync-stand"
-# v5.11.0: die Existenz von sync-stand schaltet NICHT mehr dauerhaft stumm.
-# Sein einziger Verbraucher (pre-compact.sh) feuert seit autoCompactEnabled=false
-# nur noch bei handgetipptem /compact -- ein Merker konnte damit ewig liegen.
-# Geprueft wird jetzt der ZUWACHS seit dem Sync, s. mind_sync_frisch in lib.sh.
-if [ "$_PLAN_STILL" != "ja" ] && [ "$_ROLLE_STILL" != "ja" ] \
-   && [ ! -f "$OPEN" ] && [ "$_SCHWELLE" -gt 0 ] 2>/dev/null; then
-  _TP=""
-  command -v jq >/dev/null 2>&1 && _TP=$(echo "$INPUT" | jq -r '.transcript_path // empty' 2>/dev/null)
-  if [ -n "$_TP" ] && [ -n "$CLAUDE_PLUGIN_ROOT" ] && [ -f "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" ]; then
-    # shellcheck disable=SC1091
-    . "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" 2>/dev/null
-    _TOK=$(mind_kontext_tokens "$_TP" 2>/dev/null) || _TOK=""
-    # ⚠ KEINE Zahl ist KEINE Null — ohne Messung wird NICHT gemahnt.
-    if [ -n "$_TOK" ] && [ "$_TOK" -ge "$_SCHWELLE" ] 2>/dev/null \
-       && ! mind_sync_frisch "$_STAND" "$_TOK"; then
-      _slog INFO "Token-Schwelle erreicht ($_TOK >= $_SCHWELLE) -> Sync angemahnt"
-      _MSGT="[Mind Manager] Kontext bei $_TOK Tokens (Erinnerungsschwelle $_SCHWELLE).
-
-Ein guter Zeitpunkt fuer /mind-all — VOR der naechsten Kompaktierung, damit der Sync den
-frisch geleerten Kontext nicht sofort wieder mit 40-60k fuellt.
-
-⚠ Das Fenster ist NICHT voll. Kein Grund, Arbeit abzubrechen oder zu kuerzen."
-      if command -v jq >/dev/null 2>&1; then
-        jq -nc --arg ctx "$_MSGT" \
-          '{hookSpecificOutput:{hookEventName:"UserPromptSubmit", additionalContext:$ctx}}'
-      else
-        echo "$_MSGT"
-      fi
-      exit 0
-    fi
-  fi
-fi
+# ===== v5.65.0: HIER STAND DIE TOKEN-MAHNUNG ================================
+# ⛔ Sie mass `mind_kontext_tokens` gegen `MIND_SYNC_AT_TOKENS` (750 000) und
+#    schwieg, solange `mind_sync_frisch` den `sync-stand` fuer frisch hielt.
+#    Beide Funktionen sind weg (lib.sh, v5.65.0), beide Regler sind entfallen.
+#
+# ⛔ WARUM, gemessen: die Zahl stammte aus dem Hook-Feld `transcript_path` —
+#    hier also richtig —, aber dieselbe Messung im Skill kam aus einem Merker
+#    je PROJEKT und traf bei mehreren Rollen die falsche Sitzung. Der Nutzer
+#    hat die Messung als Ganzes abbestellt (10.09.2026), nicht eine Haelfte.
+#
+# ⭐ WAS DIE AUFGABE UEBERNIMMT: der Arbeitsmengen-Ausloeser direkt darunter.
+#    Er zaehlt COMMITS, keine Tokens — faengt bei einem Neustart also nicht
+#    bei null an und misst Arbeit statt Fuellstand. Genau dafuer wurde er in
+#    v5.14.0 gebaut (Palvedo: 11 Commits und 12 h ohne Netz).
 
 # --- F6: Arbeitsmengen-Ausloeser (NEU v5.14.0) -----------------------------
 # Beide Ausloeser oben messen den KONTEXT und faengen bei jedem Neustart wieder
@@ -371,10 +319,8 @@ if [ -f "$_KWM" ] && [ "$_PLAN_STILL" != "ja" ]; then
   _KD=$(grep -m1 '^delta='  "$_KWM" 2>/dev/null | cut -d= -f2)
   # ⭐ v5.47.0: die STEHENDE Deckel-Schuld, unabhaengig vom Einzelschritt.
   _KS=$(grep -m1 '^schuld_bytes='  "$_KWM" 2>/dev/null | cut -d= -f2)
-  _KT=$(grep -m1 '^schuld_tokens=' "$_KWM" 2>/dev/null | cut -d= -f2)
   _KA=$(grep -m1 '^anker_ts='      "$_KWM" 2>/dev/null | cut -d= -f2-)
   case "${_KS:-}" in ''|*[!0-9]*) _KS=0 ;; esac
-  case "${_KT:-}" in ''|*[!0-9]*) _KT=0 ;; esac
   # ⛔ VERBRAUCHEN, bevor ausgegeben wird. Bleibt der Merker liegen, meldet es
   #    bei JEDEM Prompt dieselbe Zahl — und ein Melder, der sich wiederholt,
   #    wird abgeschaltet.
@@ -401,7 +347,7 @@ Die acht Fragen, kurz:
   B1 steht es schon woanders?   B2 im Code?   B3 wirkt es an DIESEM Ort?
   C1 hart formuliert?    C2 befolgbar?
 
-⛔ OFFENE DECKEL-SCHULD: $_KS B (~$_KT Tokens), seit $_KA.
+⛔ OFFENE DECKEL-SCHULD: $_KS B, seit $_KA.
 Die Deckelregel sagt: wer im Dauerkontext anlegt, zahlt aus dem Bestand.
 Der Anker sinkt erst wieder, wenn der Bestand unter seinen Stand faellt —
 ⚠ ein Guthaben gibt es nicht, Kuerzen auf Vorrat zaehlt also nicht.

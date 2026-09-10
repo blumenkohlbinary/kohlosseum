@@ -51,34 +51,29 @@ ja "NEGATIV: echter Pfad -> CHECK" "$(mind_classify_path 'hooks/lib.sh')"     "C
 ja "Tilde-Pfad -> CHECK"        "$(mind_classify_path '~/.claude/rules/a.md')" "CHECK"
 
 echo
-echo "=== 3 - mind_sync_frisch: der Merker loest sich selbst auf ==="
+echo "=== 3 - ⛔ mind_sync_frisch ist ENTFALLEN (v5.65.0) ==="
+# ⛔ HIER STANDEN SECHS FAELLE ueber den ZUWACHS seit dem Sync. Sie haben ihr
+#    ZIEL verloren: ohne `tokens=` im Merker konnte die Funktion nur noch EINE
+#    Antwort geben, und ihr einziger Aufrufer (die Token-Mahnung) ist mit
+#    entfallen. Nutzer-Entscheidung 10.09.2026.
+#
+# ⭐ WOHIN DIE TRAGENDE ZUSICHERUNG GING: "ein TEILSYNC ist kein Sync" stand
+#    nie in ihr — sie reichte `mind_sync_voll` nur weiter. Das entscheidet
+#    heute `mind_sync_voll` allein, abgesichert in `tests/test_teilsync.sh`.
+# ⚠ WAS WIRKLICH AUFHOERT: der `sync-stand` loest sich nicht mehr selbst auf.
+#   Verbraucht wird er von `pre-compact.sh` — der Zustand von v5.7.0 bis
+#   v5.10.0. Die Auto-Kompaktierung ist seit 23.08.2026 wieder scharf, der
+#   Verbraucher laeuft also von selbst.
+# ⛔ UMGEKEHRT STATT GELOESCHT — gegen den alten Stand ROT.
+if type mind_sync_frisch >/dev/null 2>&1; then N="definiert"; else N="weg"; fi
+ja "mind_sync_frisch ist nicht mehr definiert"  "$N" "weg"
 S="$TMP/sync-stand"
-
-printf 'ts=x\ntokens=800000\n' > "$S"
-if mind_sync_frisch "$S" 820000; then N="frisch"; else N="verbraucht"; fi
-ja "20k Zuwachs -> noch frisch, schweigt"      "$N" "frisch"
-
-if mind_sync_frisch "$S" 950000; then N="frisch"; else N="verbraucht"; fi
-ja "150k Zuwachs -> verbraucht, mahnt"          "$N" "verbraucht"
-
-# ⛔ DER FALL AUS DEM FEHLERBERICHT: Merker ohne tokens= (Fassung vor v5.11.0).
-# Frueher schaltete seine blosse EXISTENZ alles dauerhaft stumm.
-printf 'ts=2026-08-21 08:00:00\n' > "$S"
-if mind_sync_frisch "$S" 950000; then N="frisch"; else N="verbraucht"; fi
-ja "Alt-Merker ohne Zahl gilt als verbraucht"   "$N" "verbraucht"
-
-rm -f "$S"
-if mind_sync_frisch "$S" 950000; then N="frisch"; else N="verbraucht"; fi
-ja "kein Merker -> verbraucht"                  "$N" "verbraucht"
-
-# Ohne Messung nicht mahnen - dieselbe Linie wie ueberall.
-printf 'ts=x\ntokens=800000\n' > "$S"
-if mind_sync_frisch "$S" ""; then N="frisch"; else N="verbraucht"; fi
-ja "ohne Tokenzahl wird NICHT gemahnt"          "$N" "frisch"
-
-# Regler wirkt
-if MIND_SYNC_DELTA=200000 mind_sync_frisch "$S" 950000; then N="frisch"; else N="verbraucht"; fi
-ja "MIND_SYNC_DELTA=200000 macht 150k wieder frisch" "$N" "frisch"
+printf 'ts=x\numfang=5/5 skills 4/4 agents\n' > "$S"
+if mind_sync_voll "$S"; then N="voll"; else N="teil"; fi
+ja "⭐ was BLEIBT: mind_sync_voll urteilt weiter"  "$N" "voll"
+printf 'ts=x\numfang=5/5 skills 0/4 agents\n' > "$S"
+if mind_sync_voll "$S"; then N="voll"; else N="teil"; fi
+ja "⭐ und erkennt den Teilsync"                   "$N" "teil"
 
 echo
 echo "=== 4 - mind_zeilenenden: Anteil, nicht Zeilenzahl ==="

@@ -67,11 +67,20 @@ pruef "die STEHENDE Schuld wird gemeldet" "ja" "$(meldet)"
 S=$(grep -m1 -oE '^schuld_bytes=[0-9]+' "$MERKER" | cut -d= -f2)
 pruef "Schuld liegt ueber der Schwelle" "ja" \
   "$([ "${S:-0}" -ge 6000 ] 2>/dev/null && echo ja || echo nein)"
-pruef "Tokens stehen daneben" "ja" \
-  "$(grep -qE '^schuld_tokens=[0-9]+' "$MERKER" && echo ja || echo nein)"
-pruef "⛔ und NICHT mit Faktor 4 gerechnet" "ja" \
-  "$(T=$(grep -m1 -oE '^schuld_tokens=[0-9]+' "$MERKER" | cut -d= -f2);
-     [ "${T:-0}" -gt $(( S / 3 )) ] 2>/dev/null && echo ja || echo nein)"
+# ⛔ v5.65.0: HIER STANDEN ZWEI FAELLE UEBER `schuld_tokens=`.
+#    Die Klammer "(~N Tokens)" neben der Byte-Zahl ist entfallen —
+#    Nutzer-Entscheidung 10.09.2026, "die sollen garnicht mehr tokens messen".
+#    ⭐ Sie sind UMGEKEHRT worden, nicht geloescht: eine geschaetzte Zahl
+#       neben einer gemessenen macht die gemessene unglaubwuerdig, und ohne
+#       diesen Fall koennte sie zurueckkommen, ohne dass es auffaellt.
+#    ⚠ Der zweite Fall pruefte, dass NICHT mit Faktor 4 gerechnet wird
+#       (der Eich-Faktor ist 1,917). Diese Zusicherung steht weiter in
+#       `.claude/rules/werkzeuge-zuerst.md` — dort als Umrechnung fuer einen
+#       Menschen, nicht als Ablauf-Entscheidung.
+pruef "⛔ KEINE geschaetzte Tokenzahl neben der gemessenen Byte-Zahl" "ja" \
+  "$(grep -qE '^schuld_tokens=' "$MERKER" && echo nein || echo ja)"
+pruef "⭐ die BYTE-Messung steht weiterhin" "ja" \
+  "$(grep -qE '^schuld_bytes=[0-9]+' "$MERKER" && echo ja || echo nein)"
 pruef "der Anker-Zeitpunkt steht dabei" "ja" \
   "$(grep -q '^anker_ts=' "$MERKER" && echo ja || echo nein)"
 

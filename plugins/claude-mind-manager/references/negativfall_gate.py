@@ -81,12 +81,14 @@ PRUEFT = (
     "scan",        # mind_scan_poisoning
     "waechter",    # mind_zeilenenden_waechter
     "bilanz",      # mind_agent_bilanz
-    "frisch",      # mind_sync_frisch
+    "frisch",      # mind_sync_frisch — entfallen v5.65.0; das Stichwort
     "lebt",        # mind_pfad_lebt
     "seit",        # mind_commits_seit
     "schnappziel",
-    "tokens",      # mind_kontext_tokens
+    "tokens",      # mind_kontext_tokens — entfallen v5.65.0. Beide bleiben
     "health",      # mind_hook_health
+    # ⚠ stehen: ein Stichwort ohne Funktion kostet nichts, eines zu
+    #   entfernen kaeme zurueck, sobald jemand die Funktion neu baut.
 )
 
 # Wendungen, die auf eine Gegenprobe hindeuten. Bewusst grosszuegig — ein

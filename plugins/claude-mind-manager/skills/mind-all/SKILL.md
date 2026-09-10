@@ -712,85 +712,59 @@ bestehen. `teil` heisst: die Kette lief, der Fan-out nicht — dann entsteht ein
 ```bash
 if [ "$DRY_RUN" = "no" ] && [ "$SYNC_LIEF" != "nein" ]; then
   mkdir -p "$PROJ/.claude-mind/rescued"
-  # v5.11.0: `tokens=` ist PFLICHT. Ohne die Zahl gilt der Merker beim naechsten
-  # Lauf als verbraucht (mind_sync_frisch) -- lieber eine Mahnung zu viel als
-  # eine Kette, die dauerhaft schweigt.
-  _STOK=""
-  if type mind_kontext_tokens >/dev/null 2>&1; then
-    # ⛔ v5.34.0: NICHT `ls -t | head -1`. Das ist die nach AENDERUNGSZEIT
-    #    juengste Datei — bei ZWEI Sitzungen im selben Ordner also die der
-    #    ANDEREN. Gemessen 03.09.2026: sechs Transkripte, vier ueber 700k,
-    #    `sync-stand` trug tokens=830439 aus einer fremden Sitzung, und
-    #    COMPACT-FAELLIG wurde auf dieser fremden Zahl gesetzt.
-    _STP=$(mind_transkript_pfad "$PROJ" "${MIND_TP:-}")   # v5.38.0: eingefroren aus Step 0
-    [ -n "$_STP" ] && _STOK=$(mind_kontext_tokens "$_STP" 2>/dev/null)
-  fi
-  # v5.19.0: `umfang=` ist der Beleg, `ungepruef=` sagt WAS fehlt. Ohne beide
-  # sieht ein Teilsync im Merker aus wie ein Vollsync — und pre-compact.sh
-  # loescht dann die Schuld fuer Arbeit, die nie stattgefunden hat.
-  printf 'ts=%s\ntokens=%s\numfang=%s\nungepruef=%s\n' \
-    "$(date '+%Y-%m-%d %H:%M:%S')" "${_STOK:-0}" "$UMFANG" "$UNGEPRUEFT" \
+  # ⛔ v5.65.0: HIER STAND `tokens=` UND DIE ERZEUGUNG VON `COMPACT-FAELLIG`.
+  #    Beides ist weg. Nutzer-Entscheidung 10.09.2026: "die sollen garnicht
+  #    mehr tokens messen das soll komplett raus".
+  #
+  #    `tokens=` speiste `mind_sync_frisch` (Zuwachs seit dem Sync). Die
+  #    Funktion ist in v5.65.0 entfallen; ohne sie hat die Zahl keinen Leser.
+  #    Der Merker wird jetzt wieder von `pre-compact.sh` verbraucht — der
+  #    Zustand von v5.7.0 bis v5.10.0.
+  #
+  #    `COMPACT-FAELLIG` entstand AUSSCHLIESSLICH token-getriggert. ⚠ Damit
+  #    bittet ab jetzt niemand mehr um eine Kompaktierung; das traegt die
+  #    Auto-Kompaktierung (gemessen ~966 000, `env-vars.md`).
+  #
+  # ⭐ WAS BLEIBT UND JETZT ALLEIN TRAEGT: `umfang=` ist der Beleg,
+  #    `ungepruef=` sagt WAS fehlt. Ohne beide sieht ein Teilsync im Merker aus
+  #    wie ein Vollsync — und `pre-compact.sh` loescht dann die Schuld fuer
+  #    Arbeit, die nie stattgefunden hat.
+  printf 'ts=%s\numfang=%s\nungepruef=%s\n' \
+    "$(date '+%Y-%m-%d %H:%M:%S')" "$UMFANG" "$UNGEPRUEFT" \
     > "$PROJ/.claude-mind/rescued/sync-stand"
   [ "$SYNC_LIEF" = "teil" ] && \
     echo "⚠ TEILSYNC: $UMFANG — ungeprueft: ${UNGEPRUEFT:-(nichts)}. Die Schuld bleibt bestehen."
-
-  # v5.7.5: War dies ein Sync WEGEN der Token-Schwelle? Dann ist die Kompaktierung faellig.
-  # Ein Handaufruf bei 100k Kontext soll NICHT zum Kompaktieren draengen — daher die
-  # Bedingung. Ohne sie laege der Merker nach jedem Probelauf im Weg.
-  _MTOK=""
-  if type mind_kontext_tokens >/dev/null 2>&1; then
-    _MTP=$(mind_transkript_pfad "$PROJ" "${MIND_TP:-}")   # v5.38.0: eingefroren aus Step 0
-    [ -n "$_MTP" ] && _MTOK=$(mind_kontext_tokens "$_MTP" 2>/dev/null)
-  fi
-  _MSCHW="${MIND_SYNC_AT_TOKENS:-0}"
-  if [ -n "$_MTOK" ] && [ "$_MSCHW" -gt 0 ] 2>/dev/null && [ "$_MTOK" -ge "$_MSCHW" ] 2>/dev/null; then
-    printf 'ts=%s\ntokens=%s\nblocks=0\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$_MTOK" \
-      > "$PROJ/.claude-mind/rescued/COMPACT-FAELLIG"
-    echo "Kompaktierung faellig: Kontext bei $_MTOK Tokens."
-  fi
 fi
 ```
 
-⛔ **Seit v5.11.0 zaehlt der ZUWACHS, nicht die Existenz.** `sync-stand` traegt
-`tokens=<stand beim Sync>`; Mahnung und Zwang schweigen nur, solange der Kontext um
-weniger als `MIND_SYNC_DELTA` (Vorgabe 60 000 — die Kosten eines Syncs) gewachsen ist.
+⛔ **Seit v5.65.0 traegt `sync-stand` KEINE Tokenzahl mehr.** Er sagt nur noch,
+**was** gelaufen ist (`umfang=`) und **was fehlt** (`ungepruef=`). Verbraucht wird er
+von `pre-compact.sh` bei der naechsten Kompaktierung.
 
-**Warum das geaendert wurde:** Der einzige Verbraucher des Merkers ist `pre-compact.sh`,
-und der feuert seit `autoCompactEnabled: false` (v5.7.7) nur noch bei einem **von Hand
-getippten** `/compact`. Ein einziger `/mind-all`-Lauf schaltete die ganze Kette damit
-**dauerhaft** stumm. **Gemessen 21.08.2026:** der Merker lag seit 08:00 in
-`APP - Palvedo`, die Sitzung dort stand bei **950 000 Tokens**, und auf die Frage, warum
-kein `/mind-all` komme, lautete die Antwort korrekt *„mechanisch steht nichts aus"*.
-Die Mechanik hat die Wahrheit gesagt — der Merker war schuld.
+⛔ **Hier stand die Begruendung fuer `tokens=`, und sie ist Historie:** von v5.11.0
+bis v5.64.0 zaehlte der ZUWACHS seit dem Sync (`MIND_SYNC_DELTA`), weil der einzige
+Verbraucher des Merkers — `pre-compact.sh` — unter `autoCompactEnabled: false` nur
+noch bei handgetipptem `/compact` feuerte. Ein `/mind-all`-Lauf schaltete die Kette
+damit dauerhaft stumm (gemessen 21.08.2026, `APP - Palvedo`, Merker lag seit 08:00 bei
+950 000 Tokens). ⭐ Die Auto-Kompaktierung ist seit dem 23.08.2026 wieder scharf
+(drei Messwerte bei ~966 000 aus zwei Projekten), der Verbraucher laeuft also wieder
+von selbst — die Zahl hat ihren Anlass verloren, bevor sie ihn abgab.
 
-⚠ **Ein Merker ohne `tokens=` gilt als verbraucht.** Damit heilt sich der Bestand beim
-ersten Lauf selbst, statt eine Altlast weiterzutragen.
+## Step 2.96b — ⛔ ENTFALLEN in v5.65.0
 
-*(Bis v5.10.0 galt hier:)* Solange er liegt, schweigen Token-Mahnung
-(`prompt-submit.sh`) und Token-Zwang (`stop.sh`) — der Sync ist ja erledigt. `pre-compact.sh`
-verbraucht ihn bei der naechsten Kompaktierung und erzeugt deshalb **keine neue Schuld**; damit
-ist der Ausloeser fuer den naechsten Zyklus automatisch wieder scharf.
+Hier bat `/mind-all` als **letzten Satz** um ein `/compact`, wenn `COMPACT-FAELLIG`
+lag. Der Merker entstand nur token-getriggert und ist mit der Token-Messung weg.
 
-## Step 2.96b: Die Kompaktierung ist der NAECHSTE Schritt (NEU v5.7.5)
+⚠ **Der Preis, ausgewiesen statt verschwiegen:** dies war das **einzige**, was je um
+eine Kompaktierung gebeten hat. Das ist folgenlos, solange die Auto-Kompaktierung
+scharf ist. Waere sie aus, liefe die Sitzung in die Wand — `pre-compact.sh` feuert
+nie, und dann gibt es keine Chat-Rettung, kein `RESUME.md`, keinen Arbeitsstand.
 
-Liegt `COMPACT-FAELLIG`, endet die Antwort mit **genau dieser Bitte, als letztem Satz**:
-
-```
-Bitte jetzt /compact eingeben — der Sync hat den Kontext um 40-60k Tokens gefuellt, und
-ohne Kompaktierung wandert genau das in das naechste Kontextfenster.
-```
-
-⛔ **Nicht umformulieren zu „die Kompaktierung kommt von selbst".** Genau so stand es bis
-v5.7.4, und genau das war der Fehler: sie kommt nur, wenn der Sync teuer genug ausfaellt, um
-den Kontext ueber die Schwelle zu schieben. Faellt er billig aus, bleibt sein Ertrag stehen —
-und wird in die naechste Zusammenfassung uebernommen, statt von ihr ersetzt zu werden.
-
-⚠ **Auslosen kann das Plugin sie nicht** — drei unabhaengige Belege (Hook-Doku, Werkzeugliste,
-CLI-Binaerdatei). **Auch der Assistent kann es nicht**: es gibt kein Werkzeug fuer `/compact`.
-Der Merker erzwingt deshalb nicht die Kompaktierung, sondern nur, dass die Bitte an der
-richtigen Stelle steht. `stop.sh` blockt dafuer bis zu `MIND_COMPACT_MAX_BLOCKS` (Vorgabe 2)
-Mal; danach gibt er auf, damit niemand festgenagelt wird, der bewusst nicht kompaktieren will.
-
+⛔ **Unveraendert wahr und deshalb hier stehengeblieben:** eine Kompaktierung ist
+**nicht ausloesbar** — weder aus einem Hook (die koennen nur `decision:block`) noch
+vom Assistenten (es gibt kein Werkzeug fuer `/compact`). Nur der Mensch tippt sie.
+⛔ Und **nicht** umformulieren zu *„die Kompaktierung kommt von selbst"*: genau so
+stand es bis v5.7.4, und genau das war der Fehler.
 
 ## Step 2.96: Schuld begleichen (PFLICHT, NEU v5.2.1)
 

@@ -318,10 +318,10 @@ fi
 #    "Zwang ohne Gegenstand", den der Kommentar dort zu verhindern versprach.
 #    Gefunden von der adversarischen Pruefung, nicht von den Tests: die pruefen den
 #    Normalfall, und im Normalfall gelingt die Rettung.
-if [ -n "$RESCUE_DIR" ] && [ -f "$RESCUE_DIR/COMPACT-FAELLIG" ]; then
-  mind_log INFO "COMPACT-FAELLIG erledigt (Kompaktierung laeuft)"
-  rm -f "$RESCUE_DIR/COMPACT-FAELLIG" 2>/dev/null
-fi
+# ⛔ v5.65.0: HIER WURDE `COMPACT-FAELLIG` VERBRAUCHT. Den Merker gibt es
+#    nicht mehr — er entstand nur token-getriggert und faellt mit der
+#    Token-Messung. ⭐ Ein Aufraeumer fuer eine Datei, die niemand mehr
+#    anlegt, waere kein Schaden, aber eine Spur, die einen Merker behauptet.
 
 # --- Report ---
 if [ -n "$BACKED_UP" ] && [ "$BACKED_UP" -gt 0 ]; then

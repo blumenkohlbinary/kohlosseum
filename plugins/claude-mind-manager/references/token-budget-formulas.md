@@ -26,11 +26,23 @@ Kontext = input_tokens + cache_creation_input_tokens + cache_read_input_tokens
 `output_tokens` gehoert **nicht** dazu — die Antwort ist beim naechsten Aufruf bereits Teil
 des Eingabekontexts und wuerde doppelt zaehlen.
 
-Fertig in `hooks/lib.sh`: **`mind_kontext_tokens <transcript>`**.
+⛔ **Es gibt keine Funktion dafuer mehr.** Bis v5.64.0 stand hier
+`mind_kontext_tokens <transcript>` aus `hooks/lib.sh`; sie ist in **v5.65.0
+entfernt** — Nutzer-Entscheidung 10.09.2026: *„die sollen garnicht mehr tokens
+messen das soll komplett raus"*.
 
-⚠ **Keine Zahl ist KEINE Null.** Ist nichts lesbar, gibt die Funktion nichts aus und
-Rueckgabewert 1. Wer hier 0 zurueckgaebe, meldete „Kontext leer" statt „unbekannt" — und jeder
-Schwellwert-Ausloeser bliebe still, ohne dass es auffiele.
+⛔ **Der Grund war nicht die Rechnung, sondern die QUELLE.** Der Transkript-Pfad
+kam aus `mind_transkript_pfad`, und dieser Merker liegt je **Projekt**. Arbeiten
+mehrere Sitzungen im selben Ordner, gewinnt der Letzte. Gemessen 10.09.2026 in
+`APP - Palvedo`: fuenf aktive Transkripte (169 971 · 472 250 · 650 698 ·
+**721 405** · 867 259), der Merker zeigte auf das vierte — die abgewiesene
+Sitzung stand bei **~130 000**.
+
+⭐ **Die Formeln oben bleiben richtig und stehen deshalb hier.** Wer die Summe
+von Hand braucht, bildet sie aus den drei Feldern. ⚠ **Aber kein Ablauf des
+Plugins haengt mehr an einer Tokenzahl:** das Teilsync-Verbot misst seit v5.64.0
+HINTERHER an `umfang=`/`ungepruef=`, und die Deckel-Schuld misst **Bytes** im
+Dateisystem (`kontext-wache.sh`).
 
 ## Wann die Auto-Kompaktierung feuert
 

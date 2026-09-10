@@ -146,10 +146,12 @@ mkdir -p "$(dirname "$MERKER")" 2>/dev/null
   printf 'jetzt=%s\n'  "$JETZT"
   printf 'delta=%s\n'  "$DELTA"
   printf 'schuld_bytes=%s\n' "$SCHULD"
-  # ⭐ Tokens mit dem gegen /context geeichten Faktor 1,917 B/Token
-  #   (03.09.2026, 23 von 23 Dateien getroffen). ⛔ NIE mit 4 rechnen —
-  #   das ergibt 2,1x zu wenig.
-  printf 'schuld_tokens=%s\n' "$(( SCHULD * 1000 / 1917 ))"
+  # ⛔ v5.65.0: HIER STAND `schuld_tokens=`, die Umrechnung mit dem Faktor
+  #    1,917 B/Token. Sie ist weg, die BYTE-Messung bleibt. Grund: eine
+  #    geschaetzte Zahl neben einer gemessenen macht die gemessene
+  #    unglaubwuerdig — und dieser Hook misst wirklich, er schaetzt nicht.
+  #    ⚠ Der Eich-Faktor selbst steht weiter in `werkzeuge-zuerst.md`, als
+  #      Umrechnung fuer einen Menschen. ⛔ NIE mit 4 rechnen.
   printf 'anker_ts=%s\n' "${ANKER_TS:-unbekannt}"
   printf 'ts=%s\n'     "$(date +%s)"
 } > "$MERKER" 2>/dev/null || exit 1
