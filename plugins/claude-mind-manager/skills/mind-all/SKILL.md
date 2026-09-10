@@ -133,8 +133,16 @@ fi
 #   jetzt aus Zeitstempel und Transkriptnamen; `mind_lauf_kennung` bleibt
 #   unveraendert fuer alle, die sie mit einem Snapshot rufen.
 if [ "$DRY_RUN" = "no" ]; then
-  LAUF="$(date +%Y%m%d-%H%M%S)-$(basename "${MIND_TP:-nosession}" .jsonl | tail -c 9)"
-  MIND_SID=$(basename "${MIND_TP:-nosession}" .jsonl)
+  # ⭐ v5.66.0: DIE KENNUNG KOMMT AUS DER UMGEBUNG, nicht aus einem Dateinamen.
+  #    `CLAUDE_CODE_SESSION_ID` ist in Skill-Bash gesetzt und traegt genau die
+  #    Kennung, die die Hooks aus stdin bekommen (gemessen 10.09.2026 in zwei
+  #    Sitzungen). ⛔ Bis v5.65.0 kam sie aus `$MIND_TP` — und der stammte aus
+  #    einem Merker je PROJEKT. Bei mehreren Rollen im Ordner schrieb der
+  #    Sperrenhalter damit womoeglich eine FREMDE Kennung ins Lock, und die
+  #    Abweisung nannte die falsche Sitzung. Das ist schlimmer als gar keine.
+  # ⚠ FAIL-SAFE: leere Variable -> Rueckfall auf den Dateinamen, wie bisher.
+  MIND_SID="${CLAUDE_CODE_SESSION_ID:-$(basename "${MIND_TP:-nosession}" .jsonl)}"
+  LAUF="$(date +%Y%m%d-%H%M%S)-$(printf '%s' "$MIND_SID" | tail -c 9)"
   if ! _SPERRE=$(mind_lauf_sperre "$PROJ" "$LAUF" "$MIND_SID"); then
     echo "$_SPERRE" >&2
     exit 0    # ⛔ 0, NICHT 1 — kein Fehler, sondern die richtige Antwort.
@@ -239,6 +247,8 @@ fi
 # ⚠ EIN REST BLEIBT: schiebt eine andere Sitzung ihren Prompt genau dazwischen,
 #   ist er schon fremd. Aufloesen liesse sich das nur mit einer Sitzungskennung
 #   im Skill — die gibt es dort nicht (CLAUDE_SESSION_ID ist LEER, gemessen v5.30.0).
+#   ⛔ v5.66.0 KORRIGIERT: die Messung stimmte, der Schluss nicht —
+#      `CLAUDE_CODE_SESSION_ID` ist gesetzt und traegt genau diese Kennung.
 # ⚠ v5.55.0: MIND_TP steht schon — es wird oben vor dem Teilsync-Gate geholt.
 #   Hier wird es nur noch GEMELDET. Ein zweites `mind_transkript_pfad` waere ein
 #   zweiter Griff auf einen Merker, der sich zwischendurch geaendert haben kann.
@@ -366,6 +376,10 @@ Fuer jeden der 5 in der Reihenfolge oben:
    allein verhindert sie nur. Ohne die Kennung entsteht ein Instrument, das im
    Ausfall schweigt (`werkzeuge-zuerst.md`).
    ⛔ **Sie kommt aus `basename "$SNAPSHOT"`, NICHT aus `CLAUDE_SESSION_ID`.**
+   ⭐ **v5.66.0:** `CLAUDE_CODE_SESSION_ID` waere heute verfuegbar. Die
+   Kennung bleibt trotzdem am Snapshot: sie soll den LAUF benennen, nicht
+   die Sitzung. Die SITZUNGSkennung der Sperre kommt seit v5.66.0 aus der
+   Umgebung — zwei verschiedene Dinge, zwei Quellen.
    Die ist in einer Skill-Bash **leer** (gemessen); ein Waechter darauf matcht
    gegen den leeren String, zaehlt **alle** Zeilen auch fremde, und **sieht aus,
    als greife er**. Das waere schlimmer als keine Sperre.

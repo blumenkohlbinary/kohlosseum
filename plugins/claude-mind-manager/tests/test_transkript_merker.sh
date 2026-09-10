@@ -1,15 +1,41 @@
 #!/usr/bin/env bash
-# v5.38.0: der Transkript-Merker bei MEHREREN Sitzungen im selben Ordner.
+# Das eigene Transkript — direkt adressiert statt über einen Merker (v5.66.0).
 #
-# ⛔ DER DEFEKT. `.claude-mind/transkript-pfad` ist EINE Datei je PROJEKT, soll
-#    aber eine SITZUNG kennzeichnen. Jede Sitzung ueberschreibt ihn bei jedem
-#    Prompt — der Letzte gewinnt. v5.34.0 hat den ls-t-Fehler behoben und dabei
-#    dieses Rennen eingebaut, ohne es zu bemerken.
+# ⛔ WAS DIESE SAMMLUNG WAR (v5.38.0): `.claude-mind/transkript-pfad` ist EINE
+#    Datei je PROJEKT und sollte EINE Sitzung kennzeichnen. Jede Sitzung
+#    überschrieb ihn bei jedem Prompt — der Letzte gewann. v5.38.0 hat das
+#    Rennfenster mit `pfad|sid|ts` und dem Einfrieren in Step 0 verkleinert und
+#    den Rest ausdrücklich stehengelassen:
+#      „EIN REST BLEIBT und wird nicht weggeredet — auflösen ließe sich das nur
+#       mit einer Sitzungskennung im Skill, die es dort nicht gibt."
 #
-# ⭐ DIE POSITIVKONTROLLE IST FALL 5: der Merker wird MITTEN IM LAUF von einer
-#    fremden Sitzung ueberschrieben, und der eingefrorene Wert muss trotzdem
-#    stimmen. Ohne diesen Fall pruefte die Sammlung nur, dass Lesen funktioniert
-#    — und das tat es vorher auch.
+# ⭐ ES GIBT SIE. Gemessen 10.09.2026 in zwei Sitzungen dieses Projekts:
+#      CLAUDE_CODE_SESSION_ID  4e6c2f15-…  ->  <slug>/4e6c2f15-….jsonl, 20 MB
+#      CLAUDE_CODE_SESSION_ID  62ca5f72-…  ->  Spalte 3 des Rosters, exakt
+#    Die Transkriptdatei heißt wie die Kennung. Damit entfällt der Merker samt
+#    seinem Rest — die Fehlerklasse verschwindet, nicht nur ihr Fenster.
+#
+# ⛔ DIE MESSUNG VON v5.30.0 STIMMTE, DER SCHLUSS DARAUS NICHT.
+#    `CLAUDE_SESSION_ID` (ohne `CODE_`) ist wirklich leer. Daraus wurde
+#    „es gibt keine Kennung", und dieser Satz hat drei Konstruktionen getragen.
+#    Der Name lag um ein Wort daneben.
+#
+# ⛔ WO DIE ALTEN ZUSICHERUNGEN GEBLIEBEN SIND:
+#
+#    | war (v5.38.0)                    | ist                                  |
+#    |----------------------------------|--------------------------------------|
+#    | Format `pfad\|sid\|ts` wird gelesen | ⛔ gegenstandslos — Abschnitt 1       |
+#    |                                  |   sichert, dass der Merker IGNORIERT  |
+#    |                                  |   wird, auch wenn eine Altlast liegt. |
+#    | prompt-submit schreibt ihn       | ⛔ umgekehrt — Abschnitt 1.           |
+#    | fremder Merker mitten im Lauf    | ⭐ ENTFÄLLT als Gefahr: die Kennung   |
+#    |                                  |   ist die eigene, es gibt kein Rennen.|
+#    | zweites Argument gewinnt         | ⭐ BLEIBT — Abschnitt 3 (der Hook-Weg).|
+#    | die Tokenzahl daran              | ⛔ entfallen mit v5.65.0.             |
+#
+# ⭐ GEGENPROBE: Abschnitt 1 und 2 sind gegen v5.65.0 ROT.
+#
+# Aufruf:  CLAUDE_PLUGIN_ROOT=<paket> bash tests/test_transkript_merker.sh
 set -u
 R="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
@@ -20,74 +46,73 @@ pruef() { if [ "$2" = "$3" ]; then GRUEN=$((GRUEN+1)); echo "  [ok ] $1"
 # shellcheck disable=SC1091
 . "$R/hooks/lib.sh" 2>/dev/null
 
-P="$TMP/proj"; mkdir -p "$P/.claude-mind"
-A="$TMP/sitzung-a.jsonl"; B="$TMP/sitzung-b.jsonl"
-printf '%s\n' '{"message":{"model":"claude-opus-5","usage":{"input_tokens":111}}}' > "$A"
-printf '%s\n' '{"message":{"model":"claude-opus-5","usage":{"input_tokens":999}}}' > "$B"
+# Ein eigenes HOME, damit `$HOME/.claude/projects/<slug>` beherrschbar ist.
+H="$TMP/home"; P="$TMP/home/proj"; mkdir -p "$P/.claude-mind"
+SLUG=$(HOME="$H" hash_project_dir "$P")
+D="$H/.claude/projects/$SLUG"; mkdir -p "$D"
 
-echo "=== 1) Das neue Format pfad|sid|ts ==="
-printf '%s|abc-123|1757000000' "$A" > "$P/.claude-mind/transkript-pfad"
-pruef "Merker mit sid und ts -> nur der Pfad kommt zurueck" "$A" "$(mind_transkript_pfad "$P")"
+MEINE="1111aaaa-2222-3333-4444-555566667777"
+FREMDE="9999ffff-8888-7777-6666-555544443333"
+printf '%s\n' '{"cwd":"x"}' > "$D/$MEINE.jsonl"
+printf '%s\n' '{"cwd":"x"}' > "$D/$FREMDE.jsonl"
+# ⛔ Die FREMDE ist die JÜNGERE — genau die, die `ls -t` und der Merker nähmen.
+touch -d '+1 minute' "$D/$FREMDE.jsonl" 2>/dev/null || touch "$D/$FREMDE.jsonl"
 
-echo
-echo "=== 2) Alte Form (nur der Pfad) bleibt lesbar ==="
-printf '%s' "$A" > "$P/.claude-mind/transkript-pfad"
-pruef "⛔ Rueckwaertsvertraeglich: Merker ohne | " "$A" "$(mind_transkript_pfad "$P")"
+ruf() { HOME="$H" CLAUDE_CODE_SESSION_ID="${1-}" mind_transkript_pfad "$P" "${2-}"; }
 
-echo
-echo "=== 3) Ein uebergebener Pfad schlaegt den Merker ==="
-printf '%s|fremd|1' "$B" > "$P/.claude-mind/transkript-pfad"
-pruef "zweites Argument gewinnt" "$A" "$(mind_transkript_pfad "$P" "$A")"
-pruef "ohne zweites Argument gilt der Merker" "$B" "$(mind_transkript_pfad "$P")"
-
-echo
-echo "=== 4) Kaputter Merker -> nicht raten, sondern LEER ==="
-printf '%s|x|1' "$TMP/gibtsnicht.jsonl" > "$P/.claude-mind/transkript-pfad"
-# ⚠ Ohne Transkriptverzeichnis darf NICHTS zurueckkommen. Eine erfundene Datei
-#   waere schlimmer als keine — eine fehlende Zahl ist keine Null.
-OUT=$(mind_transkript_pfad "$P" 2>/dev/null); RC=$?
-pruef "Merker zeigt ins Leere -> rc 1" 1 "$RC"
-pruef "   ... und die Ausgabe ist leer" "" "$OUT"
-
-echo
-echo "=== 5) ⭐ DAS RENNEN — der eigentliche Grund fuer diesen Fix ==="
-# So lief es VOR v5.38.0: die Kette liest den Merker erst spaet.
-printf '%s|meine|1' "$A" > "$P/.claude-mind/transkript-pfad"   # mein Prompt
-printf '%s|fremde|2' "$B" > "$P/.claude-mind/transkript-pfad"  # fremde Sitzung dazwischen
-SPAET=$(mind_transkript_pfad "$P")
-pruef "⛔ spaet gelesen -> FREMDES Transkript (der alte Fehler)" "$B" "$SPAET"
-
-# So laeuft es SEIT v5.38.0: Step 0 friert ein, danach wird durchgereicht.
-printf '%s|meine|1' "$A" > "$P/.claude-mind/transkript-pfad"
-FROZEN=$(mind_transkript_pfad "$P")                            # Step 0
-printf '%s|fremde|2' "$B" > "$P/.claude-mind/transkript-pfad"  # fremde Sitzung dazwischen
-pruef "⭐ eingefroren -> weiter MEIN Transkript" "$A" "$(mind_transkript_pfad "$P" "$FROZEN")"
-
-# ⛔ v5.65.0: HIER HING EINE TOKENZAHL DARAN ("meine 111, nicht die fremde
-#    999"). `mind_kontext_tokens` ist entfallen — und zwar GENAU WEGEN dieses
-#    Falls: der Merker liegt je PROJEKT, und bei mehreren Rollen im Ordner
-#    gewinnt der Letzte. Das Einfrieren aus v5.38.0 verkleinerte das Rennfenster,
-#    es schloss es nie ("EIN REST BLEIBT und wird nicht weggeredet").
-#    Gemessen 10.09.2026 in `APP - Palvedo`: fuenf Transkripte, die sync-Sitzung
-#    bei ~130 000, gemeldet 721 405.
-# ⭐ WAS BLEIBT: der PFAD wird weiter eingefroren — er traegt die Lauf-Kennung
-#    und die Sitzungskennung der Laufsperre. Der Fall darueber sichert das ab.
-pruef "⛔ keine Tokenzahl haengt mehr daran" "weg" \
-      "$(type mind_kontext_tokens >/dev/null 2>&1 && echo da || echo weg)"
+echo "=== 1) ⛔ Der Merker ist WEG — auch eine Altlast wirkt nicht mehr ==="
+# Eine liegengebliebene Datei aus v5.65.0, die auf die FREMDE Sitzung zeigt.
+printf '%s|fremd|1' "$D/$FREMDE.jsonl" > "$P/.claude-mind/transkript-pfad"
+pruef "⛔ Altlast wird ignoriert, die eigene Kennung gewinnt" \
+      "$D/$MEINE.jsonl" "$(ruf "$MEINE")"
+# ⛔ GEZÄHLT WIRD DER ZUGRIFF, NICHT DIE NENNUNG. Die erste Fassung zählte
+#   `claude-mind/transkript-pfad` schlechthin und wurde rot am eigenen
+#   Kommentar, der sagt, dass der Merker ENTFERNT wurde. Ein Kommentar über
+#   einen Wegfall ist kein Zugriff. Fünftes Vorkommen dieser Verwechslung in
+#   diesem Projekt — sie steht in `env-vars.md` seit 27.08.2026 dokumentiert.
+pruef "lib.sh liest den Merker nicht mehr" "0" \
+      "$(grep -cE '(cat|-f) "\$proj/\.claude-mind/transkript-pfad"' "$R/hooks/lib.sh")"
+pruef "prompt-submit.sh schreibt ihn nicht mehr" "0" \
+      "$(grep -c '> "\$PROJ/.claude-mind/transkript-pfad"' "$R/hooks/prompt-submit.sh")"
+rm -f "$P/.claude-mind/transkript-pfad"
 
 echo
-echo "=== 6) prompt-submit.sh schreibt das neue Format ==="
-P2="$TMP/proj2"; mkdir -p "$P2/.claude-mind"
-printf '{"cwd":"%s","transcript_path":"%s","session_id":"sid-xyz","prompt":"hi"}' "$P2" "$A" \
-  | CLAUDE_PLUGIN_ROOT="$R" CLAUDE_PROJECT_DIR="$P2" bash "$R/hooks/prompt-submit.sh" >/dev/null 2>&1
-M=$(cat "$P2/.claude-mind/transkript-pfad" 2>/dev/null)
-pruef "Pfad steht vorn" "$A" "${M%%|*}"
-pruef "⭐ die Sitzungskennung steht dabei" "sid-xyz" "$(echo "$M" | cut -d'|' -f2)"
-case "$(echo "$M" | cut -d'|' -f3)" in
-  [0-9]*) GRUEN=$((GRUEN+1)); echo "  [ok ] und ein Zeitstempel" ;;
-  *) ROT=$((ROT+1)); echo "  [ROT] Zeitstempel fehlt" ;;
-esac
-pruef "   ... und der Merker ist danach lesbar" "$A" "$(mind_transkript_pfad "$P2")"
+echo "=== 2) ⭐ Die eigene Kennung trifft die eigene Datei ==="
+pruef "meine Kennung -> meine Datei"   "$D/$MEINE.jsonl"  "$(ruf "$MEINE")"
+pruef "fremde Kennung -> fremde Datei" "$D/$FREMDE.jsonl" "$(ruf "$FREMDE")"
+# ⭐ DIE POSITIVKONTROLLE DIESER SAMMLUNG: die fremde Datei ist die JÜNGERE.
+#   Kommt trotzdem meine zurück, ist belegt, dass NICHT nach Änderungszeit
+#   gewählt wird — genau der Fehler, gegen den v5.34.0 gebaut wurde.
+pruef "⭐ und zwar OBWOHL die fremde jünger ist" "$D/$MEINE.jsonl" "$(ruf "$MEINE")"
+
+echo
+echo "=== 3) ⛔ FAIL-SAFE: keine Kennung ist keine erfundene Datei ==="
+# ⛔ Antons Auflage (b). Ohne diese drei Fälle wäre die Variable eine stille
+#   Abhängigkeit: fehlt sie, dürfte nichts Falsches herauskommen — es muss
+#   sich verhalten wie vor v5.66.0.
+AUS=$(ruf ""); case "$AUS" in "$D/"*.jsonl) A=heuristik ;; "") A=leer ;; *) A="$AUS" ;; esac
+pruef "leere Variable -> Rückfall auf die Heuristik" "heuristik" "$A"
+AUS=$(ruf "gibt-es-nicht-0000"); case "$AUS" in "$D/"*.jsonl) A=heuristik ;; "") A=leer ;; *) A="$AUS" ;; esac
+pruef "Kennung ohne Datei -> Rückfall, kein erfundener Pfad" "heuristik" "$A"
+pruef "⛔ und NIE der Name der fehlenden Datei" "0" \
+      "$(printf '%s' "$(ruf 'gibt-es-nicht-0000')" | grep -c 'gibt-es-nicht-0000')"
+
+echo
+echo "=== 4) ⭐ Der HOOK-Weg gewinnt weiterhin ==="
+# Ein Hook kennt `transcript_path` aus seinem Input — das war immer die
+# verlässlichste Quelle und bleibt Vorrang vor allem anderen.
+pruef "zweites Argument schlägt die Kennung" \
+      "$D/$FREMDE.jsonl" "$(ruf "$MEINE" "$D/$FREMDE.jsonl")"
+pruef "ein NICHT existierendes zweites Argument zählt nicht" \
+      "$D/$MEINE.jsonl" "$(ruf "$MEINE" "$TMP/gibtsnicht.jsonl")"
+
+echo
+echo "=== 5) ⛔ Die Sitzungskennung der Laufsperre kommt aus der Umgebung ==="
+SK="$R/skills/mind-all/SKILL.md"
+pruef "mind-all nimmt CLAUDE_CODE_SESSION_ID" "1" \
+      "$(grep -c 'MIND_SID="\${CLAUDE_CODE_SESSION_ID:-' "$SK")"
+pruef "⛔ mit Rückfall, nicht ungeschützt" "1" \
+      "$(grep -c 'CLAUDE_CODE_SESSION_ID:-\$(basename' "$SK")"
 
 echo
 echo "  $GRUEN gruen · $ROT rot"

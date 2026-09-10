@@ -23,6 +23,20 @@
 #    fremde, und SIEHT AUS als greife er — schlimmer als keine Sperre.
 #    Fall 3 prueft genau das nach.
 #
+# ⭐ v5.66.0 KORRIGIERT DIE BEGRUENDUNG, NICHT DEN FALL. Die Messung stimmte:
+#    `CLAUDE_SESSION_ID` ist leer. Der SCHLUSS daraus
+#    („eine Sitzung kann ihre Kennung nicht wissen“) war falsch —
+#    `CLAUDE_CODE_SESSION_ID` ist gesetzt und traegt genau die
+#    Kennung, die die Hooks aus stdin sehen (gemessen 10.09.2026, zwei Sitzungen).
+# ⛔ Abschnitt 5/6 bleibt trotzdem gruen und bleibt richtig: die LAUF-Kennung
+#    kommt weiter aus dem Snapshot-Namen (sie benennt den LAUF), und die
+#    SITZUNGS-Kennung kommt seit v5.66.0 aus der Umgebung — zwei verschiedene
+#    Dinge, zwei Quellen. Der Fall zaehlt `CLAUDE_SESSION_ID`, und
+#    `CLAUDE_CODE_SESSION_ID` enthaelt diese Zeichenkette NICHT.
+#    ⚠ Er waere also gruen geblieben, waehrend seine Begruendung falsch wird —
+#      ein Instrument, das weiter richtig misst und daneben Falsches behauptet.
+#    Die Zusicherung fuer die neue Quelle steht in tests/test_transkript_merker.sh.
+#
 # Aufruf:  CLAUDE_PLUGIN_ROOT=<paket> bash tests/test_lauf_sperre.sh
 set -u
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { echo "CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 2; }

@@ -126,35 +126,38 @@ mind_transkript_pfad() {
   fi
   [ -n "$proj" ] || return 1
 
-  # 2) MERKER — der einzige verlaessliche Weg fuer einen SKILL.
-  #    ⛔ Gemessen 03.09.2026: der cwd-Check unten filtert NICHTS, weil ALLE
-  #       Transkripte eines Projektverzeichnisses dasselbe cwd tragen. Er war
-  #       eine Umbenennung des Problems, keine Loesung.
-  #    ⭐ Die HOOKS kennen den richtigen Pfad (`transcript_path` im Input) und
-  #       legen ihn hier ab. Ein Skill kann ihn nicht selbst wissen:
-  #       CLAUDE_SESSION_ID ist in Skill-Bash LEER (gemessen, v5.30.0).
-  #    ⛔ v5.38.0 — DER MERKER IST EINE DATEI JE PROJEKT, SOLL ABER EINE SITZUNG
-  #       KENNZEICHNEN. Jede Sitzung ueberschreibt ihn bei jedem Prompt: der
-  #       Letzte gewinnt. Mit ZWEI Sitzungen ein enges Rennen, mit DREI ein
-  #       wahrscheinliches. Das war in v5.34.0 nicht bedacht.
-  #    ⭐ Zwei Massnahmen, beide noetig:
-  #       (a) Das Format ist jetzt `pfad|sid|ts` — der Merker sagt, WESSEN er ist
-  #           und WIE ALT. Vorher war er anonym, und ein fremder Merker sah aus
-  #           wie der eigene.
-  #       (b) Die Kette holt ihn EINMAL in Step 0 und reicht ihn als zweites
-  #           Argument durch, statt ihn spaet zweimal nachzulesen. Damit
-  #           schrumpft das Rennfenster von Minuten auf Millisekunden.
-  #    ⚠ EIN REST BLEIBT und wird nicht weggeredet: schiebt eine andere Sitzung
-  #      ihren Prompt GENAU zwischen den eigenen Prompt und Step 0, ist der
-  #      Merker schon fremd. Aufloesen liesse sich das nur mit einer Sitzungs-
-  #      kennung im Skill — die es dort nicht gibt (gemessen v5.30.0).
-  if [ -f "$proj/.claude-mind/transkript-pfad" ]; then
-    f=$(cat "$proj/.claude-mind/transkript-pfad" 2>/dev/null)
-    f="${f%%|*}"            # alte Form ohne | bleibt unveraendert lesbar
-    if [ -n "$f" ] && [ -f "$f" ]; then printf '%s' "$f"; return 0; fi
+  # 2) ⭐ v5.66.0: DIE EIGENE KENNUNG — exakt, nicht geraten.
+  #    `CLAUDE_CODE_SESSION_ID` traegt in einer Skill-Bash genau die Kennung,
+  #    die die Hooks aus stdin bekommen, und die Transkriptdatei heisst wie sie.
+  #    Gemessen 10.09.2026 in zwei Sitzungen dieses Projekts:
+  #      CLAUDE_CODE_SESSION_ID  4e6c2f15-…  ->  <slug>/4e6c2f15-….jsonl, 20 MB
+  #      CLAUDE_CODE_SESSION_ID  62ca5f72-…  ->  Spalte 3 des Rosters, exakt
+  #
+  # ⛔ HIER STAND BIS v5.65.0 EIN MERKER `.claude-mind/transkript-pfad`.
+  #    Er war EINE Datei je PROJEKT und sollte EINE Sitzung kennzeichnen; jede
+  #    Sitzung ueberschrieb ihn bei jedem Prompt, der Letzte gewann. v5.38.0
+  #    hat das Rennfenster mit `pfad|sid|ts` und dem Einfrieren in Step 0
+  #    verkleinert und den Rest ausdruecklich stehengelassen: "EIN REST BLEIBT
+  #    und wird nicht weggeredet — aufloesen liesse sich das nur mit einer
+  #    Sitzungskennung im Skill, die es dort nicht gibt (gemessen v5.30.0)."
+  #
+  # ⛔ DIE MESSUNG VON v5.30.0 STIMMTE, DER SCHLUSS DARAUS NICHT.
+  #    `CLAUDE_SESSION_ID` (ohne `CODE_`) ist wirklich leer — das war richtig
+  #    gemessen. Daraus wurde "es gibt keine Kennung", und der Satz hat drei
+  #    Konstruktionen getragen. `CLAUDE_CODE_SESSION_ID` gibt es, und
+  #    `CLAUDE_CODE_HOST_SESSION_ID` traegt daneben die `list_sessions`-Form.
+  #    Klasse: die Suche lief, sie lag am Namen daneben.
+  #
+  # ⚠ FAIL-SAFE: ist die Variable leer oder fehlt die Datei, faellt es auf
+  #   die alte Heuristik darunter zurueck — also auf das Verhalten von heute.
+  #   Eine geratene Kennung waere schlimmer als eine geratene Datei.
+  d="$HOME/.claude/projects/$(hash_project_dir "$proj")"
+  if [ -n "${CLAUDE_CODE_SESSION_ID:-}" ] \
+     && [ -f "$d/$CLAUDE_CODE_SESSION_ID.jsonl" ]; then
+    printf '%s' "$d/$CLAUDE_CODE_SESSION_ID.jsonl"; return 0
   fi
 
-  d="$HOME/.claude/projects/$(hash_project_dir "$proj")"
+  # — der Rueckfall: nur erreichbar, wenn die Kennung fehlt oder die Datei nicht
   [ -d "$d" ] || return 1
 
   # 2) Sonst: unter den Transkripten dieses Projekts das juengste nehmen, das
@@ -2071,6 +2074,9 @@ mind_plan_pause() {
 #    `Creator`, hier unabhaengig wiederholt.)
 #
 # ⛔ NICHT auf `CLAUDE_SESSION_ID` bauen — sie ist in einer Skill-Bash LEER
+#    ⭐ v5.66.0: aber `CLAUDE_CODE_SESSION_ID` IST gesetzt und traegt die
+#       Kennung der Hooks. Die Messung von v5.30.0 stimmte, der Schluss
+#       daraus („gar keine Kennung verfuegbar“) nicht.
 #    (gemessen). Ein Waechter darauf matcht gegen den leeren String, zaehlt
 #    ALLE Zeilen auch fremde, und SIEHT AUS als greife er. Das waere schlimmer
 #    als keine Sperre: ein Instrument, das im Ausfall schweigt.
