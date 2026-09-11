@@ -1563,12 +1563,30 @@ mind_agent_dispatch() {
 # ⚠ 0 Bytes ist ein ERGEBNIS-Eintrag, kein fehlender. Der Unterschied zwischen
 #   "leer zurueckgekommen" und "nie zurueckgekommen" ist genau das, was hier
 #   sichtbar werden soll.
+#
+# ⛔ v5.94.0 — ZWEI FORMEN, und im Lauf gilt nur die zweite:
+#     mind_agent_ergebnis <bereich> <n> [projekt]              quelle:zahl  (Prueffaelle)
+#     mind_agent_ergebnis <bereich> --datei <pfad> [projekt]   quelle:datei (der Lauf)
+#   Gemessen 10.09.2026 (docs/plugin/rueckkanal-messung.md): fuer `claude-md` gab es
+#   kein gelesenes Ergebnis, die Quittung trug `bytes:800` — ein runder Schaetzwert —
+#   und die Bilanz sagte 4/4. Mit --datei ist die Zahl die Groesse einer Datei, die es
+#   gibt, oder 0: fehlt die Datei, steht 0 da, und 0 heisst `ungepruef=`.
 mind_agent_ergebnis() {
-  local bereich="$1" bytes="${2:-0}" q
-  q=$(_mind_quittung_pfad "${3:-}")
+  local bereich="$1" bytes="${2:-0}" q quelle="zahl" pfad=""
+  if [ "${2:-}" = "--datei" ]; then
+    pfad="${3:-}"; quelle="datei"
+    q=$(_mind_quittung_pfad "${4:-}")
+    if [ -n "$pfad" ] && [ -f "$pfad" ]; then
+      bytes=$(wc -c < "$pfad" 2>/dev/null | tr -d ' ')
+    else
+      bytes=0
+    fi
+  else
+    q=$(_mind_quittung_pfad "${3:-}")
+  fi
   case "$bytes" in ''|*[!0-9]*) bytes=0 ;; esac
-  printf '{"ereignis":"ergebnis","bereich":"%s","bytes":%s,"ts":"%s"}\n' \
-    "$bereich" "$bytes" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$q"
+  printf '{"ereignis":"ergebnis","bereich":"%s","bytes":%s,"quelle":"%s","ts":"%s"}\n' \
+    "$bereich" "$bytes" "$quelle" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$q"
 }
 
 # Bilanz fuer den Self-Check-Block.

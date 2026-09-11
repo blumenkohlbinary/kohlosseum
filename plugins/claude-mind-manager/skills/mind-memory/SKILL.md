@@ -108,6 +108,11 @@ MIND_SKILL_VERSION="5.92.0"
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
 MIND_SKILL_VERSION="5.93.0"
+# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
+#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
+#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
+#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
+MIND_SKILL_VERSION="5.94.0"
 mind_schritt_start "$PROJ" mind-memory bestandszahlen_kandidaten cleaner_stichprobe mind_debug_write mind_kontext_bilanz mind_scan_poisoning mind_snapshot verdichten
 ```
 
@@ -246,12 +251,15 @@ Inline-Ersatz** — die deterministischen Inline-Checks (Step 4) decken nur Budg
 Cross-File-Exakt-Duplikate/Stale-Pfade ab, NICHT die semantische Deduplizierung.
 Der Agent ist der einzige Weg dorthin.
 
-Launch **context-analyzer** with scope=memory:
+Launch **context-analyzer** with scope=memory — **`run_in_background: false`**:
 "Analyze all memory files in this project. Scope: memory. Report duplicates (exact and semantic), stale entries, budget issues, misplaced content, and optimization suggestions."
+
+⛔ **`run_in_background: false` in JEDEM Agent-Aufruf (v5.94.0, Nutzer-/Anton-Entscheidung 11.09.2026).** Die Vorgabe des Agent-Werkzeugs ist HINTERGRUND: der `tool_result` ist dann nur das Ack „Async agent launched“ (1 151 B, nach 1–2 s), das Ergebnis kommt — wenn überhaupt — später als `<task-notification>`. Gemessen 10.09.2026 (`docs/plugin/rueckkanal-messung.md`): getrennte Tool-Calls serialisieren im Hintergrund NICHTS (vier Agenten gleichzeitig bei „sequenziellen“ Aufrufen), und **5 von 8** Ergebnissen kamen nie an. Mit `false` blockt der Aufruf bis zur Rückgabe, `RUECKGABE` IST der `tool_result`, und ein Nachliefern mitten im Fan-out ist mechanisch unmöglich. ⚠ Preis: die Sitzung wartet je Agent 60–130 s und ist solange nicht ansprechbar — Nachrichten kommen ohnehin erst am Turn-Ende an.
 
 ## Step 4: Deterministische Inline-Checks (ergaenzend, NICHT statt Agent)
 
-While the agent runs, perform these checks directly:
+Nach der Rueckkehr des Agenten (er blockt — v5.94.0; bis dahin hiess es hier *„While the
+agent runs"*, und das war die Hintergrund-Annahme) diese Checks direkt fahren:
 
 ---
 

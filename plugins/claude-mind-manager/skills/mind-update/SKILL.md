@@ -114,6 +114,11 @@ MIND_SKILL_VERSION="5.92.0"
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
 MIND_SKILL_VERSION="5.93.0"
+# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
+#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
+#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
+#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
+MIND_SKILL_VERSION="5.94.0"
 mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
@@ -1122,6 +1127,15 @@ fi
 trippt — v4.0.1). Stattdessen: **einzeln nacheinander**, ODER in 2 Wellen à 2 (Welle 1 =
 Agent 1+2 in einem Tool-Call, Welle 2 = Agent 3+4 im nächsten). Alle 4 laufen — nur nie 3-4 auf einmal.
 
+⛔ **`run_in_background: false` in JEDEM Agent-Aufruf (v5.94.0, Nutzer-/Anton-Entscheidung 11.09.2026).** Die Vorgabe des Agent-Werkzeugs ist HINTERGRUND: der `tool_result` ist dann nur das Ack „Async agent launched“ (1 151 B, nach 1–2 s), das Ergebnis kommt — wenn überhaupt — später als `<task-notification>`. Gemessen 10.09.2026 (`docs/plugin/rueckkanal-messung.md`): getrennte Tool-Calls serialisieren im Hintergrund NICHTS (vier Agenten gleichzeitig bei „sequenziellen“ Aufrufen), und **5 von 8** Ergebnissen kamen nie an. Mit `false` blockt der Aufruf bis zur Rückgabe, `RUECKGABE` IST der `tool_result`, und ein Nachliefern mitten im Fan-out ist mechanisch unmöglich. ⚠ Preis: die Sitzung wartet je Agent 60–130 s und ist solange nicht ansprechbar — Nachrichten kommen ohnehin erst am Turn-Ende an.
+⭐ **Erst damit misst die Grenze oben wieder etwas:** zwei Aufrufe in EINER Nachricht = zwei
+gleichzeitig, getrennte Nachrichten = nacheinander.
+
+```
+Agent(subagent_type: "claude-mind-manager:context-analyzer", run_in_background: false,
+      description: "Knowledge-sync <scope>", prompt: <Auftrag aus der Tabelle>)
+```
+
 | Agent | scope | mode | Input |
 |---|---|---|---|
 | 1 | `claude-md` | `knowledge-sync` | CLAUDE.md project + global + Session-Auszug aus `$SESSION_SAMPLE_BASH` |
@@ -1204,9 +1218,19 @@ komplett raus“*.
 #    Dateien) hier 3 uebergeben, nicht 4.
 [ -f "$PROJ/.claude-mind/agent-quittung.jsonl" ] || mind_agent_quittung_start "$PROJ" 4
 mind_agent_dispatch "<bereich>" "$PROJ"    # VOR dem Start
-# ... Agent laeuft ...
-mind_agent_ergebnis "<bereich>" "$(printf '%s' "$RUECKGABE" | wc -c)" "$PROJ"
+# ... Agent laeuft (run_in_background: false — der tool_result IST die Rueckgabe) ...
+# ⛔ v5.94.0: die Bytes kommen aus einer DATEI, nie aus dem Kopf. Den tool_result
+#    mit `Write` nach $PROJ/.claude-mind/agent-<bereich>.md legen, dann:
+mind_agent_ergebnis "<bereich>" --datei "$PROJ/.claude-mind/agent-<bereich>.md" "$PROJ"
+# Kein tool_result (Agent gestorben, Aufruf abgebrochen)? Dann OHNE Datei quittieren —
+# `--datei` auf eine fehlende Datei schreibt bytes:0, und 0 heisst `ungepruef=`.
 ```
+
+⛔ **Ein geschaetzter Bytewert ist die Fehlzahl, an der Lauf 14:50 (10.09.2026) als
+vollstaendig durchging:** `claude-md` hatte kein gelesenes Ergebnis, die Quittung trug
+`bytes:800`, die Bilanz sagte 4/4. Deshalb `--datei`: die Zahl ist die Groesse einer Datei,
+die es gibt, oder 0. Die Zahlform `mind_agent_ergebnis <bereich> <n>` bleibt fuer
+Prueffaelle erlaubt und traegt `quelle:zahl` — im Lauf hat sie nichts zu suchen.
 
 ⛔ **Der Anleger sass bis v5.18.0 AUSSCHLIESSLICH hier — also in genau dem Schritt,
 den ein Lauf bei hohem Kontext auslaesst.** Fiel Step 3.5 aus, entstand keine Quittung,
@@ -1648,7 +1672,8 @@ ist BUGGY — User darf zurueckweisen mit "Self-Check-Block fehlt — bitte Step
                            (c) deterministisch-only (untouched ODER unscopable, nur 3e+3e.2): <liste mit Zeilenzahl>
                            → Tiefen-Audit einer großen (b/c)-Datei: /mind-rules bzw. /mind-claudemd einzeln darauf
   - scope=custom-context → <D> Findings (oder "SKIPPED: 0 Custom-Context-Files aus Step 1.5")
-  Beleg: Agent-Tool-Calls #X, #Y, #Z, #W (nacheinander bzw. 2 Wellen — kein 4er-Burst)
+  Beleg: Agent-Tool-Calls #X, #Y, #Z, #W (nacheinander bzw. 2 Wellen — kein 4er-Burst),
+         alle mit run_in_background: false; Quittung je Bereich per --datei (Bytes = Dateigroesse)
 
 **Regel (v3.3.2):** Wenn Step 3c K>0 Gaps zeigt, DARF [Step 3.5] nicht "0 dispatched /
 gegenstandslos" sein — die Gaps sind objektiver Gegenbeweis. "Ich kenne den Stand"
