@@ -265,5 +265,37 @@ case "$_VC" in
 esac
 
 echo
+echo "=== v5.87.0: --alle liest nur den AKTUELLEN Lauf (7. Vorkommen der Merker-Klasse) ==="
+# Ritas Fall: ein alter Lauf mit Teilabdeckung, dann ein frischer voller Kettenlauf.
+# shellcheck disable=SC1090
+. "$LIB" >/dev/null 2>&1
+_D7=$(mktemp -d); mkdir -p "$_D7/.claude-mind"; : > "$_D7/.claude-mind/analyzed-scopes"
+mind_schritt_start "$_D7" mind-all schrittA >/dev/null 2>&1
+mind_schritt_start "$_D7" mind-claudemd schrittX >/dev/null 2>&1
+mind_schritt schrittX "gelaufen:1/2" 100 "$_D7" >/dev/null 2>&1          # alter Lauf: TEIL
+mind_schritt_start "$_D7" mind-all schrittA >/dev/null 2>&1              # neuer Lauf beginnt
+mind_schritt_start "$_D7" mind-claudemd schrittX >/dev/null 2>&1
+mind_schritt schrittX gelaufen 100 "$_D7" >/dev/null 2>&1                # neuer Lauf: voll
+_A7=$(mind_schritt_bilanz "$_D7" --alle 2>/dev/null)
+janein "⭐ --alle zaehlt die Teilabdeckung des ALTEN Laufs nicht mehr (TEIL=0)" "0" \
+  "$(printf '%s' "$_A7" | sed -n 's/.*TEIL=\([0-9]*\).*/\1/p' | head -1)"
+janein "   ... und GELAUFEN zaehlt nur den neuen Lauf (1)" "1" \
+  "$(printf '%s' "$_A7" | sed -n 's/.*GELAUFEN=\([0-9]*\).*/\1/p' | head -1)"
+janein "   keine Mischungs-Warnung, wenn die mind-all-Startzeile da ist" "nein" \
+  "$(printf '%s' "$_A7" | grep -q 'vermischt' && echo ja || echo nein)"
+# ohne mind-all-Startzeile: ganze Datei wie bisher, und die Bilanz sagt es
+_D8=$(mktemp -d); mkdir -p "$_D8/.claude-mind"; : > "$_D8/.claude-mind/analyzed-scopes"
+mind_schritt_start "$_D8" mind-claudemd schrittX >/dev/null 2>&1
+mind_schritt schrittX "gelaufen:1/2" 100 "$_D8" >/dev/null 2>&1
+mind_schritt_start "$_D8" mind-memory schrittY >/dev/null 2>&1
+mind_schritt schrittY gelaufen 100 "$_D8" >/dev/null 2>&1
+_A8=$(mind_schritt_bilanz "$_D8" --alle 2>/dev/null)
+janein "ohne mind-all-Start: ganze Datei (TEIL=1, wie v5.86.0)" "1" \
+  "$(printf '%s' "$_A8" | sed -n 's/.*TEIL=\([0-9]*\).*/\1/p' | head -1)"
+janein "   ... und die Bilanz SAGT, dass Laeufe vermischt sein koennen" "ja" \
+  "$(printf '%s' "$_A8" | grep -q 'vermischt' && echo ja || echo nein)"
+rm -rf "$_D7" "$_D8"
+
+echo
 echo "  $OK ok, $ROT rot"
 [ "$ROT" -eq 0 ] || exit 1

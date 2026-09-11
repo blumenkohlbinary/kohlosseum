@@ -2036,10 +2036,20 @@ mind_schritt_bilanz() {
 
   # ⛔ Der AUSSCHNITT entscheidet, nicht die Datei. Ohne `--alle` gilt alles
   #    ab der LETZTEN Start-Zeile; mit `--alle` die ganze Datei.
-  local ab=1
+  local ab=1 mischung=0
   if [ "$alle" -eq 0 ]; then
     ab=$(grep -n '"ereignis":"start"' "$q" 2>/dev/null | tail -1 | cut -d: -f1)
     case "$ab" in ''|*[!0-9]*) ab=1 ;; esac
+  else
+    # ⛔ v5.87.0 — SIEBTES Vorkommen der Merker-Klasse (hooks.md): v5.67.0 haengt
+    #    Bloecke an statt zu leeren, und `--alle` las die GANZE Datei — Ritas Lauf
+    #    vom 10.09.2026 zaehlte die Teilabdeckung eines invalidierten 13:26-Laufs
+    #    neben seiner eigenen. Ein LAUF beginnt mit der Start-Zeile von mind-all
+    #    (Step 0, vor allen fuenf Skills): `--alle` heisst seither "alle Bloecke
+    #    SEIT dem letzten mind-all-Start". Fehlt die (Einzellauf, alter Bestand):
+    #    ganze Datei wie bisher — und die Bilanz SAGT es.
+    ab=$(grep -n '"ereignis":"start","skill":"mind-all"' "$q" 2>/dev/null | tail -1 | cut -d: -f1)
+    case "$ab" in ''|*[!0-9]*) ab=1; mischung=1 ;; esac
   fi
   local ausschnitt="${TMPDIR:-/tmp}/.mind_schritt_a$$"
   sed -n "${ab},\$p" "$q" 2>/dev/null > "$ausschnitt"
@@ -2085,6 +2095,8 @@ mind_schritt_bilanz() {
   # ⛔ `TEIL=` ist MASCHINENLESBAR und dafuer da: `/mind-all` soll die Zahl
   #    lesen koennen, ohne die Prosa darunter zu parsen.
   echo "ERWARTET=$n_erw GELAUFEN=$gel UEBERSPRUNGEN=$ueb FEHLER=$feh LEER=$leer TEIL=$n_teil"
+  [ "$alle" -eq 1 ] && [ "$mischung" -eq 1 ] && \
+    echo "  ⚠ --alle ohne mind-all-Startzeile: ganze Datei gelesen — Laeufe koennen vermischt sein."
   # ⛔ v5.77.0: VERSIONSBRUCH steht in der Bilanz, nicht nur im Log. Ein Lauf,
   #    dessen Skill-Text aus einer anderen Version stammt als sein Code, hat
   #    einer anderen Anleitung gefolgt, als das Plugin ausliefert — und das
