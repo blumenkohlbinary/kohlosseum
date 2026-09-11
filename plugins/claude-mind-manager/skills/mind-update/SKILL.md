@@ -27,6 +27,7 @@ allowed-tools: Read Glob Grep Edit Bash Agent
 
 ```
 PFLICHTSCHRITTE
+bestandszahlen_kandidaten
 claudemd_pipeline
 cleaner_stichprobe
 cleaner_tor
@@ -34,6 +35,7 @@ mind_agent_bilanz
 mind_kontext_bilanz
 mind_snapshot
 session_sampler
+verdichten
 ```
 
 **Vor dem ersten Schritt, ohne Ausnahme:**
@@ -92,7 +94,12 @@ MIND_SKILL_VERSION="5.88.0"
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
 MIND_SKILL_VERSION="5.89.0"
-mind_schritt_start "$PROJ" mind-update claudemd_pipeline cleaner_stichprobe mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler
+# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
+#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
+#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
+#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
+MIND_SKILL_VERSION="5.90.0"
+mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
@@ -1367,29 +1374,48 @@ User-Prompt.
 
 For each fix, log what was changed (file, line, before/after).
 
-## Step 5: Lossless Compression
+## Step 5: ⭐ VERDICHTEN — nach der Vorschrift, nicht nach Gefühl (v5.90.0, ersetzt „Lossless Compression“)
 
-Scan CLAUDE.md for verbose lines that can be shortened without losing information:
+⛔ **Hier stand bis v5.89.0 „Lossless Compression“: Zeilen von Hand kürzen, „only where meaning is
+100% preserved“ — ohne Gate, ohne Zählung, ohne Leser.** Genau das, was drei echte Läufe als
+unsicher gemessen haben (`docs/plugin/verdichten-kalibrierung.md`: drei Verfälschungen bei 100 %
+Stufe 1). Der Schritt bleibt, sein Verfahren ist ersetzt. Vierter Träger nach `mind-rules`,
+`mind-claudemd`, `mind-memory`; `mind-update` fährt nach jeder Kompaktierung und ist damit der
+häufigste.
 
-| Pattern | Replacement |
+**Die vollständige Vorschrift — Agent, Kasten, Gate, Stufe 3, Bericht — steht in
+[references/bestands-pass.md](../../references/bestands-pass.md), Abschnitt „VERDICHTEN“.
+Lies sie.** Hier nur, was für diesen Skill gilt:
+
+| | |
 |---|---|
-| "When you are writing TypeScript code, you should always..." | "TypeScript: MUST use strict mode" |
-| "It is important to note that we use..." | "Uses: <tool>" |
-| "Please make sure to..." | "MUST ..." |
-| "You should not..." | "NEVER ..." |
-| Multi-sentence entries that could be one bullet | Single MUST/NEVER bullet |
+| **Kandidat** | die **GRÖSSTE** Datei in Bytes unter `$PROJ/CLAUDE.md` und `$PROJ/.claude/rules/*.md` — **eine je Lauf**. ⛔ Nie `rollen.md`, nie Memory (das macht `mind-memory` Step 6e) |
+| ⛔ **welche Zeilen liest ein Programm** | ist der Kandidat `CLAUDE.md`: die Unantastbaren aus `mind-claudemd` Step 5e (Codeblöcke byteweise, Versionszeilen, Adress-Zeiger) **und** `claudemd_pipeline.py` vor/nach dem Lauf — kein Check neu rot. Ist es eine Rule: jede gegatete Tabelle (`**<n>** \|`, das Format von `zaehl_gate.py`) byteweise, jedes Quittungs- oder Merker-Format, das ein Hook parst |
+| **Überholt-Kandidaten** | aus den Step-3-Drift-Befunden dieses Laufs (stale Versionen, tote Pfade, alte Counts) — **benannt** an den Agenten. ⭐ Der Ertrag hängt am Aufrufer |
+| **verwerfen, wenn** | Stufe 1 < 100 % · Marker unbenannt verloren · nicht kleiner · Zeilenenden geändert · Pipeline-Check neu rot · Dauerkontext nach dem Anwenden nicht kleiner |
+| ⛔ **Stufe 3** | der Wort-Diff wird GANZ gelesen, bevor angewendet wird. **Ohne Leser: nicht anwenden** — Ergebnis, Bericht, Diff ablegen, Pfad melden |
+| ⚠ **in der Kette** | läuft `mind-update` in `/mind-all`, haben `mind-claudemd` (Step 5e) und `mind-rules` (Step 9b) ihre Datei schon verdichtet — dann hier **die nächstgrößere**, nie dieselbe zweimal im Lauf (`analyzed-scopes` trägt `verdichtet=<datei>`) |
 
-**Only compress lines where meaning is 100% preserved.** If unsure, skip.
-
-Show compressed lines for user approval before applying:
+```bash
+# Kandidat: die groesste Datei aus CLAUDE.md + rules, ohne rollen.md, ohne die schon
+# in DIESEM Kettenlauf verdichteten (analyzed-scopes: verdichtet=<pfad>)
+_SCHON=$(grep '^verdichtet=' "$PROJ/.claude-mind/analyzed-scopes" 2>/dev/null | cut -d= -f2-)
+DATEI=$(ls -S "$PROJ/CLAUDE.md" "$PROJ"/.claude/rules/*.md 2>/dev/null | grep -v '/rollen\.md$' \
+        | while IFS= read -r f; do case "
+$_SCHON
+" in *"
+$f
+"*) ;; *) echo "$f"; break ;; esac; done)
+[ -n "$DATEI" ] || { echo "VERDICHTEN: keine Kandidatin"; }
+# ... dann exakt der Lauf aus bestands-pass.md: Snapshot -> Agent (Kasten + Unantastbare
+#     WOERTLICH) -> mind_verdichtung_pruefen -> (CLAUDE.md: Pipeline vorher/nachher)
+#     -> ⛔ STUFE 3 (Wort-Diff lesen; ohne Leser NICHT anwenden, ablegen und melden)
+#     -> anwenden -> mind_kontext_bilanz gegen vorher -> sonst rollback.py restore
+echo "verdichtet=$DATEI" >> "$PROJ/.claude-mind/analyzed-scopes" 2>/dev/null
 ```
-Compression candidates (3):
-[1] CLAUDE.md:12 "When writing tests, always use..." -> "Tests: MUST use vitest"
-[2] CLAUDE.md:45 "Please note that the build..." -> "Build: `npm run build` (required before PR)"
-[3] CLAUDE.md:78 "You should never commit..." -> "NEVER commit .env files"
 
-Apply compressions? [Yes / Select / Skip]
-```
+⛔ **Der Bericht dieses Schritts sind die drei Zeilen aus `mind_verdichtung_pruefen`** — oder
+die Zeile `verworfen: <grund>`. **Kein Bericht = der Schritt lief nicht.**
 
 ## Step 5d: ⛔ Das Kontext-Tor — PFLICHT vor jedem `ADD` (NEU v5.26.0)
 
@@ -1514,6 +1540,10 @@ source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 # 1) PFLICHTZEILE — sie MUSS woertlich in den Self-Check-Block des Berichts.
 #    ⛔ Nicht nur erwaehnen: die Zeile selbst, mit beiden Zahlenpaaren.
 mind_kontext_bilanz "$PROJ" --vergleichen
+
+# 1b) Art 6 (v5.90.0): ungegatete BESTANDSZAHLEN als Kandidaten — mind-update ist der
+#     haeufigste Lauf, deshalb hier ueber Projekt UND ~/.claude. ⛔ Er urteilt nie, rc 0.
+python "$CLAUDE_PLUGIN_ROOT/references/bestandszahlen_kandidaten.py" "$PROJ" --global
 
 # 2) Stichprobe: 3 Einträge, die am längsten ungeprüft sind (max. 15 je Kettenlauf)
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_stichprobe.py" "$PROJ" \

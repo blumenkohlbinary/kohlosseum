@@ -152,6 +152,12 @@ janein "mind-memory: Step 6e VERDICHTEN vorhanden" "ja" "$(grep -q '^## Step 6e:
 janein "mind-memory: MEMORY.md ist nie Kandidatin" "ja" "$(grep -q "grep -v '/MEMORY\\\\.md\$'" "$WURZEL/skills/mind-memory/SKILL.md" && echo ja || echo nein)"
 janein "mind-memory: Frontmatter und Wikilinks unantastbar, Stufe 3 Pflicht" "2" "$(grep -cE 'Frontmatter \(`---`|STUFE 3 \(Wort-Diff lesen' "$WURZEL/skills/mind-memory/SKILL.md")"
 janein "mind-memory: verdichten als PFLICHTSCHRITT und in mind_schritt_start" "2" "$(grep -cE '^verdichten$|^mind_schritt_start .* verdichten' "$WURZEL/skills/mind-memory/SKILL.md")"
+# v5.90.0: vierter Traeger mind-update — ersetzt "Lossless Compression" (Kuerzen ohne Gate)
+janein "mind-update: Step 5 ist VERDICHTEN, nicht mehr Lossless Compression" "ja" "$(grep -q '^## Step 5: .*VERDICHTEN' "$WURZEL/skills/mind-update/SKILL.md" && ! grep -q '^## Step 5: Lossless Compression' "$WURZEL/skills/mind-update/SKILL.md" && echo ja || echo nein)"
+janein "mind-update: Stufe 3 vor dem Anwenden" "ja" "$(grep -q 'STUFE 3 (Wort-Diff lesen' "$WURZEL/skills/mind-update/SKILL.md" && echo ja || echo nein)"
+janein "mind-update: verdichten als PFLICHTSCHRITT und in mind_schritt_start" "2" "$(grep -cE '^verdichten$|^mind_schritt_start .* verdichten' "$WURZEL/skills/mind-update/SKILL.md")"
+janein "⭐ alle vier Traeger merken 'verdichtet=' in analyzed-scopes (nie dieselbe Datei zweimal je Kette)" "3" \
+  "$(grep -l 'echo "verdichtet=$DATEI" >> "$PROJ/.claude-mind/analyzed-scopes"' "$WURZEL"/skills/mind-rules/SKILL.md "$WURZEL"/skills/mind-claudemd/SKILL.md "$WURZEL"/skills/mind-update/SKILL.md | wc -l | tr -d ' ')"
 
 echo
 echo "=============================================================================="
