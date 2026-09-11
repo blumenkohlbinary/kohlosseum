@@ -2614,6 +2614,16 @@ mind_lauf_kennung() {
 # Aufruf: mind_verdichtung_pruefen <original> <ergebnis> <bericht> [name]
 # Ausgabe: die Berichtszeilen; Rueckgabe 0 = anwenden, 1 = verwerfen,
 #          3 = nicht messbar (Gate fehlt) — KEIN bestandenes Gate.
+# Form aus "crlf/lf": LF · CRLF · gemischt · leer (keine Zeilenumbrueche)
+_mind_ze_form() {
+  local c="${1%%/*}" n="${1##*/}"
+  case "$c" in ''|*[!0-9]*) c=0 ;; esac; case "$n" in ''|*[!0-9]*) n=0 ;; esac
+  if [ "$n" -eq 0 ]; then echo leer
+  elif [ "$c" -eq 0 ]; then echo LF
+  elif [ "$c" -eq "$n" ]; then echo CRLF
+  else echo gemischt; fi
+}
+
 mind_verdichtung_pruefen() {
   local orig="${1:-}" erg="${2:-}" ber="${3:-}" name="${4:-}"
   local gate="${CLAUDE_PLUGIN_ROOT:-}/references/doc-templates/coverage_gate.py"
@@ -2650,6 +2660,19 @@ mind_verdichtung_pruefen() {
   fi
   if [ "$b_nach" -ge "$b_vor" ]; then
     echo "               ⛔ VERWERFEN: nicht kleiner ($b_vor -> $b_nach B). Ein Lauf, der nichts kuerzt, hat nichts getan."
+    return 1
+  fi
+  # v5.84.0: ZEILENENDEN. Gemessen 11.09.2026 (Anton): hooks.md und env-vars.md lagen
+  #   nach dem Verdichten mit CRLF auf der Platte — ein Byte je Zeile mehr, jede
+  #   Zeile geaendert, fuer Stufe 1/2 unsichtbar, im Git-Diff normalisiert. Git laedt
+  #   den Index, Claude Code die Arbeitsdatei. Deshalb: die FORM muss gleich bleiben
+  #   (LF bleibt LF, CRLF bleibt CRLF, gemischt ist immer rot). mind_zeilenenden aus
+  #   lib.sh, nicht nachgebaut.
+  local ze_vor ze_nach f_vor f_nach
+  ze_vor=$(mind_zeilenenden "$orig"); ze_nach=$(mind_zeilenenden "$erg")
+  f_vor=$(_mind_ze_form "$ze_vor"); f_nach=$(_mind_ze_form "$ze_nach")
+  if [ "$f_vor" != "$f_nach" ] || [ "$f_nach" = "gemischt" ]; then
+    echo "               ⛔ VERWERFEN: Zeilenenden geaendert (vorher $f_vor $ze_vor, nachher $f_nach $ze_nach). Quelle erhalten: newline='' lesen, byteweise schreiben."
     return 1
   fi
   echo "               ✅ anwenden — danach mind_kontext_bilanz gegen vorher, sonst Snapshot zurueck."

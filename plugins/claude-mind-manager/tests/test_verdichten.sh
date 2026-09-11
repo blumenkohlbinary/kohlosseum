@@ -145,6 +145,21 @@ janein "mind-rules Step 9b: Stufe 3 vor dem Anwenden" "ja" "$(grep -q 'STUFE 3 (
 
 echo
 echo "=============================================================================="
+echo "  4c) v5.84.0: ZEILENENDEN — die Form muss bleiben (Antons Befund: die Hand schrieb CRLF)"
+echo "=============================================================================="
+# gut.md ist LF und kleiner -> gruen. Dieselbe Datei als CRLF -> rot, obwohl Stufe 1/2 gleich.
+sed 's/$/\r/' "$D/gut.md" > "$D/gut-crlf.md"          # LF -> CRLF (GNU sed)
+janein "Fixture: gut-crlf.md ist wirklich CRLF" "CRLF" "$(_mind_ze_form "$(mind_zeilenenden "$D/gut-crlf.md")")"
+janein "LF-Original, LF-Ergebnis -> anwenden (0)" "0" "$(rc_von "$D/gut.md")"
+janein "⛔ LF-Original, CRLF-Ergebnis -> VERWERFEN (1)" "1" "$(rc_von "$D/gut-crlf.md")"
+janein "   ... und die Ausgabe nennt 'Zeilenenden geaendert'" "ja" "$(lauf "$D/gut-crlf.md" | grep -q 'Zeilenenden geaendert' && echo ja || echo nein)"
+# umgekehrt: CRLF-Original bleibt CRLF -> gruen
+sed 's/$/\r/' "$D/orig.md" > "$D/orig-crlf.md"
+janein "CRLF-Original, CRLF-Ergebnis -> anwenden (0)" "0" "$(mind_verdichtung_pruefen "$D/orig-crlf.md" "$D/gut-crlf.md" "" probe.md >/dev/null 2>&1; echo $?)"
+janein "⛔ CRLF-Original, LF-Ergebnis -> VERWERFEN (1)" "1" "$(mind_verdichtung_pruefen "$D/orig-crlf.md" "$D/gut.md" "" probe.md >/dev/null 2>&1; echo $?)"
+
+echo
+echo "=============================================================================="
 echo "  5) NICHT MESSBAR ist kein bestandenes Gate"
 echo "=============================================================================="
 janein "fehlendes Ergebnis -> Rueckgabe 3" "3" "$(rc_von "$D/gibtsnicht.md")"
