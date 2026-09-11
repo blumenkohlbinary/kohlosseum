@@ -22,6 +22,15 @@ WURZEL="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 # shellcheck disable=SC1091
 . "$WURZEL/hooks/lib.sh"
 
+# ⛔ v5.97.0 — DIE QUITTUNG LAESST SICH NICHT MEHR TIPPEN: die Zahlform schreibt bytes:0,
+#    und dispatch->ergebnis unter 30 s gilt als nachgetragen. Die Fixture liefert deshalb,
+#    was ein echter Lauf liefert: einen Dispatch von vor 120 s und eine DATEI mit n Bytes.
+#    Die Zusicherungen darunter sind woertlich die von vor v5.97.0.
+_disp() { local q="$2/.claude-mind/agent-quittung.jsonl"; mkdir -p "$2/.claude-mind"
+  printf '{"ereignis":"dispatch","bereich":"%s","ts":"%s"}\n' "$1" "$(date -u -d '-120 seconds' +%Y-%m-%dT%H:%M:%SZ)" >> "$q"; }
+_erg()  { local f="$3/.claude-mind/agent-$1.md"; mkdir -p "$3/.claude-mind"
+  head -c "$2" /dev/zero | tr '\0' x > "$f"; mind_agent_ergebnis "$1" --datei "$f" "$3" 2>/dev/null; }
+
 fehler=0
 pruefe() {
   if [ "$2" = "$3" ]; then
@@ -41,8 +50,8 @@ echo "  1) Agent-Quittung — der Normalfall"
 echo "=============================================================================="
 mind_agent_quittung_start "$P"
 for b in claude-md memory rules custom-context; do
-  mind_agent_dispatch "$b" "$P"
-  mind_agent_ergebnis "$b" 4096 "$P"
+  _disp "$b" "$P"
+  _erg "$b" 4096 "$P"
 done
 AUS=$(mind_agent_bilanz "$P"); RC=$?
 echo "$AUS" | sed 's/^/    | /'
@@ -55,10 +64,10 @@ echo "==========================================================================
 echo "  2) ⭐ Leer gegen STUMM — die eigentliche Frage"
 echo "=============================================================================="
 mind_agent_quittung_start "$P"
-mind_agent_dispatch "claude-md" "$P";      mind_agent_ergebnis "claude-md" 4096 "$P"
-mind_agent_dispatch "memory" "$P";         mind_agent_ergebnis "memory" 0 "$P"   # leer zurueck
-mind_agent_dispatch "rules" "$P"                                                 # NIE zurueck
-mind_agent_dispatch "custom-context" "$P"; mind_agent_ergebnis "custom-context" 800 "$P"
+_disp "claude-md" "$P";      _erg "claude-md" 4096 "$P"
+_disp "memory" "$P";         _erg "memory" 0 "$P"   # leer zurueck
+_disp "rules" "$P"                                                 # NIE zurueck
+_disp "custom-context" "$P"; _erg "custom-context" 800 "$P"
 AUS=$(mind_agent_bilanz "$P"); RC=$?
 echo "$AUS" | sed 's/^/    | /'
 pruefe "Kopfzeile"  "$(echo "$AUS" | head -1)" "DISPATCH=4 ERGEBNIS=3 LEER=1 STUMM=1"

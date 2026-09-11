@@ -371,6 +371,18 @@ Lösung dieselbe: **das Fehlen messbar machen, nicht das Vorhandensein.**
 ⚠ Außerhalb einer `/mind-all`-Kette gibt es keine `analyzed-scopes`; die Quittung entfällt
 dann **still** und ist kein Fehler.
 
+⛔ **Verdichten quittiert IMMER, und `gelaufen` nur mit Artefakt (v5.97.0):**
+
+```bash
+mind_schritt verdichten gelaufen --datei "$PROJ/.claude-mind/verdichten-<skill>.txt" "$PROJ"  # die 3 Zeilen von mind_verdichtung_pruefen
+mind_schritt verdichten "uebersprungen:kein-kandidat" 0 "$PROJ"
+```
+
+Ohne `--datei` schreibt `mind_schritt` `uebersprungen:kein-artefakt`; ohne jede Zeile steht
+`verdichten` in `FEHLT`, und `mind_schritt_bilanz --alle` prüft das **je Block**. Gemessen
+12.09.2026: zwei volle Läufe, `grep -c verdicht listeverbesserungen.md` = 0 — die Träger
+waren nicht unkalibriert, sie waren nicht gelaufen.
+
 ---
 
 ## Fehlerszenarien — der Pass darf NIE einen Skill töten

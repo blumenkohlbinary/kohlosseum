@@ -23,6 +23,15 @@ set -u
 H="$CLAUDE_PLUGIN_ROOT/hooks"
 # shellcheck disable=SC1090
 source "$H/lib.sh" 2>/dev/null || { echo "lib.sh nicht ladbar" >&2; exit 2; }
+
+# ⛔ v5.97.0 — DIE QUITTUNG LAESST SICH NICHT MEHR TIPPEN: die Zahlform schreibt bytes:0,
+#    und dispatch->ergebnis unter 30 s gilt als nachgetragen. Die Fixture liefert deshalb,
+#    was ein echter Lauf liefert: einen Dispatch von vor 120 s und eine DATEI mit n Bytes.
+#    Die Zusicherungen darunter sind woertlich die von vor v5.97.0.
+_disp() { local q="$2/.claude-mind/agent-quittung.jsonl"; mkdir -p "$2/.claude-mind"
+  printf '{"ereignis":"dispatch","bereich":"%s","ts":"%s"}\n' "$1" "$(date -u -d '-120 seconds' +%Y-%m-%dT%H:%M:%SZ)" >> "$q"; }
+_erg()  { local f="$3/.claude-mind/agent-$1.md"; mkdir -p "$3/.claude-mind"
+  head -c "$2" /dev/zero | tr '\0' x > "$f"; mind_agent_ergebnis "$1" --datei "$f" "$3" 2>/dev/null; }
 OK=0; ROT=0
 
 janein() { # name erwartung ist
@@ -203,10 +212,10 @@ rm -rf "$P"
 #     gegolten — genau der Ausfall, den diese Sammlung fangen soll.
 P=$(neu_projekt)
 mind_agent_quittung_start "$P" >/dev/null 2>&1
-mind_agent_dispatch "claude-md" "$P" >/dev/null 2>&1
-mind_agent_ergebnis "claude-md" 4096 "$P" >/dev/null 2>&1
-mind_agent_dispatch "memory" "$P" >/dev/null 2>&1
-mind_agent_ergebnis "memory" 2048 "$P" >/dev/null 2>&1
+_disp "claude-md" "$P" >/dev/null 2>&1
+_erg "claude-md" 4096 "$P" >/dev/null 2>&1
+_disp "memory" "$P" >/dev/null 2>&1
+_erg "memory" 2048 "$P" >/dev/null 2>&1
 BIL=$(mind_agent_bilanz "$P" 2>/dev/null); RC=$?
 janein "2 dispatcht + 2 Ergebnisse -> Rueckgabe 0 ('alles gut')" 0 "$RC"
 D=$(printf '%s' "$BIL" | sed -n 's/.*DISPATCH=\([0-9]*\).*/\1/p' | head -1)
@@ -217,12 +226,12 @@ rm -rf "$P"
 P=$(neu_projekt)
 mind_agent_quittung_start "$P" >/dev/null 2>&1
 for b in claude-md memory rules custom-context; do
-  mind_agent_dispatch "$b" "$P" >/dev/null 2>&1
+  _disp "$b" "$P" >/dev/null 2>&1
 done
-mind_agent_ergebnis "claude-md" 4096 "$P" >/dev/null 2>&1
-mind_agent_ergebnis "memory"   2048 "$P" >/dev/null 2>&1
-mind_agent_ergebnis "rules"       0 "$P" >/dev/null 2>&1
-mind_agent_ergebnis "custom-context" 0 "$P" >/dev/null 2>&1
+_erg "claude-md" 4096 "$P" >/dev/null 2>&1
+_erg "memory" 2048 "$P" >/dev/null 2>&1
+_erg "rules" 0 "$P" >/dev/null 2>&1
+_erg "custom-context" 0 "$P" >/dev/null 2>&1
 mind_agent_bilanz "$P" >/dev/null 2>&1; RC=$?
 janein "4 dispatcht, 2 leer -> Rueckgabe 1" 1 "$RC"
 rm -rf "$P"

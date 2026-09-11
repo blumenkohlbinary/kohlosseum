@@ -20,6 +20,15 @@ set -u
 R="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 export CLAUDE_PLUGIN_ROOT="$R"
 [ -f "$R/hooks/lib.sh" ] || { echo "ABBRUCH: lib.sh fehlt"; exit 2; }
+
+# ⛔ v5.97.0 — DIE QUITTUNG LAESST SICH NICHT MEHR TIPPEN: die Zahlform schreibt bytes:0,
+#    und dispatch->ergebnis unter 30 s gilt als nachgetragen. Die Fixture liefert deshalb,
+#    was ein echter Lauf liefert: einen Dispatch von vor 120 s und eine DATEI mit n Bytes.
+#    Die Zusicherungen darunter sind woertlich die von vor v5.97.0.
+_disp() { local q="$2/.claude-mind/agent-quittung.jsonl"; mkdir -p "$2/.claude-mind"
+  printf '{"ereignis":"dispatch","bereich":"%s","ts":"%s"}\n' "$1" "$(date -u -d '-120 seconds' +%Y-%m-%dT%H:%M:%SZ)" >> "$q"; }
+_erg()  { local f="$3/.claude-mind/agent-$1.md"; mkdir -p "$3/.claude-mind"
+  head -c "$2" /dev/zero | tr '\0' x > "$f"; mind_agent_ergebnis "$1" --datei "$f" "$3" 2>/dev/null; }
 # shellcheck disable=SC1090
 . "$R/hooks/lib.sh" >/dev/null 2>&1
 
@@ -74,20 +83,22 @@ P="$T/proj"; mkdir -p "$P/.claude-mind"
 Q="$P/.claude-mind/agent-quittung.jsonl"
 mind_agent_quittung_start "$P" 2
 printf 'abcdefghij' > "$P/.claude-mind/agent-claude-md.md"      # 10 Byte
-mind_agent_dispatch "claude-md" "$P"
+_disp "claude-md" "$P"
 mind_agent_ergebnis "claude-md" --datei "$P/.claude-mind/agent-claude-md.md" "$P"
 janein "--datei: bytes = Dateigroesse (10)" ja "$(grep -q '"bereich":"claude-md","bytes":10,' "$Q" && echo ja || echo nein)"
 janein "   ... und quelle:datei steht dabei" ja "$(grep -q '"bytes":10,"quelle":"datei"' "$Q" && echo ja || echo nein)"
-mind_agent_dispatch "memory" "$P"
+_disp "memory" "$P"
 mind_agent_ergebnis "memory" --datei "$P/.claude-mind/gibt-es-nicht.md" "$P"
 janein "⛔ --datei auf fehlende Datei: bytes=0, kein Schaetzwert" ja "$(grep -q '"bereich":"memory","bytes":0,"quelle":"datei"' "$Q" && echo ja || echo nein)"
 janein "   ... die Bilanz fuehrt memory als UNGEPRUEFT" ja \
   "$(mind_agent_bilanz "$P" 2>/dev/null | grep -q 'UNGEPRUEFT: memory' && echo ja || echo nein)"
 janein "   ... Zeile 1: DISPATCH=2 ERGEBNIS=2 LEER=1" "DISPATCH=2 ERGEBNIS=2 LEER=1 STUMM=0" \
   "$(mind_agent_bilanz "$P" 2>/dev/null | head -1)"
-# Die Zahlform bleibt (Prueffaelle) und ist als solche gekennzeichnet.
-mind_agent_ergebnis "rules" 4096 "$P"
-janein "Zahlform bleibt erlaubt und traegt quelle:zahl" ja "$(grep -q '"bereich":"rules","bytes":4096,"quelle":"zahl"' "$Q" && echo ja || echo nein)"
+# ⛔ v5.97.0: die Zahlform schreibt 0. Bis v5.96.0 stand hier "Zahlform bleibt erlaubt und
+#    traegt quelle:zahl" mit bytes:4096 — Ritas Lauf 22:05 (11.09.2026) hat genau damit
+#    900/900/900/1000 getippt. Die Zusicherung ist umgekehrt, nicht gestrichen.
+mind_agent_ergebnis "rules" 4096 "$P" 2>/dev/null
+janein "⛔ Zahlform schreibt bytes:0, quelle:zahl, grund:zahlform" ja "$(grep -q '"bereich":"rules","bytes":0,"quelle":"zahl","grund":"zahlform"' "$Q" && echo ja || echo nein)"
 janein "   ... Projekt-Argument an Position 4 bei --datei wird gelesen (Quittung liegt im Projekt)" 3 \
   "$(grep -c '"ereignis":"ergebnis"' "$Q")"
 rm -rf "$T"
@@ -120,6 +131,139 @@ EOF
   mind "$s: mindestens eine Dispatch-Stelle gefunden" 1 "$n"
   janein "$s: SendMessage-Satz an jeder der $n Dispatch-Stellen (Fenster 12 Zeilen)" 0 "$fehl"
 done
+
+echo "=============================================================================="
+echo "  4) DIE QUITTUNG LAESST SICH NICHT MEHR TIPPEN (v5.97.0, nils-etappe-7.md §2)"
+echo "=============================================================================="
+# Gemessen an Ritas Lauf 22:05 (11.09.2026): dispatch und ergebnis in derselben Sekunde,
+# bytes 900/900/900/1000 mit quelle:zahl, schritt-quittung der vier inneren Skills mit
+# denselben getippten Bytes in allen drei Laeufen. Die Agenten fuer claude-md/memory
+# LIEFEN (112 s, 159 s, 3 331/2 763 B) — die Quittung sagte 900. Mechanik statt Regel.
+T=$(mktemp -d "${TMPDIR:-/tmp}/vqXXXXXX") || exit 2
+P="$T/proj"; mkdir -p "$P/.claude-mind"; Q="$P/.claude-mind/agent-quittung.jsonl"
+_alt() { date -u -d '-120 seconds' +%Y-%m-%dT%H:%M:%SZ; }
+
+# --- 4a  --datei mit dem Hintergrund-Ack ist KEIN Ergebnis --------------------------
+mind_agent_quittung_start "$P" 4
+printf '{"ereignis":"dispatch","bereich":"claude-md","ts":"%s"}\n' "$(_alt)" >> "$Q"
+printf 'Async agent launched successfully.\nagentId: abc\n' > "$P/.claude-mind/agent-claude-md.md"
+mind_agent_ergebnis "claude-md" --datei "$P/.claude-mind/agent-claude-md.md" "$P" 2>/dev/null
+janein "4a --datei auf das Hintergrund-Ack: bytes:0, grund:hintergrund" ja \
+  "$(grep -q '"bereich":"claude-md","bytes":0,"quelle":"datei","grund":"hintergrund"' "$Q" && echo ja || echo nein)"
+janein "   ... die Bilanz nennt den Grund" ja \
+  "$(mind_agent_bilanz "$P" 2>/dev/null | grep -q 'UNGEPRUEFT: claude-md (Hintergrund-Ack' && echo ja || echo nein)"
+
+# --- 4b  dispatch und ergebnis in derselben Sekunde = nachgetragen -----------------
+mind_agent_quittung_start "$P" 4
+printf 'abcdefghijklmnopqrstuvwxyz' > "$P/.claude-mind/agent-memory.md"
+mind_agent_dispatch "memory" "$P"
+mind_agent_ergebnis "memory" --datei "$P/.claude-mind/agent-memory.md" "$P" 2>/dev/null
+janein "4b Datei mit 26 B, aber 0 s nach dem Dispatch: UNGEPRUEFT (nachgetragen)" ja \
+  "$(mind_agent_bilanz "$P" 2>/dev/null | grep -q 'UNGEPRUEFT: memory (dispatch und ergebnis 0 s auseinander' && echo ja || echo nein)"
+janein "   ... Rueckgabe 1" 1 "$(mind_agent_bilanz "$P" >/dev/null 2>&1; echo $?)"
+# Positivkontrolle: derselbe Inhalt, Dispatch 120 s frueher -> geprueft
+mind_agent_quittung_start "$P" 4
+printf '{"ereignis":"dispatch","bereich":"memory","ts":"%s"}\n' "$(_alt)" >> "$Q"
+mind_agent_ergebnis "memory" --datei "$P/.claude-mind/agent-memory.md" "$P" 2>/dev/null
+janein "   Positivkontrolle: 120 s nach dem Dispatch, 26 B -> LEER=0" "DISPATCH=1 ERGEBNIS=1 LEER=0 STUMM=0" \
+  "$(mind_agent_bilanz "$P" 2>/dev/null | head -1)"
+
+# --- 4c  RITAS QUITTUNG, woertlich (echtes kaputtes Material) -------------------------
+mind_agent_quittung_start "$P" 4
+cat >> "$Q" <<'EOF'
+{"ereignis":"dispatch","bereich":"claude-md","ts":"2026-09-11T22:05:30Z"}
+{"ereignis":"ergebnis","bereich":"claude-md","bytes":900,"quelle":"zahl","ts":"2026-09-11T22:05:30Z"}
+{"ereignis":"dispatch","bereich":"memory","ts":"2026-09-11T22:05:30Z"}
+{"ereignis":"ergebnis","bereich":"memory","bytes":900,"quelle":"zahl","ts":"2026-09-11T22:05:30Z"}
+{"ereignis":"dispatch","bereich":"rules","ts":"2026-09-11T22:05:30Z"}
+{"ereignis":"dispatch","bereich":"custom-context","ts":"2026-09-11T22:05:30Z"}
+{"ereignis":"ergebnis","bereich":"rules","bytes":900,"quelle":"zahl","ts":"2026-09-11T22:12:17Z"}
+{"ereignis":"ergebnis","bereich":"custom-context","bytes":1000,"quelle":"zahl","ts":"2026-09-11T22:12:17Z"}
+EOF
+_B=$(mind_agent_bilanz "$P" 2>/dev/null); _RC=$?
+janein "4c ⛔ Ritas Quittung 22:05: Rueckgabe 1, nicht 0 (bis v5.96.0: 4/4, rc 0)" 1 "$_RC"
+janein "   ... alle vier UNGEPRUEFT (bytes getippt)" 4 "$(printf '%s\n' "$_B" | grep -c 'getippt, quelle:zahl')"
+janein "   ... Kopfzeile LEER=4" "DISPATCH=4 ERGEBNIS=4 LEER=4 STUMM=0" "$(printf '%s\n' "$_B" | head -1)"
+
+# --- 4d  agent-quittung haengt an, die Bilanz liest den letzten Lauf -----------------
+janein "4d die Datei traegt jetzt mehrere Start-Zeilen (angehaengt, nicht geleert)" 4 "$(grep -c '"ereignis":"start"' "$Q")"
+janein "   ... jede mit Laufkennung" 4 "$(grep -c '"ereignis":"start","lauf":"' "$Q")"
+mind_agent_quittung_start "$P" 1
+printf '{"ereignis":"dispatch","bereich":"rules","ts":"%s"}\n' "$(_alt)" >> "$Q"
+printf 'x%.0s' $(seq 1 40) > "$P/.claude-mind/agent-rules.md"
+mind_agent_ergebnis "rules" --datei "$P/.claude-mind/agent-rules.md" "$P" 2>/dev/null
+janein "   ... und die Bilanz sieht NUR den letzten Lauf (DISPATCH=1, LEER=0)" "DISPATCH=1 ERGEBNIS=1 LEER=0 STUMM=0" \
+  "$(mind_agent_bilanz "$P" 2>/dev/null | head -1)"
+
+# --- 4e  mind_schritt: die fuenf Context-Skills und verdichten brauchen ein Artefakt ---
+S="$P/.claude-mind/schritt-quittung.jsonl"
+: > "$S"
+mind_schritt mind-files gelaufen 300 "$P" 2>/dev/null
+janein "4e mind_schritt mind-files gelaufen 300 -> uebersprungen:kein-artefakt, bytes 0" ja \
+  "$(grep -q '"name":"mind-files","status":"uebersprungen:kein-artefakt","bytes":0,' "$S" && echo ja || echo nein)"
+printf '# Bericht mind-files\n1 Datei angelegt\n' > "$P/.claude-mind/bericht-mind-files.md"
+mind_schritt mind-files gelaufen --datei "$P/.claude-mind/bericht-mind-files.md" "$P" 2>/dev/null
+janein "   ... mit --datei: gelaufen, Bytes der Datei, quelle:datei" ja \
+  "$(grep -q "\"name\":\"mind-files\",\"status\":\"gelaufen\",\"bytes\":$(wc -c < "$P/.claude-mind/bericht-mind-files.md" | tr -d ' '),\"quelle\":\"datei\"" "$S" && echo ja || echo nein)"
+mind_schritt verdichten gelaufen 5 "$P" 2>/dev/null
+janein "   verdichten gelaufen ohne Datei -> kein-artefakt" ja \
+  "$(grep -q '"name":"verdichten","status":"uebersprungen:kein-artefakt"' "$S" && echo ja || echo nein)"
+mind_schritt verdichten "uebersprungen:kein-kandidat" 0 "$P" 2>/dev/null
+janein "   verdichten uebersprungen:kein-kandidat bleibt, wie es ist" ja \
+  "$(grep -q '"name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,' "$S" && echo ja || echo nein)"
+mind_schritt claudemd_pipeline gelaufen 500 "$P" 2>/dev/null
+janein "   ein Werkzeug-Schritt nimmt weiter die Zahl (nur die Skills brauchen ein Artefakt)" ja \
+  "$(grep -q '"name":"claudemd_pipeline","status":"gelaufen","bytes":500,' "$S" && echo ja || echo nein)"
+
+# --- 4f  schritt_bilanz --alle: Ritas Lauf 00:02 nachgestellt ---------------------------
+: > "$S"; : > "$P/.claude-mind/analyzed-scopes"
+cat >> "$S" <<'EOF'
+{"ereignis":"start","skill":"mind-all","erwartet":"mind_agent_bilanz","ts":"2026-09-11T22:01:44Z","code":"5.94.0","text":"unbekannt","versionsbruch":false}
+{"ereignis":"schritt","name":"mind-files","status":"gelaufen","bytes":300,"ts":"2026-09-11T22:02:03Z"}
+{"ereignis":"schritt","name":"mind-claudemd","status":"gelaufen","bytes":700,"ts":"2026-09-11T22:02:03Z"}
+{"ereignis":"schritt","name":"mind-memory","status":"gelaufen","bytes":400,"ts":"2026-09-11T22:02:03Z"}
+{"ereignis":"schritt","name":"mind-rules","status":"gelaufen","bytes":300,"ts":"2026-09-11T22:02:03Z"}
+{"ereignis":"schritt","name":"mind-update","status":"gelaufen","bytes":6000,"ts":"2026-09-11T22:12:33Z"}
+{"ereignis":"schritt","name":"mind_agent_bilanz","status":"gelaufen","bytes":50,"ts":"2026-09-11T22:12:52Z"}
+EOF
+_A=$(mind_schritt_bilanz "$P" --alle 2>/dev/null); _ARC=$?
+janein "4f ⛔ Ritas Lauf 00:02: Rueckgabe 1 (bis v5.96.0: 0)" 1 "$_ARC"
+janein "   ... FORMAL=5: kein Skill hat einen eigenen Start-Block" ja "$(printf '%s\n' "$_A" | grep -q '^  FORMAL=5$' && echo ja || echo nein)"
+janein "   ... und sagt, warum" ja "$(printf '%s\n' "$_A" | grep -q 'FORMAL: mind-files (quittiert, aber kein eigener Start-Block' && echo ja || echo nein)"
+janein "   ... Stempel text:unbekannt ist ein Meldegrund" ja "$(printf '%s\n' "$_A" | grep -q 'STEMPEL UNGELESEN (text:unbekannt): mind-all' && echo ja || echo nein)"
+# dieselben Zeilen, aber mit eigenen Bloecken -> (b) Bytes getippt und (c) gleiche Sekunde
+for s in mind-files mind-claudemd mind-memory mind-rules mind-update; do
+  printf '{"ereignis":"start","skill":"%s","erwartet":"x","ts":"2026-09-11T22:02:00Z","code":"5.97.0","text":"5.97.0","versionsbruch":false}\n{"ereignis":"schritt","name":"x","status":"gelaufen","bytes":1,"ts":"2026-09-11T22:02:01Z"}\n' "$s" >> "$S"
+done
+_A=$(mind_schritt_bilanz "$P" --alle 2>/dev/null)
+janein "   mit eigenen Bloecken: FORMAL=5 bleibt — Bytes getippt (kein --datei)" ja "$(printf '%s\n' "$_A" | grep -q '^  FORMAL=5$' && echo ja || echo nein)"
+janein "   ... Grund: Bytes getippt, kein Bericht" 5 "$(printf '%s\n' "$_A" | grep -c 'Bytes getippt, kein Bericht per --datei')"
+# Positivkontrolle: Berichte per Datei, jede Sekunde ein Skill -> FORMAL fehlt, rc 0
+: > "$S"
+printf '{"ereignis":"start","skill":"mind-all","erwartet":"mind_agent_bilanz","ts":"2026-09-11T22:01:44Z","code":"5.97.0","text":"5.97.0","versionsbruch":false}\n' >> "$S"
+i=0
+for s in mind-files mind-claudemd mind-memory mind-rules mind-update; do
+  i=$((i + 1))
+  printf '{"ereignis":"start","skill":"%s","erwartet":"verdichten","ts":"2026-09-11T22:02:0%dZ","code":"5.97.0","text":"5.97.0","versionsbruch":false}\n' "$s" "$i" >> "$S"
+  printf '{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"2026-09-11T22:02:0%dZ"}\n' "$i" >> "$S"
+  printf '{"ereignis":"schritt","name":"%s","status":"gelaufen","bytes":300,"quelle":"datei","ts":"2026-09-11T22:03:0%dZ"}\n' "$s" "$i" >> "$S"
+done
+printf '{"ereignis":"schritt","name":"mind_agent_bilanz","status":"gelaufen","bytes":50,"ts":"2026-09-11T22:12:52Z"}\n' >> "$S"
+_A=$(mind_schritt_bilanz "$P" --alle 2>/dev/null); _ARC=$?
+janein "   Positivkontrolle: eigene Bloecke, --datei, verschiedene Sekunden, verdichten quittiert -> rc 0" 0 "$_ARC"
+janein "   ... ohne FORMAL-Zeile" nein "$(printf '%s\n' "$_A" | grep -q 'FORMAL' && echo ja || echo nein)"
+# (c) zwei in derselben Sekunde
+sed -i 's/"ts":"2026-09-11T22:03:02Z"/"ts":"2026-09-11T22:03:01Z"/' "$S"
+_A=$(mind_schritt_bilanz "$P" --alle 2>/dev/null)
+janein "   (c) mind-claudemd in derselben Sekunde wie mind-files -> FORMAL=1" ja "$(printf '%s\n' "$_A" | grep -q 'FORMAL: mind-claudemd (dieselbe Sekunde' && echo ja || echo nein)"
+
+# --- 4g  FEHLT je Block: verdichten fehlt in EINEM inneren Skill -------------------------
+sed -i 's/"ts":"2026-09-11T22:03:01Z"/"ts":"2026-09-11T22:03:02Z"/' "$S"   # (c) zuruecknehmen
+grep -v '"name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"2026-09-11T22:02:03Z"' "$S" > "$S.tmp" && mv "$S.tmp" "$S"
+_A=$(mind_schritt_bilanz "$P" --alle 2>/dev/null); _ARC=$?
+janein "4g verdichten fehlt in mind-memory -> FEHLT nennt mind-memory/verdichten" ja "$(printf '%s\n' "$_A" | grep -q 'FEHLT.*mind-memory/verdichten' && echo ja || echo nein)"
+janein "   ... Rueckgabe 1 (bis v5.96.0: nur die Liste des ERSTEN Blocks zaehlte)" 1 "$_ARC"
+rm -rf "$T"
 
 echo
 echo "  $OK ok, $ROT rot"

@@ -1540,13 +1540,26 @@ mind_snapshot_luecken() {
 
 mind_agent_quittung_start() {
   local q; q=$(_mind_quittung_pfad "${1:-}")
-  local erwartet="${2:-}"
+  local erwartet="${2:-}" zeilen=0 lauf
   mkdir -p "$(dirname "$q")" 2>/dev/null || return 1
-  : > "$q" || return 1
+  # ⛔ v5.97.0 — ANHAENGEN, nicht leeren. Achtes Vorkommen der Merker-Klasse aus
+  #    hooks.md: `: > "$q"` loeschte den vorigen Lauf. Ritas Lauf 21:44 (11.09.2026)
+  #    war nach ihrem Lauf 00:02 nicht mehr pruefbar. Jetzt: eine Start-Zeile mit
+  #    Laufkennung je Lauf, die Bilanz liest ab der LETZTEN. Notbremse 500 Zeilen
+  #    wie bei der Schritt-Quittung — protokolliert, nicht still.
+  if [ -f "$q" ]; then
+    zeilen=$(grep -c '' "$q" 2>/dev/null); case "$zeilen" in ''|*[!0-9]*) zeilen=0 ;; esac
+    if [ "$zeilen" -ge 500 ] 2>/dev/null; then
+      mind_log WARN "agent-quittung bei $zeilen Zeilen geleert (Notbremse)"
+      : > "$q" || return 1
+    fi
+  fi
+  lauf="$(date -u +%Y%m%dT%H%M%SZ)-$$"
   case "$erwartet" in
-    ''|*[!0-9]*) ;;
-    *) printf '{"ereignis":"start","erwartet":%s,"ts":"%s"}\n' \
-         "$erwartet" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$q" ;;
+    ''|*[!0-9]*) printf '{"ereignis":"start","lauf":"%s","ts":"%s"}\n' \
+                   "$lauf" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$q" ;;
+    *) printf '{"ereignis":"start","lauf":"%s","erwartet":%s,"ts":"%s"}\n' \
+         "$lauf" "$erwartet" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$q" ;;
   esac
 }
 
@@ -1572,21 +1585,41 @@ mind_agent_dispatch() {
 #   und die Bilanz sagte 4/4. Mit --datei ist die Zahl die Groesse einer Datei, die es
 #   gibt, oder 0: fehlt die Datei, steht 0 da, und 0 heisst `ungepruef=`.
 mind_agent_ergebnis() {
-  local bereich="$1" bytes="${2:-0}" q quelle="zahl" pfad=""
+  local bereich="$1" bytes=0 q quelle="zahl" pfad="" grund=""
   if [ "${2:-}" = "--datei" ]; then
     pfad="${3:-}"; quelle="datei"
     q=$(_mind_quittung_pfad "${4:-}")
     if [ -n "$pfad" ] && [ -f "$pfad" ]; then
       bytes=$(wc -c < "$pfad" 2>/dev/null | tr -d ' ')
+      # ⛔ v5.97.0: das Hintergrund-Ack IST KEIN ERGEBNIS. "Async agent launched"
+      #    (1 151 B) ist die Antwort des Agent-Werkzeugs OHNE run_in_background:
+      #    false — der Agent laeuft noch oder nie. Gemessen 10.09.2026, 5 von 8.
+      if grep -q 'Async agent launched' "$pfad" 2>/dev/null; then
+        bytes=0; grund="hintergrund"
+        echo "⛔ $bereich: die Datei traegt das Hintergrund-Ack (Async agent launched) — kein Ergebnis, bytes:0." >&2
+      fi
     else
-      bytes=0
+      bytes=0; grund="keine-datei"
     fi
   else
     q=$(_mind_quittung_pfad "${3:-}")
+    # ⛔ v5.97.0 — DIE ZAHLFORM SCHREIBT 0. Gemessen 11.09.2026 (Ritas Lauf 22:05):
+    #    vier Ergebnisse mit quelle:zahl, bytes 900/900/900/1000, zwei davon fuer
+    #    Agenten, die 3 331 und 2 763 B geliefert hatten. Jede Zahl, die die Hand
+    #    tippen KANN, wird sie irgendwann tippen (Anton, nils-etappe-7.md §2).
+    #    Nur --datei liefert bytes>0. Die Zahlform bleibt aufrufbar, damit alte
+    #    Skill-Texte nicht sterben — sie quittiert dann ehrlich "ungeprueft".
+    grund="zahlform"
+    echo "⛔ $bereich: Zahlform (mind_agent_ergebnis <bereich> <n>) schreibt seit v5.97.0 bytes:0 — nur --datei <pfad> misst." >&2
   fi
   case "$bytes" in ''|*[!0-9]*) bytes=0 ;; esac
-  printf '{"ereignis":"ergebnis","bereich":"%s","bytes":%s,"quelle":"%s","ts":"%s"}\n' \
-    "$bereich" "$bytes" "$quelle" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$q"
+  if [ -n "$grund" ]; then
+    printf '{"ereignis":"ergebnis","bereich":"%s","bytes":%s,"quelle":"%s","grund":"%s","ts":"%s"}\n' \
+      "$bereich" "$bytes" "$quelle" "$grund" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$q"
+  else
+    printf '{"ereignis":"ergebnis","bereich":"%s","bytes":%s,"quelle":"%s","ts":"%s"}\n' \
+      "$bereich" "$bytes" "$quelle" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$q"
+  fi
 }
 
 # Bilanz fuer den Self-Check-Block.
@@ -1606,10 +1639,17 @@ mind_agent_bilanz() {
     return 2
   fi
 
+  # ⛔ v5.97.0: NUR DER LETZTE LAUF. Die Datei haengt seit v5.97.0 an; alles ab der
+  #    letzten Start-Zeile ist dieser Lauf. Ohne Start-Zeile (Altbestand): ganze Datei.
+  local ab lauf="${TMPDIR:-/tmp}/.mind_agent_lauf_$$"
+  ab=$(grep -n '"ereignis":"start"' "$q" 2>/dev/null | tail -1 | cut -d: -f1)
+  case "$ab" in ''|*[!0-9]*) ab=1 ;; esac
+  sed -n "${ab},\$p" "$q" 2>/dev/null > "$lauf"
+
   # Bereiche sammeln. Bewusst ohne jq: die Bilanz muss auch dann funktionieren,
   # wenn jq fehlt — sonst faellt genau die Pruefung aus, die den Ausfall melden soll.
   local dispatcht="" mit_ergebnis="" erwartet="" wdh=0 nachtrag=""
-  erwartet=$(sed -n 's/.*"ereignis":"start".*"erwartet":\([0-9]*\).*/\1/p' "$q" | head -1)
+  erwartet=$(sed -n 's/.*"ereignis":"start".*"erwartet":\([0-9]*\).*/\1/p' "$lauf" | head -1)
   while IFS= read -r zeile; do
     [ -n "$zeile" ] || continue
     bereich=$(printf '%s' "$zeile" | sed -n 's/.*"bereich":"\([^"]*\)".*/\1/p')
@@ -1627,7 +1667,7 @@ mind_agent_bilanz() {
           *) mit_ergebnis="${mit_ergebnis}${bereich} " ;;
         esac ;;
     esac
-  done < "$q"
+  done < "$lauf"
 
   # ⛔ v5.21.2 (B2): je Bereich zaehlt der LETZTE Ergebniseintrag, nicht jeder.
   #    Gemessen 26.08.2026: ein zweiter, engerer Dispatch lieferte ein Ergebnis,
@@ -1635,17 +1675,59 @@ mind_agent_bilanz() {
   #    konnte es nicht sagen.
   #    ⚠ Der Verlauf bleibt SICHTBAR (Zeile "WIEDERHOLT"): ein gestorbener Agent
   #      darf nicht spurlos verschwinden, das ist der Zweck der ganzen Quittung.
-  #    ⚠ Alle Faelle in tests/test_quittung.sh haben genau EIN Ergebnis je
-  #      Bereich — dort ist "letzter" mit "jeder" identisch, die Kopfzeile bleibt.
+  # ⛔ v5.97.0 — ZWEI WEITERE GRUENDE FUER "UNGEPRUEFT", beide aus Ritas Lauf 22:05
+  #    (11.09.2026), beide an der GESICHERTEN Quittung nachpruefbar:
+  #    (a) quelle:zahl — die Zahl wurde getippt (900/900/900/1000), keine Datei
+  #        wurde gemessen. Seit v5.97.0 schreibt die Zahlform ohnehin 0; alte
+  #        Quittungen mit bytes>0 und quelle:zahl faellt die Bilanz hier.
+  #    (b) dispatch und ergebnis unter 30 s auseinander — ein blockierender Agent
+  #        braucht 60–130 s. Dispatch und Ergebnis in derselben Sekunde heisst:
+  #        beide Zeilen wurden NACH dem Lauf getippt, die Quittung ist Buchhaltung
+  #        im Nachhinein. Ohne `date -d` (kein GNU date): Pruefung entfaellt, kein
+  #        falscher Teilsync (fail-safe wie mind_sync_voll).
+  local _min_s="${MIND_AGENT_MIN_S:-30}"
   for bereich in $mit_ergebnis; do
-    local _alle _letzte _erste
-    _alle=$(grep '"ereignis":"ergebnis"' "$q" 2>/dev/null | grep "\"bereich\":\"$bereich\"")
-    _letzte=$(printf '%s\n' "$_alle" | tail -1 | sed -n 's/.*"bytes":\([0-9]*\).*/\1/p')
+    local _alle _letzte _erste _lz _quelle _grund _dts _ets _de _ee _diff
+    _alle=$(grep '"ereignis":"ergebnis"' "$lauf" 2>/dev/null | grep "\"bereich\":\"$bereich\"")
+    _lz=$(printf '%s\n' "$_alle" | tail -1)
+    _letzte=$(printf '%s' "$_lz" | sed -n 's/.*"bytes":\([0-9]*\).*/\1/p')
     _erste=$(printf '%s\n' "$_alle" | head -1 | sed -n 's/.*"bytes":\([0-9]*\).*/\1/p')
+    _quelle=$(printf '%s' "$_lz" | sed -n 's/.*"quelle":"\([^"]*\)".*/\1/p')
+    _grund=$(printf '%s' "$_lz" | sed -n 's/.*"grund":"\([^"]*\)".*/\1/p')
     if [ "${_letzte:-0}" -eq 0 ] 2>/dev/null; then
       leer=$((leer + 1))
-      liste="${liste}  UNGEPRUEFT: ${bereich} (leere Rueckgabe — 0 Byte ist kein Befund)"$'\n'
-    elif [ "${_erste:-0}" -eq 0 ] 2>/dev/null; then
+      case "$_grund" in
+        hintergrund) liste="${liste}  UNGEPRUEFT: ${bereich} (Hintergrund-Ack statt Ergebnis — der Agent lief ohne run_in_background: false)"$'\n' ;;
+        zahlform)    liste="${liste}  UNGEPRUEFT: ${bereich} (Zahlform quittiert — nur --datei misst)"$'\n' ;;
+        keine-datei) liste="${liste}  UNGEPRUEFT: ${bereich} (Ergebnisdatei fehlt)"$'\n' ;;
+        *)           liste="${liste}  UNGEPRUEFT: ${bereich} (leere Rueckgabe — 0 Byte ist kein Befund)"$'\n' ;;
+      esac
+      continue
+    fi
+    if [ "$_quelle" = "zahl" ]; then
+      leer=$((leer + 1))
+      liste="${liste}  UNGEPRUEFT: ${bereich} (bytes:${_letzte} getippt, quelle:zahl — keine Datei gemessen)"$'\n'
+      continue
+    fi
+    # (b) Zeitabstand zum letzten Dispatch VOR diesem Ergebnis
+    _ets=$(printf '%s' "$_lz" | sed -n 's/.*"ts":"\([^"]*\)".*/\1/p')
+    _dts=$(grep '"ereignis":"dispatch"' "$lauf" 2>/dev/null | grep "\"bereich\":\"$bereich\"" | tail -1 \
+           | sed -n 's/.*"ts":"\([^"]*\)".*/\1/p')
+    # ⚠ NUR die eigene ISO-Form parsen — `date -d x` liefert eine Zahl statt eines
+    #   Fehlers (gemessen: "x" -> 1789124400). Ein Prueffall mit ts "x" waere sonst
+    #   "0 s auseinander" und damit ungeprueft.
+    _de=""; _ee=""
+    case "$_dts" in [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z) _de=$(date -u -d "$_dts" +%s 2>/dev/null) ;; esac
+    case "$_ets" in [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z) _ee=$(date -u -d "$_ets" +%s 2>/dev/null) ;; esac
+    if [ -n "$_de" ] && [ -n "$_ee" ] && [ "$_de" -le "$_ee" ] 2>/dev/null; then
+      _diff=$((_ee - _de))
+      if [ "$_diff" -lt "$_min_s" ] 2>/dev/null; then
+        leer=$((leer + 1))
+        liste="${liste}  UNGEPRUEFT: ${bereich} (dispatch und ergebnis ${_diff} s auseinander — in der Zeit lief kein Agent, die Quittung wurde nachgetragen)"$'\n'
+        continue
+      fi
+    fi
+    if [ "${_erste:-0}" -eq 0 ] 2>/dev/null; then
       wdh=$((wdh + 1))
       nachtrag="${nachtrag}  WIEDERHOLT: ${bereich} (erst 0 Byte, dann ${_letzte} — geprueft, aber ein Agent ist gestorben)"$'\n'
     fi
@@ -1658,6 +1740,7 @@ mind_agent_bilanz() {
       *) stumm=$((stumm + 1)); liste="${liste}  UNGEPRUEFT: ${bereich} (dispatcht, nie zurueck)"$'\n' ;;
     esac
   done
+  rm -f "$lauf"
 
   echo "DISPATCH=$d ERGEBNIS=$e LEER=$leer STUMM=$stumm"
   [ -n "$erwartet" ] && echo "  ERWARTET=$erwartet"
@@ -2052,12 +2135,40 @@ mind_schritt_start() {
 #      GEGENSTAND nicht haben (kein Git, kein Quellbaum, --dry-run). Ein
 #      vorhandener Gegenstand plus ein Sparwunsch ist kein solcher Grund.
 mind_schritt() {
-  local q; q=$(_mind_schritt_pfad "${4:-}")
-  local name="${1:-?}" status="${2:-gelaufen}" bytes="${3:-}"
+  local name="${1:-?}" status="${2:-gelaufen}" bytes="${3:-}" q quelle="zahl" pfad=""
+  if [ "${3:-}" = "--datei" ]; then
+    pfad="${4:-}"; quelle="datei"; q=$(_mind_schritt_pfad "${5:-}")
+    if [ -n "$pfad" ] && [ -f "$pfad" ]; then bytes=$(wc -c < "$pfad" 2>/dev/null | tr -d ' ')
+    else bytes=0; quelle="keine-datei"; fi
+  else
+    q=$(_mind_schritt_pfad "${4:-}")
+  fi
   case "$bytes" in ''|*[!0-9]*) bytes=-1 ;; esac
+  # ⛔ v5.97.0 — DIE FUENF CONTEXT-SKILLS UND `verdichten` BRAUCHEN EIN ARTEFAKT.
+  #    Gemessen an drei Laeufen (10.09. 14:49, 11.09. 21:44, 12.09. 00:02): mind-files/
+  #    claudemd/memory/rules jedes Mal mit denselben getippten Bytes 300/700/400/300,
+  #    im Lauf 00:02 alle vier in derselben Sekunde. Ein Skill, der lief, hat einen
+  #    Bericht — der liegt als Datei ($PROJ/.claude-mind/bericht-<skill>.md) und wird
+  #    mit --datei gemessen. Ohne Datei ist "gelaufen" eine Behauptung: die Quittung
+  #    schreibt dann `uebersprungen:kein-artefakt`, und die Bilanz zaehlt FORMAL.
+  case "$name" in
+    mind-files|mind-claudemd|mind-memory|mind-rules|mind-update|verdichten)
+      case "$status" in
+        gelaufen*)
+          if [ "$quelle" != "datei" ]; then
+            echo "⛔ $name: '$status' ohne --datei <bericht> — quittiert als uebersprungen:kein-artefakt (v5.97.0)." >&2
+            status="uebersprungen:kein-artefakt"; bytes=0
+          fi ;;
+      esac ;;
+  esac
   mkdir -p "$(dirname "$q")" 2>/dev/null
-  printf '{"ereignis":"schritt","name":"%s","status":"%s","bytes":%s,"ts":"%s"}\n' \
-    "$name" "$status" "$bytes" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$q"
+  if [ "$quelle" = "datei" ]; then
+    printf '{"ereignis":"schritt","name":"%s","status":"%s","bytes":%s,"quelle":"datei","ts":"%s"}\n' \
+      "$name" "$status" "$bytes" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$q"
+  else
+    printf '{"ereignis":"schritt","name":"%s","status":"%s","bytes":%s,"ts":"%s"}\n' \
+      "$name" "$status" "$bytes" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$q"
+  fi
 }
 
 # Bilanz fuer den Self-Check-Block.
@@ -2143,11 +2254,74 @@ mind_schritt_bilanz() {
   done
   rm -f "$mt"
 
+  # ⛔ v5.97.0 — MIT --alle GILT DIE ERWARTUNG JE BLOCK, und dazu kommt FORMAL.
+  #    Bis hierher galt nur die Namensliste des ERSTEN Blocks (mind-all) gegen alle
+  #    Schrittzeilen — `verdichten` steht seit v5.78 in der Erwartung aller fuenf
+  #    Context-Skills und fehlte in drei vollen Laeufen ohne eine Meldung. Jetzt:
+  #    jeder Start-Block wird gegen seine eigene Liste gefahren.
+  #    FORMAL zaehlt Quittungen, die formal da sind, aber nichts belegen:
+  #      (a) ein Context-Skill ist im mind-all-Block quittiert, hat aber keinen
+  #          eigenen Start-Block — er wurde nie als Skill ausgefuehrt
+  #      (b) sein Schritt traegt kein `quelle:datei` — Bytes getippt, kein Bericht
+  #      (c) zwei Context-Skills in derselben Sekunde — zwei Skills laufen nicht
+  #          in null Sekunden; die Zeilen wurden am Ende zusammen getippt
+  #    Gemessen am Lauf 00:02 (12.09.2026): alle vier inneren Skills mit (b) und (c).
+  local formal=0 formalliste="" stempel_unbekannt=""
+  if [ "$alle" -eq 1 ]; then
+    local _bl="${TMPDIR:-/tmp}/.mind_schritt_b$$" _bn _bs _be _bname _skill _prev_ts _ts _sk_ts=""
+    sed -n "${ab},\$p" "$q" 2>/dev/null > "$_bl"
+    # FEHLT je Block: Start-Zeile i bis vor Start-Zeile i+1
+    _bn=$(grep -c '"ereignis":"start"' "$_bl" 2>/dev/null); case "$_bn" in ''|*[!0-9]*) _bn=0 ;; esac
+    if [ "$_bn" -gt 1 ]; then
+      local _starts _i=1 _von _bis _blk="${TMPDIR:-/tmp}/.mind_schritt_c$$"
+      _starts=$(grep -n '"ereignis":"start"' "$_bl" | cut -d: -f1 | tr '\n' ' ')
+      for _von in $_starts; do
+        _bis=$(printf '%s\n' $_starts | sed -n "$((_i + 1))p"); _i=$((_i + 1))
+        if [ -n "$_bis" ]; then sed -n "${_von},$((_bis - 1))p" "$_bl" > "$_blk"; else sed -n "${_von},\$p" "$_bl" > "$_blk"; fi
+        _skill=$(head -1 "$_blk" | sed -n 's/.*"skill":"\([^"]*\)".*/\1/p')
+        [ "$_i" -eq 2 ] && continue   # der erste Block ist oben schon gegen $erwartet gefahren
+        for _bname in $(head -1 "$_blk" | sed 's/.*"erwartet":"\([^"]*\)".*/\1/'); do
+          grep -q "\"name\":\"$_bname\"" "$_blk" 2>/dev/null || fehlt="$fehlt $_skill/$_bname"
+        done
+      done
+      rm -f "$_blk"
+    fi
+    # Stempel: text:unbekannt heisst, MIND_SKILL_VERSION war beim Start nicht gesetzt
+    stempel_unbekannt=$(grep '"ereignis":"start"' "$_bl" | grep '"text":"unbekannt"' \
+                        | sed -n 's/.*"skill":"\([^"]*\)".*/\1/p' | tr '\n' ' ')
+    # FORMAL (a)(b)(c) ueber die fuenf Context-Skills, die als SCHRITT quittiert sind
+    for _skill in mind-files mind-claudemd mind-memory mind-rules mind-update; do
+      _bs=$(grep "\"ereignis\":\"schritt\",\"name\":\"$_skill\"" "$_bl" 2>/dev/null | tail -1)
+      [ -n "$_bs" ] || continue
+      case "$_bs" in *'"status":"gelaufen'*) ;; *) continue ;; esac
+      if ! grep -q "\"ereignis\":\"start\",\"skill\":\"$_skill\"" "$_bl" 2>/dev/null; then
+        formal=$((formal + 1)); formalliste="${formalliste}  FORMAL: $_skill (quittiert, aber kein eigener Start-Block — nie als Skill gelaufen)"$'\n'
+        continue
+      fi
+      case "$_bs" in *'"quelle":"datei"'*) ;; *)
+        formal=$((formal + 1)); formalliste="${formalliste}  FORMAL: $_skill (Bytes getippt, kein Bericht per --datei)"$'\n'
+        continue ;;
+      esac
+      _ts=$(printf '%s' "$_bs" | sed -n 's/.*"ts":"\([^"]*\)".*/\1/p')
+      case " $_sk_ts " in
+        *" $_ts "*) formal=$((formal + 1)); formalliste="${formalliste}  FORMAL: $_skill (dieselbe Sekunde wie ein anderer Context-Skill: $_ts)"$'\n' ;;
+        *) _sk_ts="$_sk_ts $_ts" ;;
+      esac
+    done
+    rm -f "$_bl"
+  fi
+
   # ⛔ `TEIL=` ist MASCHINENLESBAR und dafuer da: `/mind-all` soll die Zahl
   #    lesen koennen, ohne die Prosa darunter zu parsen.
   echo "ERWARTET=$n_erw GELAUFEN=$gel UEBERSPRUNGEN=$ueb FEHLER=$feh LEER=$leer TEIL=$n_teil"
   [ "$alle" -eq 1 ] && [ "$mischung" -eq 1 ] && \
     echo "  ⚠ --alle ohne mind-all-Startzeile: ganze Datei gelesen — Laeufe koennen vermischt sein."
+  if [ "$formal" -gt 0 ]; then
+    echo "  FORMAL=$formal"
+    printf '%s' "$formalliste"
+  fi
+  [ -n "$stempel_unbekannt" ] && \
+    echo "  ⚠ STEMPEL UNGELESEN (text:unbekannt): $stempel_unbekannt— MIND_SKILL_VERSION nicht in derselben Bash wie mind_schritt_start gesetzt; VERSIONSBRUCH kann so nie feuern"
   # ⛔ v5.77.0: VERSIONSBRUCH steht in der Bilanz, nicht nur im Log. Ein Lauf,
   #    dessen Skill-Text aus einer anderen Version stammt als sein Code, hat
   #    einer anderen Anleitung gefolgt, als das Plugin ausliefert — und das
@@ -2199,7 +2373,7 @@ mind_schritt_bilanz() {
   #    (der Lauf hat nie begonnen zu quittieren), 1 heisst "quittiert, aber
   #    unvollstaendig". Wer beides zu 1 verschmilzt, verliert die Unterscheidung
   #    zwischen einem toten und einem halben Lauf.
-  [ -z "$fehlt" ] && [ "$feh" -eq 0 ] && [ "$leer" -eq 0 ] && [ -z "$teil" ]
+  [ -z "$fehlt" ] && [ "$formal" -eq 0 ] && [ "$feh" -eq 0 ] && [ "$leer" -eq 0 ] && [ -z "$teil" ]
 }
 
 # ===== v5.28.0: Plan-Pause — /mind-all schweigt, solange ein Plan laeuft ======

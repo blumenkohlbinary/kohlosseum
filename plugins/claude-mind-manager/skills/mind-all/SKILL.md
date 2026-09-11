@@ -34,95 +34,15 @@ mind_zeilenenden_waechter
 **Vor dem ersten Schritt, ohne Ausnahme:**
 
 ```bash
-# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
-#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
-#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
-#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
 [ -n "$CLAUDE_PLUGIN_ROOT" ] || { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
 source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
-MIND_SKILL_VERSION="5.80.0"
 # ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.81.0"
-# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
-#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
-#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
-#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.82.0"
-# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
-#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
-#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
-#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.83.0"
-# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
-#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
-#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
-#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.84.0"
-# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
-#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
-#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
-#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.85.0"
-# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
-#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
-#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
-#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.86.0"
-# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
-#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
-#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
-#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.87.0"
-# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
-#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
-#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
-#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.88.0"
-# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
-#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
-#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
-#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.89.0"
-# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
-#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
-#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
-#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.90.0"
-# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
-#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
-#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
-#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.91.0"
-# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
-#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
-#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
-#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.92.0"
-# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
-#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
-#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
-#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.93.0"
-# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
-#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
-#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
-#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.94.0"
-# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
-#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
-#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
-#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.95.0"
-# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
-#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
-#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
-#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.96.0"
-mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
+MIND_SKILL_VERSION="5.97.0"
+mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter mind-files mind-claudemd mind-memory mind-rules mind-update
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
@@ -132,6 +52,8 @@ mind_schritt <name> gelaufen              "$(wc -c < "$AUSGABE")" "$PROJ"
 mind_schritt <name> "gelaufen:5/11"       "$BYTES" "$PROJ"   # TEILABDECKUNG
 mind_schritt <name> "uebersprungen:<grund>" 0      "$PROJ"
 mind_schritt <name> "fehler:<grund>"      -1       "$PROJ"
+# ⛔ v5.97.0 — JEDER DER FUENF SKILLS IST EIN SCHRITT MIT ARTEFAKT (siehe Step 2, Punkt 2b):
+mind_schritt <skill> gelaufen --datei "$PROJ/.claude-mind/bericht-<skill>.md" "$PROJ"
 ```
 
 ⛔ **`uebersprungen` ist ein gueltiger Status und braucht einen GRUND.** Ein Schritt,
@@ -485,6 +407,19 @@ Fuer jeden der 5 in der Reihenfolge oben:
    Die ist in einer Skill-Bash **leer** (gemessen); ein Waechter darauf matcht
    gegen den leeren String, zaehlt **alle** Zeilen auch fremde, und **sieht aus,
    als greife er**. Das waere schlimmer als keine Sperre.
+   **2b · Bericht als DATEI, dann die Quittung mit `--datei` (v5.97.0):** den Bericht des
+   Skills (sein Self-Check-Block, woertlich) mit `Write` nach
+   `$PROJ/.claude-mind/bericht-<skill>.md` legen, dann:
+   ```bash
+   mind_schritt <skill> gelaufen --datei "$PROJ/.claude-mind/bericht-<skill>.md" "$PROJ"
+   ```
+   ⛔ **Ohne `--datei` schreibt `mind_schritt` `uebersprungen:kein-artefakt`**, und
+   `mind_schritt_bilanz --alle` zaehlt den Skill als FORMAL — ebenso, wenn er keinen
+   eigenen Start-Block hat (nie als Skill ausgefuehrt) oder zwei Skills in derselben
+   Sekunde quittiert sind. Gemessen an drei Laeufen (10.09. 14:49, 11.09. 21:44,
+   12.09. 00:02): mind-files/claudemd/memory/rules mit denselben getippten Bytes
+   300/700/400/300, im Lauf 00:02 alle vier in derselben Sekunde, kein eigener Block.
+   **Ein FORMAL macht den Lauf zum Teilsync** (Step 2.96a: `formal-<skill>` in `ungepruef=`).
    ⛔ **Eigener Schluessel, bewusst getrennt von den Scope-Marken unten.** `skill=` sagt
    *„dieser Teil lief"*, die Scope-Marken sagen *„diese Analyse ist in diesem Modus schon
    gelaufen"* — zwei verschiedene Aussagen. Sie in einen Schluessel zu legen haette die
@@ -822,7 +757,16 @@ _AGEL=$(printf '%s' "$_ABD"  | sed -n 's/.*GELAUFEN=\([0-9]*\).*/\1/p' | head -1
 case "${_ATEIL:-}" in ''|*[!0-9]*) _ATEIL=0 ;; esac
 case "${_AGEL:-}"  in ''|*[!0-9]*) _AGEL=0 ;; esac
 
-UMFANG="$_SKILL_IST/$_SKILL_SOLL skills $_DIS/$_AGENT_SOLL agents $_BEST/5 bestand $((_AGEL - _ATEIL))/$_AGEL abdeckung"
+# ⛔ v5.97.0: FORMAL — Quittungen, die da sind und nichts belegen (kein eigener
+#    Start-Block, Bytes getippt statt --datei, zwei Skills in derselben Sekunde).
+#    Gemessen am Lauf 00:02 (12.09.2026): alle vier inneren Skills. `<5-n>/5 echt`
+#    macht daraus ueber mind_sync_voll einen Teilsync, `formal-<skill>` sagt welchen.
+_AFORMAL=$(printf '%s' "$_ABD" | sed -n 's/^ *FORMAL=\([0-9]*\).*/\1/p' | head -1)
+case "${_AFORMAL:-}" in ''|*[!0-9]*) _AFORMAL=0 ;; esac
+_FNAMEN=$(printf '%s' "$_ABD" | sed -n 's/^ *FORMAL: \([^ ]*\) .*/\1/p' | sort -u | tr '\n' ',')
+_FNAMEN="${_FNAMEN%,}"
+
+UMFANG="$_SKILL_IST/$_SKILL_SOLL skills $_DIS/$_AGENT_SOLL agents $_BEST/5 bestand $((_AGEL - _ATEIL))/$_AGEL abdeckung $((5 - _AFORMAL))/5 echt"
 
 # ⚠ Ein Skill OHNE Quittung ist ungeprueft — und das muss im Merker stehen,
 #   nicht nur in der Zahl. Sonst weiss der naechste Lauf, DASS etwas fehlte,
@@ -860,6 +804,9 @@ _TNAMEN=$(printf '%s' "$_ABD" | sed -n 's/^ *TEILABDECKUNG://p' \
 _TNAMEN="${_TNAMEN%,}"
 if [ -n "$_TNAMEN" ]; then
   UNGEPRUEFT="${UNGEPRUEFT:+$UNGEPRUEFT,}abdeckung-${_TNAMEN//,/,abdeckung-}"
+fi
+if [ -n "$_FNAMEN" ]; then
+  UNGEPRUEFT="${UNGEPRUEFT:+$UNGEPRUEFT,}formal-${_FNAMEN//,/,formal-}"
 fi
 ```
 
