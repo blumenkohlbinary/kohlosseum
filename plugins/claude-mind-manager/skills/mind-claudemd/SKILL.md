@@ -119,6 +119,11 @@ MIND_SKILL_VERSION="5.94.0"
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
 MIND_SKILL_VERSION="5.95.0"
+# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
+#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
+#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
+#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
+MIND_SKILL_VERSION="5.96.0"
 mind_schritt_start "$PROJ" mind-claudemd bestandszahlen_kandidaten claudemd_pipeline cleaner_duplikate cleaner_stichprobe cleaner_urteile mind_check_tools_have_rules mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -290,7 +295,9 @@ Auch prüfen: `./CLAUDE.local.md` (deprecated — Warnung ausgeben wenn vorhande
 ### Step 3a: Projekt scannen
 
 Dispatch **project-scanner** Agent (**`run_in_background: false`**, v5.94.0 — sonst ist der
-`tool_result` nur ein Ack und der Befund kommt spaeter oder nie; Messung `docs/plugin/rueckkanal-messung.md`):
+`tool_result` nur ein Ack und der Befund kommt spaeter oder nie; Messung `docs/plugin/rueckkanal-messung.md`.
+⭐ Turn-Limit vor dem Bericht: `SendMessage {to: <agentId>}` statt eines neuen `Agent`-Aufrufs,
+im Desktop-Reiter erst `ToolSearch select:SendMessage` — v5.96.0, gemessen 12.09.2026):
 "Scan this project for tech stack, project type, build/test/lint commands, key directories, and frameworks. Report structured findings."
 
 ### Step 3b: Referenzen laden
@@ -346,6 +353,8 @@ Launch **context-analyzer** with scope=claude-md — **`run_in_background: false
 "Analyze all CLAUDE.md files in this project. Scope: claude-md. Report quality score, contradictions, staleness, and optimization suggestions."
 
 ⛔ **`run_in_background: false` in JEDEM Agent-Aufruf (v5.94.0, Nutzer-/Anton-Entscheidung 11.09.2026).** Die Vorgabe des Agent-Werkzeugs ist HINTERGRUND: der `tool_result` ist dann nur das Ack „Async agent launched“ (1 151 B, nach 1–2 s), das Ergebnis kommt — wenn überhaupt — später als `<task-notification>`. Gemessen 10.09.2026 (`docs/plugin/rueckkanal-messung.md`): getrennte Tool-Calls serialisieren im Hintergrund NICHTS (vier Agenten gleichzeitig bei „sequenziellen“ Aufrufen), und **5 von 8** Ergebnissen kamen nie an. Mit `false` blockt der Aufruf bis zur Rückgabe, `RUECKGABE` IST der `tool_result`, und ein Nachliefern mitten im Fan-out ist mechanisch unmöglich. ⚠ Preis: die Sitzung wartet je Agent 60–130 s und ist solange nicht ansprechbar — Nachrichten kommen ohnehin erst am Turn-Ende an.
+
+⭐ **Trifft der Agent sein 20-Turn-Limit VOR dem Bericht** (der `tool_result` endet ohne Ergebnis, der Agent lebt), ist die Fortsetzung `SendMessage {to: <agentId>, message: „Bericht jetzt liefern“}` — ⛔ **KEIN neuer `Agent`-Aufruf**, das wäre ein zweiter Agent gegen dieselbe Grenze (v5.96.0). Gemessen 12.09.2026 (Rita): zwei Agenten am Limit, beide lieferten nach der Nachricht vollständig. ⚠ Im Desktop-Reiter „Code“ ist `SendMessage` verzögert: erst `ToolSearch select:SendMessage`, dann ist es da.
 
 **NEU v5.4.0 — vier Anforderungen, die nachweislich NICHT messbar sind** und deshalb
 ausdruecklich in den Agent-Prompt gehoeren, statt still zu fehlen:

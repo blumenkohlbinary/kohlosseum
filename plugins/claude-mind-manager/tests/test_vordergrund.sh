@@ -92,6 +92,35 @@ janein "   ... Projekt-Argument an Position 4 bei --datei wird gelesen (Quittung
   "$(grep -c '"ereignis":"ergebnis"' "$Q")"
 rm -rf "$T"
 
+echo "=============================================================================="
+echo "  3) TURN-LIMIT: Fortsetzung per SendMessage, nie ein neuer Agent (v5.96.0)"
+echo "=============================================================================="
+# Gemessen 12.09.2026 (Rita): zwei blockierende Agenten trafen das 20-Turn-Limit vor dem
+# Bericht; SendMessage {to: <agentId>} brachte beide zum vollstaendigen Bericht. Ein neuer
+# Agent-Aufruf waere ein zweiter Agent gegen dieselbe Grenze. Im Desktop-Reiter ist das
+# Werkzeug verzoegert — der Kasten muss ToolSearch select:SendMessage nennen.
+for s in mind-update mind-claudemd mind-memory mind-files mind-all; do
+  f="$R/skills/$s/SKILL.md"
+  mind "$s: nennt SendMessage {to: <agentId>} als Fortsetzung" 1 "$(grep -c 'SendMessage {to: <agentId>' "$f")"
+  mind "$s: nennt ToolSearch select:SendMessage" 1 "$(grep -c 'ToolSearch select:SendMessage' "$f")"
+done
+# Die Fortsetzung steht an JEDER Dispatch-Stelle, nicht irgendwo in der Datei: im Fenster
+# von 12 Zeilen um jede Launch-/Dispatch-Zeile und den Aufruf-Kasten. Beim Bau gefunden:
+# mind-claudemd hat ZWEI Kaesten, der project-scanner-Kasten fehlte beim ersten Schnitt.
+for s in mind-update mind-claudemd mind-memory mind-files; do
+  f="$R/skills/$s/SKILL.md"
+  fehl=0; n=0
+  while IFS= read -r ln; do
+    [ -n "$ln" ] || continue
+    n=$((n + 1)); von=$((ln - 12)); [ "$von" -lt 1 ] && von=1
+    if ! sed -n "${von},$((ln + 12))p" "$f" | grep -q 'SendMessage {to: <agentId>'; then fehl=$((fehl + 1)); fi
+  done <<EOF
+$(grep -nE '^(Launch \*\*context-analyzer\*\*|Dispatch \*\*project-scanner\*\*|Agent\(subagent_type)' "$f" | cut -d: -f1)
+EOF
+  mind "$s: mindestens eine Dispatch-Stelle gefunden" 1 "$n"
+  janein "$s: SendMessage-Satz an jeder der $n Dispatch-Stellen (Fenster 12 Zeilen)" 0 "$fehl"
+done
+
 echo
 echo "  $OK ok, $ROT rot"
 [ "$ROT" -eq 0 ] || exit 1
