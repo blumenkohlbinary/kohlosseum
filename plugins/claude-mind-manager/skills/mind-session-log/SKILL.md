@@ -40,7 +40,15 @@ MIND_SKILL_VERSION="5.78.0"
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
+[ -n "$CLAUDE_PLUGIN_ROOT" ] || { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
+source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 MIND_SKILL_VERSION="5.79.0"
+# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
+#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
+#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
+#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
+MIND_SKILL_VERSION="5.80.0"
 mind_schritt_start "$PROJ" mind-session-log 
 ```
 
@@ -231,7 +239,7 @@ fi
 # ⛔ DER RUECKFALL MELDET SICH (Auflage). Ein stiller Fehlgriff darf nicht
 #    wie ein richtiger Griff aussehen: greift die Kennung nicht, steht das
 #    im Bericht, statt lautlos eine fremde Sitzung zu analysieren.
-JSONL=$(mind_transkript_pfad "${CLAUDE_PROJECT_DIR:-$(pwd)}" 2>/dev/null)
+JSONL=$(mind_transkript_pfad "${PROJ:-$(mind_projekt_wurzel)}" 2>/dev/null)
 _JQUELLE=kennung
 if [ -z "$JSONL" ] || [ ! -f "$JSONL" ]; then
   JSONL=$(ls -t "$PROJECTS_DIR"/*.jsonl 2>/dev/null | grep -v '/subagents/' | head -1)

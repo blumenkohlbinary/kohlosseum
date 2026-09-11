@@ -1472,7 +1472,7 @@ mind_zeilenenden_waechter() {
 # Ablage: $projekt/.claude-mind/agent-quittung.jsonl, pro Lauf neu.
 
 _mind_quittung_pfad() {
-  local proj="${1:-${CLAUDE_PROJECT_DIR:-$(pwd)}}"
+  local proj="${1:-$(mind_projekt_wurzel)}"
   printf '%s\n' "$proj/.claude-mind/agent-quittung.jsonl"
 }
 
@@ -1871,7 +1871,7 @@ mind_kontext_bilanz() {
 # Ablage: <projekt>/.claude-mind/schritt-quittung.jsonl
 
 _mind_schritt_pfad() {
-  local p="${1:-${CLAUDE_PROJECT_DIR:-$(pwd)}}"
+  local p="${1:-$(mind_projekt_wurzel)}"
   echo "$p/.claude-mind/schritt-quittung.jsonl"
 }
 
@@ -1909,7 +1909,7 @@ _mind_schritt_pfad() {
 #       von einem Datenverlust nicht zu unterscheiden.
 mind_schritt_start() {
   local q; q=$(_mind_schritt_pfad "${1:-}")
-  local proj="${1:-${CLAUDE_PROJECT_DIR:-$(pwd)}}"
+  local proj="${1:-$(mind_projekt_wurzel)}"
   local skill="${2:-unbekannt}"; shift 2 2>/dev/null || shift $#
   mkdir -p "$(dirname "$q")" 2>/dev/null || return 1
   local kette=0 zeilen=0
@@ -2631,5 +2631,53 @@ mind_verdichtung_pruefen() {
     return 1
   fi
   echo "               ✅ anwenden — danach mind_kontext_bilanz gegen vorher, sonst Snapshot zurueck."
+  return 0
+}
+
+
+# =============================================================================
+# mind_projekt_wurzel — das PROJEKT ist der naechste Elternordner mit Roster (v5.80.0)
+# =============================================================================
+# ⛔ WARUM. Nutzer-Frage 11.09.2026 (Creator, 9 Chats in 9 Unterordnern): "alle 9
+#    chats wenn ich da compact mache dann auch beim mind sync chat landen was muss
+#    dafuer geaendert werden". Gemessen an `Creator Idee/.claude-mind/hook-heartbeat`
+#    (SessionStart 00:57): CLAUDE_PROJECT_DIR im Unterordner IST der Unterordner.
+#    Damit lagen Rettung, OPEN, UEBERGABE, Lock und Herzschlag in neun getrennten
+#    Ordnern, und der Sync-Chat sah keine einzige fremde Rettung.
+#
+# ⭐ DIE ENTSCHEIDUNG (Anton, Auftrag nils-unterordner-aufbau.md §3): "Projekt" ist
+#    der naechste Elternordner, der `.claude/rules/rollen.md` traegt. Gibt es keinen:
+#    der Start, wie heute. EIN Begriff, EINE Funktion — alle Hooks und Skills beziehen
+#    $PROJ hieraus.
+#
+# ⛔ FAIL-SAFE, byteweise: ohne Roster kommt der Start UNVERAENDERT zurueck (kein
+#    Normalisieren, kein Slash-Tausch) — kein Bestandsprojekt aendert sein Verhalten.
+#    Traegt der Start selbst den Roster, ist er das Projekt (dieser Workspace).
+# ⛔ $HOME zaehlt NIE als Projekt: ~/.claude/rules/rollen.md waere sonst der Roster
+#    JEDES Projekts unter dem Home-Verzeichnis.
+# ⚠ Windows: der Hook-Input traegt `C:\CD\...` mit Backslashes. Fuer den Aufstieg
+#    wird intern mit Schraegstrichen gerechnet; ein TREFFER kommt mit Schraegstrichen
+#    zurueck (Git Bash versteht beide), ein Nicht-Treffer byteweise wie gegeben.
+#
+# Aufruf: mind_projekt_wurzel [start]   (Vorgabe: CLAUDE_PROJECT_DIR, sonst pwd)
+# Ausgabe: der Projektpfad. Rueckgabe 0 immer — die Funktion entscheidet nicht, sie
+#          aufloest. Leerer Start -> leere Ausgabe, Rueckgabe 1.
+mind_projekt_wurzel() {
+  local start="${1:-${CLAUDE_PROJECT_DIR:-$(pwd)}}" d home
+  [ -n "$start" ] || { printf '\n'; return 1; }
+  d="${start//\\//}"; d="${d%/}"
+  home="${HOME:-}"; home="${home//\\//}"; home="${home%/}"
+  while [ -n "$d" ]; do
+    if [ "$d" != "$home" ] && [ -f "$d/.claude/rules/rollen.md" ]; then
+      printf '%s\n' "$d"; return 0
+    fi
+    case "$d" in
+      */*) d="${d%/*}" ;;
+      *)   break ;;
+    esac
+    # Laufwerkswurzel ("C:") oder Dateisystemwurzel ("") beendet den Aufstieg.
+    case "$d" in ?:|"") break ;; esac
+  done
+  printf '%s\n' "$start"
   return 0
 }

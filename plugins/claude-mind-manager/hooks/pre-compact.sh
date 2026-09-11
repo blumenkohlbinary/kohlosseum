@@ -10,6 +10,10 @@ mind_init "pre-compact"
 if [ -z "$PROJECT_DIR" ]; then
   exit 0
 fi
+# v5.80.0: der cwd der Sitzung bleibt in CWD_URSPRUNG (die Rettung traegt ihn ab
+#   v5.81.0 als cwd=); PROJECT_DIR wird die Wurzel mit dem Roster, sonst der cwd.
+CWD_URSPRUNG="$PROJECT_DIR"
+PROJECT_DIR=$(mind_projekt_wurzel "$PROJECT_DIR")
 
 TRIGGER=$(echo "$INPUT" | jq -r '.trigger // "unknown"')
 

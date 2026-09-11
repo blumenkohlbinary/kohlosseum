@@ -58,6 +58,14 @@ PROJ="${CLAUDE_PROJECT_DIR:-}"
 if [ -z "$PROJ" ] && command -v jq >/dev/null 2>&1; then
   PROJ=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
 fi
+# v5.80.0: im Unterordner-Aufbau ist das Projekt der naechste Elternordner mit
+#   .claude/rules/rollen.md (mind_projekt_wurzel, lib.sh). Gegeguardet wie der
+#   ganze Hook: ohne lib.sh bleibt PROJ wie bisher, ohne Roster byteweise gleich.
+_WLIB="${CLAUDE_PLUGIN_ROOT:-$(dirname "$0")/..}/hooks/lib.sh"
+if [ -f "$_WLIB" ]; then
+  . "$_WLIB" 2>/dev/null
+  command -v mind_projekt_wurzel >/dev/null 2>&1 && PROJ=$(mind_projekt_wurzel "$PROJ")
+fi
 [ -z "$PROJ" ] && PROJ="$(pwd)"
 
 # --- Kontext-Wache: messen am Turn-Ende, melden beim naechsten Prompt ------

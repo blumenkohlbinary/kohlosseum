@@ -38,7 +38,10 @@ mind_snapshot
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.79.0"
+[ -n "$CLAUDE_PLUGIN_ROOT" ] || { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
+source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
+MIND_SKILL_VERSION="5.80.0"
 mind_schritt_start "$PROJ" mind-claudemd claudemd_pipeline cleaner_duplikate cleaner_stichprobe cleaner_urteile mind_check_tools_have_rules mind_kontext_bilanz mind_snapshot
 ```
 
@@ -109,7 +112,7 @@ echo "$ARGS" | grep -qE '(^|[[:space:]])--dry-run([[:space:]]|$)' && { DRY_RUN="
 # Laeuft dieser Skill innerhalb eines AKTIVEN /mind-all? (C1-Fix: drei Bedingungen, nicht nur
 # "Datei existiert" — sonst gilt nach dem ersten /mind-all JEDER spaetere Einzellauf als Kette
 # und editiert ohne Snapshot.)
-CHAIN="no"; _SC="${CLAUDE_PROJECT_DIR:-$(pwd)}/.claude-mind/analyzed-scopes"
+CHAIN="no"; _SC="$PROJ/.claude-mind/analyzed-scopes"
 if [ -f "$_SC" ]; then
   _SNAP=$(grep -m1 '^snapshot=' "$_SC" 2>/dev/null | cut -d= -f2-)
   _START=$(grep -m1 '^run_started=' "$_SC" 2>/dev/null | cut -d= -f2)
@@ -121,7 +124,7 @@ fi
 if [ "$DRY_RUN" = "no" ] && [ "$CHAIN" = "no" ]; then
   [ -z "$CLAUDE_PLUGIN_ROOT" ] && { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
   source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-  SNAPSHOT=$(mind_snapshot "${CLAUDE_PROJECT_DIR:-$(pwd)}" "pre-claudemd") || {
+  SNAPSHOT=$(mind_snapshot "$PROJ" "pre-claudemd") || {
     echo "ABBRUCH: Snapshot fehlgeschlagen — es wird NICHTS editiert." >&2; exit 1; }
   echo "Snapshot: $SNAPSHOT"
 fi
@@ -147,7 +150,7 @@ schlimmer als gar keiner.** Gemeldet vom Nutzer am 28.08.2026.
 
 ```bash
 ARGS="${ARGUMENTS:-}"
-PROJ="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+PROJ=$(mind_projekt_wurzel 2>/dev/null) || PROJ="${CLAUDE_PROJECT_DIR:-$(pwd)}"   # v5.80.0: Wurzel mit Roster; ohne lib.sh wie bisher
 
 if echo "$ARGS" | grep -qE '(^|[[:space:]])global([[:space:]]|$)'; then
   BEREICH="global"
@@ -287,7 +290,7 @@ dieselbe Groesse im selben Bericht.
 PIPE="$CLAUDE_PLUGIN_ROOT/references/claudemd_pipeline.py"
 python "$PIPE" "$ZIEL_MD" --projekt "$ZIEL_WURZEL"
 # ⛔ v5.23.1: BEIDE aus Step 1. Bis v5.23.0 stand hier `"<ziel.md>"` und
-#    `--projekt "${CLAUDE_PROJECT_DIR:-$(pwd)}"` — bei einem `global`-Lauf also die
+#    `--projekt "$PROJ"` — bei einem `global`-Lauf also die
 #    Projekt-Wurzel, waehrend die Zieldatei ~/.claude/CLAUDE.md war. Check 18 sucht
 #    `<wurzel>/.claude/rules` und fand nichts: GEMESSEN 0 rules statt 15.
 #    Eine falsche Null sieht aus wie ein Befund und ist eine Nichtmessung.

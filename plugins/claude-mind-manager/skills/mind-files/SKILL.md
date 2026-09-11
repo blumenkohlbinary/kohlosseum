@@ -36,7 +36,10 @@ mind_snapshot
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.79.0"
+[ -n "$CLAUDE_PLUGIN_ROOT" ] || { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
+source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
+MIND_SKILL_VERSION="5.80.0"
 mind_schritt_start "$PROJ" mind-files cleaner_stichprobe mind_check_tools_have_rules mind_hook_health mind_kontext_bilanz mind_snapshot
 ```
 
@@ -106,7 +109,7 @@ echo "$ARGS" | grep -qE '(^|[[:space:]])--dry-run([[:space:]]|$)' && { DRY_RUN="
 # Laeuft dieser Skill innerhalb eines AKTIVEN /mind-all? (C1-Fix: drei Bedingungen, nicht nur
 # "Datei existiert" — sonst gilt nach dem ersten /mind-all JEDER spaetere Einzellauf als Kette
 # und editiert ohne Snapshot.)
-CHAIN="no"; _SC="${CLAUDE_PROJECT_DIR:-$(pwd)}/.claude-mind/analyzed-scopes"
+CHAIN="no"; _SC="$PROJ/.claude-mind/analyzed-scopes"
 if [ -f "$_SC" ]; then
   _SNAP=$(grep -m1 '^snapshot=' "$_SC" 2>/dev/null | cut -d= -f2-)
   _START=$(grep -m1 '^run_started=' "$_SC" 2>/dev/null | cut -d= -f2)
@@ -120,13 +123,13 @@ fi
 # Befundlauf ein totes Netz fuer ein gespanntes (genau so entstand die Befundliste 2026-08-16).
 if [ -n "$CLAUDE_PLUGIN_ROOT" ] && [ -f "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" ]; then
   source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-  mind_hook_health "${CLAUDE_PROJECT_DIR:-$(pwd)}" || HOOK_WARN="ja"
+  mind_hook_health "$PROJ" || HOOK_WARN="ja"
 fi
 
 if [ "$DRY_RUN" = "no" ] && [ "$CHAIN" = "no" ]; then
   [ -z "$CLAUDE_PLUGIN_ROOT" ] && { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
   source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-  SNAPSHOT=$(mind_snapshot "${CLAUDE_PROJECT_DIR:-$(pwd)}" "pre-files") || {
+  SNAPSHOT=$(mind_snapshot "$PROJ" "pre-files") || {
     echo "ABBRUCH: Snapshot fehlgeschlagen — es wird NICHTS editiert." >&2; exit 1; }
   echo "Snapshot: $SNAPSHOT"
 fi
@@ -405,7 +408,7 @@ UND User Backup-Vorschlag bestaetigt: Backup-System ins Projekt installieren.
 
 ```bash
 # 1. Tools-Dir anlegen
-mkdir -p "$CLAUDE_PROJECT_DIR/tools" "$CLAUDE_PROJECT_DIR/docs" "$CLAUDE_PROJECT_DIR/.claude-mind/backups"
+mkdir -p "$PROJ/tools" "$PROJ/docs" "$PROJ/.claude-mind/backups"
 
 # 2. Templates 1:1 ins Projekt schreiben (Read aus references/, Write ins Projekt)
 # 3 Python-Files + 1 Doku-File:
@@ -414,15 +417,15 @@ mkdir -p "$CLAUDE_PROJECT_DIR/tools" "$CLAUDE_PROJECT_DIR/docs" "$CLAUDE_PROJECT
 # Overwrite-Guard PFLICHT (Hard Constraint "NEVER overwrite without confirmation"):
 # existiert eine Datei schon -> SKIP + User fragen, NIE blind ueberschreiben.
 for FILE in tools/backup_tools.py tools/rollback.py tools/mutation_guard.py docs/BACKUP_USAGE.md; do
-  if [ -f "$CLAUDE_PROJECT_DIR/$FILE" ]; then
+  if [ -f "$PROJ/$FILE" ]; then
     echo "SKIP: $FILE existiert bereits (User fragen ob ueberschreiben)"
   else
-    cp "$CLAUDE_PLUGIN_ROOT/references/backup-system-templates/$FILE" "$CLAUDE_PROJECT_DIR/$FILE"
+    cp "$CLAUDE_PLUGIN_ROOT/references/backup-system-templates/$FILE" "$PROJ/$FILE"
   fi
 done
 
 # 3. .backupignore generieren (Standard-Defaults)
-cat > "$CLAUDE_PROJECT_DIR/.backupignore" << 'EOF'
+cat > "$PROJ/.backupignore" << 'EOF'
 # .backupignore - Files die NICHT in Backups landen
 # Format aehnlich .gitignore
 node_modules/
@@ -479,13 +482,13 @@ mit `globs:`-Frontmatter laedt automatisch, sobald Claude eine passende Datei an
 und macht das Backup-Tool **erreichbar**.
 
 ```bash
-mkdir -p "$CLAUDE_PROJECT_DIR/.claude/rules"
+mkdir -p "$PROJ/.claude/rules"
 # Overwrite-Guard: existiert die Rule schon -> NICHT ueberschreiben (ASK, default Skip)
-if [ -f "$CLAUDE_PROJECT_DIR/.claude/rules/backup-usage.md" ]; then
+if [ -f "$PROJ/.claude/rules/backup-usage.md" ]; then
   echo "SKIP: .claude/rules/backup-usage.md existiert bereits (User fragen ob ueberschreiben)"
 else
   cp "$CLAUDE_PLUGIN_ROOT/references/rule-templates/backup-usage.md" \
-     "$CLAUDE_PROJECT_DIR/.claude/rules/backup-usage.md"
+     "$PROJ/.claude/rules/backup-usage.md"
 fi
 ```
 
@@ -499,7 +502,7 @@ oder anlegen): `- Backup-System: \`tools/backup_tools.py\` + \`rollback.py\` —
 
 **User-Output nach Installation:**
 ```
-[OK] Backup-System installiert in $CLAUDE_PROJECT_DIR/tools/
+[OK] Backup-System installiert in $PROJ/tools/
   3 Python-Files + 1 Doku + .backupignore + .backuprc
   + .claude/rules/backup-usage.md  (Companion-Rule — macht die Tools erreichbar)
   + CLAUDE.md Pointer-Zeile
@@ -529,10 +532,10 @@ kein Remote, kein Versions-Signal — das Angebot waere gekommen.
 ```bash
 HAT_VERSION="nein"
 for _s in VERSION pyproject.toml package.json; do
-  [ -f "$CLAUDE_PROJECT_DIR/$_s" ] && HAT_VERSION="ja"
+  [ -f "$PROJ/$_s" ] && HAT_VERSION="ja"
 done
-ls "$CLAUDE_PROJECT_DIR"/*.csproj >/dev/null 2>&1 && HAT_VERSION="ja"
-[ -n "$(git -C "$CLAUDE_PROJECT_DIR" tag 2>/dev/null | head -1)" ] && HAT_VERSION="ja"
+ls "$PROJ"/*.csproj >/dev/null 2>&1 && HAT_VERSION="ja"
+[ -n "$(git -C "$PROJ" tag 2>/dev/null | head -1)" ] && HAT_VERSION="ja"
 # HAT_VERSION=nein -> NICHT anbieten, sondern INFO: "kein Versions-Signal, der Changelog
 #                     haette hier keine Quelle"
 ```
@@ -543,8 +546,8 @@ Node/C#/Python/etc. (Bump laeuft ueber die native Toolchain bzw. das Versioning-
 installiert, nie allein.
 
 ```bash
-if [ -d "$CLAUDE_PROJECT_DIR/.git" ]; then
-  mkdir -p "$CLAUDE_PROJECT_DIR/tools" "$CLAUDE_PROJECT_DIR/.claude/rules"
+if [ -d "$PROJ/.git" ]; then
+  mkdir -p "$PROJ/tools" "$PROJ/.claude/rules"
 
   # update_changelog.py ist ein PYTHON-Tool -> ohne Interpreter waere es ein totes Tool.
   # Python-Detection; fehlt Python -> WARN (analog Backup-Bundle), Install laeuft trotzdem.
@@ -554,19 +557,19 @@ if [ -d "$CLAUDE_PROJECT_DIR/.git" ]; then
   fi
 
   # 1. Changelog-Engine (git-basiert) — gehoert hierher, NICHT zum Backup-Bundle. Overwrite-Guard.
-  if [ -f "$CLAUDE_PROJECT_DIR/tools/update_changelog.py" ]; then
+  if [ -f "$PROJ/tools/update_changelog.py" ]; then
     echo "SKIP: tools/update_changelog.py existiert bereits (User fragen ob ueberschreiben)"
   else
     cp "$CLAUDE_PLUGIN_ROOT/references/backup-system-templates/tools/update_changelog.py" \
-       "$CLAUDE_PROJECT_DIR/tools/update_changelog.py"
+       "$PROJ/tools/update_changelog.py"
   fi
 
   # 2. Companion-Rule (Overwrite-Guard: nie ueberschreiben, ASK default Skip)
-  if [ -f "$CLAUDE_PROJECT_DIR/.claude/rules/release-hygiene.md" ]; then
+  if [ -f "$PROJ/.claude/rules/release-hygiene.md" ]; then
     echo "SKIP: .claude/rules/release-hygiene.md existiert bereits (User fragen)"
   else
     cp "$CLAUDE_PLUGIN_ROOT/references/rule-templates/release-hygiene.md" \
-       "$CLAUDE_PROJECT_DIR/.claude/rules/release-hygiene.md"
+       "$PROJ/.claude/rules/release-hygiene.md"
   fi
 fi
 ```
@@ -593,22 +596,22 @@ ohne `release-build.md` installiert:
 
 ```bash
 # nur ausfuehren wenn Gating erfuellt UND User bestaetigt
-mkdir -p "$CLAUDE_PROJECT_DIR/tools" "$CLAUDE_PROJECT_DIR/.claude/rules"
+mkdir -p "$PROJ/tools" "$PROJ/.claude/rules"
 
 # 1. version.py (stdlib-only, kein PyInstaller-Teil)
-if [ -f "$CLAUDE_PROJECT_DIR/tools/version.py" ]; then
+if [ -f "$PROJ/tools/version.py" ]; then
   echo "SKIP: tools/version.py existiert bereits (User fragen ob ueberschreiben)"
 else
   cp "$CLAUDE_PLUGIN_ROOT/references/release-templates/version.py" \
-     "$CLAUDE_PROJECT_DIR/tools/version.py"
+     "$PROJ/tools/version.py"
 fi
 
 # 2. Companion-Rule release-build.md (PFLICHT, Overwrite-Guard)
-if [ -f "$CLAUDE_PROJECT_DIR/.claude/rules/release-build.md" ]; then
+if [ -f "$PROJ/.claude/rules/release-build.md" ]; then
   echo "SKIP: .claude/rules/release-build.md existiert bereits (User fragen)"
 else
   cp "$CLAUDE_PLUGIN_ROOT/references/rule-templates/release-build.md" \
-     "$CLAUDE_PROJECT_DIR/.claude/rules/release-build.md"
+     "$PROJ/.claude/rules/release-build.md"
 fi
 ```
 
@@ -643,22 +646,22 @@ statt Angebot: *"zu wenig Doku-Flaeche, das Gate haette hier keinen Gegenstand"*
 
 ```bash
 # nur ausfuehren wenn Gating erfuellt UND User bestaetigt
-mkdir -p "$CLAUDE_PROJECT_DIR/tools" "$CLAUDE_PROJECT_DIR/.claude/rules"
+mkdir -p "$PROJ/tools" "$PROJ/.claude/rules"
 
 # 1. coverage_gate.py (stdlib-only, keine Fremd-Abhaengigkeit, kein Netzzugriff)
-if [ -f "$CLAUDE_PROJECT_DIR/tools/coverage_gate.py" ]; then
+if [ -f "$PROJ/tools/coverage_gate.py" ]; then
   echo "SKIP: tools/coverage_gate.py existiert bereits (User fragen ob ueberschreiben)"
 else
   cp "$CLAUDE_PLUGIN_ROOT/references/doc-templates/coverage_gate.py" \
-     "$CLAUDE_PROJECT_DIR/tools/coverage_gate.py"
+     "$PROJ/tools/coverage_gate.py"
 fi
 
 # 2. Companion-Rule wissenstransfer-pruefen.md (PFLICHT, Overwrite-Guard)
-if [ -f "$CLAUDE_PROJECT_DIR/.claude/rules/wissenstransfer-pruefen.md" ]; then
+if [ -f "$PROJ/.claude/rules/wissenstransfer-pruefen.md" ]; then
   echo "SKIP: .claude/rules/wissenstransfer-pruefen.md existiert bereits (User fragen)"
 else
   cp "$CLAUDE_PLUGIN_ROOT/references/rule-templates/wissenstransfer-pruefen.md" \
-     "$CLAUDE_PROJECT_DIR/.claude/rules/wissenstransfer-pruefen.md"
+     "$PROJ/.claude/rules/wissenstransfer-pruefen.md"
 fi
 ```
 
@@ -697,21 +700,21 @@ keinen Gegenstand"*.
 
 ```bash
 # nur ausfuehren wenn Gating erfuellt UND User bestaetigt
-mkdir -p "$CLAUDE_PROJECT_DIR/tools" "$CLAUDE_PROJECT_DIR/.claude/rules"
+mkdir -p "$PROJ/tools" "$PROJ/.claude/rules"
 
-if [ -f "$CLAUDE_PROJECT_DIR/tools/zaehl_gate.py" ]; then
+if [ -f "$PROJ/tools/zaehl_gate.py" ]; then
   echo "SKIP: tools/zaehl_gate.py existiert bereits (User fragen ob ueberschreiben)"
 else
   cp "$CLAUDE_PLUGIN_ROOT/references/doc-templates/zaehl_gate.py" \
-     "$CLAUDE_PROJECT_DIR/tools/zaehl_gate.py"
+     "$PROJ/tools/zaehl_gate.py"
 fi
 
 # ⛔ KERN-INVARIANTE: kein Tool ohne glob-getriggerte Companion-Rule.
-if [ -f "$CLAUDE_PROJECT_DIR/.claude/rules/zaehlwerte-pruefen.md" ]; then
+if [ -f "$PROJ/.claude/rules/zaehlwerte-pruefen.md" ]; then
   echo "SKIP: Rule existiert bereits"
 else
   cp "$CLAUDE_PLUGIN_ROOT/references/rule-templates/zaehlwerte-pruefen.md" \
-     "$CLAUDE_PROJECT_DIR/.claude/rules/zaehlwerte-pruefen.md"
+     "$PROJ/.claude/rules/zaehlwerte-pruefen.md"
 fi
 ```
 
@@ -993,7 +996,7 @@ User darf zurueckweisen mit "Self-Check-Block fehlt — bitte Step 1 ausfuehren"
 **Der Nachweis wird AUSGEFUEHRT, nicht aufgeschrieben (NEU v5.2.1):**
 ```bash
 source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-mind_check_tools_have_rules "${CLAUDE_PROJECT_DIR:-$(pwd)}"; TOOLCHECK_RC=$?
+mind_check_tools_have_rules "$PROJ"; TOOLCHECK_RC=$?
 ```
 Die **woertliche Ausgabe** kommt in den Block — nicht paraphrasiert, nicht gekuerzt. Bei
 `TOOLCHECK_RC=1` MUSS der Report das als **verletzte Invariante** ausweisen und die fehlende

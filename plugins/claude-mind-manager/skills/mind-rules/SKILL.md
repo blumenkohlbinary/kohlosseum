@@ -38,7 +38,10 @@ verdichten
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.79.0"
+[ -n "$CLAUDE_PLUGIN_ROOT" ] || { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
+source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
+MIND_SKILL_VERSION="5.80.0"
 mind_schritt_start "$PROJ" mind-rules bestandsaufnahme bestandszahlen_kandidaten cleaner_duplikate cleaner_stichprobe ladeprotokoll_auswertung mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -114,7 +117,7 @@ echo "$ARGS" | grep -qE '(^|[[:space:]])--dry-run([[:space:]]|$)' && { DRY_RUN="
 # Laeuft dieser Skill innerhalb eines AKTIVEN /mind-all? (C1-Fix: drei Bedingungen, nicht nur
 # "Datei existiert" — sonst gilt nach dem ersten /mind-all JEDER spaetere Einzellauf als Kette
 # und editiert ohne Snapshot.)
-CHAIN="no"; _SC="${CLAUDE_PROJECT_DIR:-$(pwd)}/.claude-mind/analyzed-scopes"
+CHAIN="no"; _SC="$PROJ/.claude-mind/analyzed-scopes"
 if [ -f "$_SC" ]; then
   _SNAP=$(grep -m1 '^snapshot=' "$_SC" 2>/dev/null | cut -d= -f2-)
   _START=$(grep -m1 '^run_started=' "$_SC" 2>/dev/null | cut -d= -f2)
@@ -126,7 +129,7 @@ fi
 if [ "$DRY_RUN" = "no" ] && [ "$CHAIN" = "no" ]; then
   [ -z "$CLAUDE_PLUGIN_ROOT" ] && { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
   source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-  SNAPSHOT=$(mind_snapshot "${CLAUDE_PROJECT_DIR:-$(pwd)}" "pre-rules") || {
+  SNAPSHOT=$(mind_snapshot "$PROJ" "pre-rules") || {
     echo "ABBRUCH: Snapshot fehlgeschlagen — es wird NICHTS editiert." >&2; exit 1; }
   echo "Snapshot: $SNAPSHOT"
 fi
@@ -285,7 +288,7 @@ python "$CLAUDE_PLUGIN_ROOT/references/ladeprotokoll_auswertung.py"
 
 # 2. Wie ist der Bestand aufgebaut? (Beleg / Vorfall / Code / reine Anweisung)
 python "$CLAUDE_PLUGIN_ROOT/references/bestandsaufnahme.py" \
-       --ordner "$CLAUDE_PROJECT_DIR/.claude/rules"
+       --ordner "$PROJ/.claude/rules"
 ```
 
 **Danach je Regel einordnen** — nach dem Vier-Wege-Kriterium:

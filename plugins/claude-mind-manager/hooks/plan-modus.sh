@@ -41,6 +41,14 @@ TOOL=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
 PROJ="${CLAUDE_PROJECT_DIR:-}"
 [ -z "$PROJ" ] && PROJ=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
 [ -z "$PROJ" ] && PROJ="$(pwd)"
+# v5.80.0: im Unterordner-Aufbau ist das Projekt der naechste Elternordner mit
+#   .claude/rules/rollen.md (mind_projekt_wurzel, lib.sh). Gegeguardet wie der
+#   ganze Hook: ohne lib.sh bleibt PROJ wie bisher, ohne Roster byteweise gleich.
+_WLIB="${CLAUDE_PLUGIN_ROOT:-$(dirname "$0")/..}/hooks/lib.sh"
+if [ -f "$_WLIB" ]; then
+  . "$_WLIB" 2>/dev/null
+  command -v mind_projekt_wurzel >/dev/null 2>&1 && PROJ=$(mind_projekt_wurzel "$PROJ")
+fi
 
 # ⚠ Der Matcher in hooks.json filtert schon; die zweite Pruefung hier ist
 #   Absicht. Faellt der Matcher aus oder aendert Claude Code seine Semantik,

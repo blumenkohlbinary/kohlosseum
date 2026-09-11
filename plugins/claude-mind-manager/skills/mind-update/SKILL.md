@@ -43,7 +43,10 @@ session_sampler
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.79.0"
+[ -n "$CLAUDE_PLUGIN_ROOT" ] || { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
+source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
+MIND_SKILL_VERSION="5.80.0"
 mind_schritt_start "$PROJ" mind-update claudemd_pipeline cleaner_stichprobe mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler
 ```
 
@@ -121,7 +124,7 @@ echo "$ARGS" | grep -qE '(^|[[:space:]])--dry-run([[:space:]]|$)' && { DRY_RUN="
 # Laeuft dieser Skill innerhalb eines AKTIVEN /mind-all? (C1-Fix: drei Bedingungen, nicht nur
 # "Datei existiert" — sonst gilt nach dem ersten /mind-all JEDER spaetere Einzellauf als Kette
 # und editiert ohne Snapshot.)
-CHAIN="no"; _SC="${CLAUDE_PROJECT_DIR:-$(pwd)}/.claude-mind/analyzed-scopes"
+CHAIN="no"; _SC="$PROJ/.claude-mind/analyzed-scopes"
 if [ -f "$_SC" ]; then
   _SNAP=$(grep -m1 '^snapshot=' "$_SC" 2>/dev/null | cut -d= -f2-)
   _START=$(grep -m1 '^run_started=' "$_SC" 2>/dev/null | cut -d= -f2)
@@ -133,7 +136,7 @@ fi
 if [ "$DRY_RUN" = "no" ] && [ "$CHAIN" = "no" ]; then
   [ -z "$CLAUDE_PLUGIN_ROOT" ] && { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
   source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-  SNAPSHOT=$(mind_snapshot "${CLAUDE_PROJECT_DIR:-$(pwd)}" "pre-update") || {
+  SNAPSHOT=$(mind_snapshot "$PROJ" "pre-update") || {
     echo "ABBRUCH: Snapshot fehlgeschlagen — es wird NICHTS editiert." >&2; exit 1; }
   echo "Snapshot: $SNAPSHOT"
 fi
@@ -817,7 +820,7 @@ zaehlt gegen die Obergrenze.
   **NICHT erneut dispatchen** — im Self-Check ausweisen als
   `scope=<x> → bereits durch <skill> abgedeckt (analyzed-scopes)`.
   ```bash
-  SCOPES_FILE="${CLAUDE_PROJECT_DIR:-$(pwd)}/.claude-mind/analyzed-scopes"
+  SCOPES_FILE="$PROJ/.claude-mind/analyzed-scopes"
   # nur wenn Scope UND Modus uebereinstimmen:
   scope_done() { [ -f "$SCOPES_FILE" ] && grep -q "^$1=.*:knowledge-sync$" "$SCOPES_FILE"; }
   # z.B.: scope_done claude-md && echo "skip" || dispatch...
@@ -890,7 +893,7 @@ aus der Mitte. 3-Stufen-Algorithmus:
 # Kompaktierung auf Resten arbeiten und genau das verpassen, wofuer er da ist.
 # v5.2.1: Vorrang hat der Zeiger aus der offenen Schuld (OPEN) — er nennt genau die Rettung,
 # fuer die der Sync noch aussteht. Fehlt OPEN (aeltere Version): neueste Datei per Zeitstempel.
-_MU_OPEN="${CLAUDE_PROJECT_DIR:-$(pwd)}/.claude-mind/rescued/OPEN"
+_MU_OPEN="$PROJ/.claude-mind/rescued/OPEN"
 # ⛔ v5.57.0: EINE Stelle, und sie liegt in `lib.sh`. Hier stand ein Halbfix
 #    aus v5.4.1: das Sammeln war auf mehrere Zeilen umgestellt, die
 #    Einzeldatei-Pruefung darunter nicht. `[ ! -f "$RESCUED" ]` auf einen
@@ -898,7 +901,7 @@ _MU_OPEN="${CLAUDE_PROJECT_DIR:-$(pwd)}/.claude-mind/rescued/OPEN"
 #    Liste geleert und der Rueckfall nahm die juengste Datei im Ordner.
 #    GEMESSEN mit drei Rettungen: EINE kam an. Die Doku behauptete seit v5.4.1
 #    das Gegenteil, und niemand hatte es je nachgestellt.
-RESCUED_ALLE=$(mind_rettungen "${CLAUDE_PROJECT_DIR:-$(pwd)}")
+RESCUED_ALLE=$(mind_rettungen "$PROJ")
 RESCUED_N=$(printf '%s' "$RESCUED_ALLE" | grep -c . 2>/dev/null)
 case "$RESCUED_N" in ''|*[!0-9]*) RESCUED_N=0 ;; esac
 # Die JUENGSTE ist die Leitrettung fuer Zaehlungen und Meldungen; gespeist
@@ -985,7 +988,7 @@ fi
 # ⛔ DER RUECKFALL MELDET SICH (Auflage). Ein stiller Fehlgriff darf nicht
 #    wie ein richtiger Griff aussehen: greift die Kennung nicht, steht das
 #    im Bericht, statt lautlos eine fremde Sitzung zu analysieren.
-JSONL=$(mind_transkript_pfad "${CLAUDE_PROJECT_DIR:-$(pwd)}" 2>/dev/null)
+JSONL=$(mind_transkript_pfad "${PROJ:-$(mind_projekt_wurzel)}" 2>/dev/null)
 _JQUELLE=kennung
 if [ -z "$JSONL" ] || [ ! -f "$JSONL" ]; then
   JSONL=$(ls -t "$PROJECTS_DIR"/*.jsonl 2>/dev/null | grep -v '/subagents/' | head -1)
