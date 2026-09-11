@@ -147,6 +147,11 @@ janein "mind-claudemd: Step 5e VERDICHTEN vorhanden" "ja" "$(grep -q '^## Step 5
 janein "mind-claudemd: Pipeline vorher/nachher als Gate" "ja" "$(grep -q 'kein Check neu rot' "$WURZEL/skills/mind-claudemd/SKILL.md" && echo ja || echo nein)"
 janein "mind-claudemd: Stufe 3 vor dem Anwenden" "ja" "$(grep -q 'STUFE 3 (Wort-Diff lesen' "$WURZEL/skills/mind-claudemd/SKILL.md" && echo ja || echo nein)"
 janein "mind-claudemd: verdichten als PFLICHTSCHRITT und in mind_schritt_start" "2" "$(grep -cE '^verdichten$|^mind_schritt_start .* verdichten' "$WURZEL/skills/mind-claudemd/SKILL.md")"
+# v5.89.0: dritter Traeger mind-memory — Frontmatter und [[Verweise]] unantastbar, MEMORY.md nie
+janein "mind-memory: Step 6e VERDICHTEN vorhanden" "ja" "$(grep -q '^## Step 6e: .*VERDICHTEN' "$WURZEL/skills/mind-memory/SKILL.md" && echo ja || echo nein)"
+janein "mind-memory: MEMORY.md ist nie Kandidatin" "ja" "$(grep -q "grep -v '/MEMORY\\\\.md\$'" "$WURZEL/skills/mind-memory/SKILL.md" && echo ja || echo nein)"
+janein "mind-memory: Frontmatter und Wikilinks unantastbar, Stufe 3 Pflicht" "2" "$(grep -cE 'Frontmatter \(`---`|STUFE 3 \(Wort-Diff lesen' "$WURZEL/skills/mind-memory/SKILL.md")"
+janein "mind-memory: verdichten als PFLICHTSCHRITT und in mind_schritt_start" "2" "$(grep -cE '^verdichten$|^mind_schritt_start .* verdichten' "$WURZEL/skills/mind-memory/SKILL.md")"
 
 echo
 echo "=============================================================================="

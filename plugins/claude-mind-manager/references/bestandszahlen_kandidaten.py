@@ -24,7 +24,7 @@
    Fehlzahlen des Tages ("zwei Einmal-Messungen", "vier Gates") sind unter den 7.
 
 Aufruf:
-    python bestandszahlen_kandidaten.py <projekt> [--global] [--max N]
+    python bestandszahlen_kandidaten.py <projekt> [--global] [--max N] [weitere Dateien...]
     python bestandszahlen_kandidaten.py --selbsttest
 """
 import io
@@ -114,8 +114,10 @@ def kandidaten(text, quelle, gegatet):
     return out
 
 
-def lauf(projekt, mit_global=False, maximal=12, aus=print):
-    dateien = dauerkontext(projekt, mit_global)
+def lauf(projekt, mit_global=False, maximal=12, aus=print, extra=()):
+    # v5.89.0: zusaetzliche Dateien (Memory-Topics fuer mind-memory) — sie laden nicht
+    #   immer, tragen aber dieselben Bestandszahlen. Nur was es gibt.
+    dateien = dauerkontext(projekt, mit_global) + [os.path.abspath(e) for e in extra if os.path.isfile(e)]
     gegatet = gegatete_zahlen(dateien)
     alle = []
     for p in dateien:
@@ -205,7 +207,7 @@ def main(argv):
         except (IndexError, ValueError):
             pass
     projekt = os.path.abspath(args[0])
-    lauf(projekt, "--global" in argv, maximal)
+    lauf(projekt, "--global" in argv, maximal, extra=args[1:])
     return 0   # ⛔ nie etwas anderes — er listet, er urteilt nicht
 
 

@@ -22,12 +22,14 @@ allowed-tools: Read Glob Grep Edit Write Bash Agent
 
 ```
 PFLICHTSCHRITTE
+bestandszahlen_kandidaten
 cleaner_stichprobe
 cleaner_tor
 mind_debug_write
 mind_kontext_bilanz
 mind_scan_poisoning
 mind_snapshot
+verdichten
 ```
 
 **Vor dem ersten Schritt, ohne Ausnahme:**
@@ -81,7 +83,12 @@ MIND_SKILL_VERSION="5.87.0"
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
 MIND_SKILL_VERSION="5.88.0"
-mind_schritt_start "$PROJ" mind-memory cleaner_stichprobe mind_debug_write mind_kontext_bilanz mind_scan_poisoning mind_snapshot
+# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
+#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
+#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
+#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
+MIND_SKILL_VERSION="5.89.0"
+mind_schritt_start "$PROJ" mind-memory bestandszahlen_kandidaten cleaner_stichprobe mind_debug_write mind_kontext_bilanz mind_scan_poisoning mind_snapshot verdichten
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
@@ -871,6 +878,11 @@ source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 #    ⛔ Nicht nur erwaehnen: die Zeile selbst, mit beiden Zahlenpaaren.
 mind_kontext_bilanz "$PROJ" --vergleichen
 
+# 1b) Art 6 (v5.89.0): ungegatete BESTANDSZAHLEN als Kandidaten — Memory-Dateien laden
+#     nicht immer, tragen aber dieselben Zahlen; deshalb als weitere Dateien mitgeben.
+#     ⛔ Er urteilt nie, rc immer 0. Die Meldezeile `BESTANDSZAHLEN: …` in den Bericht.
+python "$CLAUDE_PLUGIN_ROOT/references/bestandszahlen_kandidaten.py" "$PROJ" "$MEMORY_DIR"/*.md
+
 # 2) Stichprobe: 3 Einträge, die am längsten ungeprüft sind (max. 15 je Kettenlauf)
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_stichprobe.py" "$PROJ" \
        --skill mind-memory --verzeichnis "$MEMORY_DIR"
@@ -904,6 +916,39 @@ ausfiel, sehen von außen identisch aus. Dieselbe Lehre wie v5.3.1 und die Agent
 
 ⚠ **Fail-open:** fehlt ein Werkzeug oder stürzt es ab, wird `UNGEPRUEFT: <werkzeug>`
 gemeldet und der Skill **läuft weiter**. Ein Bestands-Pass darf nie einen Sync töten.
+
+## Step 6e: ⭐ VERDICHTEN — die größte Topic-Datei (NEU v5.89.0)
+
+**Nutzer-Entscheidung 10.09.2026:** *„alle dürfen kürzen nur mind cleaner macht es tiefer
+und genauer"*. Dritter Träger nach `mind-rules` (v5.78.0) und `mind-claudemd` (v5.85.0).
+
+**Die vollständige Vorschrift — Agent, Kasten, Gate, Stufe 3, Bericht — steht in
+[references/bestands-pass.md](../../references/bestands-pass.md), Abschnitt „VERDICHTEN".
+Lies sie.** Hier nur, was für Memory gilt:
+
+| | |
+|---|---|
+| **Kandidat** | die **GRÖSSTE** Topic-Datei unter `$MEMORY_DIR` in Bytes — **eine je Lauf** |
+| ⛔ **nie** | `MEMORY.md` — sie ist ein Index (`- [Titel](datei.md) — Aufhänger`), kein Inhalt; Kürzen dort heißt Zeiger löschen |
+| ⛔ **unantastbar, byteweise** | das Frontmatter (`---` … `---`: `name`, `description`, `type`) — die `description` ist das EINZIGE Signal des Auswählers (Grenze 5 je Anfrage, `env-vars.md`); jeder `[[wikilink]]`; jede Index-Zeile |
+| ⛔ **welches Programm liest sie** | `Learnings/memory_gates.py` (Gate 3: kein toter `[[Verweis]]`, Gate 4: `description` 40–200) · `mind_scan_poisoning` · der Auswähler von Claude Code (Name + `description`). ⚠ Gate 1 (Inhaltszeilen gleich) gilt für ZUSAMMENFÜHREN, nicht fürs Verdichten — hier zählt Stufe 1 des Gates |
+| **Überholt-Kandidaten** | aus den Step-4-Befunden `stale` und `MIND_MEMORY_STALE_DAYS` (Zitate `file:line`, Versionsnummern älter als 14 Tage, gegengeprüft) — **benannt** an den Agenten |
+| **verwerfen, wenn** | Stufe 1 < 100 % · Marker unbenannt verloren · nicht kleiner · Zeilenenden geändert · Frontmatter oder ein `[[Verweis]]` verändert · Dauerkontext nach dem Anwenden nicht kleiner — ⚠ Topic-Dateien zählen dort NICHT mit; das Erfolgsmaß ist hier die Datei selbst |
+| ⛔ **Stufe 3** | der Wort-Diff wird GANZ gelesen, bevor angewendet wird. **Ohne Leser: nicht anwenden** — Ergebnis, Bericht, Diff ablegen, Pfad melden |
+
+```bash
+# Kandidatin: die groesste Topic-Datei, nie MEMORY.md
+DATEI=$(ls -S "$MEMORY_DIR"/*.md 2>/dev/null | grep -v '/MEMORY\.md$' | head -1)
+[ -n "$DATEI" ] || { echo "VERDICHTEN: keine Kandidatin"; }
+# ... dann exakt der Lauf aus bestands-pass.md: Snapshot (pre-memory sichert das Memory)
+#     -> Agent (Kasten + Frontmatter/[[Verweise]] als unantastbar WOERTLICH im Auftrag)
+#     -> mind_verdichtung_pruefen -> Frontmatter byteweise gleich, [[Verweise]] gleich
+#     -> ⛔ STUFE 3 (Wort-Diff lesen; ohne Leser NICHT anwenden, ablegen und melden)
+#     -> anwenden -> Datei kleiner, sonst rollback.py restore
+```
+
+⛔ **Der Bericht dieses Schritts sind die drei Zeilen aus `mind_verdichtung_pruefen`** — oder
+die Zeile `verworfen: <grund>`. **Kein Bericht = der Schritt lief nicht.**
 
 ## Step 7: Summary
 

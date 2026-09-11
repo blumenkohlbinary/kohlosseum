@@ -60,6 +60,12 @@ janein "leeres Projekt -> rc 0" "0" "$RC"
 janein "... und die Zeile sagt '0 Kandidaten', statt zu schweigen" "ja" \
   "$(printf '%s\n' "$AUS" | grep -q '^BESTANDSZAHLEN: 0 Kandidaten' && echo ja || echo nein)"
 janein "ohne Argument: Hilfe, rc 0" "0" "$(python "$L" >/dev/null 2>&1; echo $?)"
+# v5.89.0: weitere Dateien (Memory-Topics) als Positionsargumente — nur was es gibt
+printf '# Topic\n\nEs gibt vier Gates.\n' > "$D/topic.md"
+AUS=$(python "$L" "$D" "$D/topic.md" "$D/gibtsnicht.md" 2>&1); RC=$?
+janein "Topic-Datei als weiteres Argument: 1 Kandidat, rc 0" "0|ja" "$(echo "$RC|$(printf '%s\n' "$AUS" | grep -q '1 UNGEGATET+UNDATIERT' && echo ja || echo nein)")"
+janein "   ... fehlende Datei wird still uebergangen" "ja" "$(printf '%s\n' "$AUS" | grep -q 'gibtsnicht' && echo nein || echo ja)"
+janein "mind-memory ruft den Lister mit \$MEMORY_DIR/*.md" "ja" "$(grep -q 'bestandszahlen_kandidaten.py" "\$PROJ" "\$MEMORY_DIR"/\*.md' "$WURZEL/skills/mind-memory/SKILL.md" && echo ja || echo nein)"
 rm -rf "$D"
 
 echo
