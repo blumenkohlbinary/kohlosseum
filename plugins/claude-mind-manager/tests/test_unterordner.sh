@@ -12,7 +12,8 @@
 #      1  Kompaktierung im Unterordner -> OPEN liegt in der WURZEL, mit sid=
 #      2  Rollen-Gate aus dem Unterordner findet den Roster -> sync still, andere laut
 #      4  ⛔ OHNE Roster: alles wie heute — byteweise gegen die alte Zeile
-#      5  Bilanz: hier nur der Wurzel-Teil (der Rest kommt mit v5.82.0)
+#      5  (v5.82.0) Bilanz aus dem Unterordner = Wurzel PLUS eigener Ordner; Merker
+#         (kontext-bilanz/-wache/-deckel) tragen die Kennung des Unterordners
 #      3  (v5.81.0) zwei Rettungen aus zwei Unterordnern: OPEN und Kopf tragen cwd=,
 #         mind_rettung_cwd findet ihn, das Memory je Rettung ist das des cwd (§5),
 #         eine Rettung von vor v5.81.0 liefert rc 1 statt eines erfundenen Ordners
@@ -141,15 +142,25 @@ janein "Rollen-Gate direkt: Rita -> laut (rc 1)" "1" "$(bash "$H/rollen-gate.sh"
 
 echo
 echo "=============================================================================="
-echo "  5) Bilanz aus dem Unterordner zaehlt die WURZEL (der eigene Teil: v5.82.0)"
+echo "  5) Bilanz aus dem Unterordner zaehlt die WURZEL PLUS den eigenen Ordner (v5.82.0)"
 echo "=============================================================================="
 printf '# Wurzel\n\nEine Regel.\n' > "$R/CLAUDE.md"
-LH="$T/leeres-home"; mkdir -p "$LH"     # ohne globale Dateien zaehlt nur die Wurzel
-janein "mind_kontext_bilanz auf der Wurzel zaehlt CLAUDE.md + rollen.md = 2" "ja" \
-  "$(HOME="$LH" mind_kontext_bilanz "$(mind_projekt_wurzel "$A")" 2>/dev/null | grep -q 'DATEIEN=2 ' && echo ja || echo nein)"
-printf '# U\n' > "$A/CLAUDE.md"
-janein "⚠ die eigenen Unterordner-Dateien zaehlt sie noch NICHT (v5.82.0)" "ja" \
-  "$(HOME="$LH" mind_kontext_bilanz "$(mind_projekt_wurzel "$A")" 2>/dev/null | grep -q 'DATEIEN=2 ' && echo ja || echo nein)"
+LH="$T/leeres-home"; mkdir -p "$LH"     # ohne globale Dateien zaehlt nur das Projekt
+# in der WURZEL selbst (CLAUDE_PROJECT_DIR = Wurzel): zwei Dateien, kein Zusatz
+janein "aus der Wurzel: CLAUDE.md + rollen.md = 2" "ja" \
+  "$(HOME="$LH" CLAUDE_PROJECT_DIR="$R" mind_kontext_bilanz "$R" 2>/dev/null | grep -q 'DATEIEN=2 ' && echo ja || echo nein)"
+janein "aus der Wurzel: keine Kennung (Merker-Namen wie bisher)" "" "$(CLAUDE_PROJECT_DIR="$R" mind_kontext_kennung "$R")"
+# aus dem UNTERORDNER (CLAUDE_PROJECT_DIR = Unterordner, $PROJ = Wurzel): eigene Dateien dazu
+printf '# U\n' > "$A/CLAUDE.md"; mkdir -p "$A/.claude/rules"; printf '# r\n' > "$A/.claude/rules/eigene.md"
+janein "⭐ aus dem Unterordner: Wurzel (2) + eigene CLAUDE.md + eigene Rule = 4" "ja" \
+  "$(HOME="$LH" CLAUDE_PROJECT_DIR="$A" mind_kontext_bilanz "$R" 2>/dev/null | grep -q 'DATEIEN=4 ' && echo ja || echo nein)"
+janein "   Kennung des Unterordners fuer die Merker" "-Creator_Idee" "$(CLAUDE_PROJECT_DIR="$A" mind_kontext_kennung "$R")"
+janein "   ein cwd AUSSERHALB des Projekts: kein Zusatz, keine Kennung" "" "$(CLAUDE_PROJECT_DIR="$T" mind_kontext_kennung "$R")"
+# kontext-wache aus dem Unterordner: Anker und Stand in der Wurzel, mit Kennung
+CLAUDE_PROJECT_DIR="$A" HOME="$LH" bash "$H/kontext-wache.sh" "$R" >/dev/null 2>&1
+janein "⛔ Deckel-Anker liegt in der Wurzel MIT Kennung" "ja" "$([ -f "$R/.claude-mind/kontext-deckel-Creator_Idee" ] && echo ja || echo nein)"
+janein "   ... und der Wurzel-Anker ohne Kennung ist davon unberuehrt" "nein" "$([ -f "$R/.claude-mind/kontext-deckel" ] && echo ja || echo nein)"
+janein "   Stand-Merker ebenso mit Kennung" "ja" "$([ -f "$R/.claude-mind/kontext-wache-Creator_Idee" ] && echo ja || echo nein)"
 
 echo
 echo "=============================================================================="

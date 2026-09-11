@@ -71,6 +71,13 @@ LIB="${CLAUDE_PLUGIN_ROOT:-$(dirname "$0")/..}/hooks/lib.sh"
 # shellcheck disable=SC1090
 . "$LIB" 2>/dev/null || exit 1
 command -v mind_kontext_bilanz >/dev/null 2>&1 || exit 1
+# v5.82.0: im Unterordner-Aufbau tragen STAND und DECKEL die Kennung des Unterordners —
+#   sonst saehe jede der neun Sitzungen den Stand der anderen (hooks.md, DIE KLASSE).
+#   In der Wurzel und in jedem Projekt ohne Unterordner: leer, Namen wie bisher.
+KENN=""
+command -v mind_kontext_kennung >/dev/null 2>&1 && KENN=$(mind_kontext_kennung "$PROJ")
+STAND="$STAND$KENN"
+DECKEL="$DECKEL$KENN"
 
 # ⛔ OHNE Modus: misst und schreibt NICHTS. Siehe Begruendung im Kopf.
 AUSGABE=$(mind_kontext_bilanz "$PROJ" 2>/dev/null) || exit 1

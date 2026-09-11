@@ -1748,7 +1748,7 @@ mind_commits_seit() {
 mind_kontext_bilanz() {
   local projekt="${1:-}" modus="${2:-}"
   local liste zeilen=0 anw=0 bytes=0 dateien=0 f n a b
-  local stand="$projekt/.claude-mind/kontext-bilanz"
+  local stand="$projekt/.claude-mind/kontext-bilanz$(mind_kontext_kennung "$projekt")"
 
   [ -n "$projekt" ] || { echo "ZEILEN=0 ANWEISUNGEN=0 DATEIEN=0 BYTES=0"; return 1; }
 
@@ -1768,9 +1768,26 @@ mind_kontext_bilanz() {
   for f in "$projekt"/.claude/rules/*.md "$HOME"/.claude/rules/*.md; do
     [ -f "$f" ] && printf '%s\n' "$f" >> "$liste"
   done
-  # MEMORY.md ja, Topic-Dateien nein — siehe Kopf.
+  # v5.82.0: der EIGENE Unterordner und jeder Ordner dazwischen — Claude Code
+  #   laedt CLAUDE.md und .claude/rules/ aufwaerts. Ohne Unterordner: nichts.
+  local unter memq
+  if unter=$(mind_kontext_unterordner "$projekt"); then
+    local pn="${projekt//\\//}"; pn="${pn%/}"
+    local dd="$unter"
+    while [ -n "$dd" ] && [ "$dd" != "$pn" ]; do
+      for f in "$dd/CLAUDE.md" "$dd/.claude/CLAUDE.md" "$dd"/.claude/rules/*.md; do
+        [ -f "$f" ] && printf '%s\n' "$f" >> "$liste"
+      done
+      case "$dd" in */*) dd="${dd%/*}" ;; *) break ;; esac
+    done
+    memq="$unter"
+  else
+    memq="$projekt"
+  fi
+  # MEMORY.md ja, Topic-Dateien nein — siehe Kopf. Im Unterordner: das Memory
+  #   des cwd, denn nur das laedt Claude Code dort (v5.82.0).
   local mem
-  mem=$(get_memory_dir "$projekt" 2>/dev/null)
+  mem=$(get_memory_dir "$memq" 2>/dev/null)
   [ -n "$mem" ] && [ -f "$mem/MEMORY.md" ] && printf '%s\n' "$mem/MEMORY.md" >> "$liste"
 
   # ── Zaehlen ────────────────────────────────────────────────────────────────
@@ -2715,4 +2732,44 @@ mind_rettung_cwd() {
   [ -n "$c" ] || return 1
   printf '%s\n' "$c"
   return 0
+}
+
+# =============================================================================
+# mind_kontext_unterordner / mind_kontext_kennung — der EIGENE Ordner (v5.82.0)
+# =============================================================================
+# ⛔ WARUM. Seit v5.80.0 ist $PROJ die Wurzel mit dem Roster. Claude Code laedt
+#    aber CLAUDE.md und .claude/rules/ AUFWAERTS: in einer Sitzung in
+#    `Creator/Creator Idee/` laden die Dateien der Wurzel UND die des
+#    Unterordners. Eine Bilanz nur ueber die Wurzel untermisst um den eigenen
+#    Teil; eine nur ueber den cwd um die Wurzel (gemessen: 56 314 B gegen
+#    ~302 309 B). Zusammen ist es der Dauerkontext DIESER Sitzung.
+# ⭐ Der cwd kommt aus CLAUDE_PROJECT_DIR (im Unterordner IST das der
+#    Unterordner, gemessen 11.09.2026), sonst pwd. Liegt er nicht STRENG unter
+#    dem Projekt, gibt es keinen eigenen Teil — Ausgabe leer, wie bisher.
+# ⛔ DIE KLASSE aus hooks.md ("ein Merker liegt PROJEKTWEIT und meint einen
+#    ABSCHNITT"): neun Unterordner, EIN Anker in der Wurzel — jede Sitzung
+#    saehe den Stand der anderen und meldete Wachstum, das keines ist. Deshalb
+#    traegt jeder Merker (kontext-bilanz, kontext-wache, kontext-deckel) im
+#    Unterordner-Aufbau die KENNUNG des Unterordners im Namen. In der Wurzel
+#    selbst (und in jedem Projekt ohne Unterordner): leer, Dateiname wie bisher.
+mind_kontext_unterordner() {
+  local projekt="${1:-}" cwd d p
+  [ -n "$projekt" ] || return 1
+  cwd="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+  d="${cwd//\\//}"; d="${d%/}"; p="${projekt//\\//}"; p="${p%/}"
+  [ -n "$d" ] && [ "$d" != "$p" ] || return 1
+  case "$d" in
+    "$p"/*) printf '%s\n' "$d"; return 0 ;;
+  esac
+  return 1
+}
+
+mind_kontext_kennung() {
+  local u rel
+  u=$(mind_kontext_unterordner "${1:-}") || { printf '\n'; return 0; }
+  local p="${1//\\//}"; p="${p%/}"
+  rel="${u#"$p"/}"
+  # Pfadtrenner und Leerzeichen -> '_' ; sonst nur, was in einem Dateinamen sicher ist
+  rel=$(printf '%s' "$rel" | tr '/ ' '__' | tr -cd 'A-Za-z0-9_.-')
+  printf -- '-%s\n' "$rel"
 }
