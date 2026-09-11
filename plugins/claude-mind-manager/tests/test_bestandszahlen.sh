@@ -72,6 +72,10 @@ janein "mind-rules: PFLICHTSCHRITT eingetragen" "ja" \
   "$(grep -qx 'bestandszahlen_kandidaten' "$WURZEL/skills/mind-rules/SKILL.md" && echo ja || echo nein)"
 janein "mind-rules: in mind_schritt_start genannt" "ja" \
   "$(grep -E '^mind_schritt_start .*bestandszahlen_kandidaten' "$WURZEL/skills/mind-rules/SKILL.md" >/dev/null && echo ja || echo nein)"
+janein "v5.85.0: mind-claudemd ruft den Lister (Schritt 1b)" "ja" \
+  "$(grep -q 'references/bestandszahlen_kandidaten.py' "$WURZEL/skills/mind-claudemd/SKILL.md" && echo ja || echo nein)"
+janein "mind-claudemd: PFLICHTSCHRITT + mind_schritt_start" "2" \
+  "$(grep -cE '^bestandszahlen_kandidaten$|^mind_schritt_start .*bestandszahlen_kandidaten' "$WURZEL/skills/mind-claudemd/SKILL.md")"
 janein "bestands-pass.md: Abschnitt 1b mit 'urteilt nie'" "ja" \
   "$(grep -q 'urteilt nie' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
 

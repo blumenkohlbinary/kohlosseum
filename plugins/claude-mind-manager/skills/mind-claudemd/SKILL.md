@@ -21,6 +21,7 @@ allowed-tools: Read Glob Grep Edit Write Bash Agent
 
 ```
 PFLICHTSCHRITTE
+bestandszahlen_kandidaten
 claudemd_pipeline
 cleaner_duplikate
 cleaner_stichprobe
@@ -29,6 +30,7 @@ cleaner_urteile
 mind_check_tools_have_rules
 mind_kontext_bilanz
 mind_snapshot
+verdichten
 ```
 
 **Vor dem ersten Schritt, ohne Ausnahme:**
@@ -62,7 +64,12 @@ MIND_SKILL_VERSION="5.83.0"
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
 MIND_SKILL_VERSION="5.84.0"
-mind_schritt_start "$PROJ" mind-claudemd claudemd_pipeline cleaner_duplikate cleaner_stichprobe cleaner_urteile mind_check_tools_have_rules mind_kontext_bilanz mind_snapshot
+# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
+#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
+#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
+#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
+MIND_SKILL_VERSION="5.85.0"
+mind_schritt_start "$PROJ" mind-claudemd bestandszahlen_kandidaten claudemd_pipeline cleaner_duplikate cleaner_stichprobe cleaner_urteile mind_check_tools_have_rules mind_kontext_bilanz mind_snapshot verdichten
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
@@ -819,6 +826,12 @@ source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 #    ⛔ Nicht nur erwaehnen: die Zeile selbst, mit beiden Zahlenpaaren.
 mind_kontext_bilanz "$PROJ" --vergleichen
 
+# 1b) Art 6 (v5.85.0): ungegatete BESTANDSZAHLEN als Kandidaten — die Meldezeile
+#     `BESTANDSZAHLEN: …` in den Bericht. ⛔ Er urteilt nie, rc immer 0. Bei `global`
+#     zaehlt ~/.claude mit (`--global`), sonst nur das Projekt.
+[ "$BEREICH" = "global" ] && _BZ="--global" || _BZ=""
+python "$CLAUDE_PLUGIN_ROOT/references/bestandszahlen_kandidaten.py" "$PROJ" $_BZ
+
 # 2) Stichprobe: 3 Einträge, die am längsten ungeprüft sind (max. 15 je Kettenlauf)
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_stichprobe.py" "$PROJ" \
        --skill mind-claudemd "$PROJ/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
@@ -837,6 +850,46 @@ ausfiel, sehen von außen identisch aus. Dieselbe Lehre wie v5.3.1 und die Agent
 
 ⚠ **Fail-open:** fehlt ein Werkzeug oder stürzt es ab, wird `UNGEPRUEFT: <werkzeug>`
 gemeldet und der Skill **läuft weiter**. Ein Bestands-Pass darf nie einen Sync töten.
+
+## Step 5e: ⭐ VERDICHTEN — die eine `CLAUDE.md`, die immer lädt (NEU v5.85.0)
+
+**Nutzer-Entscheidung 10.09.2026:** *„alle dürfen kürzen nur mind cleaner macht es tiefer
+und genauer"* — und: *„es soll nicht alles vollpumpen"*. Zweiter Träger nach `mind-rules`
+(v5.78.0); Anton, Etappe 3: **das ist der Palvedo-Fall** — die 318-Zeilen-`CLAUDE.md`.
+
+**Die vollständige Vorschrift — Agent, Kasten, Gate, Stufe 3, Bericht — steht in
+[references/bestands-pass.md](../../references/bestands-pass.md), Abschnitt „VERDICHTEN".
+Lies sie.** Hier nur, was für `CLAUDE.md` gilt:
+
+| | |
+|---|---|
+| **Kandidat** | `$ZIEL_MD` aus Step 1 — **eine Datei, ein Lauf** |
+| ⛔ **unantastbar, byteweise** | jeder ```-Codeblock (Befehle werden getippt, nicht gelesen) · jede Zeile mit einer Versionsnummer (`Version **x.y.z**`, `v5.x.y`) · jede Zeile, die eine Datei als **Adresse** nennt (`Details: …`, `siehe …`, `→ …`) — der Zeiger ist der ganze Wert |
+| ⛔ **welches Programm liest sie** | `claudemd_pipeline.py` (24 Checks). **Vor UND nach dem Lauf fahren**: ein Check, der vorher grün war und nachher rot ist, heißt VERWERFEN — auch bei grünem Gate |
+| **Überholt-Kandidaten** | aus dem Deckel-Ausweis der Datei, aus `cleaner_belege.py` und aus den Step-4-Befunden `stale`/`OUTDATED` — **benannt** an den Agenten. ⭐ Der Ertrag hängt am Aufrufer: −5,65 % ohne, −15 % mit Kandidaten |
+| **verwerfen, wenn** | Stufe 1 < 100 % · Marker unbenannt verloren · nicht kleiner · Zeilenenden geändert · Pipeline-Check neu rot · Dauerkontext nach dem Anwenden nicht kleiner |
+| ⛔ **Stufe 3** | der Wort-Diff wird GANZ gelesen, bevor angewendet wird. **Ohne Leser: nicht anwenden** — Ergebnis, Bericht, Diff ablegen, Pfad melden |
+
+```bash
+# Kandidat ist die Zieldatei aus Step 1
+DATEI="$ZIEL_MD"
+PIPE="$CLAUDE_PLUGIN_ROOT/references/claudemd_pipeline.py"
+# (${ZIEL_WURZEL} mit Klammern: test_claudemd_global.sh zaehlt die Step-4c-Form genau einmal)
+python "$PIPE" "$DATEI" --projekt "${ZIEL_WURZEL}" > "$PROJ/.claude-mind/pipeline-vorher.txt" 2>&1
+# ... dann exakt der Lauf aus bestands-pass.md: Snapshot -> Agent (Kasten + die Unantastbaren
+#     oben WOERTLICH im Auftrag) -> mind_verdichtung_pruefen
+#     -> Pipeline auf das ERGEBNIS, gegen pipeline-vorher.txt: kein Check neu rot
+#     -> ⛔ STUFE 3 (Wort-Diff lesen; ohne Leser NICHT anwenden, ablegen und melden)
+#     -> anwenden -> mind_kontext_bilanz gegen vorher -> sonst rollback.py restore
+```
+
+⛔ **Der Bericht dieses Schritts sind die drei Zeilen aus `mind_verdichtung_pruefen`** plus
+eine Zeile `Pipeline vorher/nachher: <n>/<n> Checks grün` — oder `verworfen: <grund>`.
+**Kein Bericht = der Schritt lief nicht** (Quittung: `mind_schritt verdichten fehler:...`).
+
+⚠ **Was dieser Schritt nicht ist:** kein Modularize (Step 4e) und kein Umzug — der Agent
+verschiebt nur Belege mit Doppelzeiger an den Ort aus `docs/plugin/wohin-gehoert-es.md`.
+Bei `global` ist der Kandidat `~/.claude/CLAUDE.md` — dieselbe Vorschrift, dieselben Gates.
 
 ## Step 6: Summary
 

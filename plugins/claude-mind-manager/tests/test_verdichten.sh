@@ -142,6 +142,11 @@ janein "bestands-pass.md: 'STUFE 3 IST PFLICHT'" "ja" "$(grep -q 'STUFE 3 IST PF
 janein "bestands-pass.md: ohne Stufe 3 wird NICHT angewendet" "ja" "$(grep -q 'ohne Stufe 3 wendet NICHT an' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
 janein "bestands-pass.md: der Aufrufer-Satz (Ertrag)" "ja" "$(grep -q 'Ertrag hängt am AUFRUFER' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
 janein "mind-rules Step 9b: Stufe 3 vor dem Anwenden" "ja" "$(grep -q 'STUFE 3 (Wort-Diff lesen' "$WURZEL/skills/mind-rules/SKILL.md" && echo ja || echo nein)"
+# v5.85.0: zweiter Traeger mind-claudemd — mit den CLAUDE.md-eigenen Unantastbaren
+janein "mind-claudemd: Step 5e VERDICHTEN vorhanden" "ja" "$(grep -q '^## Step 5e: .*VERDICHTEN' "$WURZEL/skills/mind-claudemd/SKILL.md" && echo ja || echo nein)"
+janein "mind-claudemd: Pipeline vorher/nachher als Gate" "ja" "$(grep -q 'kein Check neu rot' "$WURZEL/skills/mind-claudemd/SKILL.md" && echo ja || echo nein)"
+janein "mind-claudemd: Stufe 3 vor dem Anwenden" "ja" "$(grep -q 'STUFE 3 (Wort-Diff lesen' "$WURZEL/skills/mind-claudemd/SKILL.md" && echo ja || echo nein)"
+janein "mind-claudemd: verdichten als PFLICHTSCHRITT und in mind_schritt_start" "2" "$(grep -cE '^verdichten$|^mind_schritt_start .* verdichten' "$WURZEL/skills/mind-claudemd/SKILL.md")"
 
 echo
 echo "=============================================================================="
