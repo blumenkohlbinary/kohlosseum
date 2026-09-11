@@ -47,6 +47,11 @@ session_sampler
 source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 MIND_SKILL_VERSION="5.80.0"
+# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
+#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
+#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
+#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
+MIND_SKILL_VERSION="5.81.0"
 mind_schritt_start "$PROJ" mind-update claudemd_pipeline cleaner_stichprobe mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler
 ```
 
@@ -186,6 +191,23 @@ GET_MEM_RC=$?  # H1-Fix Skill-Review v3.3.1: $? in Variable capturen vor naechst
 if [ "$GET_MEM_RC" = "1" ]; then
   echo "WARN: MEMORY-Dir-Fallback aktiv — Slug-Mismatch erkannt" >&2
 fi
+
+# ⛔ v5.81.0 — UNTERORDNER-AUFBAU: das Memory gehoert zum cwd der RETTUNG, nicht
+#    zu $PROJ. Claude Code laedt das Memory des Ordners, in dem die Sitzung lief;
+#    $PROJ ist seit v5.80.0 die Wurzel mit dem Roster. Jede Rettung nennt ihren
+#    cwd (mind_rettung_cwd) — fehlt er (Rettung vor v5.81.0), gilt $PROJ wie bisher.
+#    ⭐ Diese Tabelle geht WOERTLICH an den memory-Agenten in Step 3.5: er schreibt
+#    die Erkenntnisse einer Rettung in DEREN Memory (Spalte 3), nie in $MEMORY_DIR,
+#    wenn die Spalte abweicht. Das ist kein Rueckfall auf ein fremdes Projekt
+#    (v5.70.0-Verbot): der Ordner kommt AUS DER RETTUNG, nicht aus einem `ls -t`.
+RETTUNGS_MEMORY=""
+while IFS= read -r _r; do
+  [ -n "$_r" ] || continue
+  _c=$(mind_rettung_cwd "$PROJ" "$_r" 2>/dev/null) || _c="$PROJ"
+  _m=$(get_memory_dir "$_c" 2>/dev/null) || true
+  RETTUNGS_MEMORY="${RETTUNGS_MEMORY}${_r}|${_c}|${_m}"$'\n'
+done < <(mind_rettungen "$PROJ" 2>/dev/null)
+[ -n "$RETTUNGS_MEMORY" ] && { echo "Memory je Rettung (rettung|cwd|memory):"; printf '%s' "$RETTUNGS_MEMORY" | sed 's/^/  /'; }
 
 # MEMORY.md (Hauptdatei)
 MEMORY_MAIN="$MEMORY_DIR/MEMORY.md"
@@ -801,6 +823,11 @@ festschreiben.
 
 Jeder bekommt:
 - Scope: `claude-md` / `memory` / `rules` / `custom-context`
+- ⛔ **`memory` (v5.81.0): die Tabelle `RETTUNGS_MEMORY` aus Step 1 woertlich** — je Rettung
+  der Ordner, in dem die Sitzung lief, und DESSEN Memory-Verzeichnis. Erkenntnisse aus
+  einer Rettung gehen in Spalte 3 dieser Zeile, nie pauschal in `$MEMORY_DIR`. Was fuer
+  ALLE Unterordner gilt, gehoert in die Wurzel-`CLAUDE.md`/-Rules (die laden ueberall),
+  nicht in neun Memories.
 - Mode: `knowledge-sync`
 - ⛔ **DRITTER AGENT-AUFTRAG: Context gegen Context (NEU v5.7.1).** Die bisherigen Agents
 fragen alle „Session gegen Datei". Der teuerste Fehler des Palvedo-Laufs vom 21.08.2026 war

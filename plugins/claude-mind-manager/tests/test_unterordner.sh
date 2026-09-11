@@ -13,7 +13,9 @@
 #      2  Rollen-Gate aus dem Unterordner findet den Roster -> sync still, andere laut
 #      4  ⛔ OHNE Roster: alles wie heute — byteweise gegen die alte Zeile
 #      5  Bilanz: hier nur der Wurzel-Teil (der Rest kommt mit v5.82.0)
-#    Prueffall 3 (/mind-all sieht beide Rettungen) braucht cwd= -> v5.81.0.
+#      3  (v5.81.0) zwei Rettungen aus zwei Unterordnern: OPEN und Kopf tragen cwd=,
+#         mind_rettung_cwd findet ihn, das Memory je Rettung ist das des cwd (§5),
+#         eine Rettung von vor v5.81.0 liefert rc 1 statt eines erfundenen Ordners
 # =============================================================================
 set -u
 WURZEL="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
@@ -89,6 +91,38 @@ janein "Rettung liegt in der Wurzel" "1" "$(ls "$R"/.claude-mind/rescued/*_chat.
 janein "⛔ im Unterordner liegt KEINE Rettung" "0" "$(ls "$A"/.claude-mind/rescued/*_chat.md 2>/dev/null | wc -l | tr -d ' ')"
 janein "OPEN traegt sid= der Untersitzung" "ja" "$(grep -q "sid=$ARB" "$R/.claude-mind/rescued/OPEN" 2>/dev/null && echo ja || echo nein)"
 janein "Herzschlag in der Wurzel" "ja" "$([ -f "$R/.claude-mind/hook-heartbeat" ] && echo ja || echo nein)"
+
+echo
+echo "=============================================================================="
+echo "  3) v5.81.0: cwd= je Rettung — der Sync-Chat sieht BEIDE und kennt ihren Ordner"
+echo "=============================================================================="
+# zweite Kompaktierung aus dem anderen Unterordner — eine Sitzung OHNE Roster-Zeile
+# (im Creator sind nicht alle neun Chats im Roster). Nicht Rita: die muss unten die
+# Schuld sehen, und wer selbst kompaktiert hat, bekommt zuerst die UEBERGABE.
+FREMD="44444444-dddd-4ddd-8ddd-444444444444"
+P2="$B/t.jsonl"; cp "$P" "$P2"
+printf '{"hook_event_name":"PreCompact","cwd":"%s","session_id":"%s","transcript_path":"%s","trigger":"manual"}'   "$B" "$FREMD" "$P2" | CLAUDE_PROJECT_DIR="$B" bash "$H/pre-compact.sh" >/dev/null 2>&1
+OPEN="$R/.claude-mind/rescued/OPEN"
+janein "OPEN traegt zwei Gruppen (zwei path=)" "2" "$(grep -c '^path=' "$OPEN" 2>/dev/null)"
+janein "jede Gruppe traegt cwd=" "2" "$(grep -c '^cwd=' "$OPEN" 2>/dev/null)"
+R1=$(mind_rettungen "$R" | sed -n 1p); R2=$(mind_rettungen "$R" | sed -n 2p)
+janein "mind_rettungen aus der Wurzel sieht BEIDE Rettungen (Prueffall 3)" "2" "$(mind_rettungen "$R" | grep -c .)"
+janein "Rettung 1 -> cwd = Creator Idee" "$A" "$(mind_rettung_cwd "$R" "$R1")"
+janein "Rettung 2 -> cwd = Creator Mind Sync" "$B" "$(mind_rettung_cwd "$R" "$R2")"
+# ⚠ MSYS wandelt /tmp/... beim Aufruf von python.exe in C:/Users/... um — der Kopf traegt
+#   die gemischte Form (cygpath -m); hash_project_dir versteht beide.
+janein "der Rettungskopf selbst nennt den cwd (gemischte Form)" "ja" "$(grep -q "^- cwd: \`$(cygpath -m "$A")\`" "$R1" && echo ja || echo nein)"
+# Rettung von VOR v5.81.0: kein cwd= in der Gruppe, keine Kopfzeile -> rc 1, kein erfundener Ordner
+ALT="$R/.claude-mind/rescued/20260101-000000_chat.md"
+printf '# Geretteter Chat\n\n- Quelle: x\n' > "$ALT"
+printf 'path=%s\nresume=\nsid=alt\n' "$ALT" >> "$OPEN"
+janein "⛔ Rettung ohne cwd -> Rueckgabe 1, keine Ausgabe" "1|" "$(c=$(mind_rettung_cwd "$R" "$ALT"); echo "$?|$c")"
+janein "   ... und die beiden neuen bleiben davon unberuehrt" "$B" "$(mind_rettung_cwd "$R" "$R2")"
+# §5: das Memory je Rettung ist das des cwd — nicht das der Wurzel, nicht `ls -t`
+LH2="$T/home2"; mkdir -p "$LH2"
+MA=$(HOME="$LH2" get_memory_dir "$(mind_rettung_cwd "$R" "$R1")" 2>/dev/null); MW=$(HOME="$LH2" get_memory_dir "$R" 2>/dev/null)
+janein "⭐ Memory der Rettung = Slug des cwd, NICHT der Wurzel" "nein" "$([ "$MA" = "$MW" ] && echo ja || echo nein)"
+janein "   ... und liegt unter dem Slug von 'Creator Idee'" "ja" "$(printf '%s' "$MA" | grep -q 'Creator-Idee' && echo ja || echo nein)"
 
 echo
 echo "=============================================================================="

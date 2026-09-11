@@ -75,7 +75,8 @@ if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
     else
       RS_WIN="$SAMPLER"; RT_WIN="$TRANSCRIPT_PATH"; RO_WIN="$RESCUE_FILE"
     fi
-    if RESCUE_OUT=$("$RPY" "$RS_WIN" --full "$RT_WIN" "$RO_WIN" 2>&1) && [ -s "$RESCUE_FILE" ]; then
+    # v5.81.0: --cwd = der Ordner der SITZUNG (CWD_URSPRUNG), nicht die Wurzel.
+  if RESCUE_OUT=$("$RPY" "$RS_WIN" --full "$RT_WIN" "$RO_WIN" --cwd "${CWD_URSPRUNG:-$PROJECT_DIR}" 2>&1) && [ -s "$RESCUE_FILE" ]; then
       RESCUE_N=$(echo "$RESCUE_OUT" | grep -oE '[0-9]+ Beitraege' | grep -oE '[0-9]+' | head -1)
 
       # --- Auftrags-Sicherung (v5.2.0; ab v5.2.1 MIT ZEITSTEMPEL) ---
@@ -259,6 +260,9 @@ if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
           echo "events=${RESCUE_N:-?}"
           echo "ts=$RTS"
           echo "sid=${SESSION_ID:-nosession}"
+          # v5.81.0: aus welchem Unterordner die Rettung stammt. Der Sync-Chat in
+          # der Wurzel schreibt jede Rettung in das Memory IHRES cwd (mind_rettung_cwd).
+          echo "cwd=${CWD_URSPRUNG:-$PROJECT_DIR}"
           echo "trigger=$TRIGGER"
           # v5.19.0: WARUM die Schuld besteht. Ohne diese zwei Zeilen sieht ein
           # Teilsync im Merker aus wie ein ausgefallener Sync — und der naechste

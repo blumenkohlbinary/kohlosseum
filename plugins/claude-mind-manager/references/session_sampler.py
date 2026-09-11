@@ -59,7 +59,7 @@ RELEVANT_PATTERNS = [
 USER_WEIGHT = 2
 
 
-def dump_full(jsonl_path, out_path):
+def dump_full(jsonl_path, out_path, cwd=None):
     """Voll-Rettung: jedes USER/ASSISTANT-Text-Event, ungekuerzt, chronologisch."""
     import datetime
     rows, n_user, n_asst = [], 0, 0
@@ -93,6 +93,10 @@ def dump_full(jsonl_path, out_path):
            f"- Quelle: `{jsonl_path}`",
            f"- Beitraege: {len(rows)}  ({n_user} USER / {n_asst} ASSISTANT)",
            f"- Gerettet: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+           # v5.81.0: aus welchem Ordner die Sitzung kam. Im Unterordner-Aufbau liegt
+           # die Rettung in der WURZEL, das Memory gehoert aber zum cwd — ohne diese
+           # Zeile wuesste der Sync-Chat nicht, in welchen Slug er schreiben soll.
+           f"- cwd: `{cwd}`" if cwd else "- cwd: (unbekannt — Rettung vor v5.81.0 oder ohne --cwd)",
            "",
            "> Vollstaendig und ungekuerzt. Tool-Aufrufe/-Ergebnisse sind bewusst nicht enthalten.",
            "", "---", ""]
@@ -457,9 +461,13 @@ def main(argv):
     # --full: Voll-Rettung (v5.1.0)
     if len(argv) > 1 and argv[1] == "--full":
         if len(argv) < 4:
-            print("usage: session_sampler.py --full <transcript.jsonl> <out.md>", file=sys.stderr)
+            print("usage: session_sampler.py --full <transcript.jsonl> <out.md> [--cwd <pfad>]", file=sys.stderr)
             return 2
-        return 0 if dump_full(argv[2], argv[3]) > 0 else 1
+        cwd = None
+        if "--cwd" in argv[4:]:
+            i = argv.index("--cwd", 4)
+            cwd = argv[i + 1] if i + 1 < len(argv) else None
+        return 0 if dump_full(argv[2], argv[3], cwd) > 0 else 1
 
     if len(argv) < 3:
         print("usage: session_sampler.py <transcript.jsonl> <out.json>", file=sys.stderr)

@@ -2681,3 +2681,38 @@ mind_projekt_wurzel() {
   printf '%s\n' "$start"
   return 0
 }
+
+
+# =============================================================================
+# mind_rettung_cwd — aus welchem Ordner eine Rettung stammt (v5.81.0)
+# =============================================================================
+# ⛔ WARUM. Im Unterordner-Aufbau liegen alle Rettungen in der WURZEL
+#    (mind_projekt_wurzel, v5.80.0). Claude Code laedt aber das Memory des cwd
+#    — nicht der Wurzel. Schreibt der Sync-Chat die Erkenntnisse einer
+#    Unterordner-Sitzung in den Wurzel-Slug, liest sie niemand (Auftrag
+#    nils-unterordner-aufbau.md §5; gemessen: Wurzel-Slug 9 Dateien, alle sechs
+#    Unterordner-Slugs leer).
+# ⭐ Zwei Quellen, in dieser Reihenfolge: die `cwd=`-Zeile der OPEN-Gruppe, die
+#    mit `path=<rettung>` beginnt; sonst die Kopfzeile `- cwd: ` der Rettung
+#    selbst. Beides schreibt pre-compact.sh seit v5.81.0.
+# ⚠ Rettung von vor v5.81.0: keine Ausgabe, Rueckgabe 1 — der Aufrufer nimmt
+#    dann $PROJ, wie bisher. Kein erfundener Ordner.
+# ⛔ Der Pfad geht ueber ENVIRON an awk, nicht ueber -v: -v deutet Backslashes
+#    ("C:\CD" wuerde zu "C:CD").
+mind_rettung_cwd() {
+  local proj="${1:-}" r="${2:-}" open c=""
+  { [ -n "$proj" ] && [ -n "$r" ]; } || return 1
+  open="$proj/.claude-mind/rescued/OPEN"
+  if [ -f "$open" ]; then
+    c=$(MIND_P="path=$r" awk '
+      index($0, ENVIRON["MIND_P"]) == 1 { an = 1; next }
+      an && /^path=/ { exit }
+      an && /^cwd=/  { print substr($0, 5); exit }' "$open" 2>/dev/null)
+  fi
+  if [ -z "$c" ] && [ -f "$r" ]; then
+    c=$(grep -m1 '^- cwd: `' "$r" 2>/dev/null | sed 's/^- cwd: `//; s/`$//')
+  fi
+  [ -n "$c" ] || return 1
+  printf '%s\n' "$c"
+  return 0
+}
