@@ -139,7 +139,7 @@ K=$(bilanz "$D/heim" "$D/proj")
 janein "3 Zeilen trotz fehlendem Umbruch" "3" "$(feld "$K" ZEILEN)"
 rm -rf "$D"
 
-echo "== 9/10  Unparsbarer Vorstand erzeugt KEINEN Scheinzuwachs =="
+echo "== 9/11  Unparsbarer Vorstand erzeugt KEINEN Scheinzuwachs =="
 # ⛔ JE FALL GENAU EIN SIGNAL. Die erste Fassung schrieb 'kaputt\nZEILEN=abc' —
 #    da fehlte ANWEISUNGEN= ganz, der Fall bestand also aus ZWEI Gruenden, und
 #    eine Sabotage am ZEILEN-Zweig blieb unsichtbar (Gegenkontrolle S3, gefunden
@@ -170,7 +170,7 @@ janein "9c ohne Standdatei -> 'erster Lauf'" "ja" \
   "$(echo "$L3" | grep -q 'erster Lauf' && echo ja || echo nein)"
 rm -rf "$D"
 
-echo "== 10/10  --merken schreibt den Stand, --vergleichen liest ihn =="
+echo "== 10/11  --merken schreibt den Stand, --vergleichen liest ihn =="
 D=$(bau)
 bilanz "$D/heim" "$D/proj" --merken >/dev/null
 janein "Standdatei existiert" "ja" \
@@ -182,6 +182,39 @@ rm -f "$D/proj/.claude-mind/kontext-bilanz"
 bilanz "$D/heim" "$D/proj" >/dev/null
 janein "ohne Modus wird NICHTS geschrieben" "nein" \
   "$([ -f "$D/proj/.claude-mind/kontext-bilanz" ] && echo ja || echo nein)"
+rm -rf "$D"
+
+echo "== 11/11  CRLF als BEFUND (v5.93.0): gemeldet, nicht gewertet, nicht angefasst =="
+# ⛔ Byte-genau, nie `grep -c $'\r'`. Eine Datei mit 3 CRLF-Zeilen, der Rest LF.
+z2() { echo "$1" | sed -n '2p' | tr ' ' '\n' | grep -m1 "^$2=" | cut -d= -f2; }
+D=$(bau)
+L0=$(bilanz "$D/heim" "$D/proj")
+janein "LF-Welt: CRLF=0" "0" "$(z2 "$L0" CRLF)"
+janein "   ... CRLF_B=0" "0" "$(z2 "$L0" CRLF_B)"
+printf 'MUST eins.\r\nzwei\r\ndrei\r\n' > "$D/proj/.claude/rules/crlf.md"
+L1=$(bilanz "$D/heim" "$D/proj")
+janein "eine CRLF-Datei -> CRLF=1" "1" "$(z2 "$L1" CRLF)"
+janein "   ... CRLF_B = Zahl der CR-Bytes, hier 3" "3" "$(z2 "$L1" CRLF_B)"
+# ⛔ Zeile 1 bleibt byteweise die alte Form — die Parser (feld, kontext-wache) lesen sie.
+janein "Zeile 1 traegt weiter genau die vier Schluessel" "ZEILEN ANWEISUNGEN DATEIEN BYTES" \
+  "$(echo "$L1" | head -1 | tr ' ' '\n' | cut -d= -f1 | tr '\n' ' ' | sed 's/ $//')"
+janein "   ... und DATEIEN zaehlt die CRLF-Datei mit (5)" "5" "$(feld "$L1" DATEIEN)"
+# ⛔ `grep -m1 -oE 'BYTES=[0-9]+'` (kontext-wache.sh) darf die zweite Zeile NICHT treffen.
+janein "grep -m1 'BYTES=' trifft die Bilanz, nicht den CRLF-Schluessel" \
+  "$(feld "$L1" BYTES)" "$(echo "$L1" | grep -m1 -oE 'BYTES=[0-9]+' | cut -d= -f2)"
+L2=$(bilanz "$D/heim" "$D/proj" --vergleichen)
+janein "--vergleichen nennt die Datei" "ja" \
+  "$(echo "$L2" | grep -q 'CRLF  .claude/rules/crlf.md  (+3 B)' && echo ja || echo nein)"
+janein "   ... und die Summe als Meldung, kein Gate" "ja" \
+  "$(echo "$L2" | grep -q '1 Kontextdatei(en) mit CRLF, +3 B' && echo ja || echo nein)"
+janein "   ... Rueckgabe bleibt 0 (kein Gate)" "0" \
+  "$( ( export HOME="$D/heim"; . "$LIB" >/dev/null 2>&1; mind_kontext_bilanz "$D/proj" --vergleichen >/dev/null 2>&1; echo $? ) )"
+janein "die Datei ist unveraendert (nicht umgewandelt)" "3/3" \
+  "$( ( . "$LIB" >/dev/null 2>&1; mind_zeilenenden "$D/proj/.claude/rules/crlf.md" ) )"
+rm -f "$D/proj/.claude/rules/crlf.md"
+L4=$(bilanz "$D/heim" "$D/proj" --vergleichen)
+janein "ohne CRLF-Datei: keine CRLF-Berichtszeile" "nein" \
+  "$(echo "$L4" | grep -q 'mit CRLF' && echo ja || echo nein)"
 rm -rf "$D"
 
 echo

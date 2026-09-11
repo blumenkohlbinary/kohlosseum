@@ -1746,13 +1746,26 @@ mind_commits_seit() {
 #   liegt eher hoeher — Anweisungen ohne Marke gibt es reichlich. Als Trend ist
 #   sie brauchbar, als Absolutwert nicht. Steht so auch in der Ausgabe.
 #
+# ⚠ CRLF ALS BEFUND (v5.93.0). `core.autocrlf=true` schreibt jede `.md`, die Git
+#   anfasst, mit CRLF in den Arbeitsbaum — und jedes `\r` laedt mit. Gemessen
+#   11.09.2026: Zustellplan 5 von 15 Kontextdateien, hier 2 von 8. Die Bilanz
+#   nennt sie (Zeile 2, `CRLF=<dateien> CRLF_B=<bytes>`, mit --vergleichen dazu
+#   eine Zeile je Datei) und tut sonst NICHTS: kein Gate, keine Umwandlung.
+#   Gezaehlt wird mit `mind_zeilenenden` — ⛔ nie `grep -c $'\r'`, das zaehlt in
+#   Git Bash jede Zeile. ⚠ Die Schluessel heissen absichtlich NICHT `*BYTES=`
+#   oder `*DATEIEN=`: `grep -oE 'BYTES=[0-9]+'` (kontext-wache.sh) traefe sonst
+#   auch die zweite Zeile.
+#
 # Aufruf:  mind_kontext_bilanz <projekt> [--merken|--vergleichen]
 # Ausgabe: Zeile 1 maschinell:  ZEILEN=n ANWEISUNGEN=n DATEIEN=n BYTES=n
+#          Zeile 2 maschinell:  CRLF=n CRLF_B=n   (Dateien mit CRLF, Bytes der \r)
 #          mit --vergleichen und vorhandenem Vorstand zusaetzlich die Berichtszeile
+#          und, falls CRLF>0, eine Zeile je betroffener Datei
 # Rueckgabe: 0 = gemessen  ·  1 = nichts messbar (keine einzige Datei gefunden)
 mind_kontext_bilanz() {
   local projekt="${1:-}" modus="${2:-}"
   local liste zeilen=0 anw=0 bytes=0 dateien=0 f n a b
+  local crlf_n=0 crlf_b=0 crlf_liste="" ze cr
   local stand="$projekt/.claude-mind/kontext-bilanz$(mind_kontext_kennung "$projekt")"
 
   [ -n "$projekt" ] || { echo "ZEILEN=0 ANWEISUNGEN=0 DATEIEN=0 BYTES=0"; return 1; }
@@ -1809,10 +1822,19 @@ mind_kontext_bilanz() {
     b=$(wc -c < "$f" 2>/dev/null); case "$b" in ''|*[!0-9]*) b=0 ;; esac
     zeilen=$((zeilen + n)); anw=$((anw + a)); bytes=$((bytes + b))
     dateien=$((dateien + 1))
+    # v5.93.0: CRLF zaehlen — `mind_zeilenenden` liefert "<crlf>/<lf>", byte-genau.
+    ze=$(mind_zeilenenden "$f" 2>/dev/null); cr="${ze%%/*}"
+    case "$cr" in ''|*[!0-9]*) cr=0 ;; esac
+    if [ "$cr" -gt 0 ]; then
+      crlf_n=$((crlf_n + 1)); crlf_b=$((crlf_b + cr))
+      crlf_liste="$crlf_liste$f|$cr
+"
+    fi
   done < "$liste"
   rm -f "$liste"
 
   echo "ZEILEN=$zeilen ANWEISUNGEN=$anw DATEIEN=$dateien BYTES=$bytes"
+  echo "CRLF=$crlf_n CRLF_B=$crlf_b"
   [ "$dateien" -eq 0 ] && return 1
 
   # ── Vergleich gegen den gemerkten Vorstand ─────────────────────────────────
@@ -1844,6 +1866,17 @@ mind_kontext_bilanz() {
   elif [ "$modus" = "--vergleichen" ]; then
     printf 'Dauerkontext: %s Zeilen · %s Anweisungen (erster Lauf, kein Vorstand)\n' \
       "$zeilen" "$anw"
+  fi
+  # v5.93.0: der CRLF-Befund im Bericht — eine Zeile je Datei, dann die Summe.
+  #   Meldung, kein Gate: wer sie beheben will, setzt `*.md text eol=lf` in
+  #   .gitattributes und normalisiert einmal (`git add --renormalize .`).
+  if [ "$modus" = "--vergleichen" ] && [ "$crlf_n" -gt 0 ]; then
+    printf '%s' "$crlf_liste" | while IFS='|' read -r f cr; do
+      [ -n "$f" ] || continue
+      printf '              CRLF  %s  (+%s B)\n' "${f#"$projekt"/}" "$cr"
+    done
+    printf '              %s Kontextdatei(en) mit CRLF, +%s B — Meldung, kein Gate\n' \
+      "$crlf_n" "$crlf_b"
   fi
 
   # ── Merken ─────────────────────────────────────────────────────────────────
