@@ -97,6 +97,11 @@ MIND_SKILL_VERSION="5.90.0"
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
 MIND_SKILL_VERSION="5.91.0"
+# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
+#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
+#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
+#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
+MIND_SKILL_VERSION="5.92.0"
 mind_schritt_start "$PROJ" mind-files bestandszahlen_kandidaten cleaner_stichprobe mind_check_tools_have_rules mind_hook_health mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -935,6 +940,17 @@ wenn jemand eine Nachricht schickt.
 ⛔ **Die Eigentuemer-Tabelle kommt aus dem TATSAECHLICHEN Bestand**, nie aus einer festen
 Liste — und `~/.claude/projects/<slug>/memory/` steht immer drin, weil es **ausserhalb**
 des Projektordners liegt und sonst zum Streitfall wird.
+
+⭐ **Unterordner-Aufbau (v5.92.0, §10a Stand 11.09.2026):** liegt in der Wurzel ein
+Unterordner mit eigenem `.claude/`, `.claude-mind/` oder `CLAUDE.md`, traegt die
+Rollentabelle eine **fuenfte Spalte `Ordner`** (relativ zur Wurzel, `Creator Stimme/`) —
+dort Pflicht, sonst weiss weder Sync noch Manager, wo eine Sitzung lebt. Ohne solche
+Unterordner bleibt es bei vier Spalten. `--pruefe` nimmt beide Formen: fuenf Spalten ohne
+Aufbau sind ein Hinweis, ein Aufbau ohne Spalte `Ordner` ist rot, ein eingetragener Ordner,
+den es nicht gibt, ebenfalls (Ausfuellfehler 1).
+⛔ **Spalte 3 ist die BLANKE UUID** (`$CLAUDE_CODE_SESSION_ID`), nie `local_…` — das Geruest
+schreibt seit v5.92.0 `<uuid>` vor, und `--pruefe` meldet die `local_…`-Form: das Rollen-Gate
+vergleicht mit der blanken Kennung und faende diese Sitzung nie (gemessen 10.09.2026).
 
 ### Pruefung 8: Abschnittsfolge (`--pruefe`)
 

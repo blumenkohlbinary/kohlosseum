@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # rollen_geruest.py — der AUFRUF-Vertrag, nicht die Logik.
 #
-# ⭐ Die Logik prueft `--selbsttest` (24 Faelle, mit Positiv- UND
-#   Negativkontrolle). Diese Sammlung prueft, was er NICHT sieht: die
+# ⭐ Die Logik prueft `--selbsttest` (mit Positiv- UND Negativkontrolle;
+#   die Zahl der Faelle steht in seiner Ausgabe, nicht hier). Diese Sammlung prueft, was er NICHT sieht: die
 #   Rueckgabewerte, das Verhalten ohne Argumente und ohne Umgebung.
 #
 # ⛔ WARUM DAS EINE EIGENE SAMMLUNG BRAUCHT: v5.35.0 hatte 24 gruene Faelle,
@@ -77,6 +77,46 @@ printf '\n## Etwas Projekteigenes\n\ntext\n' >> "$TMP/rollen.md"
 OUT3=$(python "$S" --pruefe "$TMP/rollen.md" 2>&1); RC3=$?
 pruef "zusaetzlicher Abschnitt -> 0" 0 "$RC3"
 hat "  ... und wird als erlaubt gemeldet" "projekteigener Abschnitt" "$OUT3"
+
+echo
+echo "=== 8) ⭐ UNTERORDNER-AUFBAU (v5.92.0): fuenfte Spalte Ordner, ueber den AUFRUF ==="
+# Fixture aus test_unterordner.sh (v5.80.0): Wurzel mit Roster-Ort, zwei Unterordner
+# mit eigenem Kontext, einer ohne.
+U="$TMP/Creator"; mkdir -p "$U/.claude/rules" "$U/Creator Idee/.claude" "$U/Creator Mind Sync" "$U/docs"
+printf '# x
+' > "$U/Creator Mind Sync/CLAUDE.md"
+CLAUDE_PLUGIN_ROOT="$R" python "$S" --projekt "$U" > "$U/.claude/rules/rollen.md" 2>/dev/null
+pruef "Erzeugung im Unterordner-Aufbau -> 0" 0 "$?"
+G5=$(cat "$U/.claude/rules/rollen.md")
+hat "Kopfzeile traegt die fuenfte Spalte Ordner" "| Rolle | Name | sessionId | Tut | Ordner |" "$G5"
+hat "  ... die gemessenen Unterordner stehen drin" '`Creator Idee/` · `Creator Mind Sync/`' "$G5"
+case "$G5" in *'`docs/` ·'*|*'· `docs/`'*) ROT=$((ROT+1)); echo "  [ROT] docs/ ohne Kontext gilt als Arbeitsplatz";;
+  *) GRUEN=$((GRUEN+1)); echo "  [ok ] docs/ (kein eigener Kontext) ist kein Arbeitsplatz";; esac
+python "$S" --pruefe "$U/.claude/rules/rollen.md" >/dev/null 2>&1
+pruef "das fuenfspaltige Erzeugnis besteht --pruefe -> 0" 0 "$?"
+# ⛔ Vier Spalten in einem Unterordner-Aufbau: --pruefe leitet die Wurzel aus dem
+#   Dateiort ab (.claude/rules/) und wird rot.
+cp "$TMP/rollen.md" "$U/.claude/rules/rollen.md"
+OUT8=$(python "$S" --pruefe "$U/.claude/rules/rollen.md" 2>&1); RC8=$?
+pruef "vier Spalten bei Unterordner-Aufbau -> 1" 1 "$RC8"
+hat "  ... und nennt die fehlende Spalte" "keine Spalte \`Ordner\`" "$OUT8"
+# Fuenf Spalten ohne Aufbau: Hinweis, rc 0.
+mkdir -p "$TMP/proj/.claude/rules"; printf '%s
+' "$G5" > "$TMP/proj/.claude/rules/rollen.md"
+OUT9=$(python "$S" --pruefe "$TMP/proj/.claude/rules/rollen.md" 2>&1); RC9=$?
+pruef "fuenf Spalten ohne Unterordner-Aufbau -> 0 (Hinweis)" 0 "$RC9"
+hat "  ... der Hinweis steht da" "nicht noetig" "$OUT9"
+# ⛔ Ohne Unterordner-Aufbau: vier Spalten, kein Wort von Ordnern (byteweise wie vorher).
+case "$G" in *"Ordner |"*) ROT=$((ROT+1)); echo "  [ROT] vierspaltiges Projekt bekam eine Ordner-Spalte";;
+  *) GRUEN=$((GRUEN+1)); echo "  [ok ] ohne Unterordner-Aufbau bleibt die Tabelle vierspaltig";; esac
+# ⛔ §10a 11.09.2026: Spalte 3 ist die blanke UUID, nie local_…
+case "$G" in *'| `local_'*) ROT=$((ROT+1)); echo "  [ROT] Platzhalter local_… steht noch in der Tabelle";;
+  *) GRUEN=$((GRUEN+1)); echo "  [ok ] Platzhalter in Spalte 3 ist nicht mehr local_…";; esac
+hat "  ... sondern <uuid>" '`<uuid>`' "$G"
+sed 's/`<uuid>`/`local_aaaaaaaa-1111-4111-8111-111111111111`/; s/\*\*<Name>\*\*/**Rita**/' "$TMP/rollen.md" > "$TMP/local.md"
+OUT10=$(python "$S" --pruefe "$TMP/local.md" 2>&1); RC10=$?
+pruef "ausgefuellte local_…-Kennung -> 1" 1 "$RC10"
+hat "  ... und sagt, dass das Gate die blanke UUID liest" "BLANKEN UUID" "$OUT10"
 
 echo
 echo "  $GRUEN gruen · $ROT rot"

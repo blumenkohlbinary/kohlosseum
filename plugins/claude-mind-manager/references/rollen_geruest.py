@@ -27,9 +27,26 @@
    schlimmer als eine Luecke: die Adressierung trifft dann ins Leere, und das
    faellt erst auf, wenn jemand eine Nachricht schickt.
 
+⚠ UNTERORDNER-AUFBAU (§10a, Stand 11.09.2026 — Creator, neun Rollen in neun
+   Unterordnern, der Roster in der Wurzel): die Rollentabelle traegt eine FUENFTE
+   Spalte `Ordner`, relativ zur Wurzel (`Creator Stimme/`). Ohne sie weiss weder
+   Sync noch Manager, wo eine Sitzung lebt. Erkannt wird der Aufbau am BESTAND:
+   ein Unterordner mit eigenem `.claude/`, `.claude-mind/` oder `CLAUDE.md`
+   (`unterordner()`). Ohne solche Unterordner bleibt es bei vier Spalten.
+   `--pruefe` nimmt beide Formen; fuenf Spalten ohne Aufbau sind ein Hinweis,
+   ein Aufbau ohne Spalte `Ordner` ist ein Befund.
+
+⛔ SPALTE 3 IST DIE BLANKE UUID (`echo "$CLAUDE_CODE_SESSION_ID"`), NIE die
+   `local_…`-Form aus `list_sessions` — §10a seit 11.09.2026. Bis dahin schrieb
+   dieses Geruest `local_…` als Platzhalter vor, und das Rollen-Gate (v5.54.0)
+   konnte damit KEINE Sitzung je erkennen. `--pruefe` meldet die falsche Form.
+
 AUFRUF
     rollen_geruest.py --projekt <dir>            Geruest nach stdout
     rollen_geruest.py --pruefe <rollen.md>       Abschnittsfolge pruefen
+                                                 (liegt sie unter .claude/rules/,
+                                                  wird der Unterordner-Aufbau der
+                                                  Wurzel mitgeprueft)
     rollen_geruest.py --selbsttest
 
 RUECKGABE
@@ -66,7 +83,7 @@ ABSCHNITTE = [
 #   Gefunden hat es ein Mensch beim Lesen, keine Pruefung.
 QUELLE_NOTIZ = "6e27ab4e46f94884b88f56a1e7c46f27"   # Joplin `\ud83e\udded Manager-Chats`
 QUELLE_ABSCHNITT = "10a"
-QUELLE_STAND = "2026-09-09"
+QUELLE_STAND = "2026-09-11"
 
 # ⭐ Die vier Saetze aus §10a. Jeder stammt aus einem Vorfall; sie werden
 #   als TEILSTRING geprueft, damit Zeilenumbrueche nicht stoeren.
@@ -137,6 +154,27 @@ def bestand(projekt):
             and os.path.isdir(os.path.join(projekt, n))]
 
 
+# ⛔ Was einen Unterordner zu einem EIGENEN Arbeitsplatz macht. Dieselben drei
+#   Marken, an denen `mind_projekt_wurzel` (lib.sh, v5.80.0) und der Sampler den
+#   Aufbau erkennen — ein vierter Erkenner hier hiesse: zwei Messungen.
+_KONTEXT_MARKEN = (".claude", ".claude-mind", "CLAUDE.md")
+
+
+def unterordner(projekt):
+    """Die Unterordner mit EIGENEM Kontext — der Unterordner-Aufbau, gemessen.
+
+    -> Liste der Namen (relativ zur Wurzel), leer = kein Unterordner-Aufbau.
+    ⚠ Nur oberste Ebene. Ein `.claude/` zwei Ebenen tiefer ist ein eigenes
+      Projekt, kein Arbeitsplatz dieses Rosters.
+    """
+    raus = []
+    for d in bestand(projekt):
+        p = os.path.join(projekt, d)
+        if any(os.path.exists(os.path.join(p, m)) for m in _KONTEXT_MARKEN):
+            raus.append(d)
+    return raus
+
+
 def werkzeuge(plugin_root=None):
     """Die projektweiten Commands — aus dem INSTALLIERTEN Paket gelesen.
 
@@ -158,6 +196,7 @@ def geruest(projekt, plugin_root=None, rollen=3):
     """Das Geruest nach §10a — Platzhalter bleiben Platzhalter."""
     name = os.path.basename(os.path.abspath(projekt.rstrip("/\\")))
     dirs = bestand(projekt)
+    uo = unterordner(projekt)
     mem = memory_pfad(projekt, plugin_root)
     wz = werkzeuge(plugin_root)
 
@@ -186,14 +225,37 @@ def geruest(projekt, plugin_root=None, rollen=3):
     #   \u26d4 Genau das war am 09.09.2026 schon Stunden nach dem Eintragen der Fall
     #     \u2014 eine von drei Zeilen verwies auf eine Id ohne Transkript. Deshalb
     #     prueft `--pruefe` sie gegen die Wirklichkeit, statt ihr zu glauben.
-    a("| Rolle | Name | sessionId | Tut |")
-    a("|---|---|---|---|")
-    a("| **manager** | **<Name>** | `local_\u2026` | liest, beauftragt, "
-      "pr\u00fcft nach. \u26d4 **Schreibt keinen Code** |")
-    a("| **arbeiter** | **<Name>** | `local_\u2026` | baut, misst, commitet |")
-    a("| **sync** | **<Name>** | `local_\u2026` | f\u00e4hrt die projektweiten "
-      "Werkzeuge. \u26d4 **Baut nichts, entscheidet nichts** |")
+    # \u26d4 `<uuid>`, nicht `local_\u2026` (\u00a710a, 11.09.2026): Spalte 3 liest das
+    #   Rollen-Gate, und es vergleicht mit der BLANKEN Kennung aus dem Hook-Input.
+    #   Ein Platzhalter in der falschen Form leitet den Nutzer in die falsche
+    #   Spalte \u2014 am 10.09.2026 stand `local_\u2026` in einem echten Roster, und das
+    #   Gate fand keinen der drei.
+    # \u2b50 Unterordner-Aufbau: fuenfte Spalte `Ordner`, Pflicht, relativ zur
+    #   Wurzel. Sie wird nur angelegt, wenn der Bestand einen solchen Aufbau
+    #   zeigt \u2014 sonst bleibt die Tabelle byteweise vierspaltig.
+    o5 = " <Ordner>/ |" if uo else ""
+    a("| Rolle | Name | sessionId | Tut |%s" % (" Ordner |" if uo else ""))
+    a("|---|---|---|---|%s" % ("---|" if uo else ""))
+    a("| **manager** | **<Name>** | `<uuid>` | liest, beauftragt, "
+      "pr\u00fcft nach. \u26d4 **Schreibt keinen Code** |%s" % o5)
+    a("| **arbeiter** | **<Name>** | `<uuid>` | baut, misst, commitet |%s" % o5)
+    a("| **sync** | **<Name>** | `<uuid>` | f\u00e4hrt die projektweiten "
+      "Werkzeuge. \u26d4 **Baut nichts, entscheidet nichts** |%s" % o5)
     a("")
+    a("\u26d4 **Spalte 3 ist die BLANKE UUID aus `echo \"$CLAUDE_CODE_SESSION_ID\"` "
+      "\u2014 NIE die `local_\u2026`-Form aus")
+    a("`list_sessions`.** Zwei getrennte Namensr\u00e4ume; `local_\u2026` braucht man "
+      "nur zum Anschreiben")
+    a("(`send_message`), nie im Roster.")
+    a("")
+    if uo:
+        a("\u26a0 **Unterordner-Aufbau** \u2014 gemessen: %d Unterordner mit eigenem "
+          "Kontext (%s)." % (len(uo), " \u00b7 ".join("`%s/`" % u for u in uo)))
+        a("Die Spalte `Ordner` ist hier **Pflicht**, relativ zur Wurzel: je Rolle "
+          "den Ordner eintragen, in dem")
+        a("die Sitzung l\u00e4uft. Ohne sie wei\u00df weder Sync noch Manager, wo eine "
+          "Sitzung lebt.")
+        a("")
     a("Titel: `<Rollen-Emoji> <Vorname> \u00b7 <Rolle> \u00b7 %s` \u2014 "
       "\U0001f9ed manager \u00b7 \U0001f527 arbeiter \u00b7 \U0001f9e0 sync." % name)
     a("\u26a0 Bist du keine dieser Rollen, gilt diese Datei nicht \u2014 normal "
@@ -370,7 +432,7 @@ def _platzhalter(s):
     """Ist die Zelle noch ein Platzhalter aus dem Geruest?
 
     ⛔ GEMESSEN AM EIGENEN ERZEUGNIS, nicht angenommen: `geruest()` schreibt
-       `**<Name>**` und `` `local_…` ``. Eine Zelle ist also unausgefuellt,
+       `**<Name>**`, `` `<uuid>` `` und `<Ordner>/`. Eine Zelle ist also unausgefuellt,
        wenn sie spitze Klammern oder Auslassungspunkte traegt — nicht, wenn sie
        leer ist. Die erste Fassung dieses Melders nahm "leer" an und schwaerzte
        damit JEDES frisch erzeugte Roster an.
@@ -425,6 +487,14 @@ def kennungen_pruefen(text):
         if _platzhalter(name) and _platzhalter(kenn):
             continue          # unausgefuelltes Geruest — dazu wird nichts gesagt
         gesehen[rolle] = (not _platzhalter(kenn)) and kennung_gueltig(kenn)
+        # ⛔ Die FALSCHE FORM ist der belegte Fall (10.09.2026): drei Zeilen mit
+        #   `local_…`, formal gueltig, und das Gate fand keine. `kennung_gueltig`
+        #   sieht das nicht — die Form ist lang genug und besteht aus
+        #   Kennungszeichen. Deshalb hier, benannt.
+        if kenn.startswith("local_"):
+            B.append("%s traegt in Spalte 3 die `local_…`-Form aus `list_sessions` "
+                     "— das Rollen-Gate vergleicht mit der BLANKEN UUID aus "
+                     "`$CLAUDE_CODE_SESSION_ID` und findet diese Sitzung nie" % rolle)
 
     if not gesehen:
         return B, H
@@ -449,8 +519,76 @@ def kennungen_pruefen(text):
     #   keinen einzigen belegten Fall. `negativbefund-ist-ein-ergebnis`.
     return B, H
 
-def pruefe(text):
+def _zellen(zeile):
+    """Die Zellen einer Tabellenzeile, roh (ohne aeussere Pipes)."""
+    return zeile.strip().strip("|").split("|")
+
+
+def spalten_pruefen(text, uo=None, projekt=None):
+    """Vier oder fuenf Spalten — passt die Tabelle zum Aufbau? (befunde, hinweise)
+
+    uo = Liste der Unterordner mit eigenem Kontext, `None` = unbekannt (dann
+    wird nur die Form der Tabelle geprueft, nicht ihr Verhaeltnis zum Bestand).
+
+    | Tabelle   | Bestand            | Ergebnis |
+    |-----------|--------------------|----------|
+    | 5 Spalten | kein Unterordner   | Hinweis  |
+    | 4 Spalten | Unterordner-Aufbau | ⛔ BEFUND |
+    | 5 Spalten, 5. heisst nicht `Ordner` | — | ⛔ BEFUND (umbenannt) |
+    | Ordner-Zelle nennt einen Ordner, den es nicht gibt | — | ⛔ BEFUND (Ausfuellfehler 1) |
+    """
+    B, H = [], []
+    kopf = None
+    zeilen = text.splitlines()
+    for i, z in enumerate(zeilen):
+        if z.lstrip().startswith("|") and _zelle(z, 1) == "rolle":
+            kopf = i
+            break
+    if kopf is None:
+        return B, H
+    n = len(_zellen(zeilen[kopf]))
+    if n == 5:
+        if _normal(_zellen(zeilen[kopf])[4].strip().lower()) != "ordner":
+            B.append("die fuenfte Spalte der Rollentabelle heisst %r, §10a nennt "
+                     "sie `Ordner` — umbenannt?" % _zellen(zeilen[kopf])[4].strip())
+        if uo is not None and not uo:
+            H.append("fuenf Spalten, aber kein Unterordner mit eigenem Kontext "
+                     "gemessen — Spalte `Ordner` ist hier nicht noetig (zulaessig)")
+    elif n == 4:
+        if uo:
+            B.append("Unterordner-Aufbau gemessen (%s), aber die Rollentabelle hat "
+                     "keine Spalte `Ordner` — weder Sync noch Manager wissen, wo "
+                     "eine Sitzung lebt" % " · ".join("`%s/`" % u for u in uo))
+    else:
+        B.append("die Rollentabelle hat %d Spalten, §10a kennt vier oder fuenf" % n)
+        return B, H
+
+    if n == 5:
+        for z in zeilen[kopf + 2:]:
+            if not z.lstrip().startswith("|"):
+                break
+            if _zelle(z, 1) not in _ROLLEN:
+                continue
+            name = _zelle(z, 2)
+            ordner = _zellen(z)[4].strip().replace("`", "") if len(_zellen(z)) > 4 else ""
+            if _platzhalter(name):
+                continue
+            if _platzhalter(ordner):
+                if uo:
+                    B.append("%s hat einen Namen, aber keinen Ordner in Spalte 5 "
+                             "— im Unterordner-Aufbau ist sie Pflicht" % _zelle(z, 1))
+                continue
+            if projekt and not os.path.isdir(os.path.join(projekt, ordner.rstrip("/\\"))):
+                B.append("%s: Ordner %r gibt es unter der Wurzel nicht "
+                         "(Ausfuellfehler 1)" % (_zelle(z, 1), ordner))
+    return B, H
+
+
+def pruefe(text, projekt=None):
     """Pruefung 8: Abschnittsfolge und Saetze. (befunde, hinweise)
+
+    projekt = Wurzel, falls bekannt — dann wird der Unterordner-Aufbau des
+    Bestands gegen die Spaltenzahl der Rollentabelle gehalten.
 
     ⭐ WEGLASSEN IST ERLAUBT. Geprueft wird, dass die vorhandenen Abschnitte
        in der Reihenfolge von §10a stehen und woertlich so heissen — nicht,
@@ -519,6 +657,10 @@ def pruefe(text):
     B2, H2 = kennungen_pruefen(text)
     B.extend(B2)
     H.extend(H2)
+    uo = unterordner(projekt) if projekt else None
+    B3, H3 = spalten_pruefen(text, uo, projekt)
+    B.extend(B3)
+    H.extend(H3)
     for name, teil in SAETZE:
         if teil not in text:
             B.append("Pflichtsatz fehlt \u2014 %s (%r)" % (name, teil))
@@ -686,13 +828,13 @@ def selbsttest():
     #   Sitzung?" (unbeantwortbar), hier "STEHT da eine Kennung?" (ablesbar).
     def _tab(sync_kennung, mit_sync=True):
         z = ["| Rolle | Name | sessionId | Tut |", "|---|---|---|---|",
-             "| **manager** | **Anton** | `local_aaaaaaaa-1111` | liest |",
-             "| **arbeiter** | **Nils** | `local_bbbbbbbb-2222` | baut |"]
+             "| **manager** | **Anton** | `aaaaaaaa-1111-4111-8111-111111111111` | liest |",
+             "| **arbeiter** | **Nils** | `bbbbbbbb-2222-4222-8222-222222222222` | baut |"]
         if mit_sync:
             z.append("| **sync** | **Rita** | %s | faehrt |" % sync_kennung)
         return "\n".join(z)
 
-    B14, H14 = kennungen_pruefen(_tab("`local_cccccccc-3333`"))
+    B14, H14 = kennungen_pruefen(_tab("`cccccccc-3333-4333-8333-333333333333`"))
     pruef("⭐ POSITIVKONTROLLE: alle drei mit Kennung -> kein Befund", B14, [])
     pruef("   ... und auch kein Hinweis", H14, [])
 
@@ -712,9 +854,85 @@ def selbsttest():
     # ⚠ Und die Gegenprobe dazu: ein AUSGEFUELLTER Name neben einem
     #   Platzhalter-Zeiger ist sehr wohl ein Befund. Ohne diesen Fall koennte
     #   `_platzhalter` alles verschlucken und der Melder waere stumm.
-    halb = _tab("`local_\u2026`")
+    halb = _tab("`<uuid>`")
     B19, _ = kennungen_pruefen(halb)
     pruef("⛔ echter Name + Platzhalter-Kennung -> BEFUND", len(B19), 1)
+
+    # ⛔ Der belegte Fall vom 10.09.2026: formal gueltig, falscher Namensraum.
+    B20, _ = kennungen_pruefen(_tab("`local_cccccccc-3333-4333-8333-333333333333`"))
+    pruef("⛔ `local_…`-Form in Spalte 3 -> BEFUND (Gate liest die blanke UUID)",
+          any("local_" in x for x in B20), True)
+    # ⚠ Als ZELLE gesucht, nicht als Wort: der Erklaersatz im Geruest nennt
+    #   `local_…` ausdruecklich als die falsche Form.
+    pruef("   ... und das Geruest schreibt sie nicht mehr vor",
+          "| `local_" in g, False)
+
+    print()
+    print("=== 10) ⭐ UNTERORDNER-AUFBAU: fuenfte Spalte `Ordner` (§10a, 11.09.2026) ===")
+    import tempfile
+    tmp = tempfile.mkdtemp(prefix="geruest_uo_")
+    try:
+        wz_ = os.path.join(tmp, "Creator")
+        for d, marke in (("Creator Idee", ".claude"), ("Creator Mind Sync", "CLAUDE.md"),
+                         ("docs", None)):
+            os.makedirs(os.path.join(wz_, d))
+            if marke == ".claude":
+                os.makedirs(os.path.join(wz_, d, marke))
+            elif marke:
+                io.open(os.path.join(wz_, d, marke), "w", encoding="utf-8").write("# x\n")
+        pruef("unterordner() findet genau die zwei mit Kontext",
+              unterordner(wz_), ["Creator Idee", "Creator Mind Sync"])
+        g5 = geruest(wz_, root)
+        pruef("⭐ Kopfzeile hat fuenf Spalten, die fuenfte heisst Ordner",
+              "| Rolle | Name | sessionId | Tut | Ordner |" in g5, True)
+        pruef("   ... jede Rollenzeile traegt den Platzhalter `<Ordner>/`",
+              g5.count("| <Ordner>/ |"), 3)
+        pruef("   ... die gemessenen Unterordner stehen als Hinweis drin",
+              "`Creator Idee/` \u00b7 `Creator Mind Sync/`" in g5, True)
+        pruef("   ... `docs/` nicht (kein eigener Kontext)", "`docs/`" in g5, False)
+        B21, H21 = pruefe(g5, wz_)
+        pruef("⭐ POSITIVKONTROLLE: das fuenfspaltige Geruest besteht", B21, [])
+        pruef("   ... ohne Hinweis", H21, [])
+
+        # ⛔ Ohne Unterordner-Aufbau: vier Spalten, kein Wort von Ordnern.
+        pruef("ohne Unterordner-Aufbau bleibt es bei vier Spalten",
+              "| Rolle | Name | sessionId | Tut |\n" in g and "Ordner |" not in g, True)
+        pruef("   ... und die Unterordner-Zeile fehlt", "Unterordner-Aufbau" in g, False)
+
+        # ⛔ NEGATIVKONTROLLE 1: Aufbau da, Spalte fehlt -> BEFUND
+        B22, _ = pruefe(g, wz_)
+        pruef("⛔ vier Spalten bei gemessenem Unterordner-Aufbau -> BEFUND",
+              any("keine Spalte `Ordner`" in x for x in B22), True)
+        # 2: fuenf Spalten ohne Aufbau -> Hinweis, kein Befund
+        B23, H23 = pruefe(g5, root)
+        pruef("fuenf Spalten ohne Unterordner-Aufbau -> KEIN Befund", B23, [])
+        pruef("   ... aber ein Hinweis", any("nicht noetig" in x for x in H23), True)
+        # 3: fuenfte Spalte umbenannt -> BEFUND
+        B24, _ = pruefe(g5.replace("| Tut | Ordner |", "| Tut | Pfad |"), wz_)
+        pruef("⛔ fuenfte Spalte heisst nicht `Ordner` -> BEFUND",
+              any("umbenannt" in x for x in B24), True)
+        # 4: ausgefuellt, Ordner gibt es -> still; gibt es nicht -> BEFUND
+        voll = g5.replace("| **sync** | **<Name>** | `<uuid>` |",
+                          "| **sync** | **Nora** | `33333333-cccc-4ccc-8ccc-333333333333` |")
+        voll_ok = voll.replace("entscheidet nichts** | <Ordner>/ |",
+                               "entscheidet nichts** | `Creator Mind Sync/` |")
+        B25, _ = pruefe(voll_ok, wz_)
+        pruef("ausgefuellte Zeile mit vorhandenem Ordner -> kein Befund", B25, [])
+        voll_tot = voll.replace("entscheidet nichts** | <Ordner>/ |",
+                                "entscheidet nichts** | `Creator Stimme/` |")
+        B26, _ = pruefe(voll_tot, wz_)
+        pruef("⛔ ... mit einem Ordner, den es nicht gibt -> BEFUND (Ausfuellfehler 1)",
+              any("Ausfuellfehler 1" in x for x in B26), True)
+        B27, _ = pruefe(voll, wz_)
+        pruef("⛔ Name da, Ordner-Zelle noch Platzhalter -> BEFUND",
+              any("keinen Ordner in Spalte 5" in x for x in B27), True)
+        # 5: ohne Wurzel (projekt=None) urteilt --pruefe nur ueber die FORM
+        B28, H28 = pruefe(g5)
+        pruef("ohne bekannte Wurzel: fuenf Spalten sind kein Befund und kein Hinweis",
+              B28 + H28, [])
+    finally:
+        import shutil as _sh
+        _sh.rmtree(tmp, ignore_errors=True)
     return rot
 
 
@@ -735,7 +953,14 @@ def main():
         if not os.path.isfile(p):
             print("\u26d4 Datei nicht gefunden: %s" % p, file=sys.stderr)
             return 2
-        B, H = pruefe(io.open(p, encoding="utf-8", errors="replace").read())
+        # Wurzel nur, wenn die Datei dort liegt, wo ein Roster liegt:
+        # <wurzel>/.claude/rules/<name>.md. Sonst wird die Form allein geprueft.
+        ap = os.path.abspath(p)
+        wurzel = None
+        if (os.path.basename(os.path.dirname(ap)) == "rules"
+                and os.path.basename(os.path.dirname(os.path.dirname(ap))) == ".claude"):
+            wurzel = os.path.dirname(os.path.dirname(os.path.dirname(ap)))
+        B, H = pruefe(io.open(p, encoding="utf-8", errors="replace").read(), wurzel)
         for x in B:
             print("  [BEFUND]  %s" % x)
         for x in H:
