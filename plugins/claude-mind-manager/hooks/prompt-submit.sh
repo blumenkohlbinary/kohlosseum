@@ -373,6 +373,52 @@ Bestand messen: mind_kontext_bilanz \"\$PROJ\" --vergleichen"
   fi
 fi
 
+# ===== v5.86.0: der BACKSTOP der Rotations-Ratsche — MELDEN, nie loeschen =====
+# ⛔ Ungelesene Rettungen rotieren seit v5.86.0 nicht mehr (Ratsche). Ein Projekt,
+#    in dem nie gesynct wird, sammelt zu Recht — die Daten sind ungelesen. Was
+#    fehlt, ist kein Loescher, sondern jemand, der es MERKT (Anton, Etappe 3):
+#    ueber KEEP Rettungen oder ueber 5 MB -> eine Zeile. Keine zweite Grenze, die
+#    Daten kostet. Einmal je Sitzung und Stand (seen-Datei mit der Zahl).
+#    5 MB: GESETZT, nicht gemessen — die Rettungen liegen bei 350-1150 KB je Stueck.
+if [ "$_PLAN_STILL" != "ja" ] && [ "$_ROLLE_STILL" != "ja" ] \
+   && [ -n "$CLAUDE_PLUGIN_ROOT" ] && [ -f "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" ]; then
+  # shellcheck disable=SC1091
+  . "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" 2>/dev/null
+  if command -v mind_rettungen_ungelesen >/dev/null 2>&1; then
+    _UL=$(mind_rettungen_ungelesen "$PROJ" 2>/dev/null)
+    _UN=$(printf '%s' "$_UL" | grep -c .); case "$_UN" in ''|*[!0-9]*) _UN=0 ;; esac
+    _UB=0
+    while IFS= read -r _f; do
+      [ -n "$_f" ] && [ -f "$_f" ] || continue
+      _b=$(wc -c < "$_f" 2>/dev/null | tr -d ' '); case "$_b" in ''|*[!0-9]*) _b=0 ;; esac
+      _UB=$((_UB + _b))
+    done <<EOF_UL
+$_UL
+EOF_UL
+    _UKEEP="${MIND_RESCUE_KEEP_COUNT:-3}"; case "$_UKEEP" in ''|*[!0-9]*) _UKEEP=3 ;; esac
+    if [ "$_UN" -gt "$_UKEEP" ] || [ "$_UB" -gt 5000000 ]; then
+      _USID=""; command -v jq >/dev/null 2>&1 && _USID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null)
+      _USEEN="$PROJ/.claude-mind/rescued/ungelesen.seen-${_USID:-nosession}"
+      if [ "$(cat "$_USEEN" 2>/dev/null)" != "$_UN" ]; then
+        echo "$_UN" > "$_USEEN" 2>/dev/null
+        _UMB=$(awk "BEGIN{printf \"%.1f\", $_UB/1000000}")
+        _MSGU="[Mind Manager] $_UN Rettungen ungelesen, $_UMB MB — Sync faellig.
+Sie liegen in .claude-mind/rescued/ und rotieren NICHT (Ratsche v5.86.0), bis ein
+voller /mind-all sie einspeist. Das ist kein Fehler und blockt nichts — es ist die
+Zahl, die vorher niemand sah. Zustaendig ist die sync-Rolle (rollen.md)."
+        _slog INFO "ungelesene Rettungen gemeldet: $_UN, $_UB B (sid=${_USID:-?})"
+        if command -v jq >/dev/null 2>&1; then
+          jq -nc --arg ctx "$_MSGU" \
+            '{hookSpecificOutput:{hookEventName:"UserPromptSubmit", additionalContext:$ctx}}'
+        else
+          echo "$_MSGU"
+        fi
+        exit 0
+      fi
+    fi
+  fi
+fi
+
 # --- SCHNELLPFAD: keine Schuld -> absolut still, sofort raus ---
 [ -f "$OPEN" ] || exit 0
 

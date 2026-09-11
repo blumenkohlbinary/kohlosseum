@@ -52,6 +52,12 @@ RESCUE_KEEP="${MIND_RESCUE_KEEP_COUNT:-3}"
 if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
   SAMPLER="${CLAUDE_PLUGIN_ROOT:-$(dirname "$0")/..}/references/session_sampler.py"
   if [ -f "$SAMPLER" ]; then
+    # v5.86.0: ein NEUES Projekt (rescued/ gab es noch nicht) startet mit `ts=0` —
+    #   alles ist ungelesen, bis der erste volle Sync den Merker schreibt. Ein
+    #   Altbestand ohne Merker bleibt ohne: Rotation wie bisher (Fail-safe).
+    if [ ! -d "$RESCUE_DIR" ]; then
+      mkdir -p "$RESCUE_DIR" 2>/dev/null && printf 'ts=0\n' > "$RESCUE_DIR/letzter-sync" 2>/dev/null
+    fi
     mkdir -p "$RESCUE_DIR" 2>/dev/null
     # ⛔ v5.56.0: SUB-SEKUNDEN **UND** SITZUNGSKENNUNG. Bis v5.55.0 war die
     #    Aufloesung EINE SEKUNDE — zwei Kompaktierungen im selben Ordner
@@ -292,6 +298,13 @@ if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
       # nicht gegen KEEP; wer nie synct, sammelt an. Das ist gewollt: Platte ist billiger als
       # verlorene Arbeit, und die Warnung unten wird mit jeder Kompaktierung lauter.
       GESCHUETZT=$(grep -E '^(path|resume|arbeitsstand)=' "$RESCUE_DIR/OPEN" 2>/dev/null | cut -d= -f2-)
+      # ⛔ v5.86.0 — DIE RATSCHE: was juenger ist als der letzte volle Sync, rotiert
+      #    NIE — auch ohne OPEN. Gemessen 11.09.2026: 7 Rettungen in 6 Projekten
+      #    ungeschuetzt und nie eingespeist, weil sync-stand kein OPEN entstehen
+      #    liess und KEEP=3 die einzige Kopie wegraeumte. Geschuetzt wird der
+      #    ganze Zeitstempel-Satz (chat, RESUME, ARBEITSSTAND). Ohne Merker: wie bisher.
+      _LS=$(mind_letzter_sync "$PROJECT_DIR" 2>/dev/null); _LS="${_LS//-/}"
+      case "$_LS" in ''|*[!0-9]*) _LS="" ;; esac
       for pat in '*_chat.md' '*_RESUME.md' '*_ARBEITSSTAND.json'; do
         ls -t "$RESCUE_DIR"/$pat 2>/dev/null | tail -n +$((RESCUE_KEEP + 1)) | while IFS= read -r f; do
           [ -n "$f" ] && [ -f "$f" ] || continue
@@ -300,6 +313,10 @@ $GESCHUETZT
 " in *"
 $f
 "*) continue ;; esac
+          if [ -n "$_LS" ]; then
+            _FT=$(basename "$f"); _FT="${_FT:0:15}"; _FT="${_FT//-/}"   # JJJJMMTT-HHMMSS, dann Sub-Sekunden+sid
+            case "$_FT" in ''|*[!0-9]*) ;; *) [ "${_FT:0:14}" -gt "${_LS:0:14}" ] 2>/dev/null && continue ;; esac
+          fi
           rm -f "$f"
         done
       done

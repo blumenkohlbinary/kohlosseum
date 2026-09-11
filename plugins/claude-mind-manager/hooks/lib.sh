@@ -2801,3 +2801,51 @@ mind_kontext_kennung() {
   rel=$(printf '%s' "$rel" | tr '/ ' '__' | tr -cd 'A-Za-z0-9_.-')
   printf -- '-%s\n' "$rel"
 }
+
+
+# =============================================================================
+# mind_letzter_sync / mind_rettungen_ungelesen — die Rotations-Ratsche (v5.86.0)
+# =============================================================================
+# ⛔ WARUM. Gemessen 11.09.2026 (docs/plugin/rettungen-messung.md): 17 Rettungen
+#    in 6 Projekten, 7 davon ungeschuetzt UND nie eingespeist, fuenf von sechs
+#    Projekten auf genau KEEP=3 — die Rotation ist ueberall gesaettigt. Eine
+#    Rettung ist nur geschuetzt, solange OPEN auf sie zeigt; liegt sync-stand,
+#    entsteht kein OPEN (v5.7.0), und KEEP=3 rotiert die einzige Kopie des
+#    Gespraechs nach dem Sync ungelesen weg (Anton, 10.09.: 451 KB).
+# ⭐ DIE RATSCHE (Anton, Etappe 3): eine Rettung, die JUENGER ist als der letzte
+#    /mind-all-Lauf, rotiert nicht. Der Merker `letzter-sync` wird von Step 2.96a
+#    geschrieben — nur bei einem VOLLEN Sync — und von NIEMANDEM verbraucht
+#    (anders als sync-stand). Eingespeiste rotieren weiter mit KEEP.
+# ⚠ Projektweiter Merker, der ein PROJEKT meint — die richtige Ebene (Anton):
+#    mit neun Sitzungen in einer Wurzel gibt es genau einen Sync je Projekt.
+# ⛔ FAIL-SAFE, byteweise: fehlt der Merker (Altbestand), verhaelt sich die
+#    Rotation wie bisher. Ein NEUES Projekt bekommt beim ersten pre-compact den
+#    Merker `ts=0` — dort ist alles ungelesen, bis der erste Sync laeuft.
+# Form: `ts=JJJJMMTT-HHMMSS` (wie die Rettungsnamen), `ts=0` = nie gesynct.
+mind_letzter_sync() {
+  local proj="${1:-}" m
+  [ -n "$proj" ] || return 1
+  m="$proj/.claude-mind/rescued/letzter-sync"
+  [ -f "$m" ] || return 1
+  grep -m1 '^ts=' "$m" 2>/dev/null | cut -d= -f2- | tr -d '[:space:]'
+}
+
+# Rettungen (*_chat.md), deren Zeitstempel juenger ist als der letzte Sync —
+# eine je Zeile, aelteste zuerst. Ohne Merker: nichts, Rueckgabe 1.
+mind_rettungen_ungelesen() {
+  local proj="${1:-}" ls_ts f n ts
+  [ -n "$proj" ] || return 1
+  ls_ts=$(mind_letzter_sync "$proj") || return 1
+  ls_ts="${ls_ts//-/}"
+  case "$ls_ts" in ''|*[!0-9]*) ls_ts=0 ;; esac
+  for f in "$proj"/.claude-mind/rescued/*_chat.md; do
+    [ -f "$f" ] || continue
+    # ⛔ die Namen tragen seit v5.56.0 Sub-Sekunden und die Kennung:
+    #    20260911-004823-093-<sid>_chat.md — nur die ersten 15 Zeichen sind die Zeit.
+    n=$(basename "$f"); ts="${n:0:15}"; ts="${ts//-/}"
+    case "$ts" in ''|*[!0-9]*) continue ;; esac
+    # Zeitstempel als Zahl vergleichen; 20260911004823 > 20260910164800
+    if [ "${ts:0:14}" -gt "${ls_ts:0:14}" ] 2>/dev/null; then printf '%s\n' "$f"; fi
+  done
+  return 0
+}
