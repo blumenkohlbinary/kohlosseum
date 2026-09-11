@@ -2289,15 +2289,23 @@ mind_schritt_bilanz() {
     # Stempel: text:unbekannt heisst, MIND_SKILL_VERSION war beim Start nicht gesetzt
     stempel_unbekannt=$(grep '"ereignis":"start"' "$_bl" | grep '"text":"unbekannt"' \
                         | sed -n 's/.*"skill":"\([^"]*\)".*/\1/p' | tr '\n' ' ')
-    # FORMAL (a)(b)(c) ueber die fuenf Context-Skills, die als SCHRITT quittiert sind
+    # FORMAL (a)(b)(c) ueber die fuenf Context-Skills.
+    # ⛔ v5.98.0 — (a) haengt am KETTENLAUF, nicht an einer Schrittzeile: liegt eine
+    #    mind-all-Startzeile, muss JEDER der fuenf einen eigenen Start-Block haben.
+    #    Bis v5.97.0 griff (a) nur, wenn der Skill als Schritt quittiert war — mind-all
+    #    fuehrte die fuenf in seiner Erwartung, und Ritas Kalibrierlauf (12.09.2026) hakte
+    #    sie so ab: FORMAL=5, und context-analyzer/project-scanner liefen tatsaechlich nie.
+    #    Ohne mind-all-Startzeile (Einzellauf, Altbestand) gilt (a) nicht.
     for _skill in mind-files mind-claudemd mind-memory mind-rules mind-update; do
       _bs=$(grep "\"ereignis\":\"schritt\",\"name\":\"$_skill\"" "$_bl" 2>/dev/null | tail -1)
-      [ -n "$_bs" ] || continue
-      case "$_bs" in *'"status":"gelaufen'*) ;; *) continue ;; esac
       if ! grep -q "\"ereignis\":\"start\",\"skill\":\"$_skill\"" "$_bl" 2>/dev/null; then
-        formal=$((formal + 1)); formalliste="${formalliste}  FORMAL: $_skill (quittiert, aber kein eigener Start-Block — nie als Skill gelaufen)"$'\n'
+        if [ "$mischung" -eq 0 ]; then
+          formal=$((formal + 1)); formalliste="${formalliste}  FORMAL: $_skill (kein eigener Start-Block — nie als Skill gelaufen)"$'\n'
+        fi
         continue
       fi
+      [ -n "$_bs" ] || continue
+      case "$_bs" in *'"status":"gelaufen'*) ;; *) continue ;; esac
       case "$_bs" in *'"quelle":"datei"'*) ;; *)
         formal=$((formal + 1)); formalliste="${formalliste}  FORMAL: $_skill (Bytes getippt, kein Bericht per --datei)"$'\n'
         continue ;;

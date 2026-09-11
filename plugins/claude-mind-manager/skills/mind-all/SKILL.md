@@ -41,8 +41,11 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.97.0"
-mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter mind-files mind-claudemd mind-memory mind-rules mind-update
+MIND_SKILL_VERSION="5.98.0"
+mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
+# ⛔ v5.98.0: die fuenf Skills sind KEINE Schritte von mind-all — jeder hat seinen EIGENEN
+#    Start-Block (Step 2, Punkt 1). Bis v5.97.0 standen sie hier, Ritas Kalibrierlauf hakte
+#    sie als Schritte ab, und context-analyzer/project-scanner liefen nie: FORMAL=5.
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
@@ -52,8 +55,6 @@ mind_schritt <name> gelaufen              "$(wc -c < "$AUSGABE")" "$PROJ"
 mind_schritt <name> "gelaufen:5/11"       "$BYTES" "$PROJ"   # TEILABDECKUNG
 mind_schritt <name> "uebersprungen:<grund>" 0      "$PROJ"
 mind_schritt <name> "fehler:<grund>"      -1       "$PROJ"
-# ⛔ v5.97.0 — JEDER DER FUENF SKILLS IST EIN SCHRITT MIT ARTEFAKT (siehe Step 2, Punkt 2b):
-mind_schritt <skill> gelaufen --datei "$PROJ/.claude-mind/bericht-<skill>.md" "$PROJ"
 ```
 
 ⛔ **`uebersprungen` ist ein gueltiger Status und braucht einen GRUND.** Ein Schritt,
@@ -391,6 +392,16 @@ Fuer jeden der 5 in der Reihenfolge oben:
    und sie dann **vollstaendig** ausfuehren (inkl. Self-Check-Bloecken und Pflicht-Schritten).
    Nicht aus der Beschreibung improvisieren. **Skill-Logik ausfuehren** wie dort beschrieben — mit den durchgereichten
    Flags (`AUTO_MODE`/`DRY_RUN`). Kein erneuter Snapshot (Step 0 hat ihn).
+   ⛔ **v5.98.0 — „vollstaendig" heisst: mit seinem EIGENEN Start-Block.** Die erste Bash
+   des Skills ist dessen Kopf aus seiner SKILL.md — `MIND_SKILL_VERSION=…` und
+   `mind_schritt_start "$PROJ" <skill> <seine Pflichtschritte>` **in derselben Bash** —,
+   die letzte ist `mind_schritt_bilanz "$PROJ"`. Dazwischen laufen seine Agenten
+   (`context-analyzer`, `project-scanner`) wirklich. `mind_schritt_bilanz --alle` verlangt
+   seit v5.98.0 **fuenf Start-Bloecke seit der mind-all-Startzeile**; fehlt einer, ist der
+   Skill FORMAL und der Lauf ein Teilsync (`formal-<skill>` in `ungepruef=`). Gemessen an
+   Ritas Kalibrierlauf 12.09.2026: Verdichten fuenfmal quittiert, Agent-Quittung echt — und
+   trotzdem FORMAL=5, weil die fuenf als Schritte EINES Blocks abgehakt waren und
+   context-analyzer/project-scanner nie liefen.
 2. **Laufspur schreiben — PFLICHT, nach JEDEM der fuenf** (NEU v5.19.0):
    ```bash
    echo "skill=<name>|$LAUF" >> "$SCOPES_FILE"   # nach jedem der 5, ohne Ausnahme
@@ -407,9 +418,10 @@ Fuer jeden der 5 in der Reihenfolge oben:
    Die ist in einer Skill-Bash **leer** (gemessen); ein Waechter darauf matcht
    gegen den leeren String, zaehlt **alle** Zeilen auch fremde, und **sieht aus,
    als greife er**. Das waere schlimmer als keine Sperre.
-   **2b · Bericht als DATEI, dann die Quittung mit `--datei` (v5.97.0):** den Bericht des
-   Skills (sein Self-Check-Block, woertlich) mit `Write` nach
-   `$PROJ/.claude-mind/bericht-<skill>.md` legen, dann:
+   **2b · Bericht als DATEI, dann die Quittung mit `--datei` (v5.97.0), IM eigenen Block
+   (v5.98.0) — vor dessen `mind_schritt_bilanz`:** den Bericht des Skills (sein
+   Self-Check-Block, woertlich) mit `Write` nach `$PROJ/.claude-mind/bericht-<skill>.md`
+   legen, dann:
    ```bash
    mind_schritt <skill> gelaufen --datei "$PROJ/.claude-mind/bericht-<skill>.md" "$PROJ"
    ```

@@ -229,7 +229,7 @@ EOF
 _A=$(mind_schritt_bilanz "$P" --alle 2>/dev/null); _ARC=$?
 janein "4f ⛔ Ritas Lauf 00:02: Rueckgabe 1 (bis v5.96.0: 0)" 1 "$_ARC"
 janein "   ... FORMAL=5: kein Skill hat einen eigenen Start-Block" ja "$(printf '%s\n' "$_A" | grep -q '^  FORMAL=5$' && echo ja || echo nein)"
-janein "   ... und sagt, warum" ja "$(printf '%s\n' "$_A" | grep -q 'FORMAL: mind-files (quittiert, aber kein eigener Start-Block' && echo ja || echo nein)"
+janein "   ... und sagt, warum" ja "$(printf '%s\n' "$_A" | grep -q 'FORMAL: mind-files (kein eigener Start-Block' && echo ja || echo nein)"
 janein "   ... Stempel text:unbekannt ist ein Meldegrund" ja "$(printf '%s\n' "$_A" | grep -q 'STEMPEL UNGELESEN (text:unbekannt): mind-all' && echo ja || echo nein)"
 # dieselben Zeilen, aber mit eigenen Bloecken -> (b) Bytes getippt und (c) gleiche Sekunde
 for s in mind-files mind-claudemd mind-memory mind-rules mind-update; do
@@ -263,6 +263,64 @@ grep -v '"name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"t
 _A=$(mind_schritt_bilanz "$P" --alle 2>/dev/null); _ARC=$?
 janein "4g verdichten fehlt in mind-memory -> FEHLT nennt mind-memory/verdichten" ja "$(printf '%s\n' "$_A" | grep -q 'FEHLT.*mind-memory/verdichten' && echo ja || echo nein)"
 janein "   ... Rueckgabe 1 (bis v5.96.0: nur die Liste des ERSTEN Blocks zaehlte)" 1 "$_ARC"
+
+# --- 4h  RITAS KALIBRIERLAUF 23:21 (12.09.2026), woertlich — v5.98.0 ---------------------
+# Alle Schritte mit --datei, Verdichten fuenfmal quittiert, agent-quittung echt — und
+# trotzdem kein eigener Start-Block je Skill: mind-all/SKILL.md:45 fuehrte die fuenf als
+# SCHRITTE, die Bilanz verlangt BLOECKE. Bis v5.97.0 griff (a) nur ueber die Schrittzeile;
+# seit v5.98.0 ueber den Kettenlauf selbst. context-analyzer/project-scanner liefen nie.
+: > "$S"; : > "$P/.claude-mind/analyzed-scopes"
+cat >> "$S" <<'EOF'
+{"ereignis":"start","skill":"mind-all","erwartet":"arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter","ts":"2026-09-11T23:21:36Z","code":"5.97.0","text":"5.97.0","versionsbruch":false}
+{"ereignis":"schritt","name":"mind_snapshot","status":"gelaufen","bytes":109,"quelle":"datei","ts":"2026-09-11T23:21:36Z"}
+{"ereignis":"schritt","name":"mind_hook_health","status":"gelaufen","bytes":173,"quelle":"datei","ts":"2026-09-11T23:21:36Z"}
+{"ereignis":"schritt","name":"mind-files","status":"gelaufen","bytes":1217,"quelle":"datei","ts":"2026-09-11T23:22:02Z"}
+{"ereignis":"schritt","name":"verdichten","status":"gelaufen","bytes":1123,"quelle":"datei","ts":"2026-09-11T23:30:41Z"}
+{"ereignis":"schritt","name":"verdichten","status":"gelaufen","bytes":823,"quelle":"datei","ts":"2026-09-11T23:30:41Z"}
+{"ereignis":"schritt","name":"verdichten","status":"gelaufen","bytes":478,"quelle":"datei","ts":"2026-09-11T23:30:42Z"}
+{"ereignis":"schritt","name":"verdichten","status":"gelaufen","bytes":834,"quelle":"datei","ts":"2026-09-11T23:30:42Z"}
+{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"2026-09-11T23:30:42Z"}
+{"ereignis":"schritt","name":"mind-claudemd","status":"gelaufen","bytes":938,"quelle":"datei","ts":"2026-09-11T23:30:56Z"}
+{"ereignis":"schritt","name":"mind-memory","status":"gelaufen","bytes":112,"quelle":"datei","ts":"2026-09-11T23:30:56Z"}
+{"ereignis":"schritt","name":"mind-rules","status":"gelaufen","bytes":4,"quelle":"datei","ts":"2026-09-11T23:30:56Z"}
+{"ereignis":"schritt","name":"mind-update","status":"gelaufen","bytes":50,"quelle":"datei","ts":"2026-09-11T23:38:41Z"}
+{"ereignis":"schritt","name":"mind_zeilenenden_waechter","status":"gelaufen","bytes":36,"quelle":"datei","ts":"2026-09-11T23:38:54Z"}
+{"ereignis":"schritt","name":"mind_check_tools_have_rules","status":"gelaufen","bytes":1217,"quelle":"datei","ts":"2026-09-11T23:38:56Z"}
+{"ereignis":"schritt","name":"debug_auswertung","status":"gelaufen","bytes":51,"quelle":"datei","ts":"2026-09-11T23:38:56Z"}
+{"ereignis":"schritt","name":"arbeitsstand_render","status":"uebersprungen:kein-arbeitsstand-kein-rescue","bytes":0,"ts":"2026-09-11T23:38:56Z"}
+{"ereignis":"schritt","name":"mind_agent_bilanz","status":"gelaufen","bytes":50,"quelle":"datei","ts":"2026-09-11T23:38:58Z"}
+{"ereignis":"schritt","name":"mind_debug_write","status":"gelaufen","bytes":0,"ts":"2026-09-11T23:39:27Z"}
+EOF
+_A=$(mind_schritt_bilanz "$P" --alle 2>/dev/null); _ARC=$?
+janein "4h ⛔ Ritas Kalibrierlauf: Rueckgabe 1" 1 "$_ARC"
+janein "   ... FORMAL=5, alle fuenf ohne eigenen Start-Block" 5 "$(printf '%s\n' "$_A" | grep -c 'FORMAL: mind-.* (kein eigener Start-Block')"
+# Gegenprobe: fuenf eigene Bloecke OHNE Schrittzeile je Skill -> kein FORMAL (a) mehr
+: > "$S"
+printf '{"ereignis":"start","skill":"mind-all","erwartet":"mind_agent_bilanz","ts":"2026-09-12T00:00:00Z","code":"5.98.0","text":"5.98.0","versionsbruch":false}\n' >> "$S"
+i=0
+for s in mind-files mind-claudemd mind-memory mind-rules mind-update; do
+  i=$((i + 1))
+  printf '{"ereignis":"start","skill":"%s","erwartet":"verdichten","ts":"2026-09-12T00:0%d:00Z","code":"5.98.0","text":"5.98.0","versionsbruch":false}\n' "$s" "$i" >> "$S"
+  printf '{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"2026-09-12T00:0%d:30Z"}\n' "$i" >> "$S"
+done
+printf '{"ereignis":"schritt","name":"mind_agent_bilanz","status":"gelaufen","bytes":50,"ts":"2026-09-12T00:09:00Z"}\n' >> "$S"
+_A=$(mind_schritt_bilanz "$P" --alle 2>/dev/null); _ARC=$?
+janein "   Gegenprobe: fuenf eigene Bloecke, keine Skill-Schrittzeile -> rc 0" 0 "$_ARC"
+# der Kern von v5.98.0: mind-all-Block OHNE Schrittzeile fuer die fuenf und OHNE Bloecke
+# -> bis v5.97.0 unsichtbar (rc 0), jetzt FORMAL=5
+: > "$S"
+printf '{"ereignis":"start","skill":"mind-all","erwartet":"mind_agent_bilanz","ts":"2026-09-12T00:00:00Z","code":"5.98.0","text":"5.98.0","versionsbruch":false}
+{"ereignis":"schritt","name":"mind_agent_bilanz","status":"gelaufen","bytes":50,"ts":"2026-09-12T00:09:00Z"}
+' >> "$S"
+_A=$(mind_schritt_bilanz "$P" --alle 2>/dev/null); _ARC=$?
+janein "   ⛔ Kette ohne die fuenf Skills (weder Schritt noch Block): rc 1 (bis v5.97.0: 0)" 1 "$_ARC"
+janein "   ... FORMAL=5" ja "$(printf '%s
+' "$_A" | grep -q '^  FORMAL=5$' && echo ja || echo nein)"
+# und ohne mind-all-Startzeile (Einzellauf) gilt (a) nicht
+: > "$S"
+printf '{"ereignis":"start","skill":"mind-files","erwartet":"verdichten","ts":"2026-09-12T00:01:00Z","code":"5.98.0","text":"5.98.0","versionsbruch":false}\n{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"2026-09-12T00:01:30Z"}\n' >> "$S"
+_A=$(mind_schritt_bilanz "$P" --alle 2>/dev/null)
+janein "   Einzellauf ohne mind-all-Start: kein FORMAL fuer die vier fehlenden" nein "$(printf '%s\n' "$_A" | grep -q 'FORMAL' && echo ja || echo nein)"
 rm -rf "$T"
 
 echo
