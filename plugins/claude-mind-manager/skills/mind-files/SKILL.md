@@ -21,12 +21,14 @@ allowed-tools: Read Glob Grep Write Bash Agent
 
 ```
 PFLICHTSCHRITTE
+bestandszahlen_kandidaten
 cleaner_stichprobe
 cleaner_tor
 mind_check_tools_have_rules
 mind_hook_health
 mind_kontext_bilanz
 mind_snapshot
+verdichten
 ```
 
 **Vor dem ersten Schritt, ohne Ausnahme:**
@@ -90,7 +92,12 @@ MIND_SKILL_VERSION="5.89.0"
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
 MIND_SKILL_VERSION="5.90.0"
-mind_schritt_start "$PROJ" mind-files cleaner_stichprobe mind_check_tools_have_rules mind_hook_health mind_kontext_bilanz mind_snapshot
+# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
+#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
+#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
+#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
+MIND_SKILL_VERSION="5.91.0"
+mind_schritt_start "$PROJ" mind-files bestandszahlen_kandidaten cleaner_stichprobe mind_check_tools_have_rules mind_hook_health mind_kontext_bilanz mind_snapshot verdichten
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
@@ -988,6 +995,9 @@ source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 #    ⛔ Nicht nur erwaehnen: die Zeile selbst, mit beiden Zahlenpaaren.
 mind_kontext_bilanz "$PROJ" --vergleichen
 
+# 1b) Art 6 (v5.91.0): ungegatete BESTANDSZAHLEN als Kandidaten. ⛔ Er urteilt nie, rc 0.
+python "$CLAUDE_PLUGIN_ROOT/references/bestandszahlen_kandidaten.py" "$PROJ"
+
 # 2) Stichprobe: 3 Einträge, die am längsten ungeprüft sind (max. 15 je Kettenlauf)
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_stichprobe.py" "$PROJ" \
        --skill mind-files --verzeichnis "$PROJ/.claude/rules"
@@ -1014,6 +1024,40 @@ ausfiel, sehen von außen identisch aus. Dieselbe Lehre wie v5.3.1 und die Agent
 
 ⚠ **Fail-open:** fehlt ein Werkzeug oder stürzt es ab, wird `UNGEPRUEFT: <werkzeug>`
 gemeldet und der Skill **läuft weiter**. Ein Bestands-Pass darf nie einen Sync töten.
+
+## Step 5g: ⭐ VERDICHTEN — die größte Companion-Rule (NEU v5.91.0)
+
+Fünfter und letzter Träger — damit tragen alle fünf Context-Skills Verdichten und Lister
+(ZIEL 4). `mind-files` kürzt nur, was es selbst anlegt: die **Companion-Rules** seiner Werkzeuge
+(`backup-usage.md`, `wissenstransfer-pruefen.md`, `zaehlwerte-pruefen.md`, `release-hygiene.md`,
+`release-build.md`). Alles andere unter `rules/` gehört `mind-rules` Step 9b.
+
+**Die vollständige Vorschrift — Agent, Kasten, Gate, Stufe 3, Bericht — steht in
+[references/bestands-pass.md](../../references/bestands-pass.md), Abschnitt „VERDICHTEN“.
+Lies sie.** Hier nur, was für diesen Skill gilt:
+
+| | |
+|---|---|
+| **Kandidat** | die **GRÖSSTE** der installierten Companion-Rules in Bytes — **eine je Lauf** |
+| ⛔ **welche Zeilen liest ein Programm** | `mind_check_tools_have_rules` verlangt je Werkzeug die **Aufrufform** `tools/<name>` in einer glob-getriggerten Rule (Kern-Invariante v4.0) — jede Zeile mit `tools/<name>.py` und das `globs:`-Frontmatter bleiben byteweise. **Nach dem Lauf `mind_check_tools_have_rules "$PROJ"` — rc 0 oder VERWERFEN**, sonst liegt ein Werkzeug tot |
+| **Überholt-Kandidaten** | aus dem Vergleich mit der Vorlage in `references/backup-system-templates/` (was die Vorlage nicht mehr sagt) und aus dem Deckel-Ausweis der Datei — **benannt** |
+| **verwerfen, wenn** | Stufe 1 < 100 % · Marker unbenannt verloren · nicht kleiner · Zeilenenden geändert · `mind_check_tools_have_rules` neu rot · Dauerkontext nach dem Anwenden nicht kleiner |
+| ⛔ **Stufe 3** | der Wort-Diff wird GANZ gelesen, bevor angewendet wird. **Ohne Leser: nicht anwenden** — Ergebnis, Bericht, Diff ablegen, Pfad melden |
+
+```bash
+# Kandidatin: die groesste Companion-Rule, die es im Projekt gibt
+DATEI=$(ls -S "$PROJ"/.claude/rules/{backup-usage,wissenstransfer-pruefen,zaehlwerte-pruefen,release-hygiene,release-build}.md 2>/dev/null | head -1)
+[ -n "$DATEI" ] || { echo "VERDICHTEN: keine Kandidatin (keine Companion-Rule installiert)"; }
+# ... dann exakt der Lauf aus bestands-pass.md: Snapshot -> Agent (Kasten + Aufrufformen und
+#     globs: als unantastbar WOERTLICH) -> mind_verdichtung_pruefen
+#     -> mind_check_tools_have_rules "$PROJ" auf das ERGEBNIS: rc 0, sonst verwerfen
+#     -> ⛔ STUFE 3 (Wort-Diff lesen; ohne Leser NICHT anwenden, ablegen und melden)
+#     -> anwenden -> mind_kontext_bilanz gegen vorher -> sonst rollback.py restore
+echo "verdichtet=$DATEI" >> "$PROJ/.claude-mind/analyzed-scopes" 2>/dev/null
+```
+
+⛔ **Der Bericht dieses Schritts sind die drei Zeilen aus `mind_verdichtung_pruefen`** plus
+`Tool->Rule-Nachweis nachher: PASS` — oder `verworfen: <grund>`. **Kein Bericht = der Schritt lief nicht.**
 
 ## Step 6: Report — PFLICHT-Self-Check-Block am Anfang (v4.0)
 
