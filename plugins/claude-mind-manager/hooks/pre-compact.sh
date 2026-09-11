@@ -155,6 +155,15 @@ if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
         if mind_sync_voll "$RESCUE_DIR/sync-stand"; then
           SYNC_LIEF_SCHON="ja"
           mind_log "Sync lief vor dieser Kompaktierung -> keine neue Schuld"
+          # ⛔ v5.88.0 — DER ZEITBEZUG (6. Vorkommen der Merker-Klasse, hooks.md):
+          #    liegt der sync-stand, aber die Rettung traegt Beitraege NACH dem
+          #    letzten vollen Sync, hat der Sync sie nicht gesehen — Schuld entsteht
+          #    trotzdem, mit grund=nach-sync. Ja/Nein ueber die Zeitstempel der
+          #    Beitraege, keine Schwelle. Ohne letzter-sync/utc: wie bisher.
+          if mind_rettung_nach_sync "$PROJECT_DIR" "$RESCUE_FILE"; then
+            SYNC_LIEF_SCHON="nach-sync"
+            mind_log WARN "Rettung traegt Beitraege NACH dem letzten Sync -> Schuld entsteht (grund=nach-sync)"
+          fi
         else
           SYNC_LIEF_SCHON="teil"
           TEIL_UNGEPRUEFT=$(grep -m1 '^ungepruef=' "$RESCUE_DIR/sync-stand" 2>/dev/null \
@@ -276,6 +285,8 @@ if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
           if [ "$SYNC_LIEF_SCHON" = "teil" ]; then
             echo "grund=teilsync"
             echo "ungepruef=${TEIL_UNGEPRUEFT:-unbekannt}"
+          elif [ "$SYNC_LIEF_SCHON" = "nach-sync" ]; then
+            echo "grund=nach-sync"
           fi
         } >> "$RESCUE_DIR/OPEN" 2>/dev/null
         # Neue Rettung -> in JEDER Sitzung neu ankuendigen, Notausgang-Zaehler auf 0

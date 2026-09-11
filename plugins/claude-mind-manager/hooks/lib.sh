@@ -2861,3 +2861,34 @@ mind_rettungen_ungelesen() {
   done
   return 0
 }
+
+
+# =============================================================================
+# mind_rettung_nach_sync — traegt diese Rettung Beitraege NACH dem letzten Sync? (v5.88.0)
+# =============================================================================
+# ⛔ SECHSTES Vorkommen der Merker-Klasse (hooks.md): `sync-stand` wurde verbraucht,
+#    ohne zu fragen, ob die Rettung Material nach dem Sync traegt. Gemessen 10.09.2026:
+#    13:26 Ritas Lauf setzt sync-stand · 16:40 Nils' Kompaktierung findet ihn -> KEINE
+#    Schuld · die 16:40-Rettung galt als durch 13:26 gedeckt, 451 KB rotiert.
+# ⭐ Anton: DIREKT ADRESSIEREN, Ja/Nein, KEINE Schwelle. Seit v5.86.0 nennt
+#    `letzter-sync` das "bis wohin" (utc=); jeder Beitrag der Rettung traegt seit
+#    v5.1.0 einen ISO-Zeitstempel (gemessen 11.09.2026: 15 von 15 Rettungen, alle
+#    Beitraege). Die Frage ist damit ohne Zahl beantwortbar: liegt der LETZTE Beitrag
+#    nach dem Sync, hat der Sync ihn nicht gesehen.
+# Rueckgabe 0 = ja, es gibt Beitraege nach dem Sync. 1 = nein ODER nicht messbar
+#    (kein Merker, kein utc=, kein Zeitstempel) — fail-safe wie bisher: dann
+#    entscheidet allein sync-stand.
+mind_rettung_nach_sync() {
+  local proj="${1:-}" r="${2:-}" m utc letzter
+  { [ -n "$proj" ] && [ -n "$r" ] && [ -f "$r" ]; } || return 1
+  m="$proj/.claude-mind/rescued/letzter-sync"
+  [ -f "$m" ] || return 1
+  utc=$(grep -m1 '^utc=' "$m" 2>/dev/null | cut -d= -f2- | tr -d '[:space:]')
+  [ -n "$utc" ] || return 1
+  letzter=$(grep -E '^## \[[0-9]+\] (USER|ASSISTANT) — [0-9]{4}-' "$r" 2>/dev/null \
+            | tail -1 | sed 's/.* — //' | tr -d '[:space:]')
+  [ -n "$letzter" ] || return 1
+  # ISO-8601 in UTC vergleicht sich als Text: 2026-09-10T14:43:13Z > 2026-09-10T11:26:04Z
+  [ "${letzter:0:19}" \> "${utc:0:19}" ] && return 0
+  return 1
+}

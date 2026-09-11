@@ -77,6 +77,11 @@ MIND_SKILL_VERSION="5.86.0"
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
 MIND_SKILL_VERSION="5.87.0"
+# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
+#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
+#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
+#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
+MIND_SKILL_VERSION="5.88.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 ```
 
@@ -843,7 +848,10 @@ if [ "$DRY_RUN" = "no" ] && [ "$SYNC_LIEF" != "nein" ]; then
     > "$PROJ/.claude-mind/rescued/sync-stand"
   # v5.86.0: der Merker der Rotations-Ratsche — NUR bei einem vollen Sync, und er
   #   wird von niemandem verbraucht. Was juenger ist als diese Zeit, rotiert nicht.
-  [ "$SYNC_LIEF" = "ja" ] && printf 'ts=%s\n' "$(date +%Y%m%d-%H%M%S)" \
+  #   v5.88.0: `utc=` dazu — die Beitraege der Rettungen sind in UTC gestempelt;
+  #   `mind_rettung_nach_sync` vergleicht damit, ob eine Rettung Material nach
+  #   dem Sync traegt (Ja/Nein, keine Schwelle).
+  [ "$SYNC_LIEF" = "ja" ] && printf 'ts=%s\nutc=%s\n' "$(date +%Y%m%d-%H%M%S)" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     > "$PROJ/.claude-mind/rescued/letzter-sync"
   [ "$SYNC_LIEF" = "teil" ] && \
     echo "⚠ TEILSYNC: $UMFANG — ungeprueft: ${UNGEPRUEFT:-(nichts)}. Die Schuld bleibt bestehen."

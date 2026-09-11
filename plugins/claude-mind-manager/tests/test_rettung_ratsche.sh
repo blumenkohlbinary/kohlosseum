@@ -111,6 +111,43 @@ janein "nach einem vollen Sync: 0 ungelesen" "0" "$(mind_rettungen_ungelesen "$P
 
 echo
 echo "=============================================================================="
+echo "  5) v5.88.0: der ZEITBEZUG — sync-stand liegt, aber die Rettung traegt Beitraege NACH dem Sync"
+echo "=============================================================================="
+# Antons Fall vom 10.09.: 13:26 Sync, 16:40 Kompaktierung -> keine Schuld, obwohl die
+# Rettung drei Stunden juenger war. Jetzt: Ja/Nein ueber die Zeitstempel der Beitraege.
+transkript_ts() {  # $1 = Datei, $2 = ISO-Zeit der Beitraege
+  : > "$1"
+  for i in 1 2 3 4 5 6; do
+    printf '{"type":"user","timestamp":"%s","message":{"content":[{"type":"text","text":"Frage %d"}]}}\n' "$2" "$i" >> "$1"
+    printf '{"type":"assistant","timestamp":"%s","message":{"content":[{"type":"text","text":"Antwort %d. Entscheidung: Weg A."}],"usage":{"input_tokens":2,"cache_read_input_tokens":1000,"cache_creation_input_tokens":3,"output_tokens":9}}}\n' "$2" "$i" >> "$1"
+  done
+}
+P5="$T/fuenf"; mkdir -p "$P5/.claude-mind/rescued"
+printf 'ts=20260910-132604\nutc=2026-09-10T11:26:04Z\n' > "$P5/.claude-mind/rescued/letzter-sync"
+printf 'ts=2026-09-10 13:26:04\numfang=5/5 skills 4/4 agents\nungepruef=\n' > "$P5/.claude-mind/rescued/sync-stand"
+transkript_ts "$P5/t.jsonl" "2026-09-10T14:40:00.000Z"          # Beitraege NACH dem Sync (16:40 lokal)
+kompaktiere "$P5" "S5"
+janein "⭐ Beitraege nach dem Sync -> OPEN entsteht TROTZ sync-stand" "ja" "$([ -f "$P5/.claude-mind/rescued/OPEN" ] && echo ja || echo nein)"
+janein "   ... mit grund=nach-sync" "ja" "$(grep -q '^grund=nach-sync' "$P5/.claude-mind/rescued/OPEN" 2>/dev/null && echo ja || echo nein)"
+janein "   sync-stand ist trotzdem verbraucht" "nein" "$([ -f "$P5/.claude-mind/rescued/sync-stand" ] && echo ja || echo nein)"
+# Gegenrichtung: alle Beitraege VOR dem Sync -> wie bisher keine Schuld
+P6="$T/sechs"; mkdir -p "$P6/.claude-mind/rescued"
+printf 'ts=20260910-132604\nutc=2026-09-10T11:26:04Z\n' > "$P6/.claude-mind/rescued/letzter-sync"
+printf 'ts=2026-09-10 13:26:04\numfang=5/5 skills 4/4 agents\nungepruef=\n' > "$P6/.claude-mind/rescued/sync-stand"
+transkript_ts "$P6/t.jsonl" "2026-09-10T10:00:00.000Z"          # Beitraege VOR dem Sync
+kompaktiere "$P6" "S6"
+janein "Beitraege vor dem Sync -> keine Schuld (wie bisher)" "nein" "$([ -f "$P6/.claude-mind/rescued/OPEN" ] && echo ja || echo nein)"
+# Fail-safe: Merker ohne utc= (v5.86.0-Bestand) -> wie bisher keine Schuld
+P7="$T/sieben"; mkdir -p "$P7/.claude-mind/rescued"
+printf 'ts=20260910-132604\n' > "$P7/.claude-mind/rescued/letzter-sync"
+printf 'ts=2026-09-10 13:26:04\numfang=5/5 skills 4/4 agents\nungepruef=\n' > "$P7/.claude-mind/rescued/sync-stand"
+transkript_ts "$P7/t.jsonl" "2026-09-10T14:40:00.000Z"
+kompaktiere "$P7" "S7"
+janein "⛔ Merker ohne utc= -> nicht messbar -> wie bisher keine Schuld" "nein" "$([ -f "$P7/.claude-mind/rescued/OPEN" ] && echo ja || echo nein)"
+janein "mind_rettung_nach_sync direkt: ohne Zeitstempel im Beitrag rc 1" "1" "$(printf '# x\n\n## [1] USER\nohne Zeit\n' > "$P7/alt.md"; mind_rettung_nach_sync "$P5" "$P7/alt.md" >/dev/null 2>&1; echo $?)"
+
+echo
+echo "=============================================================================="
 echo "  4) KEEP bleibt 3 — Vorgabe unveraendert; Schwellen des Backstops"
 echo "=============================================================================="
 janein "pre-compact: RESCUE_KEEP Vorgabe 3" "ja" "$(grep -q 'RESCUE_KEEP="\${MIND_RESCUE_KEEP_COUNT:-3}"' "$H/pre-compact.sh" && echo ja || echo nein)"
