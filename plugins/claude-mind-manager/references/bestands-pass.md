@@ -131,7 +131,7 @@ Verdichtung. Sie behält genau das, wonach das Gate sucht.
 |---|---|---|
 | **1 maschinell, hart** | `coverage_gate.py` | keine **markierte** Aussage ist verschwunden. ⛔ 100 % oder rot |
 | **2 maschinell, ausweisend** | derselbe Aufruf, Zeile `AUSWEIS:` | **wieviel markenfreier Text entfernt wurde** — die Menge, die **kein** Instrument geprüft hat |
-| **3 menschlich** | der Leser | diese Menge wird **gelesen**, sonst gilt der Lauf als **ungeprüft** |
+| **3 menschlich, PFLICHT** | der Leser | der ganze Wort-Diff wird **gelesen**. ⛔ Ein Lauf ohne Stufe 3 wendet NICHT an — er legt das Ergebnis zur Durchsicht ab (Anton, 11.09.2026) |
 
 **Pflichtzeile im Bericht jedes Verdichtungslaufs:**
 
@@ -169,7 +169,9 @@ VORHER=$(mind_kontext_bilanz "$PROJ" | sed -n 's/.*BYTES=\([0-9]*\).*/\1/p')
 # 2  Das Gate — entscheidet, ob angewendet wird
 mind_verdichtung_pruefen "$DATEI" "$ERGEBNIS" "$BERICHT" || { echo "verworfen"; exit 0; }
 
-# 3  Anwenden, dann das ERFOLGSMASS — und zurück, wenn es nicht kleiner wurde
+# 3  ⛔ STUFE 3: den Wort-Diff GANZ lesen (git diff --no-index --word-diff). Ohne Leser:
+#    NICHT anwenden — Ergebnis, Bericht und Diff ablegen, Pfad melden, hier aufhören.
+# 4  Anwenden, dann das ERFOLGSMASS — und zurück, wenn es nicht kleiner wurde
 cp "$ERGEBNIS" "$DATEI"
 NACHHER=$(mind_kontext_bilanz "$PROJ" | sed -n 's/.*BYTES=\([0-9]*\).*/\1/p')
 if [ "$NACHHER" -ge "$VORHER" ]; then
@@ -196,6 +198,21 @@ Absätze. Jedes entfernte wird benannt, und **eine Benennung zählt nur, wenn ih
 nicht mehr vorkommt** (v5.79.0). Gemessen am ersten echten Lauf (`hooks.md`, 11.09.2026): drei
 ⛔ in einem Codeblock unbenannt → rot; zwei ⚠ als entfernt benannt, aber nur umformuliert →
 das alte Gate war zufrieden.
+
+⭐ **Der Ertrag hängt am AUFRUFER, nicht am Agenten.** Kalibrierung ohne benannte
+Kandidaten: −5,65 %. `hooks.md` mit acht benannten Überholt-Kandidaten: −14,9 %,
+`env-vars.md` mit sieben: −16,3 % (11.09.2026). Der Agent darf nicht raten, was überholt
+ist — wer den Lauf startet, gibt die Kandidaten mit, oder er bekommt 5 %.
+
+⛔ **STUFE 3 IST PFLICHT, KEIN ANGEBOT.** Gemessen an beiden echten Läufen, je einmal bei
+**100 % Stufe 1 und grünem Marker-Gate:** in `hooks.md` stand `833 431` am falschen Satz
+(die Regler-Messung war zu „ohne Regler stimmt sie" geraten); in `env-vars.md` war eine
+Richtung umgedreht („850 000, 16 569 früher als gemessen" — die Messung kam früher als die
+Formel, nicht umgekehrt). Alle Marken da, Aussage falsch. Das Gate misst ERWÄHNUNG, nie
+Treue — die zweite Richtung von „ohne Verlust" (nichts wird erfunden oder verdreht) hat nur
+der Leser. ⛔ **Ein autonomer Lauf ohne Stufe 3 wendet NICHT an:** er legt `ergebnis.md`,
+`bericht.md` und den Wort-Diff zur Durchsicht ab und meldet den Pfad. ⚠ Das schränkt „alle
+dürfen kürzen" ein — Anton hat es dem Nutzer so gesagt (11.09.2026).
 
 **Der Bericht — drei Zeilen, `mind_verdichtung_pruefen` schreibt sie:**
 

@@ -92,6 +92,9 @@ janein "Rettung liegt in der Wurzel" "1" "$(ls "$R"/.claude-mind/rescued/*_chat.
 janein "⛔ im Unterordner liegt KEINE Rettung" "0" "$(ls "$A"/.claude-mind/rescued/*_chat.md 2>/dev/null | wc -l | tr -d ' ')"
 janein "OPEN traegt sid= der Untersitzung" "ja" "$(grep -q "sid=$ARB" "$R/.claude-mind/rescued/OPEN" 2>/dev/null && echo ja || echo nein)"
 janein "Herzschlag in der Wurzel" "ja" "$([ -f "$R/.claude-mind/hook-heartbeat" ] && echo ja || echo nein)"
+# v5.83.0 (Anton, Auftrag §10.1): der Herzschlag nennt BEIDE Pfade
+janein "Herzschlag: cwd= ist der Unterordner" "$A" "$(grep -m1 '^cwd=' "$R/.claude-mind/hook-heartbeat" | cut -d= -f2-)"
+janein "Herzschlag: projekt= ist die Wurzel" "$R" "$(grep -m1 '^projekt=' "$R/.claude-mind/hook-heartbeat" | cut -d= -f2-)"
 
 echo
 echo "=============================================================================="

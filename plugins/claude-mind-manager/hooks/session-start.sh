@@ -50,6 +50,9 @@ if [ -d "$PROJ" ]; then
     echo "event=SessionStart"
     echo "version=$([ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && basename "$CLAUDE_PLUGIN_ROOT" || echo unbekannt)"
     echo "root=${CLAUDE_PLUGIN_ROOT:-}"
+    # v5.83.0: beide Pfade — welcher Ordner als Projekt galt und woher die Sitzung kam
+    echo "cwd=${CLAUDE_PROJECT_DIR:-$(pwd)}"
+    echo "projekt=$PROJ"
   } > "$PROJ/.claude-mind/hook-heartbeat" 2>/dev/null
 fi
 

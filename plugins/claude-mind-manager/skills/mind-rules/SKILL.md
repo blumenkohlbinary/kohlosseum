@@ -52,6 +52,11 @@ MIND_SKILL_VERSION="5.81.0"
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
 MIND_SKILL_VERSION="5.82.0"
+# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
+#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
+#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
+#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
+MIND_SKILL_VERSION="5.83.0"
 mind_schritt_start "$PROJ" mind-rules bestandsaufnahme bestandszahlen_kandidaten cleaner_duplikate cleaner_stichprobe ladeprotokoll_auswertung mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -712,12 +717,14 @@ Lies sie.** Hier nur, was für diesen Skill gilt:
 | **⛔ nie** | `rollen.md` (gehört dem manager) · Dateien mit `paths:` (laden ohnehin nicht immer) |
 | **Überholt-Kandidaten** | aus dem Deckel-Ausweis der Datei und `cleaner_belege.py` — **benannt** an den Agenten |
 | **verwerfen, wenn** | Stufe 1 < 100 % · Marker unbenannt verloren · nicht kleiner · Dauerkontext nach dem Anwenden nicht kleiner |
+| ⛔ **Stufe 3** (v5.83.0) | der Wort-Diff wird GANZ gelesen, bevor angewendet wird. **Ohne Leser: nicht anwenden** — Ergebnis, Bericht, Diff ablegen, Pfad melden. Zwei Verfälschungen bei 100 % Stufe 1 gemessen (11.09.2026) |
 
 ```bash
 # Kandidat: die groesste Rule, ohne rollen.md
 DATEI=$(ls -S "$PROJ"/.claude/rules/*.md 2>/dev/null | grep -v '/rollen\.md$' | head -1)
 [ -n "$DATEI" ] || { echo "VERDICHTEN: keine Kandidatin"; }
 # ... dann exakt der Lauf aus bestands-pass.md: Snapshot -> Agent -> mind_verdichtung_pruefen
+#     -> ⛔ STUFE 3 (Wort-Diff lesen; ohne Leser NICHT anwenden, ablegen und melden)
 #     -> anwenden -> mind_kontext_bilanz gegen vorher -> sonst rollback.py restore
 ```
 

@@ -442,6 +442,11 @@ mind_heartbeat() {
     echo "event=$event"
     echo "version=$ver"
     echo "root=$root"
+    # v5.83.0: welchen Ordner der Hook fuer das PROJEKT hielt und aus welchem
+    #   cwd die Sitzung kam. Gemessen 11.09.2026: ohne diese zwei Zeilen war das
+    #   nur ueber den Umweg kontext-deckel zu sehen (Auftrag Unterordner §10.1).
+    echo "cwd=${CLAUDE_PROJECT_DIR:-$(pwd)}"
+    echo "projekt=$project_dir"
   } > "$project_dir/.claude-mind/hook-heartbeat" 2>/dev/null
 }
 
