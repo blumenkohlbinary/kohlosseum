@@ -41,7 +41,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.99.0"
+MIND_SKILL_VERSION="5.100.0"
 mind_schritt_start "$PROJ" mind-files bestandszahlen_kandidaten cleaner_stichprobe mind_check_tools_have_rules mind_hook_health mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -1013,6 +1013,8 @@ Lies sie.** Hier nur, was für diesen Skill gilt:
 DATEI=$(ls -S "$PROJ"/.claude/rules/{backup-usage,wissenstransfer-pruefen,zaehlwerte-pruefen,release-hygiene,release-build}.md 2>/dev/null | head -1)
 [ -n "$DATEI" ] || { echo "VERDICHTEN: keine Kandidatin (keine Companion-Rule installiert)"; }
 # ... dann exakt der Lauf aus bestands-pass.md: Snapshot -> Agent (Kasten + Aufrufformen und
+#     ⛔ v5.100.0: der Agent schreibt $PROJ/.claude-mind/verdichten-mind-files.nachher.md (Zeilenenden
+#        der Quelle); Anwenden ist `cp` nach Stufe 3 — NIE nachtippen (bestands-pass.md, Schritt 1)
 #     globs: als unantastbar WOERTLICH) -> mind_verdichtung_pruefen
 #     -> mind_check_tools_have_rules "$PROJ" auf das ERGEBNIS: rc 0, sonst verwerfen
 #     -> ⛔ STUFE 3 (Wort-Diff lesen; ohne Leser NICHT anwenden, ablegen und melden)

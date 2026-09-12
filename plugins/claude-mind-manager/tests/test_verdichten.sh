@@ -144,6 +144,10 @@ janein "bestands-pass.md: der Aufrufer-Satz (Ertrag)" "ja" "$(grep -q 'Ertrag h�
 # v5.99.0: die Schwelle steht VOR dem Lauf — ein bezahltes, korrektes Ergebnis wird nicht mehr verworfen
 janein "bestands-pass.md: Ertragsschwelle VOR dem Lauf, nie hinter dem Urteil (v5.99.0)" "ja" "$(grep -q 'Ertragsschwelle steht VOR dem Lauf, nie hinter dem Urteil' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
 janein "bestands-pass.md: bezahlt heisst anwenden, auch bei 2 %" "ja" "$(grep -q 'auch wenn es 2 % sind' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
+# v5.100.0: das Ergebnis ist eine DATEI — der Agent schreibt .nachher.md, Anwenden ist cp, nie nachtippen
+janein "bestands-pass.md: ERGEBNIS = verdichten-<skill>.nachher.md, vom Agenten geschrieben" "ja" "$(grep -q 'verdichten-<skill>.nachher.md' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
+janein "bestands-pass.md: NIE NACHTIPPEN" "ja" "$(grep -q 'NIE NACHTIPPEN' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
+janein "alle fuenf Traeger nennen die .nachher.md-Datei" "5" "$(grep -l 'verdichten-mind-[a-z]*\.nachher\.md' "$WURZEL"/skills/mind-{claudemd,files,memory,rules,update}/SKILL.md | wc -l | tr -d ' ')"
 janein "mind-rules Step 9b: Stufe 3 vor dem Anwenden" "ja" "$(grep -q 'STUFE 3 (Wort-Diff lesen' "$WURZEL/skills/mind-rules/SKILL.md" && echo ja || echo nein)"
 # v5.85.0: zweiter Traeger mind-claudemd — mit den CLAUDE.md-eigenen Unantastbaren
 janein "mind-claudemd: Step 5e VERDICHTEN vorhanden" "ja" "$(grep -q '^## Step 5e: .*VERDICHTEN' "$WURZEL/skills/mind-claudemd/SKILL.md" && echo ja || echo nein)"

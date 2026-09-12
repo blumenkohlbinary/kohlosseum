@@ -163,8 +163,16 @@ SNAP=$(mind_snapshot "$PROJ" "pre-verdichten") || exit 1
 VORHER=$(mind_kontext_bilanz "$PROJ" | sed -n 's/.*BYTES=\([0-9]*\).*/\1/p')
 
 # 1  EIN Agent je Datei: model sonnet, Denkstufe low, EIN Auftrag, die Datei benannt.
-#    ⛔ Höchstens 2 gleichzeitig. Rückgabe: <ergebnis>.md und <bericht>.md im Scratchpad.
-#    Der Auftrag trägt WÖRTLICH die Regeln aus dem Kasten unten — der Agent sieht nichts.
+#    ⛔ Höchstens 2 gleichzeitig. Der Auftrag trägt WÖRTLICH die Regeln aus dem Kasten
+#    unten — der Agent sieht nichts.
+#    ⛔ v5.100.0 — DAS ERGEBNIS IST EINE DATEI, KEINE BESCHREIBUNG. Der Agent SCHREIBT
+#       ERGEBNIS=$PROJ/.claude-mind/verdichten-<skill>.nachher.md   (die ganze Datei,
+#                Zeilenenden der Quelle — CRLF bleibt CRLF)
+#       BERICHT=$PROJ/.claude-mind/verdichten-<skill>.bericht.md   (entfernt: „…"-Zeilen)
+#       Gemessen 12.09.2026 (Ritas Memory-Kandidat): der Bericht nannte nur Zeilen und
+#       Wortlaut, angewendet wurde von Hand nachgebaut — ein Pfad war veraendert
+#       (`C:\CD\KOHLEKTIV` -> `C:\KOHLEKTIV`), CRLF gekippt, gefangen erst am Byte-Diff.
+#       ⛔ NIE NACHTIPPEN: Anwenden ist `cp "$ERGEBNIS" "$DATEI"` nach Stufe 3, sonst nichts.
 
 # 2  Das Gate — entscheidet, ob angewendet wird
 mind_verdichtung_pruefen "$DATEI" "$ERGEBNIS" "$BERICHT" || { echo "verworfen"; exit 0; }
