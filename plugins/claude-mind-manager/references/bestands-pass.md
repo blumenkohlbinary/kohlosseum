@@ -197,6 +197,7 @@ fi
 | Herleitungen auf Datum + Zahl eindampfen | die **Anzahl** von ⛔ ⚠ ⭐ verringern — er zählt am Ende nach |
 | einen ⛔/⚠/⭐-Absatz ganz entfernen, wenn er überholt ist — **nur benannt:** `entfernt: ⛔ „…"` im Bericht | einen ⛔-Absatz in einen Nachbarn einschmelzen |
 | ⭐ **benannte Überholt-Kandidaten** des Aufrufers entfernen (aus dem Deckel-Ausweis, aus `cleaner_belege.py`) — benannt | raten, was überholt ist. ⛔ Was nur in einer **anderen** Datei steht, kann er nicht wissen — Kalibrierung: „sync-Rolle ist ABSPRACHE" war laut `rollen.md` hinfällig, der Agent sah einen Absatz mit eigener Aussage und ließ ihn, zu Recht |
+| ⭐ **einen Absatz ins Archiv geben — seine Code-Spans (`…`), Zahlen und ALLCAPS-Wörter bleiben im ZEIGER-Satz** („Herleitung (`mind_transkript_pfad`, `APP - Palvedo`, 833 431): `.claude/archiv/…`") — v5.101.0 | eine Marke mit dem Absatz verschwinden lassen: Stufe 1 zählt jede Marke der Quelle, auch die aus Herleitungen. Gemessen 12.09.2026 (`env-vars.md`): erster Durchgang 94,9 %, neun Marken in Archiv-Absätzen, zweiter Durchgang 319k Tokens — die Zeile hier spart ihn |
 
 ⛔ **Das Kriterium für eine Bremse ist das ⛔ am Absatzanfang** — nicht NUR/KEIN im Absatz.
 Die Wörter stehen in Prosa ständig; der erste Agent hielt daran 19 freie Absätze für Bremsen

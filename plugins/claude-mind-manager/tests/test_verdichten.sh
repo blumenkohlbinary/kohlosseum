@@ -148,6 +148,42 @@ janein "bestands-pass.md: bezahlt heisst anwenden, auch bei 2 %" "ja" "$(grep -q
 janein "bestands-pass.md: ERGEBNIS = verdichten-<skill>.nachher.md, vom Agenten geschrieben" "ja" "$(grep -q 'verdichten-<skill>.nachher.md' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
 janein "bestands-pass.md: NIE NACHTIPPEN" "ja" "$(grep -q 'NIE NACHTIPPEN' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
 janein "alle fuenf Traeger nennen die .nachher.md-Datei" "5" "$(grep -l 'verdichten-mind-[a-z]*\.nachher\.md' "$WURZEL"/skills/mind-{claudemd,files,memory,rules,update}/SKILL.md | wc -l | tr -d ' ')"
+
+echo "=============================================================================="
+echo "  4c) v5.101.0: Absatz ins Archiv — die Marken bleiben im ZEIGER-Satz"
+echo "=============================================================================="
+# Gemessen 12.09.2026 an env-vars.md: der Agent gab Herleitungs-Absaetze ins Archiv und
+# nahm ihre Code-Spans mit — Stufe 1 94,9 %, ein zweiter Durchgang (319k Tokens). Die
+# Kasten-Zeile sagt: die Marke bleibt im Zeiger. Hier: derselbe Absatz weg, einmal mit
+# Zeiger-Satz, der die Marken traegt (gruen), einmal ohne (rot).
+cat > "$D/orig2.md" <<'EOF'
+# Regel
+
+⛔ NIE ohne Sicherung loeschen — `tools/rollback.py list` zeigt beide Ablagen.
+
+Herleitung: die alte Rotation lief ueber `xargs rm -f` und loeschte am 21.08.2026 null von
+sieben Snapshots; die Sicherungen wuchsen auf 32 MB, gemessen mit `du -sh .claude-mind`.
+EOF
+cat > "$D/zeiger-mit.md" <<'EOF'
+# Regel
+
+⛔ NIE ohne Sicherung loeschen — `tools/rollback.py list` zeigt beide Ablagen.
+
+Herleitung (`xargs rm -f`, 21.08.2026, 32 MB, `du -sh .claude-mind`): `.claude/archiv/probe.archiv.md`.
+EOF
+cat > "$D/zeiger-ohne.md" <<'EOF'
+# Regel
+
+⛔ NIE ohne Sicherung loeschen — `tools/rollback.py list` zeigt beide Ablagen.
+
+Herleitung: `.claude/archiv/probe.archiv.md`.
+EOF
+janein "Zeiger-Satz traegt die Marken des Archiv-Absatzes -> Stufe 1 voll, anwenden (0)" "0" \
+  "$(mind_verdichtung_pruefen "$D/orig2.md" "$D/zeiger-mit.md" "" probe.md >/dev/null 2>&1; echo $?)"
+janein "⛔ Zeiger-Satz ohne die Marken -> Stufe 1 unvollstaendig, verwerfen (1)" "1" \
+  "$(mind_verdichtung_pruefen "$D/orig2.md" "$D/zeiger-ohne.md" "" probe.md >/dev/null 2>&1; echo $?)"
+janein "bestands-pass.md: die Kasten-Zeile steht (Code-Spans bleiben im ZEIGER-Satz)" "ja" "$(grep -q 'bleiben im ZEIGER-Satz' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
+janein "alle fuenf Traeger tragen die Zeile im Auftrag" "5" "$(grep -l 'bleiben im Zeiger-Satz' "$WURZEL"/skills/mind-{claudemd,files,memory,rules,update}/SKILL.md | wc -l | tr -d ' ')"
 janein "mind-rules Step 9b: Stufe 3 vor dem Anwenden" "ja" "$(grep -q 'STUFE 3 (Wort-Diff lesen' "$WURZEL/skills/mind-rules/SKILL.md" && echo ja || echo nein)"
 # v5.85.0: zweiter Traeger mind-claudemd — mit den CLAUDE.md-eigenen Unantastbaren
 janein "mind-claudemd: Step 5e VERDICHTEN vorhanden" "ja" "$(grep -q '^## Step 5e: .*VERDICHTEN' "$WURZEL/skills/mind-claudemd/SKILL.md" && echo ja || echo nein)"

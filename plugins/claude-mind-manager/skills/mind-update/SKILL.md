@@ -48,7 +48,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.100.0"
+MIND_SKILL_VERSION="5.101.0"
 mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
@@ -1393,6 +1393,8 @@ $f
 # ... dann exakt der Lauf aus bestands-pass.md: Snapshot -> Agent (Kasten + Unantastbare
 #     ⛔ v5.100.0: der Agent schreibt $PROJ/.claude-mind/verdichten-mind-update.nachher.md (Zeilenenden
 #        der Quelle); Anwenden ist `cp` nach Stufe 3 — NIE nachtippen (bestands-pass.md, Schritt 1)
+#     ⭐ v5.101.0 im Auftrag: Absatz ins Archiv = seine Code-Spans, Zahlen und ALLCAPS-Woerter
+#        bleiben im Zeiger-Satz — Stufe 1 zaehlt jede Marke, auch aus Herleitungen
 #     WOERTLICH) -> mind_verdichtung_pruefen -> (CLAUDE.md: Pipeline vorher/nachher)
 #     -> ⛔ STUFE 3 (Wort-Diff lesen; ohne Leser NICHT anwenden, ablegen und melden)
 #     -> anwenden -> mind_kontext_bilanz gegen vorher -> sonst rollback.py restore
