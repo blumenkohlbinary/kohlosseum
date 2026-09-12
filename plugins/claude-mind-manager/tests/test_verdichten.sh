@@ -141,6 +141,9 @@ echo "==========================================================================
 janein "bestands-pass.md: 'STUFE 3 IST PFLICHT'" "ja" "$(grep -q 'STUFE 3 IST PFLICHT' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
 janein "bestands-pass.md: ohne Stufe 3 wird NICHT angewendet" "ja" "$(grep -q 'ohne Stufe 3 wendet NICHT an' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
 janein "bestands-pass.md: der Aufrufer-Satz (Ertrag)" "ja" "$(grep -q 'Ertrag hängt am AUFRUFER' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
+# v5.99.0: die Schwelle steht VOR dem Lauf — ein bezahltes, korrektes Ergebnis wird nicht mehr verworfen
+janein "bestands-pass.md: Ertragsschwelle VOR dem Lauf, nie hinter dem Urteil (v5.99.0)" "ja" "$(grep -q 'Ertragsschwelle steht VOR dem Lauf, nie hinter dem Urteil' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
+janein "bestands-pass.md: bezahlt heisst anwenden, auch bei 2 %" "ja" "$(grep -q 'auch wenn es 2 % sind' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
 janein "mind-rules Step 9b: Stufe 3 vor dem Anwenden" "ja" "$(grep -q 'STUFE 3 (Wort-Diff lesen' "$WURZEL/skills/mind-rules/SKILL.md" && echo ja || echo nein)"
 # v5.85.0: zweiter Traeger mind-claudemd — mit den CLAUDE.md-eigenen Unantastbaren
 janein "mind-claudemd: Step 5e VERDICHTEN vorhanden" "ja" "$(grep -q '^## Step 5e: .*VERDICHTEN' "$WURZEL/skills/mind-claudemd/SKILL.md" && echo ja || echo nein)"

@@ -231,6 +231,15 @@ Gesamtverlust.** Eine Zahl ohne den Zusatz zitiert jemand.
 ist Arbeit. **Deshalb: die GRÖSSTE Datei zuerst, eine je Lauf** — dort ist das Verhältnis
 Ertrag zu Token am besten. Nicht die kleinen, „weil sie billig sind".
 
+⛔ **Die Ertragsschwelle steht VOR dem Lauf, nie hinter dem Urteil (v5.99.0).** Die Frage
+„lohnt diese Datei?" wird beantwortet, BEVOR ein Agent startet — an Größe und benannten
+Kandidaten. Ist die Analyse gefahren, ist sie BEZAHLT: ein korrektes Ergebnis wird nach
+Stufe 3 angewendet, auch wenn es 2 % sind. Gemessen 12.09.2026 (`verdichten-mind-claudemd.txt`):
+zwei korrekte Entfernungen, 267 B, „verwerfen: unter 5 %" — 267 B Deckel verschenkt für
+nichts, die Token waren schon weg. ⚠ Eine 5-%-Schwelle stand nie in einem Skill; sie war
+aus „oder er bekommt 5 %" (oben) abgeleitet. Die 5 % dort sind eine MESSUNG des Ertrags
+ohne Kandidaten, keine Schwelle.
+
 ### ⚠ Was das Gate NICHT leistet — und es wird nicht weggeredet
 
 - **Gemessen wird ERWÄHNUNG, nicht inhaltliche Treue.** Es schließt **Auslassungen** aus,
