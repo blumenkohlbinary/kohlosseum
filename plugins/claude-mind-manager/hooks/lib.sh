@@ -1201,7 +1201,14 @@ mind_sync_voll() {
   set -f
   for paar in $u; do
     case "$paar" in
-      *[!0-9/]*) continue ;;   # etwas anderes als Ziffern und /
+      # ⛔ v5.105.0 (Etappe 13 b): ein Token mit `/` UND anderen Zeichen war bis hier
+      #    UNSICHTBAR — Noras handgetippter Merker (Palvedo, 13.09.2026)
+      #    `3/4-echt-1-strukturell-leer agents … 0/N abdeckung` fiel am `continue`
+      #    vorbei; Teilsync kam nur aus `3/5 bestand`. Ein annotierter Bruch ist ein
+      #    Bruch, den jemand nicht als Zahl schreiben wollte: Teilsync, nie unsichtbar.
+      #    Woerter ohne `/` (skills, agents, echt) bleiben unberuehrt.
+      */*[!0-9/]*|*[!0-9/]*/*) teil=1; continue ;;
+      *[!0-9/]*) continue ;;   # etwas anderes als Ziffern und /, ohne / -> ein Wort
       */*/*)     continue ;;   # mehr als ein /
       */*)       ;;            # genau ein / -> Kandidat
       *)         continue ;;   # gar kein /
@@ -1213,6 +1220,40 @@ mind_sync_voll() {
   [ "$_glob" = 1 ] || set +f
 
   [ "$teil" -eq 0 ]
+}
+
+# mind_umfang_bilden <projekt> [laufkennung] [agent-soll]
+# ⛔ v5.105.0 (Etappe 13 a): der Wert von `umfang=` wird HIER gebildet — aus
+#    mind_agent_bilanz, mind_schritt_bilanz --alle und der Laufspur analyzed-scopes.
+#    Bis v5.104.0 setzte /mind-all Step 2.96a den String aus Shell-Variablen zusammen,
+#    und Nora tippte ihn am 13.09.2026 von Hand: `3/4-echt-1-strukturell-leer agents`,
+#    `0/N abdeckung` — kein Wert kam aus einer Datei. Dieselbe Regel wie v5.97.0 fuer
+#    die Agent-Quittung: was die Bilanz sagt, steht im Merker; was jemand meint, nicht.
+#    Ausgabe: `<a>/<b> skills <c>/<d> agents <e>/5 bestand <f>/<g> abdeckung <h>/5 echt`
+mind_umfang_bilden() {
+  local proj="${1:-}" lauf="${2:-}" soll="${3:-4}" sc bil abd
+  local skill_ist best dis ueb gel teil formal
+  sc="$proj/.claude-mind/analyzed-scopes"; [ -f "$sc" ] || sc="$proj/.claude-mind/analyzed-scopes.done"
+  if [ -n "$lauf" ]; then skill_ist=$(grep -c "^skill=.*|$lauf\$" "$sc" 2>/dev/null)
+  else skill_ist=$(grep -c '^skill=' "$sc" 2>/dev/null); fi
+  case "${skill_ist:-}" in ''|*[!0-9]*) skill_ist=0 ;; esac
+  best=$(grep -c '^bestand=' "$sc" 2>/dev/null); case "${best:-}" in ''|*[!0-9]*) best=0 ;; esac
+  bil=$(mind_agent_bilanz "$proj" 2>/dev/null)
+  dis=$(printf '%s\n' "$bil" | sed -n 's/^DISPATCH=\([0-9]*\).*/\1/p' | head -1)
+  case "${dis:-}" in ''|*[!0-9]*) dis=0 ;; esac
+  ueb=$(printf '%s\n' "$bil" | grep -c '^ *UEBERSPRUNGEN: '); case "${ueb:-}" in ''|*[!0-9]*) ueb=0 ;; esac
+  case "${soll:-}" in ''|*[!0-9]*) soll=4 ;; esac
+  soll=$((soll - ueb)); [ "$soll" -lt 0 ] && soll=0
+  abd=$(mind_schritt_bilanz "$proj" --alle 2>/dev/null)
+  gel=$(printf '%s\n' "$abd" | sed -n 's/.*GELAUFEN=\([0-9]*\).*/\1/p' | head -1)
+  teil=$(printf '%s\n' "$abd" | sed -n 's/.*TEIL=\([0-9]*\).*/\1/p' | head -1)
+  case "${gel:-}" in ''|*[!0-9]*) gel=0 ;; esac
+  case "${teil:-}" in ''|*[!0-9]*) teil=0 ;; esac
+  formal=$(printf '%s\n' "$abd" | grep -c '^ *FORMAL: mind-\(files\|claudemd\|memory\|rules\|update\) ')
+  case "${formal:-}" in ''|*[!0-9]*) formal=0 ;; esac
+  [ "$formal" -gt 5 ] && formal=5
+  printf '%s/5 skills %s/%s agents %s/5 bestand %s/%s abdeckung %s/5 echt\n' \
+    "$skill_ist" "$dis" "$soll" "$best" "$((gel - teil))" "$gel" "$((5 - formal))"
 }
 
 # ===== v5.65.0: HIER STAND `mind_sync_frisch` ===============================

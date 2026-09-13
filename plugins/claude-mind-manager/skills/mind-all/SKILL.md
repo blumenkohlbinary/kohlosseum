@@ -41,7 +41,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.104.0"
+MIND_SKILL_VERSION="5.105.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 # ⛔ v5.98.0: die fuenf Skills sind KEINE Schritte von mind-all — jeder hat seinen EIGENEN
 #    Start-Block (Step 2, Punkt 1). Bis v5.97.0 standen sie hier, Ritas Kalibrierlauf hakte
@@ -794,7 +794,13 @@ case "${_AFORMAL:-}" in ''|*[!0-9]*) _AFORMAL=0 ;; esac
 _FNAMEN=$(printf '%s' "$_ABD" | sed -n 's/^ *FORMAL: \([^ ]*\) .*/\1/p' | sort -u | tr '\n' ',')
 _FNAMEN="${_FNAMEN%,}"
 
-UMFANG="$_SKILL_IST/$_SKILL_SOLL skills $_DIS/$_AGENT_SOLL agents $_BEST/5 bestand $((_AGEL - _ATEIL))/$_AGEL abdeckung $((5 - _AFORMAL))/5 echt"
+# ⛔ v5.105.0 (Etappe 13 a): der Wert kommt aus `mind_umfang_bilden` — gelesen aus den
+#    beiden Bilanzen und der Laufspur, NICHT aus den Variablen dieses Blocks. Die
+#    Variablen oben tragen nur noch SYNC_LIEF und `ungepruef=`. Gemessen 13.09.2026
+#    (Palvedo, Nora): `umfang=5/5 skills 3/4-echt-1-strukturell-leer agents 3/5 bestand
+#    0/N abdeckung 5/5 echt` — von Hand getippt, kein Wert aus einer Datei, und
+#    `mind_sync_voll` sah den 3/4 nicht einmal. ⛔ NIE `UMFANG="..."` aus Variablen bauen.
+UMFANG=$(mind_umfang_bilden "$PROJ" "${LAUF:-}" "${AGENT_SOLL:-4}")
 
 # ⚠ Ein Skill OHNE Quittung ist ungeprueft — und das muss im Merker stehen,
 #   nicht nur in der Zahl. Sonst weiss der naechste Lauf, DASS etwas fehlte,

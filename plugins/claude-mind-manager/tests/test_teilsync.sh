@@ -110,6 +110,47 @@ P=$(neu_projekt); stand "$P" "kaputt"
 janein "umfang=kaputt -> vollstaendig (fail-safe)" voll "$(voll_p "$P/.claude-mind/rescued/sync-stand")"
 rm -rf "$P"
 
+# --- 6b · v5.105.0 (Etappe 13 b): ein annotierter Bruch ist TEILSYNC, nie unsichtbar
+#     Noras Merker (Palvedo, 13.09.2026), woertlich. Bis v5.104.0 fiel
+#     `3/4-echt-1-strukturell-leer` am `*[!0-9/]*`-continue vorbei; Teilsync kam
+#     nur aus `3/5 bestand`. Mit 5/5 bestand haette der getippte 3/4 als voll gegolten.
+P=$(neu_projekt); stand "$P" "5/5 skills 3/4-echt-1-strukturell-leer agents 3/5 bestand 0/N abdeckung 5/5 echt"
+janein "Noras Merker woertlich -> Teilsync" teil "$(voll_p "$P/.claude-mind/rescued/sync-stand")"
+stand "$P" "5/5 skills 3/4-echt-1-strukturell-leer agents 5/5 bestand 5/5 abdeckung 5/5 echt"
+janein "⛔ derselbe annotierte 3/4 bei sonst 5/5 -> Teilsync (war unsichtbar = voll)" teil "$(voll_p "$P/.claude-mind/rescued/sync-stand")"
+stand "$P" "5/5 skills 4/4 agents 5/5 bestand 0/N abdeckung 5/5 echt"
+janein "⛔ 0/N (Buchstabe im Nenner) -> Teilsync" teil "$(voll_p "$P/.claude-mind/rescued/sync-stand")"
+stand "$P" "5/5 skills 4/4 agents 5/5 bestand 5/5 abdeckung 5/5 echt"
+janein "   Gegenprobe: reine Zahlen, alles voll -> voll" voll "$(voll_p "$P/.claude-mind/rescued/sync-stand")"
+janein "   Gegenprobe: umfang=kaputt (Wort ohne /) bleibt fail-safe voll" voll "$(stand "$P" "kaputt"; voll_p "$P/.claude-mind/rescued/sync-stand")"
+rm -rf "$P"
+
+# --- 6c · v5.105.0 (Etappe 13 a): umfang= wird GEBILDET, nicht getippt --------------
+#     mind_umfang_bilden liest DISPATCH/UEBERSPRUNGEN aus mind_agent_bilanz, GELAUFEN/TEIL/
+#     FORMAL aus mind_schritt_bilanz --alle, skill=/bestand= aus analyzed-scopes.
+P=$(neu_projekt); Q="$P/.claude-mind/agent-quittung.jsonl"; SQ="$P/.claude-mind/schritt-quittung.jsonl"
+_ALT=$(date -u -d '-120 seconds' +%Y-%m-%dT%H:%M:%SZ); _NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+printf 'run_started=1\nskill=mind-files|L1\nskill=mind-claudemd|L1\nskill=mind-memory|L1\nskill=mind-rules|L1\nskill=mind-update|L1\nbestand=mind-files:3/3\nbestand=mind-claudemd:3/3\n' > "$P/.claude-mind/analyzed-scopes"
+mind_agent_quittung_start "$P" 4
+for b in claude-md memory rules; do
+  printf '{"ereignis":"dispatch","bereich":"%s","ts":"%s"}\n' "$b" "$_ALT" >> "$Q"
+  printf 'x%.0s' $(seq 1 300) > "$P/.claude-mind/agent-$b.md"
+  mind_agent_ergebnis "$b" --datei "$P/.claude-mind/agent-$b.md" "$P" >/dev/null 2>&1
+done
+mind_agent_uebersprungen custom-context 0 "$P" >/dev/null 2>&1
+printf '{"ereignis":"start","skill":"mind-all","erwartet":"mind-files","ts":"%s","code":"5.105.0","text":"5.105.0","versionsbruch":false}\n' "$_ALT" > "$SQ"
+printf '{"ereignis":"start","skill":"mind-files","erwartet":"verdichten","ts":"%s","code":"5.105.0","text":"5.105.0","versionsbruch":false}\n{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"%s"}\n' "$_ALT" "$_NOW" >> "$SQ"
+U=$(mind_umfang_bilden "$P" "L1" 4)
+janein "umfang aus den Bilanzen: skills 5/5 (Laufspur L1)" ja "$(printf '%s' "$U" | grep -q '^5/5 skills ' && echo ja || echo nein)"
+janein "   agents 3/3 (Skip abgezogen, nicht 3/4)" ja "$(printf '%s' "$U" | grep -q ' 3/3 agents ' && echo ja || echo nein)"
+janein "   bestand 2/5 (zwei Quittungen in der Laufspur)" ja "$(printf '%s' "$U" | grep -q ' 2/5 bestand ' && echo ja || echo nein)"
+janein "   nur Ziffern und / in den Bruechen (kein annotierter Wert moeglich)" 0 "$(printf '%s\n' "$U" | tr ' ' '\n' | grep '/' | grep -vc '^[0-9]*/[0-9]*$')"
+janein "   fremde Laufkennung -> skills 0/5 (die Spur eines anderen Laufs zaehlt nicht)" ja "$(mind_umfang_bilden "$P" "L2" 4 | grep -q '^0/5 skills ' && echo ja || echo nein)"
+rm -rf "$P"
+# Text-Gate: mind-all baut UMFANG nicht mehr aus Variablen
+janein "mind-all: UMFANG kommt aus mind_umfang_bilden" 1 "$(grep -c 'UMFANG=$(mind_umfang_bilden "$PROJ"' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md")"
+janein "mind-all: kein UMFANG=\"...\" aus Shell-Variablen mehr" 0 "$(grep -c '^UMFANG="' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md")"
+
 # --- 7 · gar kein Merker ist nicht unsere Frage ---------------------------
 P=$(neu_projekt)
 janein "kein sync-stand -> vollstaendig" voll "$(voll_p "$P/.claude-mind/rescued/sync-stand")"
