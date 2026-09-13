@@ -158,8 +158,11 @@ mind_agent_quittung_start "$P" 4
 printf 'abcdefghijklmnopqrstuvwxyz' > "$P/.claude-mind/agent-memory.md"
 mind_agent_dispatch "memory" "$P"
 mind_agent_ergebnis "memory" --datei "$P/.claude-mind/agent-memory.md" "$P" 2>/dev/null
+# ⚠ [0-9] s, nicht 0 s: die Fixture nimmt die Uhr, und ein Sekundenwechsel zwischen Dispatch
+#   und Ergebnis ergab am 13.09.2026 "1 s auseinander" (Paketlauf unter Last) - gleiche
+#   Zusicherung: unter 30 s heisst nachgetragen.
 janein "4b Datei mit 26 B, aber 0 s nach dem Dispatch: UNGEPRUEFT (nachgetragen)" ja \
-  "$(mind_agent_bilanz "$P" 2>/dev/null | grep -q 'UNGEPRUEFT: memory (dispatch und ergebnis 0 s auseinander' && echo ja || echo nein)"
+  "$(mind_agent_bilanz "$P" 2>/dev/null | grep -q 'UNGEPRUEFT: memory (dispatch und ergebnis [0-9] s auseinander' && echo ja || echo nein)"
 janein "   ... Rueckgabe 1" 1 "$(mind_agent_bilanz "$P" >/dev/null 2>&1; echo $?)"
 # Positivkontrolle: derselbe Inhalt, Dispatch 120 s frueher -> geprueft
 mind_agent_quittung_start "$P" 4
