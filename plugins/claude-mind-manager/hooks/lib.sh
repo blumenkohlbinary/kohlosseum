@@ -1572,6 +1572,32 @@ mind_agent_dispatch() {
     "$bereich" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$q"
 }
 
+# mind_agent_uebersprungen <bereich> <anzahl-dateien> [projekt]
+# ⛔ v5.104.0 (Etappe 12): ein Projekt OHNE Custom-Context-Dateien konnte NIE voll
+#    syncen — `erwartet=4` stand fest, das erlaubte Ueberspringen (mind-update Step 3.5)
+#    hinterliess keine Zeile, die Bilanz sagte "nur 3 von 4", `umfang=` sagte 3/4,
+#    `mind_sync_voll` sagte Teilsync. Palvedo hing daran vom 10. bis 13.09.2026: drei
+#    Laeufe, zehn Rettungen in OPEN, `letzter-sync` nie geschrieben — und der vierte
+#    Agent wurde am 13.09. VORGETAEUSCHT (dispatch + Zahl in derselben Sekunde), weil der
+#    Skill keinen anderen Weg zu "voll" liess.
+#    Diese Funktion quittiert das Ueberspringen als eigenes Ereignis. Sie schreibt NUR
+#    fuer custom-context und NUR bei 0 Dateien; alles andere ist rc 1 ohne Zeile —
+#    dann bleibt der Bereich stumm/fehlend und damit ungeprueft, wie bisher.
+mind_agent_uebersprungen() {
+  local bereich="${1:-}" n="${2:-}" q
+  q=$(_mind_quittung_pfad "${3:-}")
+  if [ "$bereich" != "custom-context" ]; then
+    echo "⛔ nur custom-context darf uebersprungen werden — '$bereich' wird dispatcht" >&2; return 1
+  fi
+  case "$n" in ''|*[!0-9]*) echo "⛔ mind_agent_uebersprungen: Dateizahl fehlt (2. Argument)" >&2; return 1 ;; esac
+  if [ "$n" -ne 0 ]; then
+    echo "⛔ $n Custom-Context-Datei(en) — kein Ueberspringen, dispatchen" >&2; return 1
+  fi
+  mkdir -p "$(dirname "$q")" 2>/dev/null
+  printf '{"ereignis":"uebersprungen","bereich":"%s","grund":"0-dateien","dateien":0,"ts":"%s"}\n' \
+    "$bereich" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$q"
+}
+
 # NACH der Rueckkehr aufrufen, mit der Bytezahl der Rueckgabe.
 # ⚠ 0 Bytes ist ein ERGEBNIS-Eintrag, kein fehlender. Der Unterschied zwischen
 #   "leer zurueckgekommen" und "nie zurueckgekommen" ist genau das, was hier
@@ -1649,12 +1675,25 @@ mind_agent_bilanz() {
   # Bereiche sammeln. Bewusst ohne jq: die Bilanz muss auch dann funktionieren,
   # wenn jq fehlt — sonst faellt genau die Pruefung aus, die den Ausfall melden soll.
   local dispatcht="" mit_ergebnis="" erwartet="" wdh=0 nachtrag=""
+  # ⛔ v5.104.0: `uebersprungen` ist ein drittes Ereignis (mind_agent_uebersprungen).
+  #    Gueltig NUR fuer custom-context mit grund 0-dateien; ein gueltig uebersprungener
+  #    Bereich zaehlt nicht gegen ERWARTET. Jede andere Form ist eine ungueltige Quittung
+  #    und macht den Bereich ungeprueft — Ueberspringen bleibt die einzige Auslassung.
+  local ueb="" uebfalsch="" uebliste="" n_ueb=0 _ug _ud
   erwartet=$(sed -n 's/.*"ereignis":"start".*"erwartet":\([0-9]*\).*/\1/p' "$lauf" | head -1)
   while IFS= read -r zeile; do
     [ -n "$zeile" ] || continue
     bereich=$(printf '%s' "$zeile" | sed -n 's/.*"bereich":"\([^"]*\)".*/\1/p')
     [ -n "$bereich" ] || continue
     case "$zeile" in
+      *'"ereignis":"uebersprungen"'*)
+        _ug=$(printf '%s' "$zeile" | sed -n 's/.*"grund":"\([^"]*\)".*/\1/p')
+        _ud=$(printf '%s' "$zeile" | sed -n 's/.*"dateien":\([0-9]*\).*/\1/p')
+        if [ "$bereich" = "custom-context" ] && [ "$_ug" = "0-dateien" ] && [ "${_ud:-1}" = "0" ]; then
+          case " $ueb " in *" $bereich "*) ;; *) ueb="${ueb}${bereich} " ;; esac
+        else
+          case " $uebfalsch " in *" $bereich "*) ;; *) uebfalsch="${uebfalsch}${bereich} " ;; esac
+        fi ;;
       *'"ereignis":"dispatch"'*)
         case " $dispatcht " in
           *" $bereich "*) ;;                      # Wiederholung, kein neuer Bereich
@@ -1760,10 +1799,28 @@ mind_agent_bilanz() {
       *) stumm=$((stumm + 1)); liste="${liste}  UNGEPRUEFT: ${bereich} (dispatcht, nie zurueck)"$'\n' ;;
     esac
   done
+  # ⛔ v5.104.0: uebersprungen UND dispatcht ist ein Widerspruch — bei 0 Dateien gibt es
+  #    nichts zu pruefen, ein Dispatch dort ist Vortaeuschung (Palvedo 13.09.2026: Zahl in
+  #    derselben Sekunde, dann eine 167-B-Handdatei). Uebersprungen ohne Dispatch ist der
+  #    gueltige Fall und wird ausgewiesen, nicht als leer oder stumm gezaehlt.
+  for bereich in $ueb; do
+    case " $dispatcht " in
+      *" $bereich "*) leer=$((leer + 1)); liste="${liste}  UNGEPRUEFT: ${bereich} (dispatcht ohne Dateien — als uebersprungen quittiert, 0 Custom-Context-Dateien)"$'\n' ;;
+      *) n_ueb=$((n_ueb + 1)); uebliste="${uebliste}  UEBERSPRUNGEN: ${bereich} (0 Custom-Context-Dateien — kein Agent noetig, zaehlt nicht gegen ERWARTET)"$'\n' ;;
+    esac
+  done
+  for bereich in $uebfalsch; do
+    leer=$((leer + 1)); liste="${liste}  UNGEPRUEFT: ${bereich} (Ueberspringen gilt nur fuer custom-context bei 0 Dateien — Quittung ungueltig)"$'\n'
+  done
   rm -f "$lauf"
 
   echo "DISPATCH=$d ERGEBNIS=$e LEER=$leer STUMM=$stumm"
   [ -n "$erwartet" ] && echo "  ERWARTET=$erwartet"
+  [ -n "$uebliste" ] && printf '%s' "$uebliste"
+  # gueltig Uebersprungenes senkt die Erwartung — nur hier, nicht in der Start-Zeile
+  if [ -n "$erwartet" ] && [ "$n_ueb" -gt 0 ] 2>/dev/null; then
+    erwartet=$((erwartet - n_ueb)); [ "$erwartet" -lt 0 ] && erwartet=0
+  fi
   [ -n "$liste" ] && printf '%s' "$liste"
   [ -n "$nachtrag" ] && printf '%s' "$nachtrag"
 
@@ -2344,6 +2401,14 @@ mind_schritt_bilanz() {
   echo "ERWARTET=$n_erw GELAUFEN=$gel UEBERSPRUNGEN=$ueb FEHLER=$feh LEER=$leer TEIL=$n_teil"
   [ "$alle" -eq 1 ] && [ "$mischung" -eq 1 ] && \
     echo "  ⚠ --alle ohne mind-all-Startzeile: ganze Datei gelesen — Laeufe koennen vermischt sein."
+  # ⛔ v5.104.0 (Etappe 12 §3): die Warnung allein hat nichts bewirkt — Noras Laeufe
+  #    12.09. und 13.09. (Palvedo) hatten je fuenf Startzeilen und keine fuer mind-all;
+  #    `--alle` las die ganze Datei (GELAUFEN=97 ueber drei Laeufe), und der Lauf galt
+  #    als voll. Ohne Kopf-Block ist die Bilanz keine Bilanz DIESES Laufs: FORMAL,
+  #    und Step 2.96a traegt `formal-mind-all` in `ungepruef=`.
+  if [ "$alle" -eq 1 ] && [ "$mischung" -eq 1 ]; then
+    formal=$((formal + 1)); formalliste="${formalliste}  FORMAL: mind-all (kein Kopf-Block — Bilanz ueber die ganze Datei, nicht ueber diesen Lauf)"$'\n'
+  fi
   if [ "$formal" -gt 0 ]; then
     echo "  FORMAL=$formal"
     printf '%s' "$formalliste"

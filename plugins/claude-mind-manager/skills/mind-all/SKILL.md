@@ -41,7 +41,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.103.0"
+MIND_SKILL_VERSION="5.104.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 # ⛔ v5.98.0: die fuenf Skills sind KEINE Schritte von mind-all — jeder hat seinen EIGENEN
 #    Start-Block (Step 2, Punkt 1). Bis v5.97.0 standen sie hier, Ritas Kalibrierlauf hakte
@@ -261,6 +261,12 @@ fi
 #       selben Tag. Ohne die Zahl kann die Bilanz "nie dispatcht" nicht von
 #       "ueber das Agent-Werkzeug gestartet" unterscheiden — und genau das hat
 #       `Pc Forschung` am 26.08. zum ZWEITEN Mal unveraendert gemeldet.
+#    ⛔ v5.104.0: die 4 bleibt hier stehen, obwohl custom-context bei 0 Dateien
+#       entfaellt — Step 0 kennt die Dateizahl nicht (Step 1.5 von mind-update zaehlt
+#       sie). Das Ueberspringen quittiert mind-update mit `mind_agent_uebersprungen`;
+#       die Bilanz zieht es von ERWARTET ab, Step 2.96a vom Soll (`3/3 agents`).
+#       Ohne das war ein Projekt ohne Custom-Context-Dateien NIE voll (Palvedo,
+#       10.–13.09.2026, drei Laeufe, zehn Rettungen ungetilgt).
 [ "$DRY_RUN" = "no" ] && mind_agent_quittung_start "$PROJ" 4
 
 # ⛔ v5.38.0: DEN TRANSKRIPT-PFAD JETZT HOLEN, NICHT SPAETER.
@@ -711,7 +717,13 @@ mind_agent_bilanz "$PROJ" > "$_BILANZ" 2>/dev/null; _BRC=$?
 _DIS=$(sed -n 's/.*DISPATCH=\([0-9]*\).*/\1/p' "$_BILANZ" | head -1); _DIS=${_DIS:-0}
 # Soll: 4 Bereiche. 3, wenn custom-context mangels Dateien entfaellt (die EINZIGE
 # erlaubte Auslassung, mind-update Step 3.5). 0 nur bei --quick.
-_AGENT_SOLL="${AGENT_SOLL:-4}"
+# ⛔ v5.104.0: das Entfallen steht als `UEBERSPRUNGEN:`-Zeile in der Bilanz
+#    (Quittung `uebersprungen`, mind_agent_uebersprungen) und wird HIER vom Soll
+#    abgezogen — `3/3 agents`, nicht `3/4`. Vorher war `AGENT_SOLL` eine Shell-
+#    Variable, die niemand setzte: ein Projekt ohne Custom-Context-Dateien blieb
+#    per Konstruktion Teilsync (Palvedo, drei Laeufe 10.–13.09.2026).
+_UEB=$(grep -c '^ *UEBERSPRUNGEN: ' "$_BILANZ" 2>/dev/null); case "${_UEB:-}" in ''|*[!0-9]*) _UEB=0 ;; esac
+_AGENT_SOLL=$(( ${AGENT_SOLL:-4} - _UEB )); [ "$_AGENT_SOLL" -lt 0 ] && _AGENT_SOLL=0
 
 # ⛔ Der Rueckgabewert der Bilanz REICHT NICHT — am Code gemessen, 24.08.2026.
 #    mind_agent_bilanz zaehlt nur, was in der Quittung STEHT. Ein Agent, der nie
@@ -773,8 +785,12 @@ case "${_AGEL:-}"  in ''|*[!0-9]*) _AGEL=0 ;; esac
 #    Start-Block, Bytes getippt statt --datei, zwei Skills in derselben Sekunde).
 #    Gemessen am Lauf 00:02 (12.09.2026): alle vier inneren Skills. `<5-n>/5 echt`
 #    macht daraus ueber mind_sync_voll einen Teilsync, `formal-<skill>` sagt welchen.
-_AFORMAL=$(printf '%s' "$_ABD" | sed -n 's/^ *FORMAL=\([0-9]*\).*/\1/p' | head -1)
+# ⛔ v5.104.0: gezaehlt werden nur die FUENF — `FORMAL: mind-all` (kein Kopf-Block,
+#    Etappe 12 §3) geht ueber `_FNAMEN` als `formal-mind-all` in `ungepruef=` und
+#    darf `<n>/5 echt` nicht unter 0 druecken.
+_AFORMAL=$(printf '%s\n' "$_ABD" | grep -c '^ *FORMAL: mind-\(files\|claudemd\|memory\|rules\|update\) ')
 case "${_AFORMAL:-}" in ''|*[!0-9]*) _AFORMAL=0 ;; esac
+[ "$_AFORMAL" -gt 5 ] && _AFORMAL=5
 _FNAMEN=$(printf '%s' "$_ABD" | sed -n 's/^ *FORMAL: \([^ ]*\) .*/\1/p' | sort -u | tr '\n' ',')
 _FNAMEN="${_FNAMEN%,}"
 

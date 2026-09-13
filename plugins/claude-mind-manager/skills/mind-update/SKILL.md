@@ -48,7 +48,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.103.0"
+MIND_SKILL_VERSION="5.104.0"
 mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
@@ -1082,6 +1082,13 @@ Agent(subagent_type: "claude-mind-manager:context-analyzer", run_in_background: 
 
 **Skip-Logik pro Agent:**
 - Agent 4 (`custom-context`) skippen wenn `${#CUSTOM_CONTEXT_FILES[@]} == 0` (Plan EC4) — das ist die EINZIGE erlaubte Auslassung; die anderen 3 sind unbedingt Pflicht.
+  ⛔ **v5.104.0: das Ueberspringen wird QUITTIERT, sonst ist der Lauf ein Teilsync:**
+  `mind_agent_uebersprungen custom-context "${#CUSTOM_CONTEXT_FILES[@]}" "$PROJ"` — schreibt
+  nur bei 0 Dateien, die Bilanz weist `UEBERSPRUNGEN: custom-context` aus und zieht es von
+  ERWARTET ab. ⛔ **Ein `mind_agent_dispatch custom-context` bei 0 Dateien ist ab jetzt selbst
+  ein Befund** (UNGEPRUEFT „dispatcht ohne Dateien") — gemessen 13.09.2026 in Palvedo: der
+  vierte Agent wurde vorgetaeuscht (Zahl in derselben Sekunde, dann eine 167-B-Handdatei),
+  weil der Skill keinen anderen Weg zu „voll" liess.
 
 ### ⛔ Die Agentenzahl kommt aus dem Kontextstand, nicht aus dem Ermessen (NEU v5.19.0)
 
@@ -1153,7 +1160,14 @@ komplett raus“*.
 #    Bilanz `DISPATCH=0` und behauptet damit, der Fan-out habe nicht
 #    stattgefunden. Bei nur 3 Bereichen (custom-context entfaellt mangels
 #    Dateien) hier 3 uebergeben, nicht 4.
-[ -f "$PROJ/.claude-mind/agent-quittung.jsonl" ] || mind_agent_quittung_start "$PROJ" 4
+# ⛔ v5.104.0: 3 bei 0 Custom-Context-Dateien — Step 1.5 hat gezaehlt — und das
+#    Ueberspringen wird QUITTIERT; sonst heisst es "nur 3 von 4" und der Lauf ist Teilsync.
+if [ "${#CUSTOM_CONTEXT_FILES[@]}" -eq 0 ]; then
+  [ -f "$PROJ/.claude-mind/agent-quittung.jsonl" ] || mind_agent_quittung_start "$PROJ" 3
+  mind_agent_uebersprungen custom-context 0 "$PROJ"
+else
+  [ -f "$PROJ/.claude-mind/agent-quittung.jsonl" ] || mind_agent_quittung_start "$PROJ" 4
+fi
 mind_agent_dispatch "<bereich>" "$PROJ"    # VOR dem Start
 # ... Agent laeuft (run_in_background: false — der tool_result IST die Rueckgabe) ...
 # ⛔ v5.94.0: die Bytes kommen aus einer DATEI, nie aus dem Kopf. Den tool_result

@@ -320,7 +320,15 @@ janein "   ... FORMAL=5" ja "$(printf '%s
 : > "$S"
 printf '{"ereignis":"start","skill":"mind-files","erwartet":"verdichten","ts":"2026-09-12T00:01:00Z","code":"5.98.0","text":"5.98.0","versionsbruch":false}\n{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"2026-09-12T00:01:30Z"}\n' >> "$S"
 _A=$(mind_schritt_bilanz "$P" --alle 2>/dev/null)
-janein "   Einzellauf ohne mind-all-Start: kein FORMAL fuer die vier fehlenden" nein "$(printf '%s\n' "$_A" | grep -q 'FORMAL' && echo ja || echo nein)"
+# v5.104.0: ohne Kopf-Block ist `FORMAL: mind-all` da (4k) — die Zusicherung hier bleibt:
+# KEIN FORMAL fuer die vier fehlenden Skills.
+janein "   Einzellauf ohne mind-all-Start: kein FORMAL fuer die vier fehlenden" nein "$(printf '%s\n' "$_A" | grep -q 'FORMAL: mind-\(files\|claudemd\|memory\|rules\|update\) ' && echo ja || echo nein)"
+janein "4k v5.104.0: ohne mind-all-Kopf-Block meldet --alle FORMAL: mind-all" ja "$(printf '%s\n' "$_A" | grep -q 'FORMAL: mind-all (kein Kopf-Block' && echo ja || echo nein)"
+janein "   ... und Rueckgabe 1" 1 "$(mind_schritt_bilanz "$P" --alle >/dev/null 2>&1; echo $?)"
+# Gegenprobe: MIT Kopf-Block kein FORMAL: mind-all
+: > "$S"
+printf '{"ereignis":"start","skill":"mind-all","erwartet":"mind-files","ts":"2026-09-12T00:00:00Z","code":"5.98.0","text":"5.98.0","versionsbruch":false}\n{"ereignis":"start","skill":"mind-files","erwartet":"verdichten","ts":"2026-09-12T00:01:00Z","code":"5.98.0","text":"5.98.0","versionsbruch":false}\n{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"2026-09-12T00:01:30Z"}\n' >> "$S"
+janein "   Gegenprobe: mit Kopf-Block kein FORMAL: mind-all" nein "$(mind_schritt_bilanz "$P" --alle 2>/dev/null | grep -q 'FORMAL: mind-all' && echo ja || echo nein)"
 
 # --- 4i  v5.103.0: Ergebnis VOR dem Dispatch = nachgetragen ---------------------------
 # Gemessen zweimal: Palvedo 12.09.2026 (vier ergebnis 18:15:21, vier dispatch 18:15:40)
@@ -353,6 +361,42 @@ printf '{"ereignis":"dispatch","bereich":"rules","ts":"%s"}\n' "$(date -u -d '-1
 printf '{"ereignis":"ergebnis","bereich":"rules","bytes":1096,"quelle":"datei","ts":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$Q"
 janein "   WIEDERHOLT (zweiter Dispatch vor dem zweiten Ergebnis) bleibt echt: LEER=0" ja \
   "$(mind_agent_bilanz "$P" 2>/dev/null | head -1 | grep -q 'LEER=0' && echo ja || echo nein)"
+
+# --- 4j  v5.104.0: custom-context bei 0 Dateien ist UEBERSPRUNGEN, nicht fehlend ------
+# Palvedo hat 0 Custom-Context-Dateien: erwartet=4 fest, Skip -> "nur 3 von 4" -> 3/4 ->
+# Teilsync, drei Laeufe 10.–13.09.2026, OPEN nie getilgt. Am 13.09. wurde der vierte
+# Agent deshalb vorgetaeuscht. Jetzt: Skip quittiert -> voll; Dispatch bei 0 -> ungeprueft;
+# Skip bei 1 Datei -> verweigert (unveraendert ungeprueft).
+_drei() { local b; for b in claude-md memory rules; do
+  printf '{"ereignis":"dispatch","bereich":"%s","ts":"%s"}\n' "$b" "$(_alt)" >> "$Q"
+  printf 'x%.0s' $(seq 1 400) > "$P/.claude-mind/agent-$b.md"
+  mind_agent_ergebnis "$b" --datei "$P/.claude-mind/agent-$b.md" "$P" 2>/dev/null; done; }
+mind_agent_quittung_start "$P" 4; _drei
+janein "4j Vorbedingung (alt): 3 von 4 ohne Skip-Quittung -> Rueckgabe 1" 1 "$(mind_agent_bilanz "$P" >/dev/null 2>&1; echo $?)"
+mind_agent_quittung_start "$P" 4; _drei
+mind_agent_uebersprungen custom-context 0 "$P"
+janein "   0 Dateien + Skip quittiert -> Rueckgabe 0 (voll)" 0 "$(mind_agent_bilanz "$P" >/dev/null 2>&1; echo $?)"
+janein "   ... die Bilanz weist UEBERSPRUNGEN: custom-context aus" ja \
+  "$(mind_agent_bilanz "$P" 2>/dev/null | grep -q '^  UEBERSPRUNGEN: custom-context (0 Custom-Context-Dateien' && echo ja || echo nein)"
+janein "   ... erste Zeile: 3 dispatcht, 3 zurueck, LEER=0" "DISPATCH=3 ERGEBNIS=3 LEER=0 STUMM=0" "$(mind_agent_bilanz "$P" 2>/dev/null | head -1)"
+mind_agent_quittung_start "$P" 4; _drei
+mind_agent_uebersprungen custom-context 0 "$P"
+printf '{"ereignis":"dispatch","bereich":"custom-context","ts":"%s"}\n' "$(_alt)" >> "$Q"
+printf 'y%.0s' $(seq 1 167) > "$P/.claude-mind/agent-custom-context.md"
+mind_agent_ergebnis "custom-context" --datei "$P/.claude-mind/agent-custom-context.md" "$P" 2>/dev/null
+janein "   0 Dateien + trotzdem Dispatch -> UNGEPRUEFT (dispatcht ohne Dateien)" ja \
+  "$(mind_agent_bilanz "$P" 2>/dev/null | grep -q 'UNGEPRUEFT: custom-context (dispatcht ohne Dateien' && echo ja || echo nein)"
+janein "   ... Rueckgabe 1" 1 "$(mind_agent_bilanz "$P" >/dev/null 2>&1; echo $?)"
+mind_agent_quittung_start "$P" 4; _drei
+janein "   1 Datei + Skip -> die Funktion verweigert (rc 1, keine Zeile)" 1 "$(mind_agent_uebersprungen custom-context 1 "$P" 2>/dev/null; echo $?)"
+janein "   ... und die Bilanz bleibt bei 'nur 3 von 4' (unveraendert ungeprueft)" ja \
+  "$(mind_agent_bilanz "$P" 2>/dev/null | grep -q 'nur 3 von 4 Bereichen' && echo ja || echo nein)"
+janein "   rules ueberspringen -> verweigert (nur custom-context)" 1 "$(mind_agent_uebersprungen rules 0 "$P" 2>/dev/null; echo $?)"
+# eine von Hand getippte Skip-Zeile fuer einen anderen Bereich deckt nichts
+mind_agent_quittung_start "$P" 4; _drei
+printf '{"ereignis":"uebersprungen","bereich":"rules","grund":"0-dateien","dateien":0,"ts":"%s"}\n' "$(_alt)" >> "$Q"
+janein "   getippte Skip-Zeile fuer rules -> UNGEPRUEFT (Quittung ungueltig)" ja \
+  "$(mind_agent_bilanz "$P" 2>/dev/null | grep -q 'UNGEPRUEFT: rules (Ueberspringen gilt nur' && echo ja || echo nein)"
 rm -rf "$T"
 
 echo
