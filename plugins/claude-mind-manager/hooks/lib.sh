@@ -1710,15 +1710,35 @@ mind_agent_bilanz() {
       continue
     fi
     # (b) Zeitabstand zum letzten Dispatch VOR diesem Ergebnis
+    #    ⛔ v5.103.0 — bis v5.102.0 wurde der letzte Dispatch UEBERHAUPT genommen und
+    #       nur bei `_de -le _ee` geprueft. Lag der Dispatch NACH dem Ergebnis, entfiel
+    #       die Pruefung, und der Bereich galt als echt. Gemessen zweimal: Palvedo
+    #       12.09.2026 (vier ergebnis 18:15:21, vier dispatch 18:15:40) und Ritas Lauf
+    #       13.09.2026 (16:59:23 / 16:59:36) — `5/5 echt` trotz nachgetragener Quittung.
+    #       Jetzt zaehlt der letzte Dispatch, der VOR dem Ergebnis liegt; gibt es
+    #       keinen, ist das Ergebnis nachgetragen. Unparsbare ts bleiben stumm (fail-safe).
     _ets=$(printf '%s' "$_lz" | sed -n 's/.*"ts":"\([^"]*\)".*/\1/p')
-    _dts=$(grep '"ereignis":"dispatch"' "$lauf" 2>/dev/null | grep "\"bereich\":\"$bereich\"" | tail -1 \
-           | sed -n 's/.*"ts":"\([^"]*\)".*/\1/p')
     # ⚠ NUR die eigene ISO-Form parsen — `date -d x` liefert eine Zahl statt eines
     #   Fehlers (gemessen: "x" -> 1789124400). Ein Prueffall mit ts "x" waere sonst
     #   "0 s auseinander" und damit ungeprueft.
-    _de=""; _ee=""
-    case "$_dts" in [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z) _de=$(date -u -d "$_dts" +%s 2>/dev/null) ;; esac
+    _de=""; _ee=""; _dts=""
     case "$_ets" in [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z) _ee=$(date -u -d "$_ets" +%s 2>/dev/null) ;; esac
+    local _dalle _t _x _stumm=0
+    _dalle=$(grep '"ereignis":"dispatch"' "$lauf" 2>/dev/null | grep "\"bereich\":\"$bereich\"" \
+             | sed -n 's/.*"ts":"\([^"]*\)".*/\1/p')
+    for _t in $_dalle; do
+      case "$_t" in
+        [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z)
+          _x=$(date -u -d "$_t" +%s 2>/dev/null)
+          [ -n "$_x" ] && [ -n "$_ee" ] && [ "$_x" -le "$_ee" ] 2>/dev/null && { _de="$_x"; _dts="$_t"; } ;;
+        *) _stumm=1 ;;
+      esac
+    done
+    if [ -n "$_ee" ] && [ "$_stumm" -eq 0 ] && [ -z "$_de" ]; then
+      leer=$((leer + 1))
+      liste="${liste}  UNGEPRUEFT: ${bereich} (Ergebnis vor dem Dispatch — die Quittung wurde nachgetragen)"$'\n'
+      continue
+    fi
     if [ -n "$_de" ] && [ -n "$_ee" ] && [ "$_de" -le "$_ee" ] 2>/dev/null; then
       _diff=$((_ee - _de))
       if [ "$_diff" -lt "$_min_s" ] 2>/dev/null; then

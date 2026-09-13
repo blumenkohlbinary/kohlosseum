@@ -321,6 +321,38 @@ janein "   ... FORMAL=5" ja "$(printf '%s
 printf '{"ereignis":"start","skill":"mind-files","erwartet":"verdichten","ts":"2026-09-12T00:01:00Z","code":"5.98.0","text":"5.98.0","versionsbruch":false}\n{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"2026-09-12T00:01:30Z"}\n' >> "$S"
 _A=$(mind_schritt_bilanz "$P" --alle 2>/dev/null)
 janein "   Einzellauf ohne mind-all-Start: kein FORMAL fuer die vier fehlenden" nein "$(printf '%s\n' "$_A" | grep -q 'FORMAL' && echo ja || echo nein)"
+
+# --- 4i  v5.103.0: Ergebnis VOR dem Dispatch = nachgetragen ---------------------------
+# Gemessen zweimal: Palvedo 12.09.2026 (vier ergebnis 18:15:21, vier dispatch 18:15:40)
+# und Ritas Lauf 13.09.2026 (16:59:23 / 16:59:36). Bis v5.102.0 nahm (b) den letzten
+# Dispatch ueberhaupt und prueft nur bei `_de -le _ee` — lag er danach, galt der Bereich
+# als echt (`5/5 echt`). Die Agenten liefen (Transkript), das Loch war die Bilanz.
+mind_agent_quittung_start "$P" 4
+printf '{"ereignis":"ergebnis","bereich":"rules","bytes":1096,"quelle":"datei","ts":"%s"}\n' "$(_alt)" >> "$Q"
+printf '{"ereignis":"dispatch","bereich":"rules","ts":"%s"}\n' "$(date -u -d '-107 seconds' +%Y-%m-%dT%H:%M:%SZ)" >> "$Q"
+janein "4i Ergebnis 13 s VOR dem Dispatch (Ritas Reihenfolge): UNGEPRUEFT" ja \
+  "$(mind_agent_bilanz "$P" 2>/dev/null | grep -q 'UNGEPRUEFT: rules (Ergebnis vor dem Dispatch' && echo ja || echo nein)"
+janein "   ... Rueckgabe 1" 1 "$(mind_agent_bilanz "$P" >/dev/null 2>&1; echo $?)"
+# Ergebnis ganz ohne Dispatch desselben Bereichs (andere Bereiche dispatcht): ebenso
+mind_agent_quittung_start "$P" 4
+printf '{"ereignis":"dispatch","bereich":"memory","ts":"%s"}\n' "$(_alt)" >> "$Q"
+printf '{"ereignis":"ergebnis","bereich":"rules","bytes":1096,"quelle":"datei","ts":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$Q"
+janein "   Ergebnis rules ohne Dispatch rules (memory dispatcht): UNGEPRUEFT" ja \
+  "$(mind_agent_bilanz "$P" 2>/dev/null | grep -q 'UNGEPRUEFT: rules (Ergebnis vor dem Dispatch' && echo ja || echo nein)"
+# Gegenprobe: Dispatch 60 s VOR dem Ergebnis -> echt
+mind_agent_quittung_start "$P" 4
+printf '{"ereignis":"dispatch","bereich":"rules","ts":"%s"}\n' "$(date -u -d '-60 seconds' +%Y-%m-%dT%H:%M:%SZ)" >> "$Q"
+printf '{"ereignis":"ergebnis","bereich":"rules","bytes":1096,"quelle":"datei","ts":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$Q"
+janein "   Gegenprobe: Dispatch 60 s vor dem Ergebnis -> LEER=0" "DISPATCH=1 ERGEBNIS=1 LEER=0 STUMM=0" \
+  "$(mind_agent_bilanz "$P" 2>/dev/null | head -1)"
+# Wiederholung (v5.21.2) bleibt echt: Dispatch, leeres Ergebnis, zweiter Dispatch, volles Ergebnis
+mind_agent_quittung_start "$P" 4
+printf '{"ereignis":"dispatch","bereich":"rules","ts":"%s"}\n' "$(date -u -d '-300 seconds' +%Y-%m-%dT%H:%M:%SZ)" >> "$Q"
+printf '{"ereignis":"ergebnis","bereich":"rules","bytes":0,"quelle":"datei","ts":"%s"}\n' "$(date -u -d '-200 seconds' +%Y-%m-%dT%H:%M:%SZ)" >> "$Q"
+printf '{"ereignis":"dispatch","bereich":"rules","ts":"%s"}\n' "$(date -u -d '-120 seconds' +%Y-%m-%dT%H:%M:%SZ)" >> "$Q"
+printf '{"ereignis":"ergebnis","bereich":"rules","bytes":1096,"quelle":"datei","ts":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$Q"
+janein "   WIEDERHOLT (zweiter Dispatch vor dem zweiten Ergebnis) bleibt echt: LEER=0" ja \
+  "$(mind_agent_bilanz "$P" 2>/dev/null | head -1 | grep -q 'LEER=0' && echo ja || echo nein)"
 rm -rf "$T"
 
 echo
