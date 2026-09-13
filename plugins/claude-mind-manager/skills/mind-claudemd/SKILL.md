@@ -43,7 +43,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.105.0"
+MIND_SKILL_VERSION="5.106.0"
 mind_schritt_start "$PROJ" mind-claudemd bestandszahlen_kandidaten claudemd_pipeline cleaner_duplikate cleaner_stichprobe cleaner_urteile mind_check_tools_have_rules mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -172,6 +172,8 @@ else
   ZIEL_RULES="$PROJ/.claude/rules"
   ZIEL_WURZEL="$PROJ"
   ZEIGER=".claude/rules"
+  # ⛔ v5.106.0: die CLAUDE.md der Roster-Unterordner gehoeren zum Bestand (Kasten unten)
+  UNTER_MD=$(mind_unterordner_kontext "$PROJ" 2>/dev/null | grep '/CLAUDE\.md$')
 fi
 echo "Bereich: $BEREICH  ·  Ziel: $ZIEL_MD  ·  Rules: $ZIEL_RULES  ·  Wurzel: $ZIEL_WURZEL"
 ```
@@ -276,10 +278,25 @@ Version/Pfad/Budget ab, NICHT die semantische Bewertung. Der Agent ist der einzi
 
 Launch **context-analyzer** with scope=claude-md — **`run_in_background: false`**:
 "Analyze all CLAUDE.md files in this project. Scope: claude-md. Report quality score, contradictions, staleness, and optimization suggestions."
-
 ⛔ **`run_in_background: false` in JEDEM Agent-Aufruf (v5.94.0, Nutzer-/Anton-Entscheidung 11.09.2026).** Die Vorgabe des Agent-Werkzeugs ist HINTERGRUND: der `tool_result` ist dann nur das Ack „Async agent launched“ (1 151 B, nach 1–2 s), das Ergebnis kommt — wenn überhaupt — später als `<task-notification>`. Gemessen 10.09.2026 (`docs/plugin/rueckkanal-messung.md`): getrennte Tool-Calls serialisieren im Hintergrund NICHTS (vier Agenten gleichzeitig bei „sequenziellen“ Aufrufen), und **5 von 8** Ergebnissen kamen nie an. Mit `false` blockt der Aufruf bis zur Rückgabe, `RUECKGABE` IST der `tool_result`, und ein Nachliefern mitten im Fan-out ist mechanisch unmöglich. ⚠ Preis: die Sitzung wartet je Agent 60–130 s und ist solange nicht ansprechbar — Nachrichten kommen ohnehin erst am Turn-Ende an.
 
 ⭐ **Trifft der Agent sein 20-Turn-Limit VOR dem Bericht** (der `tool_result` endet ohne Ergebnis, der Agent lebt), ist die Fortsetzung `SendMessage {to: <agentId>, message: „Bericht jetzt liefern“}` — ⛔ **KEIN neuer `Agent`-Aufruf**, das wäre ein zweiter Agent gegen dieselbe Grenze (v5.96.0). Gemessen 12.09.2026 (Rita): zwei Agenten am Limit, beide lieferten nach der Nachricht vollständig. ⚠ Im Desktop-Reiter „Code“ ist `SendMessage` verzögert: erst `ToolSearch select:SendMessage`, dann ist es da.
+
+⛔ **v5.106.0:** ist `UNTER_MD` (Step 1) nicht leer, stehen diese Dateien WOERTLICH im
+Auftrag, je Zeile mit Ordner — der Agent sieht nichts, was nicht im Auftrag steht. Die
+Pipeline (`claudemd_pipeline.py`) laeuft zusaetzlich fuer jede Datei aus `UNTER_MD`
+(`while IFS= read -r f; do … done <<<"$UNTER_MD"` — Pfade tragen Leerzeichen).
+
+⛔ **v5.106.0 — im ROLLEN-AUFBAU gehoeren die Unterordner zum Bestand.** Ist `$PROJ` eine
+Rollen-Wurzel (`rollen.md`), zaehlen die `CLAUDE.md` und `.claude/rules/*.md` der Ordner aus
+der Spalte `Ordner` des Rosters mit (fehlt die Spalte: jeder direkte Unterordner mit
+`CLAUDE.md`) — das ist der Dauerkontext der Arbeiter-Sitzungen. Gemessen 14.09.2026 (Creator,
+Doro): sieben Unterordner, fuenf CLAUDE.md und 17 Rules, in keinem Bericht genannt.
+```bash
+UNTER_KONTEXT=$(mind_unterordner_kontext "$PROJ" 2>/dev/null)   # leer ohne Rollen-Aufbau
+```
+Der Bericht nennt je Datei den Ordner (`<Ordner>/CLAUDE.md`, `<Ordner>/.claude/rules/<name>`).
+`mind_snapshot` sichert sie seit v5.106.0 von selbst mit.
 
 **NEU v5.4.0 — vier Anforderungen, die nachweislich NICHT messbar sind** und deshalb
 ausdruecklich in den Agent-Prompt gehoeren, statt still zu fehlen:

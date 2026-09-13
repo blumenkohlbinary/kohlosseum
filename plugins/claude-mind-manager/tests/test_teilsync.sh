@@ -151,6 +151,31 @@ rm -rf "$P"
 janein "mind-all: UMFANG kommt aus mind_umfang_bilden" 1 "$(grep -c 'UMFANG=$(mind_umfang_bilden "$PROJ"' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md")"
 janein "mind-all: kein UMFANG=\"...\" aus Shell-Variablen mehr" 0 "$(grep -c '^UMFANG="' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md")"
 
+# --- 6d · v5.106.0 (Etappe 14 §2): ungepruef= wird GEBILDET — Doros Lauf als Fixture ----
+#     Creator 13.09.2026 22:24:32Z: vier dispatch und vier ergebnis in derselben Sekunde,
+#     kein mind-all-Kopf-Block; der Merker sagte von Hand "voll".
+P=$(neu_projekt); Q="$P/.claude-mind/agent-quittung.jsonl"; SQ="$P/.claude-mind/schritt-quittung.jsonl"
+printf '{"ereignis":"start","lauf":"20260913T222432Z-49590","erwartet":4,"ts":"2026-09-13T22:24:32Z"}\n' > "$Q"
+for b in claude-md memory rules custom-context; do
+  printf '{"ereignis":"dispatch","bereich":"%s","ts":"2026-09-13T22:24:32Z"}\n' "$b" >> "$Q"
+done
+printf '{"ereignis":"ergebnis","bereich":"claude-md","bytes":52,"quelle":"datei","ts":"2026-09-13T22:24:32Z"}\n{"ereignis":"ergebnis","bereich":"memory","bytes":59,"quelle":"datei","ts":"2026-09-13T22:24:32Z"}\n{"ereignis":"ergebnis","bereich":"rules","bytes":130,"quelle":"datei","ts":"2026-09-13T22:24:32Z"}\n{"ereignis":"ergebnis","bereich":"custom-context","bytes":73,"quelle":"datei","ts":"2026-09-13T22:24:32Z"}\n' >> "$Q"
+printf '{"ereignis":"start","skill":"mind-files","erwartet":"verdichten","ts":"2026-09-13T22:03:08Z","code":"5.105.0","text":"5.105.0","versionsbruch":false}\n{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"2026-09-13T22:03:30Z"}\n' > "$SQ"
+printf 'run_started=1\nbestand=mind-files:3/3\nbestand=mind-claudemd:3/3\nbestand=mind-memory:3/3\nbestand=mind-rules:3/3\nbestand=mind-update:3/3\n' > "$P/.claude-mind/analyzed-scopes"
+U=$(mind_ungepruef_bilden "$P")
+janein "Doros Lauf: ungepruef=claude-md,memory,rules,custom-context,formal-mind-all" "claude-md,memory,rules,custom-context,formal-mind-all" "$U"
+# fehlende bestand-Quittung kommt dazu
+printf 'run_started=1\nbestand=mind-files:3/3\n' > "$P/.claude-mind/analyzed-scopes"
+janein "   ohne bestand-Quittungen: bestand-<skill> je fehlendem Skill" ja "$(mind_ungepruef_bilden "$P" | grep -q 'bestand-mind-claudemd,bestand-mind-memory,bestand-mind-rules,bestand-mind-update' && echo ja || echo nein)"
+# nie dispatchter Bereich (nur im Ausschnitt des letzten Laufs) ist ungeprueft
+printf '{"ereignis":"start","lauf":"L2","erwartet":4,"ts":"2026-09-13T23:00:00Z"}\n{"ereignis":"dispatch","bereich":"memory","ts":"2026-09-13T23:00:00Z"}\n{"ereignis":"ergebnis","bereich":"memory","bytes":500,"quelle":"datei","ts":"2026-09-13T23:02:00Z"}\n' >> "$Q"
+janein "   neuer Lauf, nur memory dispatcht: die drei anderen sind ungeprueft, memory nicht" ja "$(mind_ungepruef_bilden "$P" | grep -q '^claude-md,rules,custom-context,' && echo ja || echo nein)"
+rm -rf "$P"
+# Text-Gate: mind-all baut UNGEPRUEFT nicht mehr aus Schleifen; Hand wird nur angehaengt
+janein "mind-all: UNGEPRUEFT kommt aus mind_ungepruef_bilden" 1 "$(grep -c 'UNGEPRUEFT=$(mind_ungepruef_bilden "$PROJ"' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md")"
+janein "mind-all: keine Schleife mehr, die UNGEPRUEFT zusammensetzt" 0 "$(grep -c 'UNGEPRUEFT="${UNGEPRUEFT}${_b},"' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md")"
+janein "mind-all: Handzusatz nur als hand:<text> angehaengt" 1 "$(grep -c 'hand:${UNGEPRUEFT_HAND' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md")"
+
 # --- 7 · gar kein Merker ist nicht unsere Frage ---------------------------
 P=$(neu_projekt)
 janein "kein sync-stand -> vollstaendig" voll "$(voll_p "$P/.claude-mind/rescued/sync-stand")"

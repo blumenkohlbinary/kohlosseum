@@ -100,8 +100,10 @@ janein "mind-all zaehlt bestand= und haengt <n>/5 an" "ja" \
   "$(grep -q 'UMFANG=$(mind_umfang_bilden' "$MA" && grep -q "^mind_umfang_bilden()" "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" && grep -q '/5 bestand %s/%s abdeckung' "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" && echo ja || echo nein)"
 janein "mind-all liest auch analyzed-scopes.done" "ja" \
   "$(grep -q 'analyzed-scopes.done' "$MA" && echo ja || echo nein)"
+# v5.106.0: den Wert bildet `mind_ungepruef_bilden` (lib.sh), mind-all ruft sie —
+# Zusicherung unveraendert: fehlende bestand-Quittungen landen in ungepruef=.
 janein "fehlende Quittungen landen in ungepruef=" "ja" \
-  "$(grep -q 'UNGEPRUEFT_BESTAND' "$MA" && echo ja || echo nein)"
+  "$(grep -q 'UNGEPRUEFT=$(mind_ungepruef_bilden' "$MA" && grep -q 'out="${out}bestand-$_s,"' "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" && echo ja || echo nein)"
 
 echo "== 4/6  ⛔ KEIN Memory-INHALT in irgendeiner Ausgabe =="
 MEM="$D/memory"; mkdir -p "$MEM"

@@ -48,7 +48,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.105.0"
+MIND_SKILL_VERSION="5.106.0"
 mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
@@ -177,6 +177,20 @@ skippen.**
    Datei ableitete)
 5. **Rules** (project): Glob `.claude/rules/*.md`
 6. **Rules** (global): Glob `~/.claude/rules/*.md`
+7. **Roster-Unterordner** (v5.106.0, nur im Rollen-Aufbau): `mind_unterordner_kontext "$PROJ"`
+   — deren `CLAUDE.md` gehoeren zu Target 1, deren `.claude/rules/*.md` zu Target 5; im
+   Bericht je Datei mit Ordner
+
+⛔ **v5.106.0 — im ROLLEN-AUFBAU gehoeren die Unterordner zum Bestand.** Ist `$PROJ` eine
+Rollen-Wurzel (`rollen.md`), zaehlen die `CLAUDE.md` und `.claude/rules/*.md` der Ordner aus
+der Spalte `Ordner` des Rosters mit (fehlt die Spalte: jeder direkte Unterordner mit
+`CLAUDE.md`) — das ist der Dauerkontext der Arbeiter-Sitzungen. Gemessen 14.09.2026 (Creator,
+Doro): sieben Unterordner, fuenf CLAUDE.md und 17 Rules, in keinem Bericht genannt.
+```bash
+UNTER_KONTEXT=$(mind_unterordner_kontext "$PROJ" 2>/dev/null)   # leer ohne Rollen-Aufbau
+```
+Der Bericht nennt je Datei den Ordner (`<Ordner>/CLAUDE.md`, `<Ordner>/.claude/rules/<name>`).
+`mind_snapshot` sichert sie seit v5.106.0 von selbst mit.
 
 ```bash
 # Hash + Memory-Verzeichnis (v3.2.2: zentralisiert in lib.sh)
@@ -217,8 +231,8 @@ MEMORY_MAIN="$MEMORY_DIR/MEMORY.md"
 # Topic-Files-Glob (NEU v3.2.1) — alle .md im memory-Verzeichnis AUSSER MEMORY.md
 TOPIC_FILES=$(ls "$MEMORY_DIR"/*.md 2>/dev/null | grep -v "/MEMORY.md$")
 
-# Project Rules
-PROJECT_RULES=$(ls .claude/rules/*.md 2>/dev/null)
+# Project Rules — v5.106.0: plus die Rules der Roster-Unterordner (leer ohne Rollen-Aufbau)
+PROJECT_RULES=$(ls .claude/rules/*.md 2>/dev/null; mind_unterordner_kontext "$PROJ" 2>/dev/null | grep '/rules/')
 
 # Global Rules
 GLOBAL_RULES=$(ls "$HOME"/.claude/rules/*.md 2>/dev/null)
@@ -1075,9 +1089,9 @@ Agent(subagent_type: "claude-mind-manager:context-analyzer", run_in_background: 
 
 | Agent | scope | mode | Input |
 |---|---|---|---|
-| 1 | `claude-md` | `knowledge-sync` | CLAUDE.md project + global + Session-Auszug aus `$SESSION_SAMPLE_BASH` |
+| 1 | `claude-md` | `knowledge-sync` | CLAUDE.md project + global **+ die `CLAUDE.md` der Roster-Unterordner (`UNTER_KONTEXT`, v5.106.0)** + Session-Auszug aus `$SESSION_SAMPLE_BASH` |
 | 2 | `memory` | `knowledge-sync` | MEMORY.md + Topic-Files aus Step 1 + Session-Auszug |
-| 3 | `rules` | `knowledge-sync` | **`SEM_RULES` (Step 3c.1, je `TARGET_MODE`)** + Global-Rules (immer, je einzeln größen-geguardet) + Session-Auszug — bei großem Satz NICHT alle Project-Rules; jede Datei >600 Z. **ODER >60 KB** mit Größen-Guard (grep-gezielt, nicht ganz lesen) |
+| 3 | `rules` | `knowledge-sync` | **`SEM_RULES` (Step 3c.1, je `TARGET_MODE`)** + Global-Rules (immer, je einzeln größen-geguardet) **+ die Rules der Roster-Unterordner (v5.106.0, je Datei mit Ordner)** + Session-Auszug — bei großem Satz NICHT alle Project-Rules; jede Datei >600 Z. **ODER >60 KB** mit Größen-Guard (grep-gezielt, nicht ganz lesen) |
 | 4 | `custom-context` | `knowledge-sync` | `CUSTOM_CONTEXT_FILES` aus Step 1.5 + Session-Auszug |
 
 **Skip-Logik pro Agent:**

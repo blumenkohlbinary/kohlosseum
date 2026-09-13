@@ -81,6 +81,26 @@ janein "sagt ausdruecklich KEINE QUITTUNG" "ja" "$(echo "$H" | grep -q 'KEINE QU
 janein "und dass das NICHT 'nichts zu melden' ist" "ja" \
   "$(echo "$H" | grep -q "NICHT 'nichts zu melden'" && echo ja || echo nein)"
 
+echo "== 6b/9  v5.106.0 (Etappe 14 §3): je Block zaehlt der LETZTE Eintrag je Schritt =="
+# Doros Fund (Creator, 13.09.2026): mind_agent_bilanz erst 0 B (22:24:34), dann
+# nachquittiert 564 B per --datei (22:25:03) — LEER blieb 1, GELAUFEN zaehlte 2.
+# shellcheck disable=SC1090
+. "$LIB" >/dev/null 2>&1
+P6=$(mktemp -d); mkdir -p "$P6/.claude-mind"; Q6="$P6/.claude-mind/schritt-quittung.jsonl"
+printf '{"ereignis":"start","skill":"mind-update","erwartet":"mind_agent_bilanz","ts":"2026-09-13T22:24:00Z","code":"5.105.0","text":"5.105.0","versionsbruch":false}\n' > "$Q6"
+printf '{"ereignis":"schritt","name":"mind_agent_bilanz","status":"gelaufen","bytes":0,"ts":"2026-09-13T22:24:34Z"}\n' >> "$Q6"
+printf '{"ereignis":"schritt","name":"mind_agent_bilanz","status":"gelaufen","bytes":564,"quelle":"datei","ts":"2026-09-13T22:25:03Z"}\n' >> "$Q6"
+A6=$(mind_schritt_bilanz "$P6" 2>/dev/null)
+janein "nachquittiert mit Artefakt: LEER=0 und GELAUFEN=1 (nicht 2)" "ERWARTET=1 GELAUFEN=1 UEBERSPRUNGEN=0 FEHLER=0 LEER=0 TEIL=0" "$(printf '%s\n' "$A6" | head -1)"
+janein "   ... Rueckgabe 0" 0 "$(mind_schritt_bilanz "$P6" >/dev/null 2>&1; echo $?)"
+# Gegenprobe: derselbe Schrittname in ZWEI Bloecken bleibt zwei Eintraege
+printf '{"ereignis":"start","skill":"mind-files","erwartet":"mind_snapshot","ts":"2026-09-13T22:26:00Z","code":"5.105.0","text":"5.105.0","versionsbruch":false}\n{"ereignis":"schritt","name":"mind_snapshot","status":"gelaufen","bytes":10,"ts":"2026-09-13T22:26:10Z"}\n' >> "$Q6"
+printf '{"ereignis":"start","skill":"mind-claudemd","erwartet":"mind_snapshot","ts":"2026-09-13T22:27:00Z","code":"5.105.0","text":"5.105.0","versionsbruch":false}\n{"ereignis":"schritt","name":"mind_snapshot","status":"gelaufen","bytes":0,"ts":"2026-09-13T22:27:10Z"}\n' >> "$Q6"
+printf '{"ereignis":"start","skill":"mind-all","erwartet":"x","ts":"2026-09-13T22:20:00Z","code":"5.105.0","text":"5.105.0","versionsbruch":false}\n' > "$Q6.kopf"; cat "$Q6" >> "$Q6.kopf"; mv "$Q6.kopf" "$Q6"
+A6=$(mind_schritt_bilanz "$P6" --alle 2>/dev/null)
+janein "   --alle: derselbe Name in zwei Bloecken = zwei Eintraege (GELAUFEN=3, LEER=1)" ja "$(printf '%s\n' "$A6" | head -1 | grep -q 'GELAUFEN=3 UEBERSPRUNGEN=0 FEHLER=0 LEER=1' && echo ja || echo nein)"
+rm -rf "$P6"
+
 echo "== 7/9  Skill ohne Pflichtaufrufe: ERWARTET=0, aber MIT Quittung =="
 I=$(lauf 'mind_schritt_start "$D" mind-compact')
 janein "ERWARTET=0" "0" "$(echo "$I" | head -1 | tr ' ' '\n' | grep '^ERWARTET=' | cut -d= -f2)"

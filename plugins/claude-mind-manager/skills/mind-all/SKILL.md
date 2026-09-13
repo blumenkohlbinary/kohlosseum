@@ -41,7 +41,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.105.0"
+MIND_SKILL_VERSION="5.106.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 # ⛔ v5.98.0: die fuenf Skills sind KEINE Schritte von mind-all — jeder hat seinen EIGENEN
 #    Start-Block (Step 2, Punkt 1). Bis v5.97.0 standen sie hier, Ritas Kalibrierlauf hakte
@@ -786,13 +786,9 @@ case "${_AGEL:-}"  in ''|*[!0-9]*) _AGEL=0 ;; esac
 #    Gemessen am Lauf 00:02 (12.09.2026): alle vier inneren Skills. `<5-n>/5 echt`
 #    macht daraus ueber mind_sync_voll einen Teilsync, `formal-<skill>` sagt welchen.
 # ⛔ v5.104.0: gezaehlt werden nur die FUENF — `FORMAL: mind-all` (kein Kopf-Block,
-#    Etappe 12 §3) geht ueber `_FNAMEN` als `formal-mind-all` in `ungepruef=` und
-#    darf `<n>/5 echt` nicht unter 0 druecken.
-_AFORMAL=$(printf '%s\n' "$_ABD" | grep -c '^ *FORMAL: mind-\(files\|claudemd\|memory\|rules\|update\) ')
-case "${_AFORMAL:-}" in ''|*[!0-9]*) _AFORMAL=0 ;; esac
-[ "$_AFORMAL" -gt 5 ] && _AFORMAL=5
-_FNAMEN=$(printf '%s' "$_ABD" | sed -n 's/^ *FORMAL: \([^ ]*\) .*/\1/p' | sort -u | tr '\n' ',')
-_FNAMEN="${_FNAMEN%,}"
+#    Etappe 12 §3) geht als `formal-mind-all` in `ungepruef=`.
+# ⛔ v5.106.0: beides bilden seither `mind_umfang_bilden` und `mind_ungepruef_bilden`
+#    aus der Bilanz — hier steht keine Zaehlung mehr, die man abtippen koennte.
 
 # ⛔ v5.105.0 (Etappe 13 a): der Wert kommt aus `mind_umfang_bilden` — gelesen aus den
 #    beiden Bilanzen und der Laufspur, NICHT aus den Variablen dieses Blocks. Die
@@ -802,45 +798,17 @@ _FNAMEN="${_FNAMEN%,}"
 #    `mind_sync_voll` sah den 3/4 nicht einmal. ⛔ NIE `UMFANG="..."` aus Variablen bauen.
 UMFANG=$(mind_umfang_bilden "$PROJ" "${LAUF:-}" "${AGENT_SOLL:-4}")
 
-# ⚠ Ein Skill OHNE Quittung ist ungeprueft — und das muss im Merker stehen,
-#   nicht nur in der Zahl. Sonst weiss der naechste Lauf, DASS etwas fehlte,
-#   aber nicht WAS: derselbe blinde Fleck, den v5.19.0 bei den Agents behoben hat.
-for _s in mind-claudemd mind-memory mind-rules mind-files mind-update; do
-  grep -q "^bestand=$_s:" "$_SC" 2>/dev/null || UNGEPRUEFT_BESTAND="${UNGEPRUEFT_BESTAND:-}bestand-$_s,"
-done
-UNGEPRUEFT_BESTAND="${UNGEPRUEFT_BESTAND%,}"
-
-# Welche Bereiche gelten als ungeprueft? Zwei Quellen, weil sie VERSCHIEDENE
-# Ausfaelle sehen: die Bilanz kennt leere und stumme Rueckgaben, aber einen nie
-# dispatchten Bereich kennt nur die Abwesenheit in der Quittung.
-_Q="$PROJ/.claude-mind/agent-quittung.jsonl"; UNGEPRUEFT=""
-for _b in claude-md memory rules custom-context; do
-  if ! grep -q "\"bereich\":\"$_b\"" "$_Q" 2>/dev/null \
-     || grep -q "UNGEPRUEFT: $_b" "$_BILANZ" 2>/dev/null; then
-    UNGEPRUEFT="${UNGEPRUEFT}${_b},"
-  fi
-done
-UNGEPRUEFT="${UNGEPRUEFT%,}"
-# v5.22.0: fehlende Bestands-Quittungen kommen dazu. `ungepruef=` ist seit
-# v5.21.1 selbst ein Teilsync-Grund — ein ausgefuelltes Feld macht das Tor
-# strenger, ein leeres aendert nichts. Fail-safe-Richtung bleibt also gleich.
-if [ -n "${UNGEPRUEFT_BESTAND:-}" ]; then
-  UNGEPRUEFT="${UNGEPRUEFT:+$UNGEPRUEFT,}$UNGEPRUEFT_BESTAND"
-fi
-
-# ⛔ v5.67.0: WELCHE Schritte nur halb abdeckten — nicht nur DASS welche.
-#    Sonst weiss der naechste Lauf, dass etwas fehlte, aber nicht was: derselbe
-#    blinde Fleck, den v5.19.0 bei den Agents und v5.22.0 beim Bestand behoben hat.
-# ⚠ KEINE Pipe in eine Schleife (Subshell). Die Namen kommen aus der
-#   TEILABDECKUNG-Zeile: ` <name> <a>/<b> <name> <a>/<b> …` — jedes zweite Wort.
-_TNAMEN=$(printf '%s' "$_ABD" | sed -n 's/^ *TEILABDECKUNG://p' \
-          | tr ' ' '\n' | grep -v '/' | grep -v '^$' | sort -u | tr '\n' ',')
-_TNAMEN="${_TNAMEN%,}"
-if [ -n "$_TNAMEN" ]; then
-  UNGEPRUEFT="${UNGEPRUEFT:+$UNGEPRUEFT,}abdeckung-${_TNAMEN//,/,abdeckung-}"
-fi
-if [ -n "$_FNAMEN" ]; then
-  UNGEPRUEFT="${UNGEPRUEFT:+$UNGEPRUEFT,}formal-${_FNAMEN//,/,formal-}"
+# ⛔ v5.106.0 (Etappe 14 §2): `ungepruef=` kommt aus `mind_ungepruef_bilden` — nie
+#    dispatchte und UNGEPRUEFT-Bereiche aus der Agent-Bilanz, `bestand-<skill>` ohne
+#    Quittung, `abdeckung-<schritt>` aus TEILABDECKUNG, `formal-<skill>` inkl.
+#    `formal-mind-all`. Gemessen 14.09.2026 (Creator, Doro): Bilanz LEER=4 + FORMAL=1,
+#    Merker von Hand „voll" — OPEN getilgt, `letzter-sync` geschrieben, zu Unrecht.
+#    ⛔ NIE `UNGEPRUEFT="..."` aus Schleifen bauen. Was der Lauf SELBST weiss (z. B. ein
+#    Bereich, den kein Werkzeug sieht), haengt er in UNGEPRUEFT_HAND an — es wird als
+#    `hand:<text>` ANGEHAENGT, ersetzt nichts und kann nichts wegnehmen.
+UNGEPRUEFT=$(mind_ungepruef_bilden "$PROJ" "${LAUF:-}")
+if [ -n "${UNGEPRUEFT_HAND:-}" ]; then
+  UNGEPRUEFT="${UNGEPRUEFT:+$UNGEPRUEFT,}hand:${UNGEPRUEFT_HAND//,/;}"
 fi
 ```
 

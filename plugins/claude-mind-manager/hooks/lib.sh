@@ -845,6 +845,12 @@ EOF_RULES
   fi
   [ -n "${MIND_SNAPSHOT_EXTRA:-}" ] && extras="${extras}${MIND_SNAPSHOT_EXTRA}
 "
+  # ⛔ v5.106.0 (Etappe 14 §1): im Rollen-Aufbau die CLAUDE.md und Rules der
+  #    Roster-Unterordner — sie liegen innerhalb des Projekts und landen unter project/.
+  local _rk
+  _rk=$(mind_unterordner_kontext "$project_dir" 2>/dev/null)
+  [ -n "$_rk" ] && extras="${extras}${_rk}
+"
   if [ -n "$extras" ]; then
     while IFS= read -r e; do
       [ -z "$e" ] && continue
@@ -1254,6 +1260,92 @@ mind_umfang_bilden() {
   [ "$formal" -gt 5 ] && formal=5
   printf '%s/5 skills %s/%s agents %s/5 bestand %s/%s abdeckung %s/5 echt\n' \
     "$skill_ist" "$dis" "$soll" "$best" "$((gel - teil))" "$gel" "$((5 - formal))"
+}
+
+# mind_ungepruef_bilden <projekt> [laufkennung]
+# ⛔ v5.106.0 (Etappe 14 §2): der Wert von `ungepruef=` wird HIER gebildet — dieselbe
+#    Klasse wie `umfang=` (v5.105.0). Doros Creator-Lauf 13./14.09.2026: die Bilanz sagte
+#    LEER=4 und FORMAL=1, der handgeschriebene Merker sagte voll; OPEN getilgt,
+#    `letzter-sync` geschrieben, zu Unrecht. Quellen: mind_agent_bilanz (UNGEPRUEFT je
+#    Bereich, nie dispatchte Bereiche aus dem Ausschnitt des letzten Laufs), analyzed-scopes
+#    (`bestand=` je Skill), mind_schritt_bilanz --alle (TEILABDECKUNG, FORMAL inkl.
+#    mind-all). Handzusaetze haengt der Aufrufer als `hand:<text>` AN, er ersetzt nichts.
+mind_ungepruef_bilden() {
+  local proj="${1:-}" q ab tmp bil abd sc out="" _b _s _n
+  q="$proj/.claude-mind/agent-quittung.jsonl"
+  tmp="${TMPDIR:-/tmp}/.mind_ungepruef_$$"
+  ab=$(grep -n '"ereignis":"start"' "$q" 2>/dev/null | tail -1 | cut -d: -f1)
+  case "$ab" in ''|*[!0-9]*) ab=1 ;; esac
+  sed -n "${ab},\$p" "$q" 2>/dev/null > "$tmp"
+  bil=$(mind_agent_bilanz "$proj" 2>/dev/null)
+  for _b in claude-md memory rules custom-context; do
+    if ! grep -q "\"bereich\":\"$_b\"" "$tmp" 2>/dev/null \
+       || printf '%s\n' "$bil" | grep -q "^ *UNGEPRUEFT: $_b "; then
+      out="${out}${_b},"
+    fi
+  done
+  rm -f "$tmp"
+  sc="$proj/.claude-mind/analyzed-scopes"; [ -f "$sc" ] || sc="$proj/.claude-mind/analyzed-scopes.done"
+  for _s in mind-claudemd mind-memory mind-rules mind-files mind-update; do
+    grep -q "^bestand=$_s:" "$sc" 2>/dev/null || out="${out}bestand-$_s,"
+  done
+  abd=$(mind_schritt_bilanz "$proj" --alle 2>/dev/null)
+  for _n in $(printf '%s\n' "$abd" | sed -n 's/^ *TEILABDECKUNG://p' | tr ' ' '\n' | grep -v '/' | grep -v '^$' | sort -u); do
+    out="${out}abdeckung-${_n},"
+  done
+  for _n in $(printf '%s\n' "$abd" | sed -n 's/^ *FORMAL: \([^ ]*\) .*/\1/p' | sort -u); do
+    out="${out}formal-${_n},"
+  done
+  printf '%s\n' "${out%,}"
+}
+
+# mind_rollen_ordner <wurzel>
+# ⛔ v5.106.0 (Etappe 14 §1): die Ordner der Arbeiter-Sitzungen aus der Spalte `Ordner`
+#    des Rosters (rollen.md); fehlt die Spalte, jeder direkte Unterordner mit CLAUDE.md.
+#    `./` ist die Wurzel selbst und faellt weg. Ausgabe: absolute Pfade, eine je Zeile.
+#    rc 1 ohne rollen.md (kein Rollen-Aufbau). Anlass: Creator hat sieben Unterordner mit
+#    eigener CLAUDE.md und eigenen Rules — der Dauerkontext von sieben Sitzungen —, und
+#    kein Skill sah sie (Doros Berichte 14.09.2026: null Unterordner genannt).
+mind_rollen_ordner() {
+  local w="${1:-}" r v spalte=0
+  w="${w//\\//}"; w="${w%/}"
+  r="$w/.claude/rules/rollen.md"
+  [ -f "$r" ] || return 1
+  spalte=$(awk -F'|' '/^\|/ { for (i = 2; i <= NF; i++) if (tolower($i) ~ /ordner/) { print i; exit } }' "$r" 2>/dev/null)
+  case "${spalte:-}" in ''|*[!0-9]*) spalte=0 ;; esac
+  if [ "$spalte" -gt 0 ]; then
+    awk -F'|' -v c="$spalte" '
+      /^\|/ { if (kopf == 0) { for (i = 2; i <= NF; i++) if (tolower($i) ~ /ordner/) { kopf = 1; next } }
+               else if (kopf == 1) { if ($0 ~ /^\|[-: |]*$/) next; v = $c; gsub(/[`*\r]/, "", v); sub(/^ +/, "", v); sub(/ +$/, "", v); if (v != "") print v }
+               next }
+      { if (kopf == 1) kopf = 2 }' "$r" 2>/dev/null | while IFS= read -r v; do
+        v="${v%/}"
+        case "$v" in ''|.|./|"$w") continue ;; esac
+        [ -d "$w/$v" ] && printf '%s\n' "$w/$v"
+      done | sort -u
+  else
+    local d
+    for d in "$w"/*/; do
+      d="${d%/}"
+      [ -f "$d/CLAUDE.md" ] && printf '%s\n' "$d"
+    done
+  fi
+  return 0
+}
+
+# mind_unterordner_kontext <wurzel>
+# Die Dauerkontext-Dateien der Roster-Unterordner: CLAUDE.md, .claude/CLAUDE.md,
+# .claude/rules/*.md — eine je Zeile, absolut. rc 1 ohne Rollen-Aufbau.
+mind_unterordner_kontext() {
+  local w="${1:-}" o f
+  mind_rollen_ordner "$w" >/dev/null 2>&1 || return 1
+  mind_rollen_ordner "$w" | while IFS= read -r o; do
+    [ -n "$o" ] || continue
+    for f in "$o/CLAUDE.md" "$o/.claude/CLAUDE.md" "$o"/.claude/rules/*.md; do
+      [ -f "$f" ] && printf '%s\n' "$f"
+    done
+  done
+  return 0
 }
 
 # ===== v5.65.0: HIER STAND `mind_sync_frisch` ===============================
@@ -2344,7 +2436,17 @@ mind_schritt_bilanz() {
   #    schon zweimal in dieser Datei (mind_check_tools_have_rules, Step 0 von
   #    mind-all) und ist beide Male teuer gewesen.
   local mt="${TMPDIR:-/tmp}/.mind_schritt_$$"
-  grep '"ereignis":"schritt"' "$ausschnitt" 2>/dev/null > "$mt"
+  # ⛔ v5.106.0 (Etappe 14 §3, Doros Fund): je Block zaehlt der LETZTE Eintrag je
+  #    Schritt — wie bei mind_agent_bilanz seit v5.21.2. Bis v5.105.0 zaehlte JEDE Zeile:
+  #    `mind_agent_bilanz` erst mit 0 B, dann nachquittiert mit 564 B (Creator, 13.09.
+  #    22:24:34 / 22:25:03) blieb LEER=1 und GELAUFEN um eins zu hoch. Bloecke bleiben
+  #    getrennt (derselbe Schrittname in zwei Skills sind zwei Eintraege).
+  awk '/"ereignis":"start"/ { b++ }
+       /"ereignis":"schritt"/ {
+         if (match($0, /"name":"[^"]*"/)) k = b SUBSEP substr($0, RSTART + 8, RLENGTH - 9); else k = b SUBSEP NR
+         if (!(k in zeile)) reihe[++n] = k
+         zeile[k] = $0 }
+       END { for (i = 1; i <= n; i++) print zeile[reihe[i]] }' "$ausschnitt" 2>/dev/null > "$mt"
   rm -f "$ausschnitt"
 
   while IFS= read -r zeile; do

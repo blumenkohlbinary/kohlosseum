@@ -41,7 +41,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.105.0"
+MIND_SKILL_VERSION="5.106.0"
 mind_schritt_start "$PROJ" mind-rules bestandsaufnahme bestandszahlen_kandidaten cleaner_duplikate cleaner_stichprobe ladeprotokoll_auswertung mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -218,7 +218,9 @@ auf, traegt `paths:` hier. Bis dahin gilt: **im Bericht beide Seiten nennen.**
 
 ### Subcommand: list
 
-1. Glob for `.claude/rules/*.md` and `~/.claude/rules/*.md`
+1. Glob for `.claude/rules/*.md` and `~/.claude/rules/*.md` — **plus, im Rollen-Aufbau,
+   die Rules der Roster-Unterordner** (`mind_unterordner_kontext "$PROJ" | grep '/rules/'`),
+   je Datei mit Ordner genannt (v5.106.0, Kasten im Bestands-Pass)
 2. Read each file's YAML frontmatter
 3. Display table:
 
@@ -631,9 +633,20 @@ Schritt ausführst. Hier steht nur, was für **diesen** Skill gilt:
 
 | | |
 |---|---|
-| **Bereich** | `$PROJ/.claude/rules/` **und** `~/.claude/rules/` |
+| **Bereich** | `$PROJ/.claude/rules/` **und** `~/.claude/rules/` — **und** im Rollen-Aufbau `<Ordner>/.claude/rules/*.md` der Roster-Unterordner (v5.106.0) |
 | **`--skill`** | `mind-rules` |
 | **schon verdrahtet** | `cleaner_duplikate` |
+
+⛔ **v5.106.0 — im ROLLEN-AUFBAU gehoeren die Unterordner zum Bestand.** Ist `$PROJ` eine
+Rollen-Wurzel (`rollen.md`), zaehlen die `CLAUDE.md` und `.claude/rules/*.md` der Ordner aus
+der Spalte `Ordner` des Rosters mit (fehlt die Spalte: jeder direkte Unterordner mit
+`CLAUDE.md`) — das ist der Dauerkontext der Arbeiter-Sitzungen. Gemessen 14.09.2026 (Creator,
+Doro): sieben Unterordner, fuenf CLAUDE.md und 17 Rules, in keinem Bericht genannt.
+```bash
+UNTER_KONTEXT=$(mind_unterordner_kontext "$PROJ" 2>/dev/null)   # leer ohne Rollen-Aufbau
+```
+Der Bericht nennt je Datei den Ordner (`<Ordner>/CLAUDE.md`, `<Ordner>/.claude/rules/<name>`).
+`mind_snapshot` sichert sie seit v5.106.0 von selbst mit.
 | **neu in diesem Schritt** | `cleaner_belege` · `cleaner_aussagen --code` · `cleaner_einordnung` |
 
 ```bash
