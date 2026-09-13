@@ -93,8 +93,11 @@ tsync "5/5 skills 4/4 agents"; janein "Altmerker ohne bestand = vollstaendig" "0
 #    genau der Fehler, den die Gegenkontrolle zu test_kontext_bilanz.sh am
 #    27.08.2026 aufgedeckt hat. Deshalb hier die zweite Haelfte.
 MA="$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md"
+# v5.105.0: den Wert bildet `mind_umfang_bilden` (lib.sh) aus der Laufspur, mind-all ruft
+# sie — die UMFANG-Zeile aus Variablen ist weg (Etappe 13 a). Die Zusicherung bleibt
+# dieselbe: der Erzeuger des <n>/5-bestand-Paars existiert und mind-all benutzt ihn.
 janein "mind-all zaehlt bestand= und haengt <n>/5 an" "ja" \
-  "$(grep -q '_BEST/5 bestand' "$MA" && echo ja || echo nein)"
+  "$(grep -q 'UMFANG=$(mind_umfang_bilden' "$MA" && grep -q "^mind_umfang_bilden()" "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" && grep -q '/5 bestand %s/%s abdeckung' "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" && echo ja || echo nein)"
 janein "mind-all liest auch analyzed-scopes.done" "ja" \
   "$(grep -q 'analyzed-scopes.done' "$MA" && echo ja || echo nein)"
 janein "fehlende Quittungen landen in ungepruef=" "ja" \
