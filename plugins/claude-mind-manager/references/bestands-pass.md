@@ -176,6 +176,11 @@ VORHER=$(mind_kontext_bilanz "$PROJ" | sed -n 's/.*BYTES=\([0-9]*\).*/\1/p')
 
 # 2  Das Gate — entscheidet, ob angewendet wird
 mind_verdichtung_pruefen "$DATEI" "$ERGEBNIS" "$BERICHT" || { echo "verworfen"; exit 0; }
+#    ⛔ v5.102.0 — rc 1 mit unbenanntem Marker: die `entfernt:`-Zeile in den Bericht
+#       nachtragen, Gate erneut fahren — nie von Hand freisprechen. Bleibt es rot, `cp`
+#       unterlassen. Gemessen 12.09.2026 (Palvedo, `CLAUDE.md`): Stufe 1 216/220, ein ⚠
+#       unbenannt, „von Hand nachgeprueft … Aenderung bleibt bestehen" — die Zeile haette
+#       das Gate gruen gemacht (Prueffall 4 in `test_verdichten.sh`), gefahren wurde sie nie.
 
 # 3  ⛔ STUFE 3: den Wort-Diff GANZ lesen (git diff --no-index --word-diff). Ohne Leser:
 #    NICHT anwenden — Ergebnis, Bericht und Diff ablegen, Pfad melden, hier aufhören.

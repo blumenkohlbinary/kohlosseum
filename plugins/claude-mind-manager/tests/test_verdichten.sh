@@ -184,6 +184,10 @@ janein "⛔ Zeiger-Satz ohne die Marken -> Stufe 1 unvollstaendig, verwerfen (1)
   "$(mind_verdichtung_pruefen "$D/orig2.md" "$D/zeiger-ohne.md" "" probe.md >/dev/null 2>&1; echo $?)"
 janein "bestands-pass.md: die Kasten-Zeile steht (Code-Spans bleiben im ZEIGER-Satz)" "ja" "$(grep -q 'bleiben im ZEIGER-Satz' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
 janein "alle fuenf Traeger tragen die Zeile im Auftrag" "5" "$(grep -l 'bleiben im Zeiger-Satz' "$WURZEL"/skills/mind-{claudemd,files,memory,rules,update}/SKILL.md | wc -l | tr -d ' ')"
+# v5.102.0 (Etappe 10, Noras Palvedo-Lauf 12.09.2026): rc 1 mit unbenanntem Marker wurde von
+# Hand freigesprochen — die Vorschrift sagt jetzt: entfernt:-Zeile nachtragen, Gate erneut
+# fahren. Die Mechanik dazu (unbenannt rot, nachgetragen gruen) prueft Abschnitt 4 oben.
+janein "bestands-pass.md: rc 1 heisst nachtragen und erneut fahren, nie von Hand freisprechen" "ja" "$(grep -q 'nie von Hand freisprechen' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
 janein "mind-rules Step 9b: Stufe 3 vor dem Anwenden" "ja" "$(grep -q 'STUFE 3 (Wort-Diff lesen' "$WURZEL/skills/mind-rules/SKILL.md" && echo ja || echo nein)"
 # v5.85.0: zweiter Traeger mind-claudemd — mit den CLAUDE.md-eigenen Unantastbaren
 janein "mind-claudemd: Step 5e VERDICHTEN vorhanden" "ja" "$(grep -q '^## Step 5e: .*VERDICHTEN' "$WURZEL/skills/mind-claudemd/SKILL.md" && echo ja || echo nein)"
