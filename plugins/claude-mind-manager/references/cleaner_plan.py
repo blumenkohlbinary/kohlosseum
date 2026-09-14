@@ -54,13 +54,25 @@ def _rel(p, projekt):
         return p.replace("\\", "/")
 
 
+def docs_ziel(projekt):
+    """⛔ v5.112.0 (§5): das DOCS-Ziel wird je Projekt abgeleitet — vorhandener Doku-Ordner
+    `docs/`, sonst `knowledge/`, sonst `doc/`; fehlt jeder: `docs/` (anlegen, im Bericht
+    genannt). Kein Projektname, keine Liste — nur das, was da ist."""
+    for k in ("docs", "knowledge", "doc"):
+        if os.path.isdir(os.path.join(projekt, k)):
+            return k, False
+    return "docs", True
+
+
 def zeilen_aus_gruppen(gruppen, projekt):
     """Planzeilen aus den Audit-Gruppen 2 (falsch platziert), 3 (doppelt), 4 (veraltet)."""
     z = []
     for p, txt in gruppen.get("2", []):
         kl = txt.split(" ", 1)[0].strip(":")
         if kl == "DOCS":
-            z.append(("DOCS", p, "docs/%s (kurz=<vorbereitete Kurz-Rule>)" % os.path.basename(p),
+            ordner, anlegen = docs_ziel(projekt)
+            z.append(("DOCS", p, "%s/%s%s (kurz=<vorbereitete Kurz-Rule>)"
+                      % (ordner, os.path.basename(p), " — Ordner anlegen" if anlegen else ""),
                       "ERHALTUNG ENTLASTUNG PFAD INHALT ZEIGER", "Snapshot"))
         elif kl == "COMMAND":
             z.append(("UMZUG", p, "~/.claude/skills/%s/SKILL.md (kurz=<vorbereitete Kurz-Rule>)"
@@ -292,6 +304,11 @@ def selbsttest():
     neu(p2, "projekt", pl)
     t = open(pl, encoding="utf-8").read()
     pruef("--neu: Plandatei mit Kopf und DOCS-Zeile", ("| DOCS |" in t) and t.startswith("# Cleaner-Plan"), True)
+    pruef("   ohne Doku-Ordner: Ziel docs/ mit 'Ordner anlegen'", "docs/nachschlag.md — Ordner anlegen" in t, True)
+    os.makedirs(os.path.join(p2, "knowledge"))
+    neu(p2, "projekt", pl)
+    t = open(pl, encoding="utf-8").read()
+    pruef("   mit knowledge/: Ziel knowledge/, nichts anlegen", ("knowledge/nachschlag.md" in t) and ("Ordner anlegen" not in t), True)
     print("\n=== %d Abweichung(en) ===" % fehler)
     return 3 if fehler else 0
 

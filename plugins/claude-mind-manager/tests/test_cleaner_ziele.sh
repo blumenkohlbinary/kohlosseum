@@ -28,8 +28,10 @@ printf '# Zeitungen\n\nDas Gebiet hat drei Zeitungen.\n\nDie erste erscheint wer
 A=$($PY "$(w "$REF/cleaner_einordnung.py")" --verzeichnis "$(w "$P")" 2>&1)
 janein "Vorschlag DOCS + COMMAND" ja "$(printf '%s\n' "$A" | grep -q 'DOCS + COMMAND' && echo ja || echo nein)"
 janein "   Grund der zweiten Klasse steht dabei" ja "$(printf '%s\n' "$A" | grep -q 'auch COMMAND:' && echo ja || echo nein)"
-printf -- '---\ndescription: b\n---\n# B\n\n⛔ NIE `rechnen.py` ohne `test_rechnen.py`.\n\n⛔ `export.py` schreibt die Rundung.\n\nMUST `zeitplan.py` datieren.\n' > "$P/br.md"; rm -f "$P/zk.md"
-janein "Datei-gebundene Bremse -> RULE-PATHS als zweite Klasse" ja "$($PY "$(w "$REF/cleaner_einordnung.py")" --verzeichnis "$(w "$P")" 2>&1 | grep -q '+ RULE-PATHS' && echo ja || echo nein)"
+# v5.112.0: die Bindung zaehlt nur fuer LEBENDE Dateien — das Fixture legt sie an
+mkdir -p "$P/.claude/rules"; for f in rechnen.py test_rechnen.py export.py zeitplan.py; do printf 'x\n' > "$P/$f"; done
+printf -- '---\ndescription: b\n---\n# B\n\n⛔ NIE `rechnen.py` ohne `test_rechnen.py`.\n\n⛔ `export.py` schreibt die Rundung.\n\nMUST `zeitplan.py` datieren.\n' > "$P/.claude/rules/br.md"; rm -f "$P/zk.md"
+janein "Datei-gebundene Bremse -> RULE-PATHS als zweite Klasse" ja "$($PY "$(w "$REF/cleaner_einordnung.py")" --verzeichnis "$(w "$P/.claude/rules")" 2>&1 | grep -q '+ RULE-PATHS' && echo ja || echo nein)"
 rm -rf "$P"
 
 echo "== 3  cleaner_umzug --ziel docs auf der Kommandozeile =="
@@ -45,8 +47,8 @@ janein "--ziel unsinn -> Aufruffehler 2" 2 "$($PY "$(w "$REF/cleaner_umzug.py")"
 rm -rf "$P"
 
 echo "== 4  paths-Sonde: zwei Schritte, nichts stellt sich selbst zurueck =="
-P=$(mktemp -d); mkdir -p "$P/proj/.claude/rules" "$P/sich"
-printf -- '---\ndescription: r\nglobs: ["tools/x.py"]\n---\n# R\n\n⛔ NIE `x.py` ohne Test.\n' > "$P/proj/.claude/rules/x-regel.md"
+P=$(mktemp -d); mkdir -p "$P/proj/.claude/rules" "$P/proj/tools" "$P/sich"; printf 'x\n' > "$P/proj/tools/x.py"
+printf -- '---\ndescription: r\nglobs: ["tools/x.py"]\n---\n# R\n\n⛔ NIE `tools/x.py` ohne Test.\n' > "$P/proj/.claude/rules/x-regel.md"
 A=$(MIND_SONDE_SICHERUNG="$P/sich" CLAUDE_CODE_SESSION_ID=abcdef12-0000 $PY "$(w "$REF/cleaner_paths_sonde.py")" --start "$(w "$P/proj")" 2>&1); RC=$?
 janein "--start rc 0" 0 "$RC"
 janein "   Merker liegt" ja "$([ -f "$P/proj/.claude-mind/paths-sonde" ] && echo ja || echo nein)"
@@ -67,6 +69,29 @@ janein "beide Klassen im Bericht" ja "$(grep -q 'stehen BEIDE im Bericht' "$MC" 
 janein "--ziel docs mit ZEIGER-Gate" ja "$(grep -q -- '--ziel docs' "$MC" && grep -q 'ZEIGER' "$MC" && echo ja || echo nein)"
 janein "ERREICHBARKEIT-Ausnahme paths-gebunden" ja "$(grep -q 'paths-gebunden an' "$MC" && echo ja || echo nein)"
 janein "--paths-sonde: zwei Schritte, Mensch startet die Sitzung" ja "$(grep -q 'cleaner_paths_sonde.py" --start' "$MC" && grep -q 'cleaner_paths_sonde.py" --auswerten' "$MC" && grep -q 'die Sitzung startet der Mensch' "$MC" && echo ja || echo nein)"
+
+echo "== 7  v5.112.0 (§5): ALLGEMEIN — zwei Fixture-Projekte, kein Sonderpfad =="
+# Projekt A: mit docs/, Rules mit LEBENDEN Datei-Pfaden (paths-tauglich) + Nachschlagewerk
+# Projekt B: ohne Doku-Ordner, nur Nachschlagewerk
+PA=$(mktemp -d)/a; PB=$(mktemp -d)/b; mkdir -p "$PA/.claude/rules" "$PA/docs" "$PA/tools" "$PB/.claude/rules"
+printf 'x\n' > "$PA/tools/rechnen.py"; printf 'x\n' > "$PA/tools/export.py"
+printf -- '---\ndescription: b\n---\n# B\n\n⛔ NIE `tools/rechnen.py` ohne Test.\n\n⛔ `tools/export.py` schreibt die Rundung.\n\nMUST `tools/rechnen.py` datieren.\n' > "$PA/.claude/rules/bremse.md"
+NS='# Nachschlag\n\nDas Gebiet hat drei Teile.\n\nDer erste kommt werktags.\n\nDer zweite am Wochenende.\n\nDer dritte monatlich.\n\nDie Namen stehen in der Karte.\n'
+printf "$NS" > "$PA/.claude/rules/nachschlag.md"; printf "$NS" > "$PB/.claude/rules/nachschlag.md"
+printf -- '---\ndescription: t\n---\n# T\n\n⛔ NIE `tools/gibtsnicht.py` anfassen.\n\nMUST `tools/auchnicht.py` pruefen.\n' > "$PB/.claude/rules/tot.md"
+EA=$($PY "$(w "$REF/cleaner_einordnung.py")" --verzeichnis "$(w "$PA/.claude/rules")" 2>&1)
+EB=$($PY "$(w "$REF/cleaner_einordnung.py")" --verzeichnis "$(w "$PB/.claude/rules")" 2>&1)
+janein "A: Bremse mit lebenden Pfaden -> RULE-PATHS" ja "$(printf '%s\n' "$EA" | grep 'bremse.md' | grep -q 'RULE-PATHS' && echo ja || echo nein)"
+janein "B: dieselbe Form mit TOTEN Pfaden -> kein RULE-PATHS" nein "$(printf '%s\n' "$EB" | grep 'tot.md' | grep -q 'RULE-PATHS' && echo ja || echo nein)"
+janein "A und B: Nachschlagewerk -> DOCS + COMMAND" ja "$(printf '%s\n' "$EA" | grep 'nachschlag.md' | grep -q 'DOCS + COMMAND' && printf '%s\n' "$EB" | grep 'nachschlag.md' | grep -q 'DOCS + COMMAND' && echo ja || echo nein)"
+PLA="$PA/plan.md"; PLB="$PB/plan.md"
+env -u MIND_DEBUG_DIR $PY "$(w "$REF/cleaner_plan.py")" --neu "$(w "$PA")" --nur projekt --plan "$(w "$PLA")" >/dev/null 2>&1
+env -u MIND_DEBUG_DIR $PY "$(w "$REF/cleaner_plan.py")" --neu "$(w "$PB")" --nur projekt --plan "$(w "$PLB")" >/dev/null 2>&1
+janein "A: DOCS-Ziel docs/ (vorhanden), nichts anlegen" ja "$(grep -q 'docs/nachschlag.md' "$PLA" && ! grep -q 'Ordner anlegen' "$PLA" && echo ja || echo nein)"
+janein "B: DOCS-Ziel docs/ mit 'Ordner anlegen'" ja "$(grep -q 'docs/nachschlag.md — Ordner anlegen' "$PLB" && echo ja || echo nein)"
+janein "kein Projektname aus dem Zustellplan im Code" 0 "$(grep -c 'zeitungen-kontext' "$REF/cleaner_einordnung.py" "$REF/cleaner_plan.py" "$REF/cleaner_paths_sonde.py" "$CLAUDE_PLUGIN_ROOT/skills/mind-cleaner/SKILL.md" | awk -F: '{s+=$2} END{print s}')"
+janein "Sonde-Selbsttest meldet Ergebnisse aus anderen Projekten" ja "$($PY "$(w "$REF/cleaner_paths_sonde.py")" --selbsttest 2>/dev/null | grep -q 'andere Projekte: eines gemeldet' && echo ja || echo nein)"
+rm -rf "$(dirname "$PA")" "$(dirname "$PB")"
 
 echo "== 6  v5.110.0: EIN Plan, EIN ok — cleaner_plan.py =="
 janein "cleaner_plan --selbsttest gruen (4 Befunde, Gate in Zeile 3, --ohne, --neu)" 0 "$($PY "$(w "$REF/cleaner_plan.py")" --selbsttest >/dev/null 2>&1; echo $?)"

@@ -47,7 +47,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.111.0"
+MIND_SKILL_VERSION="5.112.0"
 mind_schritt_start "$PROJ" mind-cleaner bestandsaufnahme cleaner_audit cleaner_einordnung cleaner_grenzen cleaner_leitplanke cleaner_ratsche cleaner_rebuild cleaner_umzug ladeprotokoll_auswertung mind_debug_write mind_snapshot
 ```
 
@@ -310,13 +310,21 @@ Sechs Wege, nach dem **Moment der Erkennbarkeit** (v5.108.0: zwei dazu):
 | an **benannten Dateien** — Gebote für `x.py`, Datei-Listen (dat ≥ 0,30) | **RULE-PATHS**: Rule behalten, `paths:` setzen, Ladung **messen** (`--paths-sonde`) |
 | **gar nicht**, gilt vor jedem Eingriff | **bleibt Rule** |
 
-⛔ **v5.108.0 — passen ZWEI Klassen, stehen BEIDE im Bericht, mit Grund.** Nutzer im
-Zustellplan-Chat (14.09.2026): ein reines Nachschlagewerk (`zeitungen-kontext.md`, 32 kB,
-Imperativdichte 0,03) gehört nach `docs/` mit Zeiger, nicht in einen Command; und wo Arbeit
-Datei-Bearbeitung ist, ist `paths:` „sehr gut". Richtig wären ZWEI Vorschläge gewesen —
-`einordnen()` liefert sie als `vorschlaege` (Reihenfolge = Rang), `--audit` druckt
-`DOCS — … | ODER COMMAND — …`. Gemessen 14.09. an den 14 Zustellplan-Rules: 1× DOCS+COMMAND,
-4× RULE-PATHS als zweite Klasse.
+⛔ **v5.108.0 — passen ZWEI Klassen, stehen BEIDE im Bericht, mit Grund.** Nutzer (14.09.2026):
+ein reines Nachschlagewerk (32 kB, Imperativdichte 0,03) gehört nach `docs/` mit Zeiger, nicht
+in einen Command; und wo Arbeit Datei-Bearbeitung ist, ist `paths:` „sehr gut". Richtig wären
+ZWEI Vorschläge gewesen — `einordnen()` liefert sie als `vorschlaege` (Reihenfolge = Rang),
+`--audit` druckt `DOCS — … | ODER COMMAND — …`. Gemessen 14.09. an 14 Rules eines Projekts:
+1× DOCS+COMMAND, 4× RULE-PATHS als zweite Klasse.
+⛔ **v5.112.0 — ALLGEMEIN, in jedem Projekt (Nutzer 14.09., 23:40):** kein Dateiname und kein
+Projektpfad im Code. Das **DOCS-Ziel** wird je Projekt abgeleitet — vorhandener Doku-Ordner
+`docs/`, sonst `knowledge/`, sonst `doc/`; fehlt jeder: `docs/` anlegen und im Plan nennen
+(`cleaner_plan.docs_ziel`), Zeiger-Satz relativ zur Projektwurzel. **RULE-PATHS** erkennt die
+Bindung aus dem Rule-Text selbst: Backtick-Pfade, die im Projekt **existieren** (wie
+`mind_pfad_lebt`) — ein toter Pfad bindet nichts, `.claude/rules/*.md` zählt nicht. Die
+**Sonde** wählt ihre Rule in jedem Projekt selbst (kleinste mit lebendem Dateibezug) und
+meldet, ob schon ein Ergebnis aus einem **anderen** Projekt liegt — der Satz für
+`kontext-anlegen.md` gilt erst mit zwei.
 
 ⛔ **Hier standen bis v5.27.0 VIER Wege — „Skill" und „Slash-Command" getrennt.**
 Das sind nicht zwei Dinge: ein Command **ist** das, was du mit `/name` tippst, und
@@ -638,8 +646,8 @@ in ihrer eigenen Kopfzeile.
 ## `--paths-sonde` — misst, ob `paths:` überhaupt filtert (NEU v5.108.0)
 
 `kontext-anlegen.md` sagt: *„dass `paths:` filtert, ist dokumentiert, nicht nachgemessen."*
-Zustellplan (14.09.2026): 14 Rules, 865 kB, alle `globs:`, alle laden beim Start; 2 766
-Ladevorgänge im Protokoll, nie `path_glob_match`. Die Sonde misst es in **zwei Schritten**,
+Gemessen 14.09.2026 in einem Projekt: 14 Rules, 865 kB, alle `globs:`, alle laden beim Start;
+2 766 Ladevorgänge im Protokoll, nie `path_glob_match`. Die Sonde misst es in **zwei Schritten**,
 weil nur der Mensch eine neue Sitzung starten kann:
 
 ```bash

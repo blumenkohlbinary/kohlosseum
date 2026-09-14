@@ -87,6 +87,37 @@ def globs_zu_paths(text):
     return "---" + neu + "---" + rest, neu != kopf
 
 
+def andere_ergebnisse(projekt):
+    """v5.112.0 (§5): das Messergebnis ist projektuebergreifendes Wissen — was liegt schon in
+    $MIND_DEBUG_DIR/paths-sonde-*.md aus ANDEREN Projekten? Liste (projekt, urteil)."""
+    d = os.environ.get("MIND_DEBUG_DIR")
+    out = []
+    if not d or not os.path.isdir(d):
+        return out
+    for f in sorted(os.listdir(d)):
+        if not (f.startswith("paths-sonde-") and f.endswith(".md")):
+            continue
+        t = open(os.path.join(d, f), encoding="utf-8", errors="replace").read()
+        mp = re.search(r"^- Projekt: (.+)$", t, re.M)
+        mu = re.search(r"^- URTEIL: (.+)$", t, re.M)
+        pj = mp.group(1).strip() if mp else "?"
+        if pj.replace("\\", "/").rstrip("/") == os.path.abspath(projekt).replace("\\", "/").rstrip("/"):
+            continue
+        out.append((pj, mu.group(1).strip() if mu else "?"))
+    return out
+
+
+def _andere_melden(projekt):
+    a = andere_ergebnisse(projekt)
+    if a:
+        print("  ⭐ Ergebnis(se) aus anderen Projekten: %d" % len(a))
+        for pj, u in a[-3:]:
+            print("     %-40s %s" % (os.path.basename(pj)[:40], u))
+        print("     -> dieses Projekt bestaetigt oder widerlegt sie; der Satz fuer kontext-anlegen.md gilt erst mit zwei.")
+    else:
+        print("  ⚠ noch kein Ergebnis aus einem anderen Projekt — dies waere das erste.")
+
+
 def start(projekt, datei=None, sicherung_wurzel=None):
     p = kandidat(projekt, datei)
     if not p:
@@ -120,6 +151,7 @@ def start(projekt, datei=None, sicherung_wurzel=None):
     print("  globs->paths: %s" % ("getauscht" if getauscht else "war schon paths:"))
     print("  Merker:     %s" % _merker(projekt))
     print()
+    _andere_melden(projekt)
     print("  ⛔ Jetzt eine NEUE Sitzung starten (kann nur der Mensch), dort NICHT die")
     print("     Datei anfassen, die die Rule nennt — dann `/mind-cleaner --paths-sonde`")
     print("     (cleaner_paths_sonde.py --auswerten) erneut. Rueckweg: die Sicherung.")
@@ -175,14 +207,15 @@ def auswerten(projekt, log=None):
             rc = 1
     print("  URTEIL: %s" % urteil)
     print("  Satz fuer kontext-anlegen.md: %s" % satz)
+    _andere_melden(projekt)
     print("  Rueckweg: cp \"%s\" \"%s\"" % (m.get("sicherung", "?"), m["datei"]))
     d = os.environ.get("MIND_DEBUG_DIR")
     if d and os.path.isdir(d):
         out = os.path.join(d, "paths-sonde-%s.md" % time.strftime("%Y%m%d-%H%M%S"))
         with open(out, "w", encoding="utf-8", newline="\n") as fh:
-            fh.write("# paths-Sonde %s\n\n- Rule: `%s`\n- Merker seit: %s\n- neue Sitzungen: %d\n"
+            fh.write("# paths-Sonde %s\n\n- Projekt: %s\n- Rule: `%s`\n- Merker seit: %s\n- neue Sitzungen: %d\n"
                      "- Ladungen: %s\n- URTEIL: %s\n- Satz: %s\n"
-                     % (time.strftime("%Y-%m-%d %H:%M"), m["datei"], seit, len(neue_sitzungen),
+                     % (time.strftime("%Y-%m-%d %H:%M"), os.path.abspath(projekt), m["datei"], seit, len(neue_sitzungen),
                         "; ".join("%s %s %s" % t for t in treffer) or "keine", urteil, satz))
         print("  Ergebnis: %s" % out)
     return rc
@@ -201,10 +234,12 @@ def selbsttest():
     d = tempfile.mkdtemp()
     os.environ.pop("MIND_DEBUG_DIR", None)   # der Selbsttest schreibt NIE in den echten Debug-Ordner
     proj = os.path.join(d, "proj"); rd = os.path.join(proj, ".claude", "rules"); os.makedirs(rd)
+    os.makedirs(os.path.join(proj, "tools")); open(os.path.join(proj, "a.py"), "w").write("")
+    open(os.path.join(proj, "tools", "b.py"), "w").write("")   # lebende Dateien fuer den Dateibezug
     open(os.path.join(rd, "gross.md"), "w", encoding="utf-8").write(
         "---\ndescription: x\nglobs: [\"src/**/*.py\"]\n---\n# G\n\n" + ("⛔ NIE `a.py` aendern.\n\n" * 20))
     open(os.path.join(rd, "klein.md"), "w", encoding="utf-8").write(
-        "---\ndescription: y\nglobs: [\"tools/b.py\"]\n---\n# K\n\n⛔ NIE `b.py` ohne Test.\n")
+        "---\ndescription: y\nglobs: [\"tools/b.py\"]\n---\n# K\n\n⛔ NIE `tools/b.py` ohne Test.\n")
     open(os.path.join(rd, "prosa.md"), "w", encoding="utf-8").write(
         "---\ndescription: z\n---\n# P\n\nNur Prosa ohne Datei.\n")
     print("=" * 72); print("  Selbsttest — die paths-Sonde"); print("=" * 72)
@@ -233,6 +268,13 @@ def selbsttest():
     open(log, "w", encoding="utf-8").write("%s\tpath_glob_match\t%s\teeeeeeee\n" % (spaeter, os.path.join(rd, "klein.md")))
     pruef("(d) geladen mit path_glob_match -> filtert (0)", auswerten(proj, log), 0)
     pruef("Rule ohne globs/paths ist als Sonde untauglich (2)", start(proj, "prosa.md", os.path.join(d, "sich")), 2)
+    # v5.112.0: Ergebnisse aus anderen Projekten werden gemeldet
+    dbg = os.path.join(d, "debug"); os.makedirs(dbg); os.environ["MIND_DEBUG_DIR"] = dbg
+    open(os.path.join(dbg, "paths-sonde-1.md"), "w", encoding="utf-8").write("# x\n\n- Projekt: C:/anderes/projekt\n- URTEIL: paths: FILTERT NICHT\n")
+    open(os.path.join(dbg, "paths-sonde-2.md"), "w", encoding="utf-8").write("# y\n\n- Projekt: %s\n- URTEIL: egal\n" % os.path.abspath(proj))
+    a = andere_ergebnisse(proj)
+    pruef("andere Projekte: eines gemeldet, das eigene nicht", a, [("C:/anderes/projekt", "paths: FILTERT NICHT")])
+    os.environ.pop("MIND_DEBUG_DIR", None)
     print("\n=== %d Abweichung(en) ===" % fehler)
     return 3 if fehler else 0
 

@@ -90,12 +90,40 @@ KONKRET = re.compile(
 
 CODEZAUN = re.compile(r"^\s*```")
 
-# ⭐ v5.108.0 (Etappe 16 §1): DATEIBEZUG — ein Absatz, der eine benannte Datei mit
-#    Endung nennt. Gebote an benannte Dateien sind der Fall fuer `paths:` (Rule behalten,
-#    Ladung messen), nicht fuer einen Umzug. Endungen bewusst ohne .md: eine Regel, die
-#    andere Regeln zitiert, bindet sich an keine Arbeitsdatei.
-DATEIBEZUG = re.compile(
-    r"\b[\w][\w.-]*\.(?:py|sh|js|ts|tsx|jsx|json|yml|yaml|toml|ini|cfg|csv|exe|bat|ps1|rs|go|java|c|h|cpp)\b")
+# ⭐ v5.108.0 (Etappe 16 §1): DATEIBEZUG — ein Absatz, der eine benannte Datei nennt.
+#    Gebote an benannte Dateien sind der Fall fuer `paths:` (Rule behalten, Ladung messen),
+#    nicht fuer einen Umzug.
+# ⛔ v5.112.0 (§5, Nutzer 14.09.): die Bindung kommt aus dem Rule-Text SELBST — Backtick-
+#    Spans, die im Projekt EXISTIEREN (wie `mind_pfad_lebt`), nicht aus einer Endungsliste.
+#    Eine Regel, die andere Regeln zitiert (`*.md` unter .claude/rules), bindet sich an keine
+#    Arbeitsdatei; ein toter Pfad bindet nichts.
+BACKTICK = re.compile(r"`([^`\n]{1,200})`")
+
+
+def projekt_von(pfad):
+    """Die Projektwurzel einer Regeldatei: `<proj>/.claude/rules/x.md` -> `<proj>`; sonst
+    der Ordner der Datei."""
+    d = os.path.dirname(os.path.abspath(pfad))
+    if os.path.basename(d) == "rules" and os.path.basename(os.path.dirname(d)) == ".claude":
+        return os.path.dirname(os.path.dirname(d))
+    return d
+
+
+def lebende_pfade(absatz, projekt):
+    """Backtick-Spans des Absatzes, die als Datei im Projekt (relativ zur Wurzel) oder
+    absolut/`~` existieren — ohne Regeldateien unter .claude/rules."""
+    out = []
+    for s in BACKTICK.findall(absatz):
+        s = s.strip().split(" ")[0].strip("\"'")
+        if not s or " " in s or s.startswith(("-", "$", "/mind", "http")):
+            continue
+        if "/" not in s and "." not in s:
+            continue
+        kand = os.path.expanduser(s) if s.startswith("~") else (s if os.path.isabs(s) else os.path.join(projekt, s))
+        kand = kand.replace("\\", "/")
+        if os.path.isfile(kand) and "/.claude/rules/" not in kand:
+            out.append(s)
+    return out
 
 
 def absaetze(text):
@@ -313,12 +341,13 @@ def d1_bericht(dateien):
     print("     ein Mensch entscheidet. Eine geratene Zelle waere schlimmer als eine leere.")
     return 0
 
-def einordnen(pfad):
+def einordnen(pfad, projekt=None):
     try:
         with open(pfad, encoding="utf-8", errors="replace") as fh:
             t = fh.read()
     except OSError:
         return None
+    projekt = projekt or projekt_von(pfad)
 
     abs_, codezeilen, zaun_offen = absaetze(t)
     n = len(abs_)
@@ -348,16 +377,16 @@ def einordnen(pfad):
            if roh_abs else 0.0)
     zeilen_ges = max(1, len(t.split("\n")))
     cod = codezeilen / zeilen_ges
-    dat = sum(1 for a in abs_ if DATEIBEZUG.search(a)) / n
+    dat = sum(1 for a in abs_ if lebende_pfade(a, projekt)) / n
 
     # --- Der Vorschlag ----------------------------------------------------
     # ⛔ Reihenfolge ist Absicht: die harte Kante zuerst. Eine Datei mit hoher
     #    Imperativdichte ist eine Leitplanke — und Leitplanken werden nie Skills,
     #    egal wie gut die uebrigen Zahlen zu einem Command passen.
     #
-    # ⭐ v5.108.0 (Etappe 16 §1, Nutzer im Zustellplan-Chat 14.09.2026): der Einordner
-    #    kannte nur drei Ziele. Ein reines Nachschlagewerk (`zeitungen-kontext.md`,
-    #    32 kB, imp 0,03, kon 0,05) gehoert nach docs/ mit Zeiger — 0 B Dauerkontext,
+    # ⭐ v5.108.0 (Etappe 16 §1, Nutzer 14.09.2026): der Einordner kannte nur drei Ziele.
+    #    Ein reines Nachschlagewerk (gemessen: 32 kB, imp 0,03, kon 0,05) gehoert nach
+    #    docs/ mit Zeiger — 0 B Dauerkontext,
     #    der Pfad traegt 4/4 — nicht in einen Command (Auswahl 20–84 %). Und wo die
     #    Gebote an benannte Dateien haengen, ist `paths:` der Weg: Rule behalten,
     #    Ladung MESSEN (cleaner_paths_sonde.py). Passen zwei Klassen, stehen BEIDE
@@ -381,8 +410,8 @@ def einordnen(pfad):
         v, g = "COMMAND", "kaum Gebote: Nachschlagewerk"
     else:
         v, g = "UNKLAR", "zwischen Gebot und Nachschlagewerk — hier entscheidet der Mensch"
-    # UNKLAR mit Datei-Bezug ist derselbe Fall (Zustellplan: build-process 0,27/0,48,
-    # gebietsprofile 0,29/0,42) — ab imp 0,15 gibt es Gebote, die an Dateien haengen.
+    # UNKLAR mit Datei-Bezug ist derselbe Fall (gemessen 14.09.2026: imp 0,27 bei dat 0,48,
+    # imp 0,29 bei dat 0,42) — ab imp 0,15 gibt es Gebote, die an Dateien haengen.
     if dat >= 0.30 and imp >= 0.15 and v in ("HOOK-KANDIDAT", "BLEIBT RULE", "UNKLAR"):
         zweite.append(("RULE-PATHS", ("Gebote an benannte Dateien gebunden (dat %.2f) — Rule "
                                       "behalten, `paths:` setzen, Ladung MESSEN "
@@ -583,9 +612,8 @@ Ergebnis erklaert die Zwischenschritte besser als umgekehrt.
 Historisch gab es eine vierte Stufe, sie ist entfallen.
 """
 
-# v5.108.0: reines Nachschlagewerk ohne Aufruf-Anker — die Form von `zeitungen-kontext.md`
-#    (Zustellplan: 32 kB, imp 0,03, kon 0,05). Gehoert nach docs/ mit Zeiger; COMMAND ist die
-#    zweite Klasse, nicht die erste.
+# v5.108.0: reines Nachschlagewerk ohne Aufruf-Anker (gemessen an einem 32-kB-Bestand:
+#    imp 0,03, kon 0,05). Gehoert nach docs/ mit Zeiger; COMMAND ist die zweite Klasse.
 _T_DOCS = """# Die Zeitungen im Gebiet
 
 Das Gebiet umfasst drei Zeitungen, die an verschiedenen Tagen erscheinen.
@@ -666,13 +694,24 @@ def selbsttest():
     ok = e and e["vorschlaege"][:2] == ["DOCS", "COMMAND"]
     fehler += 0 if ok else 1
     print("  %-4s %-24s vorschlaege=%s" % ("OK" if ok else "FEHL", "DOCS vor COMMAND", e and e["vorschlaege"]))
-    p = os.path.join(d, "paths.md")
+    # v5.112.0: die Bindung zaehlt nur, wenn die genannten Dateien im Projekt LEBEN
+    pj = os.path.join(d, "proj"); os.makedirs(os.path.join(pj, ".claude", "rules"))
+    for f in ("berechnung.py", "test_berechnung.py", "tabellen.py", "export.py", "zeitplan.py", "konfig.json"):
+        open(os.path.join(pj, f), "w").write("# x\n")
+    p = os.path.join(pj, ".claude", "rules", "paths.md")
     with open(p, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(_T_PATHS)
     e = einordnen(p)
     ok = e and "RULE-PATHS" in e["vorschlaege"] and e["vorschlag"] in ("BLEIBT RULE", "HOOK-KANDIDAT")
     fehler += 0 if ok else 1
     print("  %-4s %-24s vorschlaege=%s dat=%.2f" % ("OK" if ok else "FEHL", "Datei-gebunden -> RULE-PATHS", e and e["vorschlaege"], e["dateibezug"] if e else 0))
+    p2 = os.path.join(d, "paths_tot.md")
+    with open(p2, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(_T_PATHS)
+    e = einordnen(p2)
+    ok = e and "RULE-PATHS" not in e["vorschlaege"]
+    fehler += 0 if ok else 1
+    print("  %-4s %-24s vorschlaege=%s dat=%.2f" % ("OK" if ok else "FEHL", "dieselben Namen, Dateien TOT -> kein RULE-PATHS", e and e["vorschlaege"], e["dateibezug"] if e else 0))
     p = os.path.join(d, "hook.md")
     with open(p, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(_T_HOOK)
