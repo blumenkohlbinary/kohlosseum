@@ -652,6 +652,9 @@ kippen.
 # Der Snapshot aus Step 0 ist der Vorher-Stand — er wird hier zum Messinstrument.
 MEMDIR=$(get_memory_dir "$PROJ" 2>/dev/null) || MEMDIR=""
 mind_zeilenenden_waechter "$MIND_SNAPSHOT_DIR" "$PROJ" "$MEMDIR"
+# ⚠ v5.109.0: der Waechter vergleicht das WURZEL-Memory (Snapshot memory/). Die Memorys der
+#   Roster-Ordner liegen unter memory-unterordner/<ordner>/ und werden hier NICHT verglichen —
+#   ausgewiesen, nicht behoben (Etappe 18, Allbetroffenheit); ihr Rueckweg ist die Kopie.
 RC=$?
 [ "$RC" = 2 ] && echo "⛔ WAECHTER UNGUELTIG — Zeilenenden in diesem Lauf NICHT geprueft."
 ```

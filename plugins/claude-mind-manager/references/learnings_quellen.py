@@ -165,11 +165,15 @@ def quellen(projekt, memory_dir=None):
                     if f.endswith(endungen):
                         q[schl].append(os.path.join(wz, f))
 
-    md = memory_dir if memory_dir else memory_pfad(projekt)
-    if md and os.path.isdir(md):
-        for f in sorted(os.listdir(md)):
-            if f.endswith(".md"):
-                q["memory"].append(os.path.join(md, f))
+    # v5.109.0 (Etappe 18): im Rollen-Aufbau ALLE Memory-Verzeichnisse (Wurzel + je
+    #    Roster-Ordner) — /mind-learnings sah sonst nur die Wurzel. Ein uebergebenes
+    #    memory_dir bleibt allein massgeblich (Aufrufer weiss es besser).
+    mds = [memory_dir] if memory_dir else memory_pfade(projekt)
+    for md in mds:
+        if md and os.path.isdir(md):
+            for f in sorted(os.listdir(md)):
+                if f.endswith(".md"):
+                    q["memory"].append(os.path.join(md, f))
     return q
 
 

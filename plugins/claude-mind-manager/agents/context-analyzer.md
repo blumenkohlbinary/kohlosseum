@@ -34,7 +34,7 @@ The dispatching skill passes a **scope** and a **mode** in the agent prompt:
 
 **Scopes (was analysiert wird):**
 - `scope: claude-md` → focus on CLAUDE.md files only
-- `scope: memory` → focus on MEMORY.md + topic files only
+- `scope: memory` → focus on MEMORY.md + topic files only. ⛔ v5.109.0: im Rollen-Aufbau nennt der Skill MEHRERE Memory-Verzeichnisse (Wurzel + je Roster-Ordner, eigener Slug je Sitzung) — jedes wird fuer sich analysiert und beschrieben (`memory[<ordner>]/<name>`); derselbe Fakt in zwei Verzeichnissen ist ein BEFUND (Duplikat ueber Slugs), nie ein Vorschlag zum Zusammenfuehren, und geschrieben wird nur in das Verzeichnis, das der Auftrag der Datei zuordnet
 - `scope: rules` → focus on .claude/rules/*.md only
 - `scope: custom-context` (NEU v3.3.0) → focus on project-internal Custom Context (z.B. `plan.md`, `research.md`, `docs/*.md`). Skill uebergibt CUSTOM_CONTEXT_FILES-Liste im Prompt — Agent liest diese direkt (KEINE eigene Discovery, Skill hat schon via mind-update Step 1.5 discovered)
 - `scope: all` → analyze everything (used by mind:update legacy)
