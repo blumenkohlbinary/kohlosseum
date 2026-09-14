@@ -440,8 +440,11 @@ def lauf_memory(mdir):
     #    description zu kurz", alles Wurzel-Dateien, kein Memory. Ein Projektpfad wird
     #    seither ueber den Slug aufgeloest (learnings_quellen.memory_pfad); ein Memory-
     #    Verzeichnis (traegt MEMORY.md oder heisst memory) geht weiter direkt.
-    if not (os.path.basename(os.path.normpath(mdir)) == "memory"
-            or os.path.isfile(os.path.join(mdir, "MEMORY.md"))):
+    #    Ein PROJEKT erkennt man an `.claude/` oder `CLAUDE.md`; ein blosser Ordner mit
+    #    Topic-Dateien (auch ohne MEMORY.md, wie die Fixtures in test_kontext_tor.sh)
+    #    bleibt direkt — sonst wuerde der Deckel dort ueber den Slug ins Leere laufen.
+    if (os.path.isdir(os.path.join(mdir, ".claude")) or os.path.isfile(os.path.join(mdir, "CLAUDE.md"))) \
+            and not os.path.isfile(os.path.join(mdir, "MEMORY.md")):
         from learnings_quellen import memory_pfad
         aufgeloest = memory_pfad(mdir)
         if not aufgeloest:

@@ -46,7 +46,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.107.0"
+MIND_SKILL_VERSION="5.108.0"
 mind_schritt_start "$PROJ" mind-cleaner bestandsaufnahme cleaner_audit cleaner_einordnung cleaner_grenzen cleaner_leitplanke cleaner_ratsche cleaner_rebuild cleaner_umzug ladeprotokoll_auswertung mind_debug_write mind_snapshot
 ```
 
@@ -265,13 +265,23 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_einordnung.py" --verzeichnis <pfa
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_einordnung.py" --selbsttest
 ```
 
-Vier Wege, nach dem **Moment der Erkennbarkeit**:
+Sechs Wege, nach dem **Moment der Erkennbarkeit** (v5.108.0: zwei dazu):
 
 | woran erkennbar? | → |
 |---|---|
 | am **Werkzeugaufruf** (Pfad, Endung, Befehlswort) | **Hook** |
 | an der **Aufgabe**, oder der Nutzer ruft es **beim Namen** | **Command** (`/name`) |
+| **gar nicht** — es **erklärt** statt anzuweisen, kein Aufruf-Anker (imp < 0,15, kon < 0,30) | **DOCS**: `docs/<name>.md` + Zeiger-Satz am alten Ort — 0 B Dauerkontext, der Pfad trägt 4/4 |
+| an **benannten Dateien** — Gebote für `x.py`, Datei-Listen (dat ≥ 0,30) | **RULE-PATHS**: Rule behalten, `paths:` setzen, Ladung **messen** (`--paths-sonde`) |
 | **gar nicht**, gilt vor jedem Eingriff | **bleibt Rule** |
+
+⛔ **v5.108.0 — passen ZWEI Klassen, stehen BEIDE im Bericht, mit Grund.** Nutzer im
+Zustellplan-Chat (14.09.2026): ein reines Nachschlagewerk (`zeitungen-kontext.md`, 32 kB,
+Imperativdichte 0,03) gehört nach `docs/` mit Zeiger, nicht in einen Command; und wo Arbeit
+Datei-Bearbeitung ist, ist `paths:` „sehr gut". Richtig wären ZWEI Vorschläge gewesen —
+`einordnen()` liefert sie als `vorschlaege` (Reihenfolge = Rang), `--audit` druckt
+`DOCS — … | ODER COMMAND — …`. Gemessen 14.09. an den 14 Zustellplan-Rules: 1× DOCS+COMMAND,
+4× RULE-PATHS als zweite Klasse.
 
 ⛔ **Hier standen bis v5.27.0 VIER Wege — „Skill" und „Slash-Command" getrennt.**
 Das sind nicht zwei Dinge: ein Command **ist** das, was du mit `/name` tippst, und
@@ -351,13 +361,20 @@ steht hier keine mehr. Wer zählt, zählt die Tabelle.
 ```bash
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_umzug.py" \
   --alt <snapshot/alt.md> --kurz <neue-kurz.md> --skill <skills/<name>/SKILL.md>
+# v5.108.0 — Umzug nach docs/ (Klasse DOCS): <s.md> ist die Datei unter docs/
+python "$CLAUDE_PLUGIN_ROOT/references/cleaner_umzug.py" \
+  --alt <snapshot/alt.md> --kurz <neue-kurz.md> --skill <docs/<name>.md> --ziel docs
 ```
+
+⭐ **`--ziel docs` (v5.108.0):** BESCHREIBUNG und DOPPELZEIGER entfallen (docs/ ist kein
+Command), dafür ist **ZEIGER** Pflicht — der alte Ort zeigt **direktiv** auf die Datei („lies
+zuerst `docs/…`"), nicht beiläufig. ERHALTUNG, ENTLASTUNG, PFAD, INHALT gelten wie bisher.
 
 | Gate | prüft |
 |---|---|
 | **ERHALTUNG** | `Zeilen(Kurz) + Zeilen(Skill) ≥ Zeilen(Alt)` — Umziehen verschiebt, es kürzt nicht |
 | ⭐ **ENTLASTUNG** (NEU v5.71.0) | die Kurz-Rule ist in **BYTES** kleiner als die alte. ⛔ Ohne dieses Gate bestand ein Umzug, der **nichts entlastet**, alle übrigen: `ERHALTUNG` zählt über beide Orte und ist blind dafür, ob der **immer ladende** Anteil gesunken ist. ⚠ Es fordert eine Richtung, kein Maß — eine Mindestquote wäre eine gesetzte Zahl |
-| **ERREICHBARKEIT** | die Kurz-Rule trägt **kein** `paths:`/`globs:` — eine Leitplanke mit Ladebedingung ist keine |
+| **ERREICHBARKEIT** | die Kurz-Rule trägt **kein** `paths:`/`globs:` — eine Leitplanke mit Ladebedingung ist keine. ⭐ **Ausnahme (v5.108.0):** `paths:` **und** der Rumpf nennt die Dateien der Muster → kein Bruch, Grund im Bericht `erreichbarkeit: paths-gebunden an <dateien>` — eine Bremse für `x.py` darf laden, wenn `x.py` angefasst wird. `globs:` bleibt Bruch (filtert nicht) |
 | ⭐ **PFAD** | die Kurz-Rule nennt den **Zielpfad wörtlich** |
 | **BESCHREIBUNG** | ≥ 40 Zeichen, und Name+description unter der Kappung bei **1 536** `[DOKU]` |
 | ⭐ **INHALT** (NEU v5.24.0) | jede **Marke** der alten Regel ist in Kurz **oder** Skill wiederzufinden |
@@ -582,6 +599,31 @@ Das Archiv liegt unter `.claude/archiv/` — **außerhalb jedes Ladepfads**. Das
 Punkt: `geladene_dateien()` ist rekursiv, ein Archiv unter `rules/` **lädt weiter mit**.
 Zurück geht es mit `cleaner_ratsche.py --entarchiviere <n>`; die Archivdatei nennt den Befehl
 in ihrer eigenen Kopfzeile.
+
+## `--paths-sonde` — misst, ob `paths:` überhaupt filtert (NEU v5.108.0)
+
+`kontext-anlegen.md` sagt: *„dass `paths:` filtert, ist dokumentiert, nicht nachgemessen."*
+Zustellplan (14.09.2026): 14 Rules, 865 kB, alle `globs:`, alle laden beim Start; 2 766
+Ladevorgänge im Protokoll, nie `path_glob_match`. Die Sonde misst es in **zwei Schritten**,
+weil nur der Mensch eine neue Sitzung starten kann:
+
+```bash
+# 1  nach dem OK des Cleaners — die Sonde AENDERT eine Datei (wie jeder Umzug)
+python "$CLAUDE_PLUGIN_ROOT/references/cleaner_paths_sonde.py" --start "$PROJ" [--datei <rule.md>]
+#    kleinste Rule mit Datei-Bezug, Sicherung nach _claude_backups/<ts>_paths-sonde/,
+#    globs: -> paths: nur im Frontmatter, Merker .claude-mind/paths-sonde (datei, ts, sid, sicherung)
+#    -> „neue Sitzung starten, dann /mind-cleaner erneut"  ⛔ die Sitzung startet der Mensch
+# 2  im naechsten Lauf, wenn der Merker liegt
+python "$CLAUDE_PLUGIN_ROOT/references/cleaner_paths_sonde.py" --auswerten "$PROJ"
+#    Ladeprotokoll SEIT dem Merker aus einer ANDEREN Sitzung: geladen mit session_start ->
+#    filtert NICHT (rc 1) · geladen nur mit path_glob_match -> filtert (rc 0) · neue Sitzung,
+#    Rule fehlt -> filtert (rc 0) · keine neue Sitzung -> noch nicht messbar (rc 3)
+#    Ergebnis: $MIND_DEBUG_DIR/paths-sonde-<ts>.md + der Satz fuer kontext-anlegen.md (mit Datum)
+```
+
+⛔ **Rückweg ist die Sicherung** (der Merker nennt sie: `cp "<sicherung>" "<datei>"`); die Sonde
+stellt nicht selbst zurück. ⚠ Die neue Sitzung darf die Datei, die die Rule nennt, **nicht
+anfassen** — sonst misst sie den Treffer statt den Start.
 
 ## `--hook-bauen <datei>` — nur auf ausdrückliche Ansage
 

@@ -90,6 +90,13 @@ KONKRET = re.compile(
 
 CODEZAUN = re.compile(r"^\s*```")
 
+# ⭐ v5.108.0 (Etappe 16 §1): DATEIBEZUG — ein Absatz, der eine benannte Datei mit
+#    Endung nennt. Gebote an benannte Dateien sind der Fall fuer `paths:` (Rule behalten,
+#    Ladung messen), nicht fuer einen Umzug. Endungen bewusst ohne .md: eine Regel, die
+#    andere Regeln zitiert, bindet sich an keine Arbeitsdatei.
+DATEIBEZUG = re.compile(
+    r"\b[\w][\w.-]*\.(?:py|sh|js|ts|tsx|jsx|json|yml|yaml|toml|ini|cfg|csv|exe|bat|ps1|rs|go|java|c|h|cpp)\b")
+
 
 def absaetze(text):
     """Absaetze OHNE Codebloecke — Code verzerrt jede Dichtemessung.
@@ -341,11 +348,21 @@ def einordnen(pfad):
            if roh_abs else 0.0)
     zeilen_ges = max(1, len(t.split("\n")))
     cod = codezeilen / zeilen_ges
+    dat = sum(1 for a in abs_ if DATEIBEZUG.search(a)) / n
 
     # --- Der Vorschlag ----------------------------------------------------
     # ⛔ Reihenfolge ist Absicht: die harte Kante zuerst. Eine Datei mit hoher
     #    Imperativdichte ist eine Leitplanke — und Leitplanken werden nie Skills,
     #    egal wie gut die uebrigen Zahlen zu einem Command passen.
+    #
+    # ⭐ v5.108.0 (Etappe 16 §1, Nutzer im Zustellplan-Chat 14.09.2026): der Einordner
+    #    kannte nur drei Ziele. Ein reines Nachschlagewerk (`zeitungen-kontext.md`,
+    #    32 kB, imp 0,03, kon 0,05) gehoert nach docs/ mit Zeiger — 0 B Dauerkontext,
+    #    der Pfad traegt 4/4 — nicht in einen Command (Auswahl 20–84 %). Und wo die
+    #    Gebote an benannte Dateien haengen, ist `paths:` der Weg: Rule behalten,
+    #    Ladung MESSEN (cleaner_paths_sonde.py). Passen zwei Klassen, stehen BEIDE
+    #    im Ergebnis (`vorschlaege`), nie nur die erste.
+    zweite = []
     if imp >= 0.30 and kon >= 0.30:
         v, g = "HOOK-KANDIDAT", ("erzwingend UND an konkreten Aufrufen erkennbar — "
                                  "Hook kann das durchsetzen, ein Command nicht")
@@ -354,14 +371,28 @@ def einordnen(pfad):
                                "nichts, woran ein Hook haengen koennte")
     elif cod >= 0.25:
         v, g = "COMMAND", "hoher Codeanteil: Verfahrensbeschreibung, kein Gebot"
+    elif imp < 0.15 and kon < 0.30:
+        v, g = "DOCS", ("erklaert statt anzuweisen (imp %.2f, kon %.2f, code %.2f) — "
+                        "nach docs/<name>.md, Zeiger-Satz am alten Ort; 0 B Dauerkontext"
+                        % (imp, kon, cod))
+        zweite.append(("COMMAND", "kaum Gebote: Nachschlagewerk — Alternative, wenn es "
+                                  "AUFGERUFEN statt nachgeschlagen werden soll"))
     elif imp < 0.15:
         v, g = "COMMAND", "kaum Gebote: Nachschlagewerk"
     else:
         v, g = "UNKLAR", "zwischen Gebot und Nachschlagewerk — hier entscheidet der Mensch"
+    # UNKLAR mit Datei-Bezug ist derselbe Fall (Zustellplan: build-process 0,27/0,48,
+    # gebietsprofile 0,29/0,42) — ab imp 0,15 gibt es Gebote, die an Dateien haengen.
+    if dat >= 0.30 and imp >= 0.15 and v in ("HOOK-KANDIDAT", "BLEIBT RULE", "UNKLAR"):
+        zweite.append(("RULE-PATHS", ("Gebote an benannte Dateien gebunden (dat %.2f) — Rule "
+                                      "behalten, `paths:` setzen, Ladung MESSEN "
+                                      "(cleaner_paths_sonde.py)" % dat)))
 
     return {"pfad": pfad, "bytes": len(t.encode("utf-8")), "absaetze": n,
-            "imperativ": imp, "konkret": kon, "code": cod,
-            "zaun_offen": zaun_offen, "vorschlag": v, "grund": g}
+            "imperativ": imp, "konkret": kon, "code": cod, "dateibezug": dat,
+            "zaun_offen": zaun_offen, "vorschlag": v, "grund": g,
+            "vorschlaege": [v] + [z[0] for z in zweite],
+            "gruende": dict([(v, g)] + zweite)}
 
 
 # ==========================================================================
@@ -536,17 +567,48 @@ MUST vor jedem `git push` erst `git pull --rebase` laufen lassen.
 ⛔ Schreiben auf `Z:\\` ist verboten, immer ueber die API in `C:/CD/KOHLEKTIV`.
 """
 
+# ⚠ v5.108.0: das Nachschlagewerk traegt AUFRUFE (kon >= 0,30) — so bleibt es COMMAND.
+#    Ohne Aufruf-Anker waere es seit v5.108.0 DOCS (siehe _T_DOCS). Zusicherung unveraendert:
+#    ein Nachschlagewerk, das man AUFRUFT, ist ein Command.
 _T_SKILL = """# Wie die Aufnahme entsteht
 
-Der Ablauf hat drei Stufen. Zuerst wird ein Bild geholt, danach zusammengesetzt,
-zuletzt abgelegt.
+Der Ablauf hat drei Stufen: `python aufnahme.py holen`, dann `python aufnahme.py bauen`,
+zuletzt `python aufnahme.py ablegen --ziel _out/`.
 
 Die Zwischenstufe liegt im Arbeitsspeicher und wird nicht sichtbar.
 
-Wer den Ablauf nachvollziehen will, liest die Beschreibung von hinten: das
+Wer den Ablauf nachvollziehen will, liest `git log -p aufnahme.py` von hinten: das
 Ergebnis erklaert die Zwischenschritte besser als umgekehrt.
 
 Historisch gab es eine vierte Stufe, sie ist entfallen.
+"""
+
+# v5.108.0: reines Nachschlagewerk ohne Aufruf-Anker — die Form von `zeitungen-kontext.md`
+#    (Zustellplan: 32 kB, imp 0,03, kon 0,05). Gehoert nach docs/ mit Zeiger; COMMAND ist die
+#    zweite Klasse, nicht die erste.
+_T_DOCS = """# Die Zeitungen im Gebiet
+
+Das Gebiet umfasst drei Zeitungen, die an verschiedenen Tagen erscheinen.
+
+Die erste erscheint werktags, die zweite nur am Wochenende, die dritte einmal im Monat.
+
+Die Zustellung richtet sich nach dem Erscheinungstag und nach der Strasse.
+
+Frueher gab es eine vierte Zeitung, sie ist eingestellt.
+
+Die Namen der Strassen stehen in der Gebietskarte.
+"""
+
+# v5.108.0: Gebote, die an BENANNTE Dateien haengen — der Fall fuer `paths:`.
+_T_PATHS = """# Bremsen fuer die Berechnung
+
+⛔ NIE `berechnung.py` ohne den Prueflauf aendern — `test_berechnung.py` muss gruen sein.
+
+⛔ `tabellen.py` schreibt die Rundung; wer sie aendert, aendert `export.py` mit.
+
+MUST: jede Aenderung an `zeitplan.py` traegt das Datum im Kopf.
+
+Die Datei `konfig.json` nennt die Grenzwerte, sie wird nie von Hand editiert.
 """
 
 # ⛔ Dieses Fixture ist ABGEZAEHLT, nicht geschaetzt: 7 Absaetze (Ueberschrift
@@ -576,7 +638,8 @@ def selbsttest():
     fehler = 0
     faelle = [("erzwingend + konkret", _T_HOOK, "HOOK-KANDIDAT"),
               ("Nachschlagewerk", _T_SKILL, "COMMAND"),
-              ("dazwischen", _T_UNKLAR, "UNKLAR")]
+              ("dazwischen", _T_UNKLAR, "UNKLAR"),
+              ("erklaert nur (docs)", _T_DOCS, "DOCS")]
     d = tempfile.mkdtemp()
     print("=" * 70)
     print("  Selbsttest — der Einordner muss UNTERSCHEIDEN, nicht nur laufen")
@@ -594,6 +657,29 @@ def selbsttest():
                  e["vorschlag"] if e else "?", soll,
                  e["imperativ"] if e else 0, e["konkret"] if e else 0,
                  e["code"] if e else 0))
+
+    # v5.108.0: die ZWEITE Klasse steht mit im Ergebnis
+    p = os.path.join(d, "docs.md")
+    with open(p, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(_T_DOCS)
+    e = einordnen(p)
+    ok = e and e["vorschlaege"][:2] == ["DOCS", "COMMAND"]
+    fehler += 0 if ok else 1
+    print("  %-4s %-24s vorschlaege=%s" % ("OK" if ok else "FEHL", "DOCS vor COMMAND", e and e["vorschlaege"]))
+    p = os.path.join(d, "paths.md")
+    with open(p, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(_T_PATHS)
+    e = einordnen(p)
+    ok = e and "RULE-PATHS" in e["vorschlaege"] and e["vorschlag"] in ("BLEIBT RULE", "HOOK-KANDIDAT")
+    fehler += 0 if ok else 1
+    print("  %-4s %-24s vorschlaege=%s dat=%.2f" % ("OK" if ok else "FEHL", "Datei-gebunden -> RULE-PATHS", e and e["vorschlaege"], e["dateibezug"] if e else 0))
+    p = os.path.join(d, "hook.md")
+    with open(p, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(_T_HOOK)
+    e = einordnen(p)
+    ok = e and "RULE-PATHS" not in e["vorschlaege"]
+    fehler += 0 if ok else 1
+    print("  %-4s %-24s vorschlaege=%s" % ("OK" if ok else "FEHL", "ohne Dateibezug kein RULE-PATHS", e and e["vorschlaege"]))
 
     # ⛔ Die Gegenprobe, ohne die alles obige nichts wert waere: drei
     #    verschiedene Vorschlaege muessen herauskommen. Ein Einordner, der
@@ -663,12 +749,15 @@ def main():
     for e in zeilen:
         print("  %-34s %7d %5.2f %5.2f %5.2f  %s"
               % (os.path.basename(e["pfad"])[:34], e["bytes"], e["imperativ"],
-                 e["konkret"], e["code"], e["vorschlag"]))
+                 e["konkret"], e["code"], " + ".join(e.get("vorschlaege") or [e["vorschlag"]])))
         if e["zaun_offen"]:
             print("       ⛔ unabgeschlossener Codeblock — Messung dieser Datei unsicher")
     print()
     for e in zeilen:
         print("  %s\n     %s" % (os.path.basename(e["pfad"]), e["grund"]))
+        for k, g in (e.get("gruende") or {}).items():
+            if k != e["vorschlag"]:
+                print("     auch %s: %s" % (k, g))
     print()
     print("  " + "=" * 88)
     print("  ⛔ ZWEI GEMESSENE FEHLURTEILE DIESES WERKZEUGS (24.08.2026, eigener Bestand)")

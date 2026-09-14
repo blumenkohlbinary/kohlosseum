@@ -167,10 +167,14 @@ def lauf(projekt, nur="alles", doku=None):
                     (p, "%s x%d — %s" % (_k, len(_tr[_k]),
                                          _tr[_k][0][1][:40])))
 
-        # Falsch platziert?
-        if vorschlag in ("HOOK-KANDIDAT", "COMMAND") and e:
-            gruppen["2"].append((p, "%s — %s" % (vorschlag,
-                                                 e.get("grund_zusammen") or e.get("grund", ""))))
+        # Falsch platziert? — v5.108.0: DOCS dazu, und die ZWEITE Klasse steht mit im Bericht
+        if vorschlag in ("HOOK-KANDIDAT", "COMMAND", "DOCS") and e:
+            _txt = "%s — %s" % (vorschlag, e.get("grund_zusammen") or e.get("grund", ""))
+            for _k in (e.get("vorschlaege") or [])[1:]:
+                _txt += " | ODER %s — %s" % (_k, (e.get("gruende") or {}).get(_k, ""))
+            gruppen["2"].append((p, _txt))
+        elif e and "RULE-PATHS" in (e.get("vorschlaege") or []):
+            gruppen["2"].append((p, "RULE-PATHS — %s" % (e.get("gruende") or {}).get("RULE-PATHS", "")))
         # Lint Leakage
         verd, hook, wieso = ein.lint_leakage(p, projekt)
         if verd:

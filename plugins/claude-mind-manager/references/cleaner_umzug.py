@@ -251,7 +251,30 @@ def unbelegt(alt, kurz, skill, eigenname=""):
     return sorted(aus)
 
 
-def pruefe(alt_p, kurz_p, skill_p):
+def _paths_muster(kopf):
+    """Die Muster hinter `paths:` — auf derselben Zeile (`[a, b]`) oder als `- `-Liste."""
+    out = []
+    zeilen = kopf.split("\n")
+    for i, z in enumerate(zeilen):
+        m = re.match(r"^\s*paths:\s*(.*)$", z)
+        if not m:
+            continue
+        rest = m.group(1).strip()
+        if rest:
+            out += [x.strip().strip("\"'") for x in rest.strip("[]").split(",")]
+        else:
+            for w in zeilen[i + 1:]:
+                mm = re.match(r"^\s*-\s*(.+)$", w)
+                if not mm:
+                    break
+                out.append(mm.group(1).strip().strip("\"'"))
+    return [x for x in out if x]
+
+
+def pruefe(alt_p, kurz_p, skill_p, ziel="skill"):
+    """ziel: `skill` (Regel -> Command, wie bisher) oder `docs` (v5.108.0, Etappe 16 §2):
+    Regel -> docs/<name>.md ohne SKILL.md. Dann entfallen BESCHREIBUNG und DOPPELZEIGER, und
+    das ZEIGER-Gate kommt dazu — der alte Ort muss DIREKTIV auf die Datei zeigen."""
     alt, kurz, skill = _lies(alt_p), _lies(kurz_p), _lies(skill_p)
     fehlt = [n for n, t in (("alt", alt), ("kurz", kurz), ("skill", skill)) if t is None]
     if fehlt:
@@ -262,6 +285,8 @@ def pruefe(alt_p, kurz_p, skill_p):
     s_n, s_offen = inhaltszeilen(skill)
     desc = beschreibung(skill)
     name = os.path.basename(os.path.dirname(skill_p)) or os.path.basename(skill_p)
+    if ziel == "docs":
+        name = os.path.basename(skill_p)
 
     gates = []
 
@@ -301,11 +326,37 @@ def pruefe(alt_p, kurz_p, skill_p):
                       "OFFEN in: %s — Zeilenzaehlung unbrauchbar" % wo))
 
     # --- 2 ERREICHBARKEIT -------------------------------------------------
+    # ⭐ v5.108.0 (Etappe 16 §3): "Kurz-Rule ohne paths:" ist fuer codegebundene Bremsen zu
+    #    hart — eine Bremse fuer `x.py` darf genau dann laden, wenn `x.py` angefasst wird.
+    #    Ausnahme mit Grund: `paths:` (nie `globs:`, das Feld filtert nicht) UND der Rumpf
+    #    nennt die Dateien der Muster. Sonst Bruch wie bisher.
     kopf_kurz = "\n".join(kurz.split("\n")[:15])
-    hat_bedingung = bool(re.search(r"^\s*(paths|globs):", kopf_kurz, re.M))
-    gates.append(("ERREICHBARKEIT", not hat_bedingung,
-                  "Kurz-Rule traegt paths:/globs: — laedt dann NICHT immer"
-                  if hat_bedingung else "Kurz-Rule ohne Ladebedingung"))
+    hat_globs = bool(re.search(r"^\s*globs:", kopf_kurz, re.M))
+    hat_paths = bool(re.search(r"^\s*paths:", kopf_kurz, re.M))
+    if hat_globs:
+        gates.append(("ERREICHBARKEIT", False,
+                      "Kurz-Rule traegt globs: — das Feld filtert nicht (Cursor), und eine "
+                      "Leitplanke mit Ladebedingung ist keine"))
+    elif hat_paths:
+        muster = _paths_muster(kopf_kurz)
+        rumpf = kurz.split("---", 2)[-1] if kurz.startswith("---") else kurz
+        gebunden = []
+        for mu in muster:
+            base = os.path.basename(mu.replace("\\", "/")).replace("*", "")
+            stamm = base.rsplit(".", 1)[0] if "." in base else base
+            if base and (base in rumpf or (len(stamm) >= 3 and stamm in rumpf)):
+                gebunden.append(base)
+        if muster and gebunden:
+            gates.append(("ERREICHBARKEIT", True,
+                          "erreichbarkeit: paths-gebunden an %s — die Bremse gilt den "
+                          "Dateien, die sie nennt" % ", ".join(gebunden)))
+        else:
+            gates.append(("ERREICHBARKEIT", False,
+                          "Kurz-Rule traegt paths:, aber der Rumpf nennt keine der Dateien "
+                          "(%s) — laedt dann NICHT immer, und nichts bindet sie"
+                          % (", ".join(muster) if muster else "keine Muster")))
+    else:
+        gates.append(("ERREICHBARKEIT", True, "Kurz-Rule ohne Ladebedingung"))
 
     # --- 3 ⭐ PFAD --------------------------------------------------------
     # ⛔ Verglichen wird NICHT zeichengleich, sondern auf den PFAD-SCHWANZ.
@@ -370,13 +421,26 @@ def pruefe(alt_p, kurz_p, skill_p):
     # Gesucht wird deshalb der Command als EIGENSTAENDIGE Nennung: nicht gefolgt
     # von einem weiteren Pfadtrenner und nicht Teil eines laengeren Wortes.
     # Das ist genau die Form aus den globalen Regeln des Nutzers: `/name`.
-    _cmd = "/" + name
-    _cmd_da = re.search(re.escape(_cmd) + r"(?![\w/.-])", kurz) is not None
-    gates.append(("DOPPELZEIGER", _cmd_da,
-                  "Kurz-Rule nennt `%s` UND den Pfad" % _cmd if _cmd_da
-                  else "Kurz-Rule nennt den Command `%s` NICHT. Der Pfad allein "
-                       "ist zuverlaessig (4/4), aber unbequem - gemessen wird er "
-                       "nur gelesen, wenn jemand ihn sucht. Beide nennen." % _cmd))
+    if ziel == "docs":
+        # v5.108.0: docs/ ist kein Command — statt DOPPELZEIGER das ZEIGER-Gate: der alte Ort
+        #    zeigt DIREKTIV auf die Datei ("lies zuerst `docs/…`"), nicht nur beilaeufig.
+        _pf = os.path.basename(skill_p)
+        _zeiger = any(_pf in z and re.search(r"(?i)\b(lies|liest|lesen|zuerst|read)\b", z)
+                      for z in kurz.split("\n"))
+        gates.append(("DOPPELZEIGER", True, "entfaellt: docs/ ist kein Command"))
+        gates.append(("ZEIGER", _zeiger,
+                      "Kurz-Rule zeigt direktiv auf `%s`" % _pf if _zeiger
+                      else "Kurz-Rule nennt `%s` nicht in einem direktiven Satz "
+                           "(lies zuerst / lesen / zuerst) — ein Nachschlagewerk ohne "
+                           "Zeiger ist verloren" % _pf))
+    else:
+        _cmd = "/" + name
+        _cmd_da = re.search(re.escape(_cmd) + r"(?![\w/.-])", kurz) is not None
+        gates.append(("DOPPELZEIGER", _cmd_da,
+                      "Kurz-Rule nennt `%s` UND den Pfad" % _cmd if _cmd_da
+                      else "Kurz-Rule nennt den Command `%s` NICHT. Der Pfad allein "
+                           "ist zuverlaessig (4/4), aber unbequem - gemessen wird er "
+                           "nur gelesen, wenn jemand ihn sucht. Beide nennen." % _cmd))
 
     # --- 5 INHALT (NEU v5.24.0) -------------------------------------------
     # ⛔ Gate 1 zaehlt ZEILEN und haelt deshalb auch dann, wenn eine Aussage
@@ -399,7 +463,9 @@ def pruefe(alt_p, kurz_p, skill_p):
                       "jede Marke der alten Regel ist in Kurz oder Command wiederzufinden"))
 
     # --- 4 BESCHREIBUNG ---------------------------------------------------
-    if desc is None:
+    if ziel == "docs":
+        gates.append(("BESCHREIBUNG", True, "entfaellt: docs/ hat keine description, der Pfad traegt"))
+    elif desc is None:
         gates.append(("BESCHREIBUNG", False, "Skill hat KEINE description"))
     else:
         laenge = len(desc)
@@ -516,8 +582,20 @@ def selbsttest():
         return schreib("kurz_%s_%s_%s.md" % (pfad_drin, bedingung, cmd_drin),
                        kopf + rumpf)
 
+    # v5.108.0 (Etappe 16 §3): paths-gebunden ist eine AUSNAHME mit Grund, globs: nie
+    def kurz_paths(gebunden):
+        kopf = "---\ndescription: Leitplanke\npaths: [\"tools/berechnung.py\"]\n---\n"
+        rumpf = "# A\n\nVier\n"
+        if gebunden:
+            rumpf += "\n⛔ NIE `berechnung.py` ohne Prueflauf aendern.\n"
+        rumpf += "\nAlles Weitere steht in `%s`.\n" % skill.replace("\\", "/")
+        rumpf += "\nWird er nicht angeboten, steht alles im Command `/beispiel`.\n"
+        return schreib("kurz_paths_%s.md" % gebunden, kopf + rumpf)
+
     faelle = [
         ("alles gut (Doppelzeiger)", kurz_mit(True), 0),
+        ("⭐ paths: gebunden an berechnung.py -> Ausnahme, kein Bruch", kurz_paths(True), 0),
+        ("paths: ohne Dateinennung im Rumpf -> Bruch", kurz_paths(False), 1),
         ("⭐ PFAD fehlt", kurz_mit(False), 1),
         # ⭐ NEU v5.39.0: der Pfad allein reicht nicht mehr. Er ist
         #    zuverlaessig (4 von 4 gefolgt), aber unbequem — gemessen wird
@@ -537,6 +615,21 @@ def selbsttest():
             fehler += 1
         print("  %-4s %-34s Rueckgabe %d (soll %d)"
               % ("OK" if ok else "FEHL", name, rc, soll))
+
+    # v5.108.0 (Etappe 16 §2): Umzug nach docs/ — ohne description, aber mit ZEIGER
+    docs = schreib("docs/beispiel-wissen.md", "# Wissen\n\n%s\n\n%s\n\n%s\n" % (_E, _Z, _D))
+    k_doc_mit = schreib("kurz_docs_mit.md", "---\ndescription: Leitplanke\n---\n# A\n\nVier\n\n"
+                        "Lies zuerst `%s`.\n" % docs.replace("\\", "/"))
+    k_doc_ohne = schreib("kurz_docs_ohne.md", "---\ndescription: Leitplanke\n---\n# A\n\nVier\n\n"
+                         "Das Wissen liegt in `%s`.\n" % docs.replace("\\", "/"))
+    for name, kurz_p, soll in (("--ziel docs mit direktivem Zeiger", k_doc_mit, 0),
+                               ("⛔ --ziel docs OHNE Zeiger-Satz", k_doc_ohne, 1)):
+        gates, _ = pruefe(alt, kurz_p, docs, "docs")
+        rc = 1 if any(not ok for _, ok, _ in gates) else 0
+        ok = rc == soll and any(g[0] == "ZEIGER" for g in gates) \
+            and all(ok2 for n2, ok2, _ in gates if n2 in ("BESCHREIBUNG", "DOPPELZEIGER"))
+        fehler += 0 if ok else 1
+        print("  %-4s %-34s Rueckgabe %d (soll %d)" % ("OK" if ok else "FEHL", name, rc, soll))
 
     # Erhaltung muss brechen, wenn wirklich etwas verloren geht.
     kurz_leer = schreib("kurz_leer.md", "---\ndescription: L\n---\n# A\n\n`%s`\n"
@@ -582,12 +675,14 @@ def main():
         return argv[argv.index(flag) + 1] if flag in argv and len(argv) > argv.index(flag) + 1 else None
 
     alt, kurz, skill = hol("--alt"), hol("--kurz"), hol("--skill")
-    if not (alt and kurz and skill):
-        print("usage: cleaner_umzug.py --alt <a.md> --kurz <k.md> --skill <s.md>")
+    ziel = hol("--ziel") or "skill"
+    if not (alt and kurz and skill) or ziel not in ("skill", "docs"):
+        print("usage: cleaner_umzug.py --alt <a.md> --kurz <k.md> --skill <s.md> [--ziel skill|docs]")
+        print("       --ziel docs: <s.md> ist die Datei unter docs/ (v5.108.0)")
         print("       cleaner_umzug.py --selbsttest")
         return 2
 
-    gates, fehlt = pruefe(alt, kurz, skill)
+    gates, fehlt = pruefe(alt, kurz, skill, ziel)
     if gates is None:
         print("⛔ NICHT MESSBAR — fehlende Datei(en): %s" % ", ".join(fehlt))
         print("   Das ist KEIN bestandenes Gate. Ohne alle drei Staende gibt es kein Urteil.")

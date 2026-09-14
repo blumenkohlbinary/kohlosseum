@@ -20,7 +20,7 @@ janein "   ... und nennt die Memory-Faelle" ja "$($PY "$(w "$REF/cleaner_audit.p
 
 echo "== 2a cleaner_tor.py --memory <projektpfad> zaehlt NICHT die Wurzel-.md =="
 # Projekt mit drei .md in der Wurzel und ohne Memory (temporaerer Pfad -> kein Slug-Ordner)
-P=$(mktemp -d); printf '# a\n' > "$P/a.md"; printf '# b\n' > "$P/b.md"; printf '# c\n' > "$P/c.md"
+P=$(mktemp -d); mkdir -p "$P/.claude/rules"; printf '# Projekt\n' > "$P/CLAUDE.md"; printf '# a\n' > "$P/a.md"; printf '# b\n' > "$P/b.md"; printf '# c\n' > "$P/c.md"
 A=$($PY "$(w "$REF/cleaner_tor.py")" --memory "$(w "$P")" 2>&1)
 janein "Wurzel mit 3 .md, kein Memory -> 0 Topic-Dateien" ja "$(printf '%s\n' "$A" | grep -q '0 Topic-Dateien' && echo ja || echo nein)"
 janein "   ... nicht '3 Topic-Dateien'" nein "$(printf '%s\n' "$A" | grep -q '3 Topic-Dateien' && echo ja || echo nein)"
