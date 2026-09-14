@@ -199,6 +199,7 @@ def selbsttest():
         print("  %-4s %-52s ist=%s soll=%s" % ("OK" if ok else "FEHL", name, ist, soll))
 
     d = tempfile.mkdtemp()
+    os.environ.pop("MIND_DEBUG_DIR", None)   # der Selbsttest schreibt NIE in den echten Debug-Ordner
     proj = os.path.join(d, "proj"); rd = os.path.join(proj, ".claude", "rules"); os.makedirs(rd)
     open(os.path.join(rd, "gross.md"), "w", encoding="utf-8").write(
         "---\ndescription: x\nglobs: [\"src/**/*.py\"]\n---\n# G\n\n" + ("⛔ NIE `a.py` aendern.\n\n" * 20))

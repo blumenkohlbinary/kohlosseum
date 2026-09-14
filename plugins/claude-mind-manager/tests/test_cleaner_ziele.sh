@@ -6,6 +6,7 @@
 set -u
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { echo "CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 2; }
 REF="$CLAUDE_PLUGIN_ROOT/references"
+unset MIND_DEBUG_DIR   # die Sonde schreibt Ergebnisse dorthin — nie aus einem Prueflauf
 OK=0; ROT=0
 janein() { if [ "$2" = "$3" ]; then OK=$((OK+1)); printf '  [ok ] %s\n' "$1"
            else ROT=$((ROT+1)); printf '  [ROT] %s — erwartet %s, bekommen %s\n' "$1" "$2" "$3"; fi; }
