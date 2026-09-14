@@ -90,16 +90,38 @@ def dateien(projekt, nur="alles", doku=None):
         wurzeln.append(os.path.join(projekt, ".claude", "rules"))
         einzeln.append(os.path.join(projekt, "CLAUDE.md"))
         einzeln.append(os.path.join(projekt, ".claude", "CLAUDE.md"))
+    # ⛔ v5.107.0 (Etappe 15 §1, Nutzer-Entscheidung 14.09.2026: "mind cleaner ist fuer
+    #    alles da"): das Memory ist vollwertiger Bestand — bei `projekt`, `alles` und
+    #    allein als `memory`. Der Pfad kommt aus dem Slug (cleaner_duplikate._memory_dir,
+    #    NIE der Projektpfad); MEMORY.md ist der Index und keine Aussage, sie bleibt
+    #    draussen. Die vier Gates aus mind-memory 4.0c gelten VOR jedem Anwenden.
+    global _MEMDIR
+    _MEMDIR = ""
+    if nur in ("alles", "projekt", "memory"):
+        _MEMDIR = dup._memory_dir(H, projekt)
+        if _MEMDIR:
+            wurzeln.append(_MEMDIR)
     if doku:
         wurzeln.append(doku)
     for w in wurzeln:
         for wurzel, unter, fs in os.walk(w):
             unter[:] = [u for u in unter if u not in ("__pycache__", ".git")]
-            out += [os.path.join(wurzel, f) for f in sorted(fs) if f.endswith(".md")]
+            out += [os.path.join(wurzel, f) for f in sorted(fs)
+                    if f.endswith(".md") and not (w == _MEMDIR and f == "MEMORY.md")]
     for e in einzeln:
         if os.path.isfile(e) and e not in out:
             out.append(e)
     return out
+
+
+_MEMDIR = ""
+
+
+def _nm(p):
+    """Anzeigename: Memory-Dateien als `memory/<name>` (v5.107.0), sonst der Dateiname."""
+    if _MEMDIR and os.path.abspath(p).startswith(os.path.abspath(_MEMDIR)):
+        return "memory/" + os.path.basename(p)
+    return os.path.basename(p)
 
 
 def lauf(projekt, nur="alles", doku=None):
@@ -166,7 +188,9 @@ def lauf(projekt, nur="alles", doku=None):
             blind.append((p, len(a["blind"])))
 
     # Duplikate
-    abl = dup.ablagen(projekt, "alles" if nur == "alles" else nur)
+    # v5.107.0: `memory` vergleicht gegen die Projekt-Ablagen (Rules, CLAUDE.md, Memory) —
+    #    Duplikate in BEIDE Richtungen, deshalb "projekt" und nicht nur das Memory.
+    abl = dup.ablagen(projekt, "alles" if nur == "alles" else ("projekt" if nur == "memory" else nur))
     text, wo = {}, {}
     import collections
     wo = collections.defaultdict(set)
@@ -224,12 +248,12 @@ def lauf(projekt, nur="alles", doku=None):
     print("         Regel kann GENAU DESHALB nie gebrochen worden sein, WEIL")
     print("         sie da ist. Aber der Widerspruch muss jetzt KOMMEN.")
     for p, g in gruppen["5a"]:
-        print("       %-32s %s" % (os.path.basename(p)[:32], g[:44]))
+        print("       %-32s %s" % (_nm(p)[:32], g[:44]))
     print()
     print("  5b · ⭐ GRUNDSAETZLICH NICHT LOGGBAR (%d) — der Kern, nicht der Rest"
           % len(gruppen["5b"]))
     for p, g in gruppen["5b"]:
-        print("       %-32s %s" % (os.path.basename(p)[:32], g[:44]))
+        print("       %-32s %s" % (_nm(p)[:32], g[:44]))
     if gruppen["5b"]:
         print()
         print("       Diese landen hier NICHT weil sie unbeobachtet blieben, sondern")
@@ -264,14 +288,14 @@ def lauf(projekt, nur="alles", doku=None):
         print("  ⛔ STILLE KAPPUNGEN — %d (hier verschwindet Inhalt OHNE Meldung)"
               % len(grenzfaelle))
         for p, gname, txt in grenzfaelle[:8]:
-            print("       %-28s %-20s %s" % (os.path.basename(p)[:28], gname, txt[:34]))
+            print("       %-28s %-20s %s" % (_nm(p)[:28], gname, txt[:34]))
 
     if blind:
         print()
         print("  ⚠ BLINDE VERWEISE — %d Datei(en) nennen eine Datei ohne zu sagen wozu"
               % len(blind))
         for p, n in blind[:8]:
-            print("       %-32s %d Stelle(n)" % (os.path.basename(p)[:32], n))
+            print("       %-32s %d Stelle(n)" % (_nm(p)[:32], n))
 
     # ======================================================================
     # L6 · TOTE VERWEISE (NEU v5.21.0)
@@ -329,7 +353,7 @@ def lauf(projekt, nur="alles", doku=None):
     print("        Prueffall ZUM ORIGINAL geben und das Original erweitern.")
     for p, was in unlesbar:
         # ⛔ Ein unlesbarer Lauf ist NICHT MESSBAR, nicht "sauber" — der wird gemeldet.
-        print("       %-30s ⛔ NICHT MESSBAR: %s" % (os.path.basename(p)[:30], was))
+        print("       %-30s ⛔ NICHT MESSBAR: %s" % (_nm(p)[:30], was))
 
     # ---------------------------------------------------------------- L5
     # ⛔ Diese Pruefung sieht KEINE andere: `ablagen()` vergleicht Ablagen
@@ -410,6 +434,30 @@ def selbsttest():
     pruef("leerer Bestand -> Rueckgabe 2 (nicht messbar)",
           lauf(proj, "projekt"), 2)
 
+    # v5.107.0: das Memory ist Bestand — ueber den Slug, nie ueber den Projektpfad.
+    _alt = dup._memory_dir
+    mem = os.path.join(d, "memory"); os.makedirs(mem)
+    open(os.path.join(mem, "MEMORY.md"), "w").write("# Index\n")
+    open(os.path.join(mem, "topic-a.md"), "w").write("---\nname: a\ndescription: x\n---\nAussage A.\n")
+    p2 = os.path.join(d, "p2"); os.makedirs(os.path.join(p2, ".claude", "rules"))
+    open(os.path.join(p2, "wurzel-notiz.md"), "w").write("# keine Memory-Datei\n")
+    open(os.path.join(p2, ".claude", "rules", "r.md"), "w").write("# r\n")
+    try:
+        dup._memory_dir = lambda heim, projekt=None: mem
+        ds_m = dateien(p2, "memory")
+        pruef("--nur memory: nur die Topic-Datei, nicht MEMORY.md, nicht die Wurzel-.md",
+              [os.path.basename(x) for x in ds_m], ["topic-a.md"])
+        pruef("Anzeige heisst memory/<name>", _nm(ds_m[0]), "memory/topic-a.md")
+        pruef("--nur projekt: Rules UND Memory",
+              sorted(os.path.basename(x) for x in dateien(p2, "projekt")), ["r.md", "topic-a.md"])
+        pruef("--nur global: kein Memory",
+              any("topic-a" in x for x in dateien(p2, "global")), False)
+        dup._memory_dir = lambda heim, projekt=None: ""
+        pruef("ohne Memory-Verzeichnis: --nur memory findet nichts (kein Absturz)",
+              dateien(p2, "memory"), [])
+    finally:
+        dup._memory_dir = _alt
+
     # ⛔ Die Gegenprobe: alle sechs Werkzeuge muessen erreichbar sein.
     #    Ein Audit, das eines nicht laden kann, meldet stillschweigend weniger.
     for m in (dup, ein, bel, aus, gre, urt):
@@ -430,8 +478,8 @@ def main():
 
     projekt = hol("--bereich") or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
     nur = hol("--nur") or "alles"
-    if nur not in ("global", "projekt", "alles"):
-        print("--nur braucht global|projekt|alles")
+    if nur not in ("global", "projekt", "alles", "memory"):
+        print("--nur braucht global|projekt|alles|memory")
         return 2
     doku = None
     if "--doku" in sys.argv:

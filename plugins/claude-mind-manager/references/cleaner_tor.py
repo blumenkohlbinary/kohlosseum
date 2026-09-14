@@ -34,7 +34,9 @@ schon da sind. Es gab kein Tor beim HINEINschreiben — deshalb waechst alles.
 Aufruf:
   python cleaner_tor.py --datei <kontextdatei.md>      rueckwaerts, Bestand
   python cleaner_tor.py --text "<neue zeile>"          vorwaerts, vor dem ADD
-  python cleaner_tor.py --memory <projektpfad>         der Memory-Deckel
+  python cleaner_tor.py --memory <projektpfad>         der Memory-Deckel (Pfad wird ueber
+                                                       den Slug aufgeloest; ein Memory-
+                                                       Verzeichnis geht auch direkt)
   python cleaner_tor.py --selbsttest
 
 Rueckgabe: 0 = keine Kandidaten · 1 = Kandidaten vorgelegt · 2 = Aufruffehler
@@ -433,6 +435,22 @@ def lauf_memory(mdir):
     if not os.path.isdir(mdir):
         print("⛔ kein Verzeichnis: %s" % mdir)
         return 2
+    # ⛔ v5.107.0 (Etappe 15 §2a): der Aufruf hiess "<projektpfad>", gezaehlt wurden aber
+    #    die .md der uebergebenen WURZEL — Zustellplan 14.09.2026: "10 Topics, 10
+    #    description zu kurz", alles Wurzel-Dateien, kein Memory. Ein Projektpfad wird
+    #    seither ueber den Slug aufgeloest (learnings_quellen.memory_pfad); ein Memory-
+    #    Verzeichnis (traegt MEMORY.md oder heisst memory) geht weiter direkt.
+    if not (os.path.basename(os.path.normpath(mdir)) == "memory"
+            or os.path.isfile(os.path.join(mdir, "MEMORY.md"))):
+        from learnings_quellen import memory_pfad
+        aufgeloest = memory_pfad(mdir)
+        if not aufgeloest:
+            print("=" * 72)
+            print("MEMORY-DECKEL  —  %s" % mdir)
+            print("=" * 72)
+            print("  0 Topic-Dateien   ->   gruen   (kein Memory-Verzeichnis fuer dieses Projekt)")
+            return 0
+        mdir = aufgeloest
     topics = sorted(f for f in os.listdir(mdir)
                     if f.endswith(".md") and f != "MEMORY.md")
     n = len(topics)

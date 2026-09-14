@@ -258,7 +258,10 @@ def main():
 
     g = dict.fromkeys(("absaetze", "beleg", "vorfall", "code", "code_zeilen", "rein", "bytes"), 0)
     for p in pfade:
-        n = os.path.basename(p)
+        # ⛔ v5.107.0 (Etappe 15 §2b): der Schluessel ist der RELATIVE Pfad (siehe oben) —
+        #    hier stand der Dateiname, und jede Datei in einem Unterordner brach den Lauf
+        #    mit KeyError ab (Zustellplan 14.09.2026: `.claude-mind/rescued/…_chat.md`).
+        n = os.path.relpath(p, ordner).replace("\\", "/")
         z = werte[n]
         for s in g:
             g[s] += z[s]

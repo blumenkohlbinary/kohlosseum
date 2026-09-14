@@ -38,6 +38,7 @@ mind_snapshot
 **Vor dem ersten Schritt, ohne Ausnahme:**
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
 [ -n "$CLAUDE_PLUGIN_ROOT" ] || { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
 source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
@@ -45,7 +46,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.106.0"
+MIND_SKILL_VERSION="5.107.0"
 mind_schritt_start "$PROJ" mind-cleaner bestandsaufnahme cleaner_audit cleaner_einordnung cleaner_grenzen cleaner_leitplanke cleaner_ratsche cleaner_rebuild cleaner_umzug ladeprotokoll_auswertung mind_debug_write mind_snapshot
 ```
 
@@ -131,7 +132,7 @@ Weitere Aufrufe:
 
 ```bash
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_audit.py" \
-       --bereich "$PROJ" --nur global|projekt|alles
+       --bereich "$PROJ" --nur global|projekt|alles|memory
 ```
 
 Er fährt **alle sechs Werkzeuge** und legt fünf Gruppen vor — **Gruppe 5 zuerst:**
@@ -195,8 +196,30 @@ ich kann dann angeben ob global oder lokal nur der projekt ordner"*.
 | Wert | Bestand |
 |---|---|
 | `global` | `~/.claude/rules/` + `~/.claude/CLAUDE.md` |
-| `projekt` | `$PROJ/.claude/rules/` + `CLAUDE.md` des Projekts (v5.80.0: `$PROJ` = Wurzel mit Roster) |
-| `alles` *(Vorgabe)* | beides |
+| `projekt` | `$PROJ/.claude/rules/` + `CLAUDE.md` des Projekts (v5.80.0: `$PROJ` = Wurzel mit Roster) **+ das Memory des Projekts** (v5.107.0) |
+| `memory` | **nur** das Memory: `~/.claude/projects/<slug>/memory/*.md` ohne `MEMORY.md` (v5.107.0) |
+| `alles` *(Vorgabe)* | alles davon |
+
+⛔ **v5.107.0 — das Memory ist VOLLWERTIGER Bestand.** Nutzer-Entscheidung 14.09.2026,
+wörtlich: *„nein mind cleaner ist für alles da"* — auf die Antwort, Memory sei Sache von
+`/mind-memory`. Seither laufen Bestandsaufnahme, Einordnung, Kontext-Tor (A1–C2), Duplikate
+gegen Rules und CLAUDE.md in **beide** Richtungen, `--umzug` und `--rebuild` auch über die
+Topic-Dateien. Der Pfad kommt **immer aus dem Slug** (`learnings_quellen.memory_pfad`,
+`cleaner_duplikate._memory_dir`), nie aus dem Projektordner; der Bericht nennt jede Datei als
+`memory/<name>`.
+⛔ **Unverändert nicht autonom** — Bericht → OK → Plan → OK — **und für Memory kommen die
+vier Gates aus `mind-memory` 4.0c dazu.** Vor JEDEM anwendenden Schritt an einer Topic-Datei:
+
+```bash
+TS=$(date +%Y%m%d_%H%M%S); B="C:/CD/KOHLEKTIV/_claude_backups/${TS}_memory"
+MEM=$(python -c "import sys; sys.path.insert(0,'$CLAUDE_PLUGIN_ROOT/references');
+from learnings_quellen import memory_pfad; print(memory_pfad(r'$PROJ') or '')")
+[ -n "$MEM" ] && mkdir -p "$B" && cp "$MEM"/*.md "$B/"
+# … --umzug / --rebuild --anwenden auf memory/<name> …
+python Learnings/memory_gates.py "$B"        # Erhaltung · kein Umbenennen · Verweise · Beschreibung
+```
+
+Bricht ein Gate: zurück aus `$B`, Befund in den Bericht. Ohne Sicherung wird nichts angewendet.
 
 ⛔ **Fremdklon-Schutz ist Pflicht, nicht Kür.** Vor jeder Datei:
 
