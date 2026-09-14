@@ -687,8 +687,16 @@ def ablagen(projekt, bereich="alles"):
         #    haette in keinem Lauf je eine Datei enthalten — gefunden von
         #    tests/test_ablagen.sh, weil es auf die Dict-SCHLUESSEL zusichert.
     if bereich in ("alles", "projekt"):
-        a["p:CLAUDE.md"] = [os.path.join(projekt, "CLAUDE.md")]
+        a["p:CLAUDE.md"] = [os.path.join(projekt, "CLAUDE.md"), os.path.join(projekt, "CLAUDE.local.md")]
         a["p:rules"] = md(os.path.join(projekt, ".claude", "rules"))
+        # v5.111.0 (Etappe 17 §1): die Roster-Unterordner — CLAUDE.md und Rules je Ordner
+        try:
+            from learnings_quellen import rollen_ordner
+            for _o in rollen_ordner(projekt):
+                a["p:CLAUDE.md"] += [os.path.join(_o, "CLAUDE.md"), os.path.join(_o, "CLAUDE.local.md")]
+                a["p:rules"] += md(os.path.join(_o, ".claude", "rules"))
+        except Exception:
+            pass
         # v5.109.0 (Etappe 18): alle Memory-Verzeichnisse des Rollen-Aufbaus — ein Fakt
         #    in zwei Slugs ist ein BEFUND (Duplikat), kein Anlass zum Mergen.
         a["p:memory"] = [f for d in _memory_dirs(H, projekt) for f in md(d)]

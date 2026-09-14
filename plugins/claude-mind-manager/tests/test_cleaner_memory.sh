@@ -58,6 +58,13 @@ janein "--audit nennt --nur …|memory" ja "$(grep -q 'global|projekt|alles|memo
 janein "Sicherung + memory_gates.py vor dem Anwenden" ja "$(grep -q '_memory"' "$MC" && grep -q 'memory_gates.py "\$B"' "$MC" && echo ja || echo nein)"
 janein "nicht autonom bleibt stehen" ja "$(grep -q 'Unverändert nicht autonom' "$MC" && echo ja || echo nein)"
 
+echo "== 5  v5.111.0 (Etappe 17): Unterordner, CLAUDE.local.md, Skills-Bestand, tote Regler =="
+janein "Selbsttest cleaner_audit nennt Unterordner, CLAUDE.local.md, Skills und Regler" ja "$($PY "$(w "$REF/cleaner_audit.py")" --selbsttest 2>/dev/null | grep -q 'Idee/CLAUDE.md' && $PY "$(w "$REF/cleaner_audit.py")" --selbsttest 2>/dev/null | grep -q 'TOT-VERDACHT' && $PY "$(w "$REF/cleaner_audit.py")" --selbsttest 2>/dev/null | grep -q 'tote Regler' && echo ja || echo nein)"
+janein "   ... und ist gruen" 0 "$($PY "$(w "$REF/cleaner_audit.py")" --selbsttest >/dev/null 2>&1; echo $?)"
+janein "Skill Step 0: CLAUDE.local.md und Roster-Unterordner im Bestand" ja "$(grep -q 'CLAUDE.local.md' "$MC" && grep -q 'im Rollen-Aufbau die Roster-Unterordner' "$MC" && echo ja || echo nein)"
+janein "Skill --audit: Gruppen 7 und 8" ja "$(grep -q '^7   SKILLS-BESTAND' "$MC" && grep -q '^8   TOTE REGLER' "$MC" && echo ja || echo nein)"
+janein "Skill: Plugin-Skills nur gemeldet" ja "$(grep -q 'Plugin-Skills werden nur GEMELDET' "$MC" && echo ja || echo nein)"
+
 echo
 echo "  $OK ok, $ROT rot"
 [ "$ROT" -eq 0 ] || exit 1

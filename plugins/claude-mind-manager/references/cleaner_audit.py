@@ -31,6 +31,7 @@ Aufruf:
 Rueckgabe: 0 = gelaufen · 1 = Befunde vorhanden · 2 = nicht messbar
 """
 import os
+import re
 import sys
 
 _HIER = os.path.dirname(os.path.abspath(__file__))
@@ -90,6 +91,22 @@ def dateien(projekt, nur="alles", doku=None):
         wurzeln.append(os.path.join(projekt, ".claude", "rules"))
         einzeln.append(os.path.join(projekt, "CLAUDE.md"))
         einzeln.append(os.path.join(projekt, ".claude", "CLAUDE.md"))
+        # §3 v5.111.0: CLAUDE.local.md laedt beim Sitzungsstart genauso (gemessen: Fixture
+        #    mit allen drei Varianten — sie fehlte hier, py 1/4 Treffer, Skill nannte sie nie)
+        einzeln.append(os.path.join(projekt, "CLAUDE.local.md"))
+        # §1 v5.111.0 (Etappe 17): im Rollen-Aufbau die Roster-Unterordner — v5.106.0 gab sie
+        #    mind-claudemd/-rules/-update, der Cleaner sah sie nicht (Creator: 22 Dateien).
+        global _UNTER
+        _UNTER = {}
+        try:
+            from learnings_quellen import rollen_ordner
+            for _o in rollen_ordner(projekt):
+                _UNTER[os.path.abspath(_o)] = os.path.basename(_o)
+                wurzeln.append(os.path.join(_o, ".claude", "rules"))
+                for _e in ("CLAUDE.md", os.path.join(".claude", "CLAUDE.md"), "CLAUDE.local.md"):
+                    einzeln.append(os.path.join(_o, _e))
+        except Exception:
+            pass
     # ⛔ v5.107.0 (Etappe 15 §1, Nutzer-Entscheidung 14.09.2026: "mind cleaner ist fuer
     #    alles da"): das Memory ist vollwertiger Bestand — bei `projekt`, `alles` und
     #    allein als `memory`. Der Pfad kommt aus dem Slug (cleaner_duplikate._memory_dir,
@@ -129,19 +146,164 @@ def dateien(projekt, nur="alles", doku=None):
 
 _MEMDIR = ""
 _MEMDIRS = {}
+_UNTER = {}
 LETZTE_GRUPPEN = None
 
 
 def _nm(p):
     """Anzeigename: Memory-Dateien als `memory/<name>` (v5.107.0), die eines Roster-Ordners
-    als `memory[<ordner>]/<name>` (v5.109.0), sonst der Dateiname."""
+    als `memory[<ordner>]/<name>` (v5.109.0), Dateien eines Roster-Unterordners als
+    `<ordner>/<name>` (v5.111.0), sonst der Dateiname."""
     ap = os.path.abspath(p)
     for d, kennung in _MEMDIRS.items():
         if ap.startswith(d):
             return ("memory[%s]/" % kennung if kennung else "memory/") + os.path.basename(p)
     if _MEMDIR and ap.startswith(os.path.abspath(_MEMDIR)):
         return "memory/" + os.path.basename(p)
+    for d, name in _UNTER.items():
+        if ap.startswith(d + os.sep):
+            return name + "/" + os.path.basename(p)
     return os.path.basename(p)
+
+
+# ---------------------------------------------------------------- §2 Skills-Bestand (v5.111.0)
+SKILL_DESC_MAX = int(os.environ.get("MIND_SKILL_DESC_MAX", "600"))
+SKILL_TOT_TAGE = int(os.environ.get("MIND_SKILL_TOT_TAGE", "30"))
+_DIREKTIV = re.compile(r"\b(ALWAYS|MUST|NEVER|invoke|Nutze das|immer|nie)\b", re.I)
+
+
+def _skill_desc(p):
+    try:
+        t = open(p, encoding="utf-8", errors="replace").read(6000)
+    except OSError:
+        return ""
+    m = re.search(r"^description:\s*(.+?)(?=^\S|\Z)", t, re.M | re.S)
+    if not m:
+        return ""
+    return re.sub(r"\s+", " ", m.group(1)).strip().strip("\"'|>")
+
+
+def _skill_zuletzt_aufgerufen(name, tage, projects_dir=None):
+    """Wurde `/name` in einem Transkript der letzten `tage` Tage genannt? Liest nur JSONL,
+    deren mtime im Fenster liegt (Dateien > 80 MB werden ausgelassen und gemeldet)."""
+    import time as _t
+    pd = projects_dir or os.path.join(os.path.expanduser("~"), ".claude", "projects")
+    if not os.path.isdir(pd):
+        return None
+    grenze = _t.time() - tage * 86400
+    nadel = ("/" + name).encode("utf-8")
+    geprueft = 0
+    for wurzel, unter, fs in os.walk(pd):
+        unter[:] = [u for u in unter if u != "subagents"]
+        for f in fs:
+            if not f.endswith(".jsonl"):
+                continue
+            p = os.path.join(wurzel, f)
+            try:
+                st = os.stat(p)
+            except OSError:
+                continue
+            if st.st_mtime < grenze or st.st_size > 80 * 1024 * 1024:
+                continue
+            geprueft += 1
+            try:
+                with open(p, "rb") as fh:
+                    while True:
+                        b = fh.read(4 * 1024 * 1024)
+                        if not b:
+                            break
+                        if nadel in b:
+                            return True
+            except OSError:
+                continue
+    return False if geprueft else None
+
+
+def skills_bestand(projekt, skills_dir=None, rules_dir=None, plugin_dirs=None, projects_dir=None):
+    """§2 (Etappe 17): die 45 descriptions sind Dauerkontext (~7 300 Token) — der Cleaner zog
+    Dateien DORTHIN und prueft sie nie. Je Skill: description-Laenge und Direktivitaet, Zeiger
+    aus einer Kurz-Rule, Aufruf in den Transkripten der letzten SKILL_TOT_TAGE Tage.
+    Rueckgabe: Liste (pfad, urteil, grund). Plugin-Skills werden nur GEMELDET (gehoeren dem Plugin)."""
+    H = os.path.expanduser("~")
+    sd = skills_dir or os.path.join(H, ".claude", "skills")
+    rd = rules_dir or os.path.join(H, ".claude", "rules")
+    out = []
+    if not os.path.isdir(sd):
+        return out
+    rules_text = ""
+    if os.path.isdir(rd):
+        for f in os.listdir(rd):
+            if f.endswith(".md"):
+                try:
+                    rules_text += open(os.path.join(rd, f), encoding="utf-8", errors="replace").read()
+                except OSError:
+                    pass
+    beschr = {}
+    for name in sorted(os.listdir(sd)):
+        p = os.path.join(sd, name, "SKILL.md")
+        if not os.path.isfile(p):
+            continue
+        d = _skill_desc(p)
+        beschr.setdefault(d[:80].lower(), []).append(name)
+        zeiger = ("skills/%s/SKILL.md" % name) in rules_text or ("/%s`" % name) in rules_text or ("/%s " % name) in rules_text
+        aufgerufen = _skill_zuletzt_aufgerufen(name, SKILL_TOT_TAGE, projects_dir)
+        if not d:
+            out.append((p, "ZURUECK IN RULE", "keine description — der Auswaehler sieht nichts, die Rule wuerde immer laden"))
+        elif len(d) > SKILL_DESC_MAX:
+            out.append((p, "ZU LANG", "description %d Zeichen (> %d, Kappung 1536) — Aenderungsprotokoll statt Ausloeser?" % (len(d), SKILL_DESC_MAX)))
+        elif not _DIREKTIV.search(d):
+            out.append((p, "ZU WEICH", "description ohne direktives Wort (ALWAYS/MUST/invoke/Nutze das) — gemessen half direktiver Stil (20-84 %)"))
+        elif aufgerufen is False and not zeiger:
+            out.append((p, "TOT-VERDACHT", "kein Aufruf `/%s` in Transkripten seit %d Tagen UND keine Kurz-Rule zeigt hin" % (name, SKILL_TOT_TAGE)))
+        elif not zeiger:
+            out.append((p, "OHNE ZEIGER", "keine Kurz-Rule in rules/ nennt den Pfad oder `/%s` — Auswahl haengt an der 20-%%-Mechanik" % name))
+        elif aufgerufen is False:
+            out.append((p, "TOT-VERDACHT", "kein Aufruf `/%s` in Transkripten seit %d Tagen (Zeiger da)" % (name, SKILL_TOT_TAGE)))
+        else:
+            out.append((p, "BLEIBT", "description %d Zeichen, direktiv, Zeiger da, aufgerufen" % len(d)))
+    for k, namen in beschr.items():
+        if k and len(namen) > 1:
+            for n in namen:
+                out.append((os.path.join(sd, n, "SKILL.md"), "DOPPELT", "gleiche description wie %s" % ", ".join(x for x in namen if x != n)))
+    for pdir in (plugin_dirs or []):
+        if os.path.isdir(pdir):
+            n = len([x for x in os.listdir(pdir) if os.path.isfile(os.path.join(pdir, x, "SKILL.md"))])
+            out.append((pdir, "PLUGIN", "%d Plugin-Skills — nur gemeldet, sie gehoeren dem Plugin" % n))
+    return out
+
+
+# ---------------------------------------------------------------- §4 tote Regler (v5.111.0)
+def tote_regler(settings_pfad=None, leser_wurzeln=None):
+    """MIND_*-Variablen in settings.json, die kein Hook/Skill/Werkzeug mehr LIEST (Zuweisung
+    `$MIND_X`/`${MIND_X`/`environ.get("MIND_X"`) — Nennung in Prosa zaehlt nicht. Nur melden:
+    settings.json ist die Datei des Nutzers."""
+    import json
+    sp = settings_pfad or os.path.join(os.path.expanduser("~"), ".claude", "settings.json")
+    try:
+        env = json.load(open(sp, encoding="utf-8")).get("env", {}) or {}
+    except (OSError, ValueError):
+        return []
+    wurzeln = leser_wurzeln or [os.path.join(_HIER, "..", d) for d in ("hooks", "skills", "references")]
+    texte = []
+    for w in wurzeln:
+        for wz, unter, fs in os.walk(w):
+            unter[:] = [u for u in unter if u not in ("__pycache__", ".git")]
+            for f in fs:
+                if f.endswith((".sh", ".md", ".py", ".json")):
+                    try:
+                        texte.append(open(os.path.join(wz, f), encoding="utf-8", errors="replace").read())
+                    except OSError:
+                        pass
+    ganz = "\n".join(texte)
+    out = []
+    for k, v in sorted(env.items()):
+        if not k.startswith("MIND_"):
+            continue
+        muster = re.compile(r"\$\{?%s\b|environ(?:\.get)?\(?\[?[\"']%s[\"']" % (re.escape(k), re.escape(k)))
+        n = len(muster.findall(ganz))
+        if n == 0:
+            out.append((k, str(v), "kein Leser in hooks/skills/references — Nutzerdatei, nur du aenderst sie"))
+    return out
 
 
 def lauf(projekt, nur="alles", doku=None):
@@ -152,7 +314,15 @@ def lauf(projekt, nur="alles", doku=None):
 
     idx = bel.debug_pfad(projekt)
     gruppen = {"5a": [], "5b": [], "1": [], "2": [], "3": [], "4": [],
-               "6": []}
+               "6": [], "7": [], "8": []}
+    # v5.111.0: Gruppe 7 Skills-Bestand (global; Plugin-Skills nur gemeldet), Gruppe 8 tote Regler
+    if nur in ("alles", "global"):
+        _plugins = []
+        _pr = os.environ.get("CLAUDE_PLUGIN_ROOT")
+        if _pr and os.path.isdir(os.path.join(_pr, "skills")):
+            _plugins.append(os.path.join(_pr, "skills"))
+        gruppen["7"] = skills_bestand(projekt, plugin_dirs=_plugins)
+        gruppen["8"] = tote_regler()
     grenzfaelle, blind = [], []
 
     for p in ds:
@@ -307,6 +477,24 @@ def lauf(projekt, nur="alles", doku=None):
         print("         URTEILE, keine Messungen — Kandidaten, kein Befund.")
         print("         Vorschrift: references/kontext-tor.md")
 
+    if gruppen["7"]:
+        print()
+        _n7 = [x for x in gruppen["7"] if x[1] not in ("BLEIBT", "PLUGIN")]
+        print("  7 · SKILLS-BESTAND (v5.111.0) — %d Skill(s), %d mit Befund; descriptions sind"
+              % (len([x for x in gruppen["7"] if x[1] != "PLUGIN"]), len(_n7)))
+        print("      Dauerkontext (alle immer geladen) und wurden hier nie geprueft")
+        for p, u, g in gruppen["7"]:
+            if u in ("BLEIBT",):
+                continue
+            print("       %-14s %-28s %s" % (u, os.path.basename(os.path.dirname(p))[:28] if u != "PLUGIN" else "plugin", g[:70]))
+    if gruppen["8"]:
+        print()
+        print("  8 · TOTE REGLER (v5.111.0) — %d MIND_*-Variable(n) in settings.json ohne Leser"
+              % len(gruppen["8"]))
+        print("      ⛔ Nutzerdatei — nur du. Nichts hier aendert sie.")
+        for k, v, g in gruppen["8"]:
+            print("       %-26s = %-12s %s" % (k, v[:12], g))
+
     if grenzfaelle:
         print()
         print("  ⛔ STILLE KAPPUNGEN — %d (hier verschwindet Inhalt OHNE Meldung)"
@@ -432,7 +620,8 @@ def lauf(projekt, nur="alles", doku=None):
         print("          und das ist KEIN 'nichts gefunden'")
     print()
     print("  Naechster Schritt: --plan (erst nach deinem OK).")
-    befunde = sum(len(gruppen[k]) for k in ("2", "3", "4")) + len(grenzfaelle)
+    befunde = sum(len(gruppen[k]) for k in ("2", "3", "4")) + len(grenzfaelle) \
+        + len([x for x in gruppen["7"] if x[1] not in ("BLEIBT", "PLUGIN")]) + len(gruppen["8"])
     # v5.110.0 (Etappe 19): cleaner_plan.py baut aus den Gruppen den Plan — sie bleiben
     #    nach dem Lauf lesbar, statt nur gedruckt zu sein.
     global LETZTE_GRUPPEN
@@ -485,6 +674,57 @@ def selbsttest():
               dateien(p2, "memory"), [])
     finally:
         dup._memory_dir = _alt
+
+    # v5.111.0 §1/§3: Roster-Unterordner und CLAUDE.local.md im Bestand
+    p3 = os.path.join(d, "p3"); os.makedirs(os.path.join(p3, ".claude", "rules"))
+    os.makedirs(os.path.join(p3, "Idee", ".claude", "rules"))
+    open(os.path.join(p3, "CLAUDE.md"), "w").write("# w\n")
+    open(os.path.join(p3, ".claude", "CLAUDE.md"), "w").write("# w2\n")
+    open(os.path.join(p3, "CLAUDE.local.md"), "w").write("# lokal\n")
+    open(os.path.join(p3, ".claude", "rules", "rollen.md"), "w", encoding="utf-8").write(
+        "| Rolle | Name | sessionId | Tut | Ordner |\n|---|---|---|---|---|\n| m | B | x | l | `./` |\n| a | F | o | i | `Idee/` |\n")
+    open(os.path.join(p3, "Idee", "CLAUDE.md"), "w").write("# idee\n")
+    open(os.path.join(p3, "Idee", ".claude", "rules", "i1.md"), "w").write("# i1\n")
+    _alt2 = dup._memory_dir
+    try:
+        dup._memory_dir = lambda heim, projekt=None: ""
+        ds3 = dateien(p3, "projekt")
+        namen3 = sorted(_nm(x) for x in ds3)
+        pruef("alle drei CLAUDE-Varianten der Wurzel im Bestand",
+              all(x in namen3 for x in ("CLAUDE.md", "CLAUDE.local.md")) and len([x for x in namen3 if x == "CLAUDE.md"]) == 2, True)
+        pruef("Roster-Unterordner: Idee/CLAUDE.md und Idee/i1.md dabei, mit Ordner angezeigt",
+              ("Idee/CLAUDE.md" in namen3) and ("Idee/i1.md" in namen3), True)
+    finally:
+        dup._memory_dir = _alt2
+    # v5.111.0 §2: Skills-Bestand
+    sk = os.path.join(d, "skills"); rl = os.path.join(d, "rules"); os.makedirs(rl)
+    for n, desc in (("gut", "ALWAYS invoke this skill when working on X. Nutze das bei allem, was X braucht."),
+                    ("weich", "Hilft bei Dingen rund um Y."),
+                    ("lang", "ALWAYS " + "v13 bis v34 Aenderung " * 40),
+                    ("leer", "")):
+        os.makedirs(os.path.join(sk, n))
+        open(os.path.join(sk, n, "SKILL.md"), "w", encoding="utf-8").write(
+            ("---\nname: %s\ndescription: %s\n---\n# %s\n" % (n, desc, n)) if desc else ("---\nname: %s\n---\n# %s\n" % (n, n)))
+    open(os.path.join(rl, "kurz.md"), "w", encoding="utf-8").write("# K\n\nVolltext: `~/.claude/skills/gut/SKILL.md`, Command `/gut`.\n")
+    pj = os.path.join(d, "projects", "x"); os.makedirs(pj)
+    open(os.path.join(pj, "s.jsonl"), "w", encoding="utf-8").write('{"content":"<command-name>/gut</command-name>"}\n')
+    b = {os.path.basename(os.path.dirname(p)): u for p, u, g in skills_bestand(d, sk, rl, projects_dir=os.path.join(d, "projects")) if u != "DOPPELT"}
+    pruef("Skills: gut -> BLEIBT", b.get("gut"), "BLEIBT")
+    pruef("Skills: weich -> ZU WEICH", b.get("weich"), "ZU WEICH")
+    pruef("Skills: lang -> ZU LANG", b.get("lang"), "ZU LANG")
+    pruef("Skills: ohne description -> ZURUECK IN RULE", b.get("leer"), "ZURUECK IN RULE")
+    # ein direktiver Skill ohne Zeiger und ohne Aufruf -> TOT-VERDACHT
+    os.makedirs(os.path.join(sk, "tot"))
+    open(os.path.join(sk, "tot", "SKILL.md"), "w", encoding="utf-8").write("---\nname: tot\ndescription: ALWAYS invoke when Z. Nutze das bei Z.\n---\n# tot\n")
+    b = {os.path.basename(os.path.dirname(p)): u for p, u, g in skills_bestand(d, sk, rl, projects_dir=os.path.join(d, "projects")) if u != "DOPPELT"}
+    pruef("Skills: direktiv, kein Zeiger, kein Aufruf -> TOT-VERDACHT", b.get("tot"), "TOT-VERDACHT")
+    # v5.111.0 §4: tote Regler
+    st = os.path.join(d, "settings.json")
+    open(st, "w", encoding="utf-8").write('{"env": {"MIND_TOT": "1", "MIND_LEBT": "2", "ANDERE": "3"}}')
+    lw = os.path.join(d, "leser"); os.makedirs(lw)
+    open(os.path.join(lw, "h.sh"), "w", encoding="utf-8").write('x="${MIND_LEBT:-5}"\n# MIND_TOT steht hier nur in Prosa\n')
+    tr = [k for k, v, g in tote_regler(st, [lw])]
+    pruef("tote Regler: MIND_TOT gemeldet, MIND_LEBT nicht, ANDERE ignoriert", tr, ["MIND_TOT"])
 
     # ⛔ Die Gegenprobe: alle sechs Werkzeuge muessen erreichbar sein.
     #    Ein Audit, das eines nicht laden kann, meldet stillschweigend weniger.

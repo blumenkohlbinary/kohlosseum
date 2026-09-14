@@ -47,7 +47,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.110.0"
+MIND_SKILL_VERSION="5.111.0"
 mind_schritt_start "$PROJ" mind-cleaner bestandsaufnahme cleaner_audit cleaner_einordnung cleaner_grenzen cleaner_leitplanke cleaner_ratsche cleaner_rebuild cleaner_umzug ladeprotokoll_auswertung mind_debug_write mind_snapshot
 ```
 
@@ -167,7 +167,19 @@ Er fährt **alle sechs Werkzeuge** und legt fünf Gruppen vor — **Gruppe 5 zue
 2   falsch platziert                    Ort A -> Ort B, mit Zielpfad
 3   doppelt                             eine Stelle wird Zeiger
 4   belegt veraltet                     ins Archiv, mit Beleg
+7   SKILLS-BESTAND (v5.111.0)           BLEIBT · ZU LANG · ZU WEICH · OHNE ZEIGER · TOT-VERDACHT · ZURUECK IN RULE · DOPPELT
+8   TOTE REGLER (v5.111.0)              MIND_*-Variablen in settings.json ohne Leser — nur melden
 ```
+
+⭐ **Gruppe 7 (v5.111.0, Etappe 17 §2):** die `description`s aller Skills sind Dauerkontext
+(45 ≈ 7 300 Token, immer geladen) — der Cleaner zog Dateien DORTHIN und prüfte sie nie. Bestand
+`~/.claude/skills/*/SKILL.md`; **Plugin-Skills werden nur GEMELDET** (sie gehören dem Plugin).
+Gemessen wird: Länge (`MIND_SKILL_DESC_MAX`, Vorgabe 600; Kappung 1 536), Direktivität
+(`ALWAYS invoke when…` — gemessen half direktiver Stil), Zeiger aus einer Kurz-Rule (Pfad
+4/4 gegen Auswahl 20–84 %), Aufruf `/<name>` in Transkripten der letzten `MIND_SKILL_TOT_TAGE`
+(Vorgabe 30) Tage, gleiche description = DOPPELT. Nichts davon wird angewendet ohne Plan-OK.
+⭐ **Gruppe 8 (§4):** `MIND_*` in `settings.json`, das kein Hook/Skill/Werkzeug mehr LIEST
+(Zuweisung, nicht Prosa) — **Nutzerdatei, nur du.** Gemessen 14.09.2026: drei tote Regler.
 
 ⛔ **Gruppe 5 steht oben, nicht unten.** Sie ist das ehrliche Maß dafür, wie viel der Lauf
 wirklich wusste. Ein Bericht, der sie ans Ende schiebt, behauptet Sicherheit, die er nicht hat.
@@ -219,7 +231,7 @@ ich kann dann angeben ob global oder lokal nur der projekt ordner"*.
 | Wert | Bestand |
 |---|---|
 | `global` | `~/.claude/rules/` + `~/.claude/CLAUDE.md` |
-| `projekt` | `$PROJ/.claude/rules/` + `CLAUDE.md` des Projekts (v5.80.0: `$PROJ` = Wurzel mit Roster) **+ das Memory des Projekts** (v5.107.0) |
+| `projekt` | `$PROJ/.claude/rules/` + `CLAUDE.md`, `.claude/CLAUDE.md` **und `CLAUDE.local.md`** des Projekts (v5.111.0; alle drei laden beim Start) **+ das Memory des Projekts** (v5.107.0) **+ im Rollen-Aufbau die Roster-Unterordner** — deren `CLAUDE.md` und `.claude/rules/*.md`, Bericht `<ordner>/<name>` (v5.111.0; Creator: 22 Dateien, vorher unsichtbar) |
 | `memory` | **nur** das Memory: `~/.claude/projects/<slug>/memory/*.md` ohne `MEMORY.md` (v5.107.0) — **im Rollen-Aufbau ALLE Slugs: Wurzel + je Roster-Ordner** (`mind_memory_dirs`, `learnings_quellen.memory_pfade`, v5.109.0); Bericht `memory[<ordner>]/<name>`; ⛔ ein Fakt in zwei Slugs ist ein Duplikat-BEFUND, nie ein Merge |
 | `alles` *(Vorgabe)* | alles davon |
 
