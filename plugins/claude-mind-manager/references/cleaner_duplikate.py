@@ -582,6 +582,21 @@ def _slug(win_pfad):
     return re.sub(r"^-*", "", re.sub(r"[^A-Za-z0-9]", "-", win_pfad))
 
 
+def _memory_dirs(heim, projekt=None):
+    """v5.109.0: das Wurzel-Memory plus je Roster-Ordner seines (learnings_quellen)."""
+    d = _memory_dir(heim, projekt)
+    out = [d] if d else []
+    try:
+        from learnings_quellen import rollen_ordner
+        for o in rollen_ordner(projekt) if projekt else []:
+            dd = _memory_dir(heim, o)
+            if dd and dd not in out:
+                out.append(dd)
+    except Exception:
+        pass
+    return out
+
+
 def _memory_dir(heim, projekt=None):
     """Das Memory-Verzeichnis — oder ein leerer Pfad.
 
@@ -674,7 +689,9 @@ def ablagen(projekt, bereich="alles"):
     if bereich in ("alles", "projekt"):
         a["p:CLAUDE.md"] = [os.path.join(projekt, "CLAUDE.md")]
         a["p:rules"] = md(os.path.join(projekt, ".claude", "rules"))
-        a["p:memory"] = md(_memory_dir(H, projekt))
+        # v5.109.0 (Etappe 18): alle Memory-Verzeichnisse des Rollen-Aufbaus — ein Fakt
+        #    in zwei Slugs ist ein BEFUND (Duplikat), kein Anlass zum Mergen.
+        a["p:memory"] = [f for d in _memory_dirs(H, projekt) for f in md(d)]
         a["p:skills"] = md(os.path.join(projekt, ".claude", "skills"))
         # ⭐ AHNEN: CLAUDE.md/CLAUDE.local.md in den Elternverzeichnissen laden
         #    laut Doku MIT. Gemessen liegt hier eine:

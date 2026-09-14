@@ -49,7 +49,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.108.0"
+MIND_SKILL_VERSION="5.109.0"
 mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
@@ -1094,7 +1094,7 @@ Agent(subagent_type: "claude-mind-manager:context-analyzer", run_in_background: 
 | Agent | scope | mode | Input |
 |---|---|---|---|
 | 1 | `claude-md` | `knowledge-sync` | CLAUDE.md project + global **+ die `CLAUDE.md` der Roster-Unterordner (`UNTER_KONTEXT`, v5.106.0)** + Session-Auszug aus `$SESSION_SAMPLE_BASH` |
-| 2 | `memory` | `knowledge-sync` | MEMORY.md + Topic-Files aus Step 1 + Session-Auszug |
+| 2 | `memory` | `knowledge-sync` | MEMORY.md + Topic-Files aus Step 1 + Session-Auszug — **v5.109.0: im Rollen-Aufbau ALLE Verzeichnisse aus `mind_memory_dirs "$PROJ"`, je Verzeichnis benannt, und die Tabelle `RETTUNGS_MEMORY`; ⛔ der Agent schreibt in das Verzeichnis der Rettung, nie ueber Slugs hinweg** |
 | 3 | `rules` | `knowledge-sync` | **`SEM_RULES` (Step 3c.1, je `TARGET_MODE`)** + Global-Rules (immer, je einzeln größen-geguardet) **+ die Rules der Roster-Unterordner (v5.106.0, je Datei mit Ordner)** + Session-Auszug — bei großem Satz NICHT alle Project-Rules; jede Datei >600 Z. **ODER >60 KB** mit Größen-Guard (grep-gezielt, nicht ganz lesen) |
 | 4 | `custom-context` | `knowledge-sync` | `CUSTOM_CONTEXT_FILES` aus Step 1.5 + Session-Auszug |
 

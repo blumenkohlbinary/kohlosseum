@@ -46,7 +46,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.108.0"
+MIND_SKILL_VERSION="5.109.0"
 mind_schritt_start "$PROJ" mind-cleaner bestandsaufnahme cleaner_audit cleaner_einordnung cleaner_grenzen cleaner_leitplanke cleaner_ratsche cleaner_rebuild cleaner_umzug ladeprotokoll_auswertung mind_debug_write mind_snapshot
 ```
 
@@ -197,7 +197,7 @@ ich kann dann angeben ob global oder lokal nur der projekt ordner"*.
 |---|---|
 | `global` | `~/.claude/rules/` + `~/.claude/CLAUDE.md` |
 | `projekt` | `$PROJ/.claude/rules/` + `CLAUDE.md` des Projekts (v5.80.0: `$PROJ` = Wurzel mit Roster) **+ das Memory des Projekts** (v5.107.0) |
-| `memory` | **nur** das Memory: `~/.claude/projects/<slug>/memory/*.md` ohne `MEMORY.md` (v5.107.0) |
+| `memory` | **nur** das Memory: `~/.claude/projects/<slug>/memory/*.md` ohne `MEMORY.md` (v5.107.0) — **im Rollen-Aufbau ALLE Slugs: Wurzel + je Roster-Ordner** (`mind_memory_dirs`, `learnings_quellen.memory_pfade`, v5.109.0); Bericht `memory[<ordner>]/<name>`; ⛔ ein Fakt in zwei Slugs ist ein Duplikat-BEFUND, nie ein Merge |
 | `alles` *(Vorgabe)* | alles davon |
 
 ⛔ **v5.107.0 — das Memory ist VOLLWERTIGER Bestand.** Nutzer-Entscheidung 14.09.2026,

@@ -811,6 +811,22 @@ mind_snapshot() {
       [ -f "$f" ] && { cp "$f" "$snap/memory/" 2>/dev/null && count=$((count+1)); }
     done
   fi
+  # ⛔ v5.109.0 (Etappe 18): die Memorys der Roster-Unterordner — je Ordner ein eigener
+  #    Slug. Sie liegen unter memory-unterordner/<ordner>/, NICHT unter memory/: rollback.py
+  #    spielt memory/ in das Wurzel-Memory zurueck, und dorthin gehoeren sie nicht. Der
+  #    Rueckweg fuer sie ist die Kopie (Pfad steht im MANIFEST), von Hand.
+  local _md _on _o
+  mind_rollen_ordner "$project_dir" 2>/dev/null | while IFS= read -r _o; do
+    [ -n "$_o" ] || continue
+    _md="$HOME/.claude/projects/$(hash_project_dir "$_o" 2>/dev/null)/memory"
+    [ -d "$_md" ] && [ "$_md" != "$memory_dir" ] && ls "$_md"/*.md >/dev/null 2>&1 || continue
+    _on=$(basename "$_o")
+    mkdir -p "$snap/memory-unterordner/$_on"
+    for f in "$_md"/*.md; do
+      [ -f "$f" ] && cp "$f" "$snap/memory-unterordner/$_on/" 2>/dev/null
+    done
+    printf 'memory-unterordner/%s <- %s\n' "$_on" "$_md" >> "$snap/MANIFEST" 2>/dev/null
+  done
   # 3) Projekt-Rules (die editieren die Skills ebenfalls)
   if [ -d "$project_dir/.claude/rules" ]; then
     mkdir -p "$snap/rules"
@@ -1330,6 +1346,26 @@ mind_rollen_ordner() {
       [ -f "$d/CLAUDE.md" ] && printf '%s\n' "$d"
     done
   fi
+  return 0
+}
+
+# mind_memory_dirs <wurzel>
+# ⛔ v5.109.0 (Etappe 18, Nutzer 14.09.2026: "jedes fork hat eigenen memory"): das Memory
+#    haengt am Slug des ORDNERS, in dem die Sitzung lief — jeder Roster-Unterordner hat sein
+#    eigenes. Gemessen: Creator-Wurzel 3 Dateien / 5 676 B, `Creator Stimme` 7 Dateien /
+#    39 707 B, und jeder Sync sah nur die Wurzel. Ausgabe: das Wurzel-Memory, dann je
+#    Roster-Ordner seines — nur Verzeichnisse mit mindestens einer .md, feste Reihenfolge.
+#    Ohne Roster: genau eines (wie bisher). ⛔ NIE ueber diese Verzeichnisse hinweg
+#    zusammenfuehren — jedes gehoert einer anderen Sitzung.
+mind_memory_dirs() {
+  local w="${1:-$(pwd)}" d o
+  d=$(_resolve_memory_dir "$w" 2>/dev/null) || true
+  if [ -n "$d" ] && [ -d "$d" ] && ls "$d"/*.md >/dev/null 2>&1; then printf '%s\n' "$d"; fi
+  mind_rollen_ordner "$w" 2>/dev/null | while IFS= read -r o; do
+    [ -n "$o" ] || continue
+    d="$HOME/.claude/projects/$(hash_project_dir "$o" 2>/dev/null)/memory"
+    if [ -d "$d" ] && ls "$d"/*.md >/dev/null 2>&1; then printf '%s\n' "$d"; fi
+  done
   return 0
 }
 

@@ -43,7 +43,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.108.0"
+MIND_SKILL_VERSION="5.109.0"
 mind_schritt_start "$PROJ" mind-memory bestandszahlen_kandidaten cleaner_stichprobe mind_debug_write mind_kontext_bilanz mind_scan_poisoning mind_snapshot verdichten
 ```
 
@@ -167,6 +167,17 @@ if [ -z "$CLAUDE_PLUGIN_ROOT" ] || [ ! -f "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" ]; 
 fi
 source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 MEMORY_DIR=$(get_memory_dir)
+# ⛔ v5.109.0 (Etappe 18, Nutzer 14.09.2026: "jedes fork hat eigenen memory"): im
+#    Rollen-Aufbau hat JEDER Roster-Unterordner sein eigenes Memory (eigener Slug).
+#    Gemessen Creator: Wurzel 3 Dateien / 5 676 B, `Creator Stimme` 7 / 39 707 B — und
+#    jeder Lauf sah nur die Wurzel. Alle Verzeichnisse, feste Reihenfolge:
+MEMORY_DIRS=$(mind_memory_dirs "$PROJ" 2>/dev/null); [ -n "$MEMORY_DIRS" ] || MEMORY_DIRS="$MEMORY_DIR"
+#    Die Schritte 1–4 laufen JE VERZEICHNIS getrennt (`while IFS= read -r MEMORY_DIR; do … done
+#    <<<"$MEMORY_DIRS"`), der Bericht nennt jede Datei als `memory[<ordner>]/<name>` (Wurzel:
+#    `memory/<name>`). ⛔ NIE ueber Slugs hinweg zusammenfuehren, deduplizieren oder
+#    auslagern — jedes Verzeichnis gehoert einer ANDEREN Sitzung. Derselbe Fakt in zwei Slugs
+#    ist ein BEFUND fuer /mind-cleaner (Duplikat), kein Merge. Die Sicherung vor dem Lauf
+#    (backup-usage.md) sichert schon alle `projects/*/memory`, `memory_gates.py` vergleicht je Slug.
 ```
 
 **Wenn KEINE MEMORY.md gefunden:**

@@ -95,19 +95,32 @@ def dateien(projekt, nur="alles", doku=None):
     #    allein als `memory`. Der Pfad kommt aus dem Slug (cleaner_duplikate._memory_dir,
     #    NIE der Projektpfad); MEMORY.md ist der Index und keine Aussage, sie bleibt
     #    draussen. Die vier Gates aus mind-memory 4.0c gelten VOR jedem Anwenden.
-    global _MEMDIR
+    global _MEMDIR, _MEMDIRS
     _MEMDIR = ""
+    _MEMDIRS = {}
     if nur in ("alles", "projekt", "memory"):
         _MEMDIR = dup._memory_dir(H, projekt)
+        # v5.109.0 (Etappe 18): auch die Memorys der Roster-Ordner (je eigener Slug),
+        #    angezeigt unter dem ORDNERnamen, nicht dem Slug
         if _MEMDIR:
+            _MEMDIRS[os.path.abspath(_MEMDIR)] = ""
             wurzeln.append(_MEMDIR)
+        try:
+            from learnings_quellen import rollen_ordner
+            for _o in rollen_ordner(projekt):
+                _d = dup._memory_dir(H, _o)
+                if _d and os.path.abspath(_d) not in _MEMDIRS:
+                    _MEMDIRS[os.path.abspath(_d)] = os.path.basename(_o)
+                    wurzeln.append(_d)
+        except Exception:
+            pass
     if doku:
         wurzeln.append(doku)
     for w in wurzeln:
         for wurzel, unter, fs in os.walk(w):
             unter[:] = [u for u in unter if u not in ("__pycache__", ".git")]
             out += [os.path.join(wurzel, f) for f in sorted(fs)
-                    if f.endswith(".md") and not (w == _MEMDIR and f == "MEMORY.md")]
+                    if f.endswith(".md") and not (os.path.abspath(w) in _MEMDIRS and f == "MEMORY.md")]
     for e in einzeln:
         if os.path.isfile(e) and e not in out:
             out.append(e)
@@ -115,11 +128,17 @@ def dateien(projekt, nur="alles", doku=None):
 
 
 _MEMDIR = ""
+_MEMDIRS = {}
 
 
 def _nm(p):
-    """Anzeigename: Memory-Dateien als `memory/<name>` (v5.107.0), sonst der Dateiname."""
-    if _MEMDIR and os.path.abspath(p).startswith(os.path.abspath(_MEMDIR)):
+    """Anzeigename: Memory-Dateien als `memory/<name>` (v5.107.0), die eines Roster-Ordners
+    als `memory[<ordner>]/<name>` (v5.109.0), sonst der Dateiname."""
+    ap = os.path.abspath(p)
+    for d, kennung in _MEMDIRS.items():
+        if ap.startswith(d):
+            return ("memory[%s]/" % kennung if kennung else "memory/") + os.path.basename(p)
+    if _MEMDIR and ap.startswith(os.path.abspath(_MEMDIR)):
         return "memory/" + os.path.basename(p)
     return os.path.basename(p)
 

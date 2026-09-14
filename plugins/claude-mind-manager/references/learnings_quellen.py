@@ -180,6 +180,53 @@ def memory_pfad(projekt):
     return d if os.path.isdir(d) else None
 
 
+def rollen_ordner(wurzel):
+    """Die Ordner der Arbeiter-Sitzungen aus der Spalte `Ordner` des Rosters — Gegenstueck
+    zu mind_rollen_ordner (lib.sh, v5.106.0). Ohne Spalte: jeder direkte Unterordner mit
+    CLAUDE.md. `./` ist die Wurzel und faellt weg. Leer ohne rollen.md."""
+    r = os.path.join(wurzel, ".claude", "rules", "rollen.md")
+    if not os.path.isfile(r):
+        return []
+    zeilen = open(r, encoding="utf-8", errors="replace").read().splitlines()
+    spalte, out, im_tisch = None, [], False
+    for z in zeilen:
+        if z.startswith("|"):
+            zellen = [c.strip() for c in z.strip().strip("|").split("|")]
+            if spalte is None:
+                for i, c in enumerate(zellen):
+                    if "ordner" in c.lower():
+                        spalte, im_tisch = i, True
+                        break
+                continue
+            if im_tisch:
+                if re.match(r"^\|[-: |]*$", z.strip()):
+                    continue
+                if spalte < len(zellen):
+                    v = re.sub(r"[`*]", "", zellen[spalte]).strip().rstrip("/")
+                    if v and v not in (".", "./") and os.path.isdir(os.path.join(wurzel, v)):
+                        out.append(os.path.join(wurzel, v))
+        elif im_tisch:
+            im_tisch = False
+    if spalte is None:
+        for n in sorted(os.listdir(wurzel)):
+            d = os.path.join(wurzel, n)
+            if os.path.isdir(d) and os.path.isfile(os.path.join(d, "CLAUDE.md")):
+                out.append(d)
+    return sorted(set(out))
+
+
+def memory_pfade(projekt):
+    """⛔ v5.109.0 (Etappe 18): ALLE Memory-Verzeichnisse eines Rollen-Aufbaus — das der
+    Wurzel und je Roster-Ordner seines (eigener Slug). Nur Verzeichnisse mit mindestens einer
+    .md, feste Reihenfolge. Ohne Roster genau eines. Nie ueber sie hinweg zusammenfuehren."""
+    out = []
+    for p in [projekt] + rollen_ordner(projekt):
+        d = memory_pfad(p)
+        if d and any(f.endswith(".md") for f in os.listdir(d)):
+            out.append(d)
+    return out
+
+
 def lies(p):
     try:
         return open(p, "rb").read().decode("utf-8", "replace")
