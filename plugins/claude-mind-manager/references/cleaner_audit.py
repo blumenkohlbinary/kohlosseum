@@ -129,6 +129,7 @@ def dateien(projekt, nur="alles", doku=None):
 
 _MEMDIR = ""
 _MEMDIRS = {}
+LETZTE_GRUPPEN = None
 
 
 def _nm(p):
@@ -432,6 +433,10 @@ def lauf(projekt, nur="alles", doku=None):
     print()
     print("  Naechster Schritt: --plan (erst nach deinem OK).")
     befunde = sum(len(gruppen[k]) for k in ("2", "3", "4")) + len(grenzfaelle)
+    # v5.110.0 (Etappe 19): cleaner_plan.py baut aus den Gruppen den Plan — sie bleiben
+    #    nach dem Lauf lesbar, statt nur gedruckt zu sein.
+    global LETZTE_GRUPPEN
+    LETZTE_GRUPPEN = gruppen
     return 1 if befunde else 0
 
 

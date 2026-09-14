@@ -3,7 +3,8 @@ name: mind-cleaner
 description: |
   [Mind Manager] Raeumt Regelbestaende auf: misst, was da ist und was wirklich laedt,
   ordnet jede Regeldatei in Hook · Skill · Slash-Command · bleibt-Rule ein und zieht
-  auf Ansage GENAU EINE Datei um — mit Erhaltungs-Gate, Pfad-Gate und Rueckweg.
+  auf ein ok einen ganzen PLAN um (v5.110.0: mehrere Dateien, ein ok, Stopp am ersten
+  gebrochenen Gate) — mit Erhaltungs-Gate, Pfad-Gate, Memory-Gates und Rueckweg.
 
   ⛔ Der Vorgabelauf AENDERT NICHTS. Er berichtet. Ein Plan entsteht erst auf "ok",
   angewendet wird erst nach Freigabe des Plans. Hooks werden nur GEMELDET, nie
@@ -46,7 +47,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.109.0"
+MIND_SKILL_VERSION="5.110.0"
 mind_schritt_start "$PROJ" mind-cleaner bestandsaufnahme cleaner_audit cleaner_einordnung cleaner_grenzen cleaner_leitplanke cleaner_ratsche cleaner_rebuild cleaner_umzug ladeprotokoll_auswertung mind_debug_write mind_snapshot
 ```
 
@@ -105,16 +106,38 @@ ein Werkzeug, das laeuft und Unsinn liefert, quittiert als `gelaufen`.
 ## ⛔ Der Ablauf ist dreistufig, und jede Stufe braucht ein OK
 
 ```
-1. BERICHT     /mind-cleaner [--bereich global|projekt|alles]     aendert NICHTS
+1. BERICHT     /mind-cleaner [--bereich global|projekt|alles|memory]   aendert NICHTS
       ↓  Nutzer sagt ok
-2. PLAN        /mind-cleaner --plan [--bereich …]                  schreibt einen Plan
-      ↓  Nutzer gibt den Plan frei
-3. ANWENDEN    /mind-cleaner --umzug <datei>                       GENAU EINE Datei
-               /mind-cleaner --rebuild <datei> [--auto]           GENAU EINE Datei
+2. PLAN        /mind-cleaner --plan [--bereich …]        EIN Plan ueber ALLE Befunde (v5.110.0)
+      ↓  Nutzer gibt den Plan frei — „ok" oder „ok ohne 3,7"
+3. ANWENDEN    cleaner_plan.py --anwenden <plan> [--ohne 3,7]   ALLES in einem Lauf
+               /mind-cleaner --umzug <datei> · --rebuild <datei>   der Einzelfall (--nur)
 ```
 
 **Nutzer-Entscheidung 24.08.2026, wörtlich:** *„er soll erstmal berichten dann wenn ich
 ok gebe plan schreiben und anwenden"*.
+⛔ **v5.110.0 — Nutzer 14.09.2026, wörtlich:** *„ja mach einen plan über mehrere dateien und
+auch mind memory muss das gefixt werden mit einem ok"*. Das ersetzt „GENAU EINE Datei je
+Umzug" (24.08.); die 73 liegengebliebenen Audit-Befunde vom 25.08. waren der Preis.
+Bericht → Plan → ok bleiben drei Schritte — nur das „eine Datei" fällt.
+
+```bash
+# 2  der Plan: ALLE Befunde der Gruppen 2–4 (Umzüge, docs/-Ziele, paths:-Vorschläge,
+#    Archivierungen, Zeiger) in EINE Datei, je Zeile Datei · Klasse · Ziel · Gates · Rückweg
+python "$CLAUDE_PLUGIN_ROOT/references/cleaner_plan.py" --neu "$PROJ" --nur projekt
+#    -> $MIND_DEBUG_DIR/laeufe/<ts>_plan.md; UMZUG/DOCS-Zeilen brauchen `kurz=<pfad>` —
+#       die vorbereitete Kurz-Rule schreibt die Sitzung VOR dem ok in den Plan
+# 3  das eine ok: gemeinsamer Snapshot (eine Einheit, wie /mind-all), dann Zeile für Zeile
+#    mit den bestehenden Gates; bricht EIN Gate, stoppt der Lauf — davor bleibt, danach
+#    NICHT ANGEWENDET, der Plan trägt je Zeile den Status, der Bericht nennt die Zeile
+python "$CLAUDE_PLUGIN_ROOT/references/cleaner_plan.py" --anwenden <plan> [--ohne 3,7]
+python "$CLAUDE_PLUGIN_ROOT/references/cleaner_audit.py" --bereich "$PROJ"   # Pflicht danach
+```
+
+⛔ **`/mind-memory` bleibt AUTONOM** (Nutzer 15.09.2026: *„oh man /mind-memory arbeitet
+autonom und mind cleaner nicht"*) — das ok gehört NUR zum Cleaner, weil er über alles
+hinweg eingreift. Was mind-memory aus dieser Reihe bekommt, ist allein v5.109.0 (alle
+Memory-Verzeichnisse, nie über Slugs mergen) — autonom angewendet wie seit v5.0.0.
 
 ⛔ **Das weicht bewusst von den v5.0.0-Skills ab**, die autonom anwenden. Der Grund steht
 im Entwurf und gilt: hier wird die **Wissensbasis zerschnitten**, nicht eine Zahl korrigiert.
@@ -639,8 +662,9 @@ Aufruf — mit Prüffall, und ohne Eintrag in `hooks.json`, bis der Prüffall gr
 ## Hard Constraints
 
 - ⛔ **NIE ohne Snapshot.** Schlägt `mind_snapshot` fehl, bricht der Lauf ab.
-- ⛔ **NIE mehr als eine Datei je Lauf.** Ein Lauf, der acht Dateien verschiebt, ist im
-  Bericht nicht mehr prüfbar.
+- ⛔ **NIE ohne Plan mehr als eine Datei.** Seit v5.110.0 wendet EIN Plan mit EINEM ok
+  alle Zeilen an — je Zeile mit Status, Snapshot als Einheit, Stopp am ersten gebrochenen
+  Gate. Ohne Plan bleibt es bei einer Datei (`--nur`).
 - ⛔ **NIE eine Leitplanke wegnehmen, ohne Ersatz an ihrer Stelle.**
 - ⛔ **NIE behaupten, Kontext sei gespart.** Erst das Ladeprotokoll einer **neuen** Sitzung
   belegt das.

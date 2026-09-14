@@ -68,6 +68,13 @@ janein "--ziel docs mit ZEIGER-Gate" ja "$(grep -q -- '--ziel docs' "$MC" && gre
 janein "ERREICHBARKEIT-Ausnahme paths-gebunden" ja "$(grep -q 'paths-gebunden an' "$MC" && echo ja || echo nein)"
 janein "--paths-sonde: zwei Schritte, Mensch startet die Sitzung" ja "$(grep -q 'cleaner_paths_sonde.py" --start' "$MC" && grep -q 'cleaner_paths_sonde.py" --auswerten' "$MC" && grep -q 'die Sitzung startet der Mensch' "$MC" && echo ja || echo nein)"
 
+echo "== 6  v5.110.0: EIN Plan, EIN ok — cleaner_plan.py =="
+janein "cleaner_plan --selbsttest gruen (4 Befunde, Gate in Zeile 3, --ohne, --neu)" 0 "$($PY "$(w "$REF/cleaner_plan.py")" --selbsttest >/dev/null 2>&1; echo $?)"
+janein "   ... nennt Zeile 3 GEBROCHEN und Zeile 4 NICHT ANGEWENDET" ja "$($PY "$(w "$REF/cleaner_plan.py")" --selbsttest 2>/dev/null | grep -q 'Zeile 4 NICHT ANGEWENDET' && echo ja || echo nein)"
+janein "Skill: Plan ueber ALLE Befunde, ein ok, --ohne" ja "$(grep -q 'cleaner_plan.py" --anwenden <plan> \[--ohne 3,7\]' "$MC" && grep -q 'EIN Plan ueber ALLE Befunde' "$MC" && echo ja || echo nein)"
+janein "Skill: /mind-memory bleibt AUTONOM" ja "$(grep -q 'mind-memory` bleibt AUTONOM' "$MC" && echo ja || echo nein)"
+janein "Skill: GENAU EINE Datei steht nicht mehr als Regel" 0 "$(grep -c 'GENAU EINE Datei$' "$MC")"
+
 echo
 echo "  $OK ok, $ROT rot"
 [ "$ROT" -eq 0 ] || exit 1
