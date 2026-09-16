@@ -1,5 +1,6 @@
 ---
-globs: ["**/*"]
+description: Zahlen in der Doku messen statt glauben (tools/zaehl_gate.py faehrt jeden Zaehlbefehl)
+# laedt bei jedem Start — bewusst kein paths: (v5.119.0; globs: war das Cursor-Feld und filterte nie)
 ---
 
 # Zahlen in der Doku messen, nicht glauben — `tools/zaehl_gate.py`

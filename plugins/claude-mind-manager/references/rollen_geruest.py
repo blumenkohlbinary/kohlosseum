@@ -205,7 +205,9 @@ def geruest(projekt, plugin_root=None, rollen=3):
     a("---")
     a("description: Der Roster dieses Projekts \u2014 wer ist <Name1>, <Name2>, "
       "wem geh\u00f6rt welche Datei")
-    a('globs: ["**/*"]')
+    # v5.119.0: KEIN globs:/paths: — der Roster laedt bei jedem Start; globs: war das
+    # Cursor-Feld und filterte nie (Etappe 27 §1). Die Kommentarzeile sagt es dem Leser.
+    a('# laedt bei jedem Start \u2014 bewusst kein paths: (globs: filterte nie)')
     a("---")
     a("# Rollen \u2014 dieses Projekt l\u00e4uft mit %d Sitzungen" % rollen)
     a("")

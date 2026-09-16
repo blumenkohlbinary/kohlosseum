@@ -1,6 +1,6 @@
 ---
 description: Release-Hygiene — Conventional Commits + Changelog + Versions-Sync
-globs: ["**/*"]
+# laedt bei jedem Start — bewusst kein paths: (v5.119.0; globs: war das Cursor-Feld und filterte nie)
 ---
 
 # Release-Hygiene

@@ -1,6 +1,6 @@
 ---
 description: Versionierung + Build-Disziplin für diese Python-Release-App (tools/version.py)
-globs: ["build.py", "*.spec", "**/*.py", "pyproject.toml", "VERSION"]
+paths: ["build.py", "*.spec", "**/*.py", "pyproject.toml", "VERSION"]
 ---
 
 # Versionierung & Build — Python-Release-App

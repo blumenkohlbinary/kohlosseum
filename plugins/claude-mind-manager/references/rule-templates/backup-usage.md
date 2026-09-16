@@ -1,6 +1,6 @@
 ---
 description: Projekt-Backup-System nutzen vor riskanten Datei-Operationen (tools/backup_tools.py + tools/rollback.py + tools/mutation_guard.py)
-globs: ["**/*"]
+# laedt bei jedem Start — bewusst kein paths: (v5.119.0; globs: war das Cursor-Feld und filterte nie)
 ---
 
 # Backup-System dieses Projekts nutzen

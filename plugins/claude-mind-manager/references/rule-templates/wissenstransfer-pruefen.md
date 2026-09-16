@@ -1,6 +1,6 @@
 ---
 description: Vollstaendigkeit eines Wissenstransfers messen statt behaupten (tools/coverage_gate.py)
-globs: ["**/*"]
+# laedt bei jedem Start — bewusst kein paths: (v5.119.0; globs: war das Cursor-Feld und filterte nie)
 ---
 
 # Wissenstransfer prüfen — `tools/coverage_gate.py`

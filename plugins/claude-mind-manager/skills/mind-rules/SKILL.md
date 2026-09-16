@@ -42,7 +42,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.118.0"
+MIND_SKILL_VERSION="5.119.0"
 mind_schritt_start "$PROJ" mind-rules bestandsaufnahme bestandszahlen_kandidaten cleaner_duplikate cleaner_stichprobe ladeprotokoll_auswertung mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -265,6 +265,7 @@ Total: 4 rules, 90 lines
 |-------|----------|-----------|
 | **Frontmatter nicht mit `---` geschlossen** | **CRITICAL** | erste Zeile ist `---`, aber es gibt keine zweite `---`-Zeile |
 | Uses `globs:` (laedt IMMER, filtert nicht — Cursor-Feld) | INFO | Grep `^globs:` — ⛔ v5.118.0: umgedreht, `paths:` ist die Vorgabe fuer dateigebundene Rules (gemessen Zustellplan 16.09.2026: `path_glob_match` 11x, 13/13 Rules nicht beim Start, Dauerkontext 961 → 131 kB) |
+| `globs: ["**/*"]` | INFO | Grep `^globs: *\["\*\*/\*"\]` — Meldung woertlich: **„wirkungslos, laedt ohnehin immer — Feld entfernen"** (v5.119.0). Eine Rule ohne Feld laedt genauso; das Feld taeuscht eine Ladebedingung vor |
 | User-level rule uses `paths:` | INFO | in `~/.claude/rules/` ungemessen (Issues #21858/#22170 offen) — melden, nicht warnen |
 | YAML quoting issue | WARNING | `*` or `{` at line start without quotes |
 | Empty frontmatter | INFO | No globs: = always loaded (may be intentional) |
@@ -277,6 +278,7 @@ Output:
 
 .claude/rules/typescript.md — OK (paths: **/*.ts, **/*.tsx — laedt bei Beruehrung)
 .claude/rules/testing.md   — INFO: globs: laedt IMMER (filtert nicht) — paths: waere die Vorgabe
+.claude/rules/backup.md    — INFO: globs: ["**/*"] wirkungslos, laedt ohnehin immer — Feld entfernen
 ~/.claude/rules/global.md  — INFO: paths: in user-level rules — ungemessen (#21858/#22170)
 
 Fixable: 2 issues (run /mind-rules migrate)
@@ -368,11 +370,14 @@ Wenn eine Rule ein **installiertes Tool erreichbar machen** soll (z.B. `tools/ba
 `tools/version.py`, `tools/update_changelog.py`, `tools/coverage_gate.py`), gelten zwei
 Zusatz-Regeln:
 
-- **`globs:` muss auf die Trigger-Dateien zeigen**, an denen das Tool relevant wird — nicht
-  irgendein Muster. Beispiele:
-  - Backup-Tool (immer relevant vor Datei-Ops) -> `globs: ["**/*"]` (always-on).
-  - Versions-Tool -> `globs: ["build.py", "*.spec", "**/*.py", "pyproject.toml", "VERSION"]`.
-  - Doku-Gate (relevant sobald Wissen uebertragen wird) -> `globs: ["**/*"]` (always-on).
+- **`paths:` zeigt auf die Trigger-Dateien**, an denen das Tool relevant wird — nicht
+  irgendein Muster. **Soll die Rule bei jedem Start laden: KEIN Feld** (v5.119.0, Etappe 27 §1;
+  eine Kommentarzeile im Frontmatter sagt, dass das Absicht ist). Beispiele:
+  - Backup-Tool (immer relevant vor Datei-Ops) -> kein Feld, laedt bei jedem Start.
+  - Versions-Tool -> `paths: ["build.py", "*.spec", "**/*.py", "pyproject.toml", "VERSION"]`.
+  - Doku-Gate (relevant sobald Wissen uebertragen wird) -> kein Feld.
+  ⛔ Bis v5.118.0 stand hier `globs: ["**/*"]` (always-on) — das Cursor-Feld, wirkungslos:
+  es filterte nie, und es sah aus wie eine Ladebedingung. `check` meldet es als INFO.
 - **Inhalt = WANN + WIE**, nicht nur WAS: konkreter Trigger ("vor Mass-Delete", "nach
   Feature-Fertigstellung"), der genaue CLI-Aufruf, und die 2-3 load-bearing Fallen.
 - **Grund (ehrlich):** Eine glob-Rule laedt auto, sobald Claude eine passende Datei anfasst,
@@ -398,7 +403,10 @@ mit `paths:` laden nicht beim Start, `path_glob_match` 11x, Dauerkontext 961 →
 selbst laeuft ueber `cleaner_paths_sonde.py --start` (Sicherung, Merker, Messung in der naechsten
 Sitzung) — dieser Schritt MELDET, welche Rules noch `globs:` tragen, und schreibt nichts um.
 
-1. Find all rule files with `globs:` frontmatter (die Kandidaten fuer `paths:`)
+1. Find all rule files with `globs:` frontmatter (die Kandidaten fuer `paths:`).
+   ⭐ v5.119.0: traegt eine Rule `globs: ["**/*"]`, ist der Vorschlag **„Feld entfernen"** —
+   nicht `paths: ["**/*"]`. Sie laedt ohne Feld genauso bei jedem Start; das Feld ist
+   wirkungslos. Vorgeschlagen wird, geschrieben nichts (Punkt 3).
 2. For each file, show diff:
 
 ```
@@ -418,7 +426,7 @@ After:
 3. ⛔ **SCHREIBT NICHTS UM (seit v5.43.0).** Der Ablauf endet hier: gemeldet wird,
    welches Feld jede Regel traegt. Der Tausch `globs:` → `paths:` geht ueber die Sonde
    (`/mind-cleaner --paths-sonde`), damit die Ladung danach GEMESSEN wird.
-4. Summary: "N Regeln mit `paths:` (bei Beruehrung), M mit `globs:` (laden immer — Kandidaten), K ohne Feld (= laden immer)."
+4. Summary: "N Regeln mit `paths:` (bei Beruehrung), M mit `globs:` (laden immer — Kandidaten), davon G mit `globs: ["**/*"]` (Vorschlag: Feld entfernen), K ohne Feld (= laden immer)."
    ⚠ Dazu der Satz, was daran gemessen ist und was nicht — eine blosse Zahl
    verleitet zur naechsten Umschreibung.
 
@@ -693,7 +701,7 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_stichprobe.py" "$PROJ" \
        --quittung --skill mind-rules --geprueft <n> --stichprobe <n>
 ```
 
-⭐ **Hier ist der Hebel am größten.** Regeldateien mit `globs: ["**/*"]` laden
+⭐ **Hier ist der Hebel am größten.** Regeldateien ohne `paths:` (oder mit dem wirkungslosen `globs: ["**/*"]`) laden
 **vollständig, bei jeder Anfrage, ohne Obergrenze** — anders als Memory-Topics, die
 ein Auswähler auf 5 begrenzt. Gemessen trugen drei Dateien dieses Projekts zusammen
 **79 KB**, davon 79–88 % Versions-Historie statt Anweisung.

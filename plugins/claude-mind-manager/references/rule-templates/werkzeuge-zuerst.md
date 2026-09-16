@@ -1,6 +1,6 @@
 ---
 description: Vorhandene Pruefwerkzeuge benutzen statt nachbauen — mit der Bilanz der bisherigen Nachbauten
-globs: ["**/*.py", "**/tools/*", "**/references/*"]
+paths: ["**/*.py", "**/tools/*", "**/references/*"]
 ---
 
 # Erst das vorhandene Werkzeug

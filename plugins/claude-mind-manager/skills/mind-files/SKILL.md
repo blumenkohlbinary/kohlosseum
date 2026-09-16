@@ -42,7 +42,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.118.0"
+MIND_SKILL_VERSION="5.119.0"
 mind_schritt_start "$PROJ" mind-files bestandszahlen_kandidaten cleaner_stichprobe mind_check_tools_have_rules mind_hook_health mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -498,7 +498,12 @@ export BACKUP_TEST_TIMEOUT=300
 
 Ohne diese Rule liegen die `tools/*.py` tot im Ordner — Claude weiss nicht WANN er sie
 aufrufen soll (`BACKUP_USAGE.md` ist Menschen-Doku, wird nicht auto-geladen). Die Rule
-mit `paths:`-Frontmatter laedt, sobald Claude eine passende Datei anfasst (gemessen v5.118.0; die Vorlage `backup-usage.md` traegt bewusst `globs: ["**/*"]` = laedt IMMER, damit das Werkzeug vom Start an erreichbar ist),
+mit `paths:`-Frontmatter laedt, sobald Claude eine passende Datei anfasst (gemessen v5.118.0). Die
+Vorlage `backup-usage.md` traegt seit v5.119.0 **KEIN Feld** — sie laedt bei jedem Start, damit das
+Werkzeug vom Start an erreichbar ist; eine Kommentarzeile im Frontmatter sagt, dass das Absicht ist
+(bis v5.118.0 stand dort `globs: ["**/*"]`, das Cursor-Feld, wirkungslos —
+Etappe 27 §1). Gleiches gilt fuer `release-hygiene.md`, `wissenstransfer-pruefen.md`,
+`zaehlwerte-pruefen.md`; `release-build.md` und `werkzeuge-zuerst.md` tragen `paths:`. Die Rule
 und macht das Backup-Tool **erreichbar**.
 
 ```bash

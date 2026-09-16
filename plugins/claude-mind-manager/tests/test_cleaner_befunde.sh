@@ -9,6 +9,7 @@
 #   §6 „laedt beim Start" gegen „laedt bei Beruehrung" (paths:) — Bilanz und Bestandsaufnahme
 #   §7 cleaner_belege: Projektgrenze und ganzes Wort (Zustellplans rollen.md: 4 fremde Treffer)
 #   §8 DOCS-Zug aus dem Memory: Indexzeile auf docs/, kein Stub, Topic weg
+#   v5.119.0 (Etappe 27 §1): „laedt immer“ = KEIN Feld — Vorlagen, rollen_geruest, check/migrate-Text
 # Jeder Fall gegen 5.114.0 rot (Gegenprobe in der NACH).
 set -u
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { echo "CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 2; }
@@ -265,6 +266,29 @@ janein "mind-rules check: globs: ist INFO (laedt immer), paths: keine WARNING me
 janein "mind-rules migrate: Richtung globs -> paths ueber die Sonde" ja "$(grep -q 'die Richtung ist `globs:` → `paths:`' "$MR" && echo ja || echo nein)"
 janein "mind-update Step 5: paths:-Rules sind kein Verdichten-Kandidat" ja "$(grep -q "head -12 \"\$f\" | grep -qi '^paths:' && continue" "$MU" && echo ja || echo nein)"
 janein "mind-rules 9b: dito im Code, nicht nur in der Tabelle" ja "$(grep -q "grep -qi '^paths:' || { echo \"\$f\"; break; }" "$MR" && echo ja || echo nein)"
+
+echo "== v5.119.0 (Etappe 27 §1): „laedt immer“ heisst KEIN Feld — Vorlage, Geruest, check/migrate =="
+RT="$CLAUDE_PLUGIN_ROOT/references/rule-templates"
+for _v in backup-usage release-hygiene wissenstransfer-pruefen zaehlwerte-pruefen; do
+  _fm=$(sed -n '2,12p' "$RT/$_v.md" | sed '/^---/q')
+  janein "Vorlage $_v: kein globs:/paths: im Frontmatter" ja "$(printf '%s\n' "$_fm" | grep -qiE '^(globs|paths):' && echo nein || echo ja)"
+  janein "   ... Kommentarzeile „bewusst kein paths:“ steht drin" ja "$(printf '%s\n' "$_fm" | grep -q '^# .*bewusst kein paths:' && echo ja || echo nein)"
+  janein "   ... description vorhanden (Frontmatter ist nicht nur ein Kommentar)" ja "$(printf '%s\n' "$_fm" | grep -q '^description:' && echo ja || echo nein)"
+done
+for _v in release-build werkzeuge-zuerst; do
+  janein "Vorlage $_v (dateigebunden): paths:, nicht globs:" ja "$(sed -n '2,12p' "$RT/$_v.md" | sed '/^---/q' | grep -q '^paths:' && ! sed -n '2,12p' "$RT/$_v.md" | sed '/^---/q' | grep -q '^globs:' && echo ja || echo nein)"
+done
+P=$(mktemp -d); mkdir -p "$P/proj/.claude/rules"; printf '# P\n' > "$P/proj/CLAUDE.md"
+_G=$($PY "$(w "$REF/rollen_geruest.py")" --projekt "$(w "$P/proj")" 2>/dev/null)
+_gfm=$(printf '%s\n' "$_G" | sed -n '2,12p' | sed '/^---/q')
+janein "rollen_geruest: Roster-Frontmatter ohne globs:/paths:" ja "$(printf '%s\n' "$_gfm" | grep -qiE '^(globs|paths):' && echo nein || echo ja)"
+janein "   ... mit Kommentarzeile „bewusst kein paths:“" ja "$(printf '%s\n' "$_gfm" | grep -q '^# .*bewusst kein paths:' && echo ja || echo nein)"
+rm -rf "$P"
+MR="$CLAUDE_PLUGIN_ROOT/skills/mind-rules/SKILL.md"; MF="$CLAUDE_PLUGIN_ROOT/skills/mind-files/SKILL.md"
+janein "mind-rules check: globs: [\"**/*\"] ist INFO „wirkungslos, laedt ohnehin immer — Feld entfernen“" ja "$(grep -q 'wirkungslos, laedt ohnehin immer — Feld entfernen' "$MR" && echo ja || echo nein)"
+janein "mind-rules migrate: schlaegt „Feld entfernen“ vor, schreibt nichts" ja "$(grep -q 'ist der Vorschlag \*\*„Feld entfernen"\*\*' "$MR" && grep -q 'Vorgeschlagen wird, geschrieben nichts' "$MR" && echo ja || echo nein)"
+janein "mind-rules Companion-Vorlage: „KEIN Feld“, kein globs: [\"**/*\"] (always-on) mehr als Beispiel" ja "$(grep -q 'Soll die Rule bei jedem Start laden: KEIN Feld' "$MR" && ! grep -q -- '-> `globs: \["\*\*/\*"\]` (always-on)' "$MR" && echo ja || echo nein)"
+janein "mind-files Step 5: Vorlage traegt KEIN Feld (nicht mehr „bewusst globs“)" ja "$(grep -q 'traegt seit v5.119.0 \*\*KEIN Feld\*\*' "$MF" && ! grep -q 'traegt bewusst `globs: \["\*\*/\*"\]`' "$MF" && echo ja || echo nein)"
 
 echo
 echo "  $OK ok, $ROT rot"
