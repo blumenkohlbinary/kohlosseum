@@ -193,7 +193,7 @@ mind_agent_uebersprungen custom-context 0 "$P" >/dev/null 2>&1
 # Kopf-Block + fuenf eigene Bloecke, alle mit Artefakt
 printf '{"ereignis":"start","skill":"mind-all","erwartet":"mind_snapshot","ts":"%s","code":"5.113.0","text":"5.113.0","versionsbruch":false}\n{"ereignis":"schritt","name":"mind_snapshot","status":"gelaufen","bytes":10,"ts":"%s"}\n' "$_ALT" "$_ALT" > "$SQ"
 i=0; for s in mind-files mind-claudemd mind-memory mind-rules mind-update; do i=$((i+1))
-  printf '{"ereignis":"start","skill":"%s","erwartet":"verdichten","ts":"%s","code":"5.113.0","text":"5.113.0","versionsbruch":false}\n{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"%s"}\n' "$s" "$(date -u -d "-$((100 - i * 10)) seconds" +%Y-%m-%dT%H:%M:%SZ)" "$_NOW" >> "$SQ"
+  printf '{"ereignis":"start","skill":"%s","erwartet":"verdichten","ts":"%s","code":"5.113.0","text":"5.113.0","versionsbruch":false}\n{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"%s"}\n' "$s" "$(date -u -d "-$((3600 - i * 600)) seconds" +%Y-%m-%dT%H:%M:%SZ)" "$_NOW" >> "$SQ"   # v5.116.0: 10 min Abstand — 10 s gaelten als nachgetippt
 done
 janein "voller Lauf: mind_lauf_voll sagt voll (rc 0)" "voll" "$(mind_lauf_voll "$P" L1 4 2>/dev/null)"
 # ein formal-: mind-memory OHNE eigenen Block -> teil; Reparatur (Block nachgefahren) -> voll

@@ -242,28 +242,29 @@ done
 _A=$(mind_schritt_bilanz "$P" --alle 2>/dev/null)
 janein "   mit eigenen Bloecken: FORMAL=5 bleibt — Bytes getippt (kein --datei)" ja "$(printf '%s\n' "$_A" | grep -q '^  FORMAL=5$' && echo ja || echo nein)"
 janein "   ... Grund: Bytes getippt, kein Bericht" 5 "$(printf '%s\n' "$_A" | grep -c 'Bytes getippt, kein Bericht per --datei')"
-# Positivkontrolle: Berichte per Datei, jede Sekunde ein Skill -> FORMAL fehlt, rc 0
+# Positivkontrolle: Berichte per Datei, alle zwei Minuten ein Skill -> FORMAL fehlt, rc 0
+# (v5.116.0: "jede Sekunde ein Skill" gilt seit Etappe 22 als nachgetippt — reale Skills brauchen Minuten)
 : > "$S"
 printf '{"ereignis":"start","skill":"mind-all","erwartet":"mind_agent_bilanz","ts":"2026-09-11T22:01:44Z","code":"5.97.0","text":"5.97.0","versionsbruch":false}\n' >> "$S"
 i=0
 for s in mind-files mind-claudemd mind-memory mind-rules mind-update; do
   i=$((i + 1))
-  printf '{"ereignis":"start","skill":"%s","erwartet":"verdichten","ts":"2026-09-11T22:02:0%dZ","code":"5.97.0","text":"5.97.0","versionsbruch":false}\n' "$s" "$i" >> "$S"
-  printf '{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"2026-09-11T22:02:0%dZ"}\n' "$i" >> "$S"
-  printf '{"ereignis":"schritt","name":"%s","status":"gelaufen","bytes":300,"quelle":"datei","ts":"2026-09-11T22:03:0%dZ"}\n' "$s" "$i" >> "$S"
+  printf '{"ereignis":"start","skill":"%s","erwartet":"verdichten","ts":"2026-09-11T22:%02d:01Z","code":"5.97.0","text":"5.97.0","versionsbruch":false}\n' "$s" "$((i * 2))" >> "$S"
+  printf '{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"2026-09-11T22:%02d:05Z"}\n' "$((i * 2))" >> "$S"
+  printf '{"ereignis":"schritt","name":"%s","status":"gelaufen","bytes":300,"quelle":"datei","ts":"2026-09-11T22:%02d:40Z"}\n' "$s" "$((i * 2))" >> "$S"
 done
 printf '{"ereignis":"schritt","name":"mind_agent_bilanz","status":"gelaufen","bytes":50,"ts":"2026-09-11T22:12:52Z"}\n' >> "$S"
 _A=$(mind_schritt_bilanz "$P" --alle 2>/dev/null); _ARC=$?
-janein "   Positivkontrolle: eigene Bloecke, --datei, verschiedene Sekunden, verdichten quittiert -> rc 0" 0 "$_ARC"
+janein "   Positivkontrolle: eigene Bloecke, --datei, Minuten auseinander, verdichten quittiert -> rc 0" 0 "$_ARC"
 janein "   ... ohne FORMAL-Zeile" nein "$(printf '%s\n' "$_A" | grep -q 'FORMAL' && echo ja || echo nein)"
 # (c) zwei in derselben Sekunde
-sed -i 's/"ts":"2026-09-11T22:03:02Z"/"ts":"2026-09-11T22:03:01Z"/' "$S"
+sed -i 's/"ts":"2026-09-11T22:04:40Z"/"ts":"2026-09-11T22:02:40Z"/' "$S"   # v5.116.0: Berichts-Sekunde von mind-claudemd auf die von mind-files
 _A=$(mind_schritt_bilanz "$P" --alle 2>/dev/null)
 janein "   (c) mind-claudemd in derselben Sekunde wie mind-files -> FORMAL=1" ja "$(printf '%s\n' "$_A" | grep -q 'FORMAL: mind-claudemd (dieselbe Sekunde' && echo ja || echo nein)"
 
 # --- 4g  FEHLT je Block: verdichten fehlt in EINEM inneren Skill -------------------------
-sed -i 's/"ts":"2026-09-11T22:03:01Z"/"ts":"2026-09-11T22:03:02Z"/' "$S"   # (c) zuruecknehmen
-grep -v '"name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"2026-09-11T22:02:03Z"' "$S" > "$S.tmp" && mv "$S.tmp" "$S"
+sed -i 's/"name":"mind-claudemd","status":"gelaufen","bytes":300,"quelle":"datei","ts":"2026-09-11T22:02:40Z"/"name":"mind-claudemd","status":"gelaufen","bytes":300,"quelle":"datei","ts":"2026-09-11T22:04:40Z"/' "$S"   # (c) zuruecknehmen
+grep -v '"name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"2026-09-11T22:06:05Z"' "$S" > "$S.tmp" && mv "$S.tmp" "$S"
 _A=$(mind_schritt_bilanz "$P" --alle 2>/dev/null); _ARC=$?
 janein "4g verdichten fehlt in mind-memory -> FEHLT nennt mind-memory/verdichten" ja "$(printf '%s\n' "$_A" | grep -q 'FEHLT.*mind-memory/verdichten' && echo ja || echo nein)"
 janein "   ... Rueckgabe 1 (bis v5.96.0: nur die Liste des ERSTEN Blocks zaehlte)" 1 "$_ARC"

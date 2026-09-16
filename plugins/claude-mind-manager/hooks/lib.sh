@@ -2418,10 +2418,36 @@ mind_schritt_start() {
     zeilen=$(grep -c '' "$q" 2>/dev/null)
     case "$zeilen" in ''|*[!0-9]*) zeilen=0 ;; esac
   fi
-  if [ "$kette" -eq 0 ] || [ "$zeilen" -ge 500 ] 2>/dev/null; then
-    [ "$kette" -eq 1 ] && [ "$zeilen" -ge 500 ] 2>/dev/null && \
-      mind_log WARN "schritt-quittung bei $zeilen Zeilen geleert (Notbremse, Kettenmarke liegt)"
+  # ⛔ v5.116.0 (Etappe 22 §1, Doros Creator-Lauf 16.09.2026): sie rief den Kopf-Block erst NACH
+  #    Step 2.9 — analyzed-scopes war schon .done, also kette=0 -> `: > "$q"` loeschte alle fuenf
+  #    Skill-Bloecke eines echten Laufs (4 Agenten, 2:56-6:04 min). Danach tippte sie die
+  #    Quittung aus den Berichten nach, 39 Schritte in 5 s, Bilanz 39/39, rc 0.
+  #    Jetzt: kette=0 leert NUR, wenn KEINE Startzeile juenger als 6 h in der Datei steht —
+  #    sonst wird angehaengt (WARN). Die 500-Zeilen-Bremse ROTIERT: sie behaelt die Bloecke seit
+  #    der letzten mind-all-Startzeile (ohne eine: seit der letzten Startzeile) statt zu leeren.
+  local _frisch=0 _lts _lep _jetzt
+  if [ "$kette" -eq 0 ] && [ -f "$q" ] && [ "$zeilen" -gt 0 ]; then
+    _jetzt=$(date -u +%s)
+    _lts=$(grep '"ereignis":"start"' "$q" 2>/dev/null | tail -1 | sed -n 's/.*"ts":"\([^"]*\)".*/\1/p')
+    if [ -n "$_lts" ]; then
+      _lep=$(date -u -d "$_lts" +%s 2>/dev/null)
+      case "$_lep" in ''|*[!0-9]*) _lep=0 ;; esac
+      [ $((_jetzt - _lep)) -lt 21600 ] && _frisch=1
+    fi
+  fi
+  if [ "$kette" -eq 0 ] && [ "$_frisch" -eq 1 ]; then
+    mind_log WARN "mind_schritt_start $skill: Kette ohne analyzed-scopes, letzte Startzeile juenger als 6 h ($_lts) — Datei behalten, angehaengt"
+  elif [ "$kette" -eq 0 ]; then
     : > "$q" || return 1
+  fi
+  if [ "$zeilen" -ge 500 ] 2>/dev/null; then
+    local _ab _rot="${TMPDIR:-/tmp}/.mind_schritt_rot$$"
+    _ab=$(grep -n '"ereignis":"start","skill":"mind-all"' "$q" 2>/dev/null | tail -1 | cut -d: -f1)
+    [ -n "$_ab" ] || _ab=$(grep -n '"ereignis":"start"' "$q" 2>/dev/null | tail -1 | cut -d: -f1)
+    [ -n "$_ab" ] || _ab=$zeilen
+    sed -n "${_ab},\$p" "$q" > "$_rot" 2>/dev/null && cat "$_rot" > "$q"
+    rm -f "$_rot"
+    mind_log WARN "schritt-quittung bei $zeilen Zeilen rotiert (Notbremse): Bloecke ab Zeile $_ab behalten, nichts vom letzten Lauf verloren"
   fi
   # ⛔ v5.113.0 (Etappe 20 §1, Nutzer 16.09.2026 „die sollen ihre Arbeit machen"): in der
   #    KETTE ist der Kopf-Block ERZWUNGEN, nicht geprueft. Noras Palvedo-Lauf 16.09. 16:27
@@ -2705,6 +2731,53 @@ mind_schritt_bilanz() {
         *) _sk_ts="$_sk_ts $_ts" ;;
       esac
     done
+    # ⛔ v5.116.0 (Etappe 22 §2, Doros Creator-Lauf 16.09.2026): (d) eine GETIPPTE Quittung.
+    #    Fuenf Skill-Startzeilen 15:17:27-15:17:32, 39 Schritte in fuenf Sekunden — die Bilanz
+    #    las 39/39. Reale Skills brauchen Minuten (Rita 13.09.: 3-9 min je Block). Signatur:
+    #    zwei Context-Skill-Starts weniger als MIND_SCHRITT_MIN_S (Vorgabe 60 s, gemessen an
+    #    Ritas Laeufen: kleinster Abstand 116 s) auseinander, oder >= 5 Schrittzeilen eines
+    #    Blocks innerhalb von 10 s. Dann FORMAL: <skill> (Block in n s — nachgetippt), der Lauf
+    #    ist teil, und der Block wird NEU GEFAHREN, nicht neu getippt.
+    local _min_s="${MIND_SCHRITT_MIN_S:-60}" _prev_sk="" _prev_ep=0 _ep _d _n5 _e1 _e5 _i5
+    case "$_min_s" in ''|*[!0-9]*) _min_s=60 ;; esac
+    while IFS= read -r zeile; do
+      [ -n "$zeile" ] || continue
+      _skill=$(printf '%s' "$zeile" | sed -n 's/.*"skill":"\([^"]*\)".*/\1/p')
+      _ts=$(printf '%s' "$zeile" | sed -n 's/.*"ts":"\([^"]*\)".*/\1/p')
+      case "$_skill" in mind-files|mind-claudemd|mind-memory|mind-rules|mind-update) ;; *) continue ;; esac
+      _ep=$(date -u -d "$_ts" +%s 2>/dev/null); case "$_ep" in ''|*[!0-9]*) _ep=0 ;; esac
+      if [ -n "$_prev_sk" ] && [ "$_ep" -gt 0 ] && [ "$_prev_ep" -gt 0 ]; then
+        _d=$((_ep - _prev_ep)); [ "$_d" -lt 0 ] && _d=$((0 - _d))
+        if [ "$_d" -lt "$_min_s" ]; then
+          case "$formalliste" in *"FORMAL: $_skill ("*) ;; *)
+            formal=$((formal + 1)); formalliste="${formalliste}  FORMAL: $_skill (Block in $_d s nach $_prev_sk — nachgetippt; MIND_SCHRITT_MIN_S=$_min_s)"$'\n' ;;
+          esac
+        fi
+      fi
+      _prev_sk="$_skill"; _prev_ep="$_ep"
+    done < <(grep '"ereignis":"start"' "$_bl" 2>/dev/null)
+    # >= 5 Schrittzeilen eines Blocks innerhalb von 10 s
+    if [ "$_bn" -gt 1 ]; then
+      local _sblk="${TMPDIR:-/tmp}/.mind_schritt_d$$" _sts
+      _starts=$(grep -n '"ereignis":"start"' "$_bl" | cut -d: -f1 | tr '\n' ' '); _i=1
+      for _von in $_starts; do
+        _bis=$(printf '%s\n' $_starts | sed -n "$((_i + 1))p"); _i=$((_i + 1))
+        if [ -n "$_bis" ]; then sed -n "${_von},$((_bis - 1))p" "$_bl" > "$_sblk"; else sed -n "${_von},\$p" "$_bl" > "$_sblk"; fi
+        _skill=$(head -1 "$_sblk" | sed -n 's/.*"skill":"\([^"]*\)".*/\1/p')
+        case "$_skill" in mind-files|mind-claudemd|mind-memory|mind-rules|mind-update) ;; *) continue ;; esac
+        _sts=$(grep '"ereignis":"schritt"' "$_sblk" | sed -n 's/.*"ts":"\([^"]*\)".*/\1/p')
+        _n5=$(printf '%s\n' "$_sts" | grep -c .); [ "$_n5" -ge 5 ] || continue
+        _e1=$(date -u -d "$(printf '%s\n' "$_sts" | head -1)" +%s 2>/dev/null); _e5=$(date -u -d "$(printf '%s\n' "$_sts" | tail -1)" +%s 2>/dev/null)
+        case "$_e1$_e5" in ''|*[!0-9]*) continue ;; esac
+        _d=$((_e5 - _e1)); [ "$_d" -lt 0 ] && _d=$((0 - _d))
+        if [ "$_d" -le 10 ]; then
+          case "$formalliste" in *"FORMAL: $_skill ("*) ;; *)
+            formal=$((formal + 1)); formalliste="${formalliste}  FORMAL: $_skill ($_n5 Schritte in $_d s — nachgetippt)"$'\n' ;;
+          esac
+        fi
+      done
+      rm -f "$_sblk"
+    fi
     rm -f "$_bl"
   fi
 

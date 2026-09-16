@@ -217,10 +217,13 @@ K2=$( D=$(mktemp -d); mkdir -p "$D/.claude-mind"
       for s in eins zwei; do
         mind_schritt_start "$D" "$s" a >/dev/null 2>&1
         mind_schritt a gelaufen 10 "$D" >/dev/null 2>&1
+        # v5.116.0 (Etappe 22 §1): ohne Kette wird nur geleert, wenn der Bestand aelter als 6 h ist —
+        # ein frischer Lauf bleibt (Doros Fall). Das Fixture macht den ersten Block 3 Tage alt.
+        sed -i "s/\"ts\":\"[^\"]*\"/\"ts\":\"$(date -u -d '-3 days' +%Y-%m-%dT%H:%M:%SZ)\"/g" "$D/.claude-mind/schritt-quittung.jsonl"
       done
       grep -c '"ereignis":"start"' "$D/.claude-mind/schritt-quittung.jsonl"
       rm -rf "$D" )
-janein "⭐ GEGENPROBE: ohne Kette wird geleert" "1" "$K2"
+janein "⭐ GEGENPROBE: ohne Kette wird geleert (Altbestand > 6 h)" "1" "$K2"
 
 echo
 echo "== ⭐ RITAS LAUF, NACHGESTELLT (die Auflage, die zaehlt) =="

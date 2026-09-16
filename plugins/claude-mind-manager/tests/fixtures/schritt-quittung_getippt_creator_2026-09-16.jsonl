@@ -1,0 +1,60 @@
+{"ereignis":"start","skill":"mind-all","erwartet":"arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter","ts":"2026-09-16T15:13:42Z","code":"5.112.0","text":"5.112.0","versionsbruch":false}
+{"ereignis":"start","skill":"mind-files","erwartet":"bestandszahlen_kandidaten cleaner_stichprobe mind_check_tools_have_rules mind_hook_health mind_kontext_bilanz mind_snapshot verdichten","ts":"2026-09-16T15:17:27Z","code":"5.112.0","text":"5.112.0","versionsbruch":false}
+{"ereignis":"schritt","name":"mind_hook_health","status":"gelaufen","bytes":0,"ts":"2026-09-16T15:17:27Z"}
+{"ereignis":"schritt","name":"mind_kontext_bilanz","status":"gelaufen","bytes":195,"quelle":"datei","ts":"2026-09-16T15:17:27Z"}
+{"ereignis":"schritt","name":"mind_snapshot","status":"uebersprungen:kette-aktiv","bytes":0,"ts":"2026-09-16T15:17:27Z"}
+{"ereignis":"schritt","name":"bestandszahlen_kandidaten","status":"gelaufen","bytes":237,"quelle":"datei","ts":"2026-09-16T15:17:27Z"}
+{"ereignis":"schritt","name":"cleaner_stichprobe","status":"gelaufen","bytes":274,"quelle":"datei","ts":"2026-09-16T15:17:27Z"}
+{"ereignis":"schritt","name":"mind_check_tools_have_rules","status":"gelaufen","bytes":97,"quelle":"datei","ts":"2026-09-16T15:17:28Z"}
+{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"2026-09-16T15:17:28Z"}
+{"ereignis":"schritt","name":"mind-files","status":"gelaufen","bytes":3258,"quelle":"datei","ts":"2026-09-16T15:17:28Z"}
+{"ereignis":"start","skill":"mind-claudemd","erwartet":"bestandszahlen_kandidaten claudemd_pipeline cleaner_duplikate cleaner_stichprobe cleaner_urteile mind_check_tools_have_rules mind_kontext_bilanz mind_snapshot verdichten","ts":"2026-09-16T15:17:28Z","code":"5.112.0","text":"5.112.0","versionsbruch":false}
+{"ereignis":"schritt","name":"claudemd_pipeline","status":"gelaufen","bytes":2153,"quelle":"datei","ts":"2026-09-16T15:17:28Z"}
+{"ereignis":"schritt","name":"bestandszahlen_kandidaten","status":"gelaufen","bytes":237,"quelle":"datei","ts":"2026-09-16T15:17:28Z"}
+{"ereignis":"schritt","name":"cleaner_duplikate","status":"gelaufen","bytes":860,"quelle":"datei","ts":"2026-09-16T15:17:28Z"}
+{"ereignis":"schritt","name":"cleaner_stichprobe","status":"gelaufen","bytes":164,"quelle":"datei","ts":"2026-09-16T15:17:29Z"}
+{"ereignis":"schritt","name":"cleaner_urteile","status":"uebersprungen:keine-duplikat-kandidaten","bytes":0,"ts":"2026-09-16T15:17:29Z"}
+{"ereignis":"schritt","name":"mind_check_tools_have_rules","status":"gelaufen","bytes":97,"quelle":"datei","ts":"2026-09-16T15:17:29Z"}
+{"ereignis":"schritt","name":"mind_kontext_bilanz","status":"gelaufen","bytes":190,"quelle":"datei","ts":"2026-09-16T15:17:29Z"}
+{"ereignis":"schritt","name":"mind_snapshot","status":"uebersprungen:kette-aktiv","bytes":0,"ts":"2026-09-16T15:17:29Z"}
+{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kandidat-video-produktionsablauf-bereits-in-mind-rules-carl-datei","bytes":0,"ts":"2026-09-16T15:17:29Z"}
+{"ereignis":"schritt","name":"mind-claudemd","status":"gelaufen","bytes":2726,"quelle":"datei","ts":"2026-09-16T15:17:29Z"}
+{"ereignis":"start","skill":"mind-memory","erwartet":"bestandszahlen_kandidaten cleaner_stichprobe mind_debug_write mind_kontext_bilanz mind_scan_poisoning mind_snapshot verdichten","ts":"2026-09-16T15:17:30Z","code":"5.112.0","text":"5.112.0","versionsbruch":false}
+{"ereignis":"schritt","name":"mind_scan_poisoning","status":"gelaufen","bytes":71,"quelle":"datei","ts":"2026-09-16T15:17:30Z"}
+{"ereignis":"schritt","name":"bestandszahlen_kandidaten","status":"gelaufen","bytes":237,"quelle":"datei","ts":"2026-09-16T15:17:30Z"}
+{"ereignis":"schritt","name":"cleaner_stichprobe","status":"gelaufen","bytes":370,"quelle":"datei","ts":"2026-09-16T15:17:30Z"}
+{"ereignis":"schritt","name":"mind_kontext_bilanz","status":"gelaufen","bytes":190,"quelle":"datei","ts":"2026-09-16T15:17:30Z"}
+{"ereignis":"schritt","name":"mind_debug_write","status":"uebersprungen:keine-befunde-fuer-debugordner","bytes":0,"ts":"2026-09-16T15:17:30Z"}
+{"ereignis":"schritt","name":"mind_snapshot","status":"uebersprungen:kette-aktiv","bytes":0,"ts":"2026-09-16T15:17:30Z"}
+{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:groesste-datei-messgroessen-die-taeuschen-gehoert-hilde-nicht-editiert","bytes":0,"ts":"2026-09-16T15:17:31Z"}
+{"ereignis":"schritt","name":"mind-memory","status":"gelaufen","bytes":2933,"quelle":"datei","ts":"2026-09-16T15:17:31Z"}
+{"ereignis":"start","skill":"mind-rules","erwartet":"bestandsaufnahme bestandszahlen_kandidaten cleaner_duplikate cleaner_stichprobe ladeprotokoll_auswertung mind_kontext_bilanz mind_snapshot verdichten","ts":"2026-09-16T15:17:31Z","code":"5.112.0","text":"5.112.0","versionsbruch":false}
+{"ereignis":"schritt","name":"bestandsaufnahme","status":"gelaufen","bytes":2387,"quelle":"datei","ts":"2026-09-16T15:17:31Z"}
+{"ereignis":"schritt","name":"bestandszahlen_kandidaten","status":"gelaufen","bytes":712,"quelle":"datei","ts":"2026-09-16T15:17:31Z"}
+{"ereignis":"schritt","name":"cleaner_duplikate","status":"gelaufen","bytes":860,"quelle":"datei","ts":"2026-09-16T15:17:31Z"}
+{"ereignis":"schritt","name":"cleaner_stichprobe","status":"gelaufen","bytes":321,"quelle":"datei","ts":"2026-09-16T15:17:31Z"}
+{"ereignis":"schritt","name":"ladeprotokoll_auswertung","status":"gelaufen","bytes":4362,"quelle":"datei","ts":"2026-09-16T15:17:32Z"}
+{"ereignis":"schritt","name":"mind_kontext_bilanz","status":"gelaufen","bytes":190,"quelle":"datei","ts":"2026-09-16T15:17:32Z"}
+{"ereignis":"schritt","name":"mind_snapshot","status":"uebersprungen:kette-aktiv","bytes":0,"ts":"2026-09-16T15:17:32Z"}
+{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:datei-gehoert-carl-nicht-editiert","bytes":0,"ts":"2026-09-16T15:17:32Z"}
+{"ereignis":"schritt","name":"mind-rules","status":"gelaufen","bytes":2781,"quelle":"datei","ts":"2026-09-16T15:17:32Z"}
+{"ereignis":"start","skill":"mind-update","erwartet":"bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten","ts":"2026-09-16T15:17:32Z","code":"5.112.0","text":"5.112.0","versionsbruch":false}
+{"ereignis":"schritt","name":"bestandszahlen_kandidaten","status":"gelaufen","bytes":712,"quelle":"datei","ts":"2026-09-16T15:17:32Z"}
+{"ereignis":"schritt","name":"claudemd_pipeline","status":"gelaufen","bytes":2153,"quelle":"datei","ts":"2026-09-16T15:17:33Z"}
+{"ereignis":"schritt","name":"cleaner_stichprobe","status":"gelaufen","bytes":196,"quelle":"datei","ts":"2026-09-16T15:17:33Z"}
+{"ereignis":"schritt","name":"mind_agent_bilanz","status":"gelaufen","bytes":50,"quelle":"datei","ts":"2026-09-16T15:17:33Z"}
+{"ereignis":"schritt","name":"mind_kontext_bilanz","status":"gelaufen","bytes":190,"quelle":"datei","ts":"2026-09-16T15:17:33Z"}
+{"ereignis":"schritt","name":"mind_snapshot","status":"uebersprungen:kette-aktiv","bytes":0,"ts":"2026-09-16T15:17:33Z"}
+{"ereignis":"schritt","name":"session_sampler","status":"gelaufen","bytes":25,"ts":"2026-09-16T15:17:33Z"}
+{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kandidaten-fremde-datei","bytes":0,"ts":"2026-09-16T15:17:33Z"}
+{"ereignis":"schritt","name":"mind-update","status":"gelaufen","bytes":6300,"quelle":"datei","ts":"2026-09-16T15:17:33Z"}
+{"ereignis":"schritt","name":"debug_auswertung","status":"gelaufen","bytes":49,"quelle":"datei","ts":"2026-09-16T15:17:52Z"}
+{"ereignis":"schritt","name":"arbeitsstand_render","status":"gelaufen","bytes":24386,"quelle":"datei","ts":"2026-09-16T15:17:53Z"}
+{"ereignis":"schritt","name":"mind_agent_bilanz","status":"gelaufen","bytes":50,"quelle":"datei","ts":"2026-09-16T15:17:53Z"}
+{"ereignis":"schritt","name":"mind_check_tools_have_rules","status":"gelaufen","bytes":97,"quelle":"datei","ts":"2026-09-16T15:17:53Z"}
+{"ereignis":"schritt","name":"mind_debug_write","status":"gelaufen","bytes":4136,"quelle":"datei","ts":"2026-09-16T15:17:53Z"}
+{"ereignis":"schritt","name":"mind_hook_health","status":"gelaufen","bytes":61,"quelle":"datei","ts":"2026-09-16T15:17:53Z"}
+{"ereignis":"schritt","name":"mind_snapshot","status":"gelaufen","bytes":76,"quelle":"datei","ts":"2026-09-16T15:17:53Z"}
+{"ereignis":"schritt","name":"mind_zeilenenden_waechter","status":"gelaufen","bytes":41,"quelle":"datei","ts":"2026-09-16T15:17:54Z"}
+{"ereignis":"schritt","name":"debug_auswertung","status":"gelaufen","bytes":51,"quelle":"datei","ts":"2026-09-16T15:18:14Z"}
+{"ereignis":"schritt","name":"mind_hook_health","status":"gelaufen","bytes":61,"quelle":"datei","ts":"2026-09-16T15:19:30Z"}
