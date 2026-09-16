@@ -223,8 +223,22 @@ janein "umfang-String statt Pfad -> rc 3" rc3 "$(voll_p "5/5 skills 3/4 agents 5
 janein "leeres Argument -> rc 3" rc3 "$(voll_p "")"
 janein "Verzeichnis statt Datei -> rc 3" rc3 "$(voll_p "$P/.claude-mind/rescued")"
 janein "   ... WARN auf stderr nennt den Aufruffehler" ja "$(mind_sync_voll "5/5 skills" 2>&1 >/dev/null | grep -q 'kein Dateipfad' && echo ja || echo nein)"
+# --- 7c · v5.113.1: Pfade MIT Leerzeichen — jedes Projekt hier (`Plugin - Entwicklung`, `APP - Palvedo`).
+#     5.113.0 lehnte sie mit `*[[:space:]]*` ab (rc 3 am existierenden Palvedo-Merker, Anton 16.09.):
+#     pre-compact haette bei jeder Kompaktierung Schuld angelegt, 2.96a-R waere endlos gelaufen.
+PS="$P/APP - Palvedo/.claude-mind/rescued"; mkdir -p "$PS"
+printf 'ts=x\numfang=5/5 skills 4/4 agents 5/5 bestand 5/5 echt\nungepruef=\n' > "$PS/sync-stand"
+janein "voller Merker unter Pfad MIT Leerzeichen -> voll (nicht rc 3)" voll "$(voll_p "$PS/sync-stand")"
+printf 'ts=x\numfang=5/5 skills 0/4 agents\nungepruef=\n' > "$PS/sync-stand"
+janein "   ... Teil-Merker unter Pfad MIT Leerzeichen -> teil" teil "$(voll_p "$PS/sync-stand")"
+rm -f "$PS/sync-stand"
+janein "   ... fehlender Merker in existierendem Ordner mit Leerzeichen -> voll (kein Merker)" voll "$(voll_p "$PS/sync-stand")"
+janein "   ... Elternordner fehlt -> rc 3" rc3 "$(voll_p "$P/gibt es nicht/sync-stand")"
+# pre-compact: rc 3 ist AUFRUFFEHLER, Text-Gates
+janein "pre-compact: rc 3 -> grund=aufruffehler, nicht teilsync" ja "$(grep -q 'SYNC_LIEF_SCHON="aufruffehler"' "$CLAUDE_PLUGIN_ROOT/hooks/pre-compact.sh" && grep -q 'echo "grund=aufruffehler"' "$CLAUDE_PLUGIN_ROOT/hooks/pre-compact.sh" && echo ja || echo nein)"
+janein "mind-all 2.96a: rc 3 -> AUFRUFFEHLER, kein Reparatur-Pass" ja "$(grep -q 'elif \[ "$_SV_RC" -eq 3 \]; then' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && echo ja || echo nein)"
 # Text-Gate §4a: das Urteil ist mind_sync_voll auf dem frischen Merker, kein teil-Merker bleibt
-janein "mind-all 2.96a: SYNC_LIEF ist mind_sync_voll auf dem geschriebenen sync-stand" ja "$(grep -q 'if mind_sync_voll "$PROJ/.claude-mind/rescued/sync-stand"; then SYNC_LIEF="ja"; else' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && echo ja || echo nein)"
+janein "mind-all 2.96a: SYNC_LIEF ist mind_sync_voll auf dem geschriebenen sync-stand" ja "$(grep -q 'mind_sync_voll "$PROJ/.claude-mind/rescued/sync-stand"; _SV_RC=$?' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && grep -q 'if \[ "$_SV_RC" -eq 0 \]; then SYNC_LIEF="ja"' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && echo ja || echo nein)"
 janein "mind-all 2.96a-R: ab Pass 3 warten (60 s x Pass, Deckel 600), nie abbrechen" ja "$(grep -q 'if \[ "$_PASS" -ge 3 \]; then _W=$((60 \* _PASS)); \[ "$_W" -gt 600 \] && _W=600' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && echo ja || echo nein)"
 janein "mind-all 2.96: OPEN nur nach mind_sync_voll rc 0, alle RESUME (mind_schuld_begleichen)" ja "$(grep -q '&& mind_sync_voll "$PROJ/.claude-mind/rescued/sync-stand"; then' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && grep -q 'mind_schuld_begleichen "$PROJ"' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && ! grep -v '^ *#' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" | grep -q "RF=\$(grep -m1 '^resume='" && echo ja || echo nein)"   # gezaehlt wird die AUSFUEHRBARE Zeile, nicht die Erwaehnung im Kommentar
 rm -rf "$P"

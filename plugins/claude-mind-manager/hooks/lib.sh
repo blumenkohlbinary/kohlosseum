@@ -1190,21 +1190,24 @@ mind_sync_voll() {
   local stand="${1:-}" u paar a b teil=0 _glob=0 _ung
   # ⛔ v5.113.0 (Etappe 20 §5a, Noras Lauf 11): ein FALSCHES Argument ist kein Merker.
   #    `mind_sync_voll "$UMFANG"` (der String statt des Pfads) fiel an `[ -f ]` vorbei
-  #    und sagte still rc 0 = voll. Leer, mit Leerzeichen oder ein Verzeichnis -> rc 3 + WARN.
-  #    Der Fail-safe bleibt fuer die DATEI: ein fehlender Merker unter einem Pfad ist
-  #    „kein Merker" (rc 0, test_teilsync Fall 7), ein Merker ohne umfang= gilt als voll.
-  case "$stand" in
-    ''|*[[:space:]]*)
+  #    und sagte still rc 0 = voll. Leer, ein Verzeichnis oder ein Elternordner, den es nicht
+  #    gibt -> rc 3 + WARN. Der Fail-safe bleibt fuer die DATEI: ein fehlender Merker in einem
+  #    existierenden Ordner ist „kein Merker" (rc 0, test_teilsync Fall 7), ein Merker ohne
+  #    umfang= gilt als voll.
+  # ⛔ v5.113.1: die 5.113.0-Fassung lehnte mit `*[[:space:]]*` JEDEN Pfad mit Leerzeichen ab —
+  #    `Plugin - Entwicklung`, `APP - Palvedo`: jedes Projekt hier. Gemessen von Anton am
+  #    existierenden Palvedo-Merker (rc 3): pre-compact haette bei jeder Kompaktierung Schuld
+  #    angelegt, mind-all 2.96a waere in 2.96a-R endlos gelaufen. Die EXISTIERENDE Datei geht
+  #    deshalb zuerst und ohne jede Formpruefung (shell-windows.md: „zerlegt an jedem
+  #    Leerzeichen — `Plugin - Entwicklung` hat eins").
+  if [ ! -f "$stand" ]; then
+    if [ -z "$stand" ] || [ -d "$stand" ] || [ ! -d "$(dirname "$stand")" ]; then
       mind_log WARN "mind_sync_voll: kein Dateipfad: '$stand' (rc 3)"
       echo "⛔ mind_sync_voll: kein Dateipfad, sondern '$stand' — Aufruffehler, kein Urteil (rc 3)." >&2
-      return 3 ;;
-  esac
-  if [ -d "$stand" ]; then
-    mind_log WARN "mind_sync_voll: Verzeichnis statt Datei: '$stand' (rc 3)"
-    echo "⛔ mind_sync_voll: '$stand' ist ein Verzeichnis — Aufruffehler, kein Urteil (rc 3)." >&2
-    return 3
+      return 3
+    fi
+    return 0
   fi
-  [ -f "$stand" ] || return 0
 
   # v5.21.1: `ungepruef=` ist Teil des Urteils, nicht nur Beiwerk.
   #    Bis hierher entschied AUSSCHLIESSLICH `umfang=`. Gemessen am eigenen

@@ -51,7 +51,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.113.0"
+MIND_SKILL_VERSION="5.113.1"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 # ⛔ v5.98.0: die fuenf Skills sind KEINE Schritte von mind-all — jeder hat seinen EIGENEN
 #    Start-Block (Step 2, Punkt 1). Bis v5.97.0 standen sie hier, Ritas Kalibrierlauf hakte
@@ -912,7 +912,15 @@ if [ "$DRY_RUN" = "no" ] && [ "$SYNC_LIEF" = "ja" ]; then
   #    mind_sync_voll rc 1, und SYNC_LIEF stand trotzdem auf ja — OPEN getilgt, letzter-sync
   #    geschrieben, zu Unrecht. Sagt es teil, bleibt KEIN teil-Merker liegen (Nutzer 16.09.):
   #    zurueck nach 2.96a-R, die Eintraege abarbeiten, diesen Block erneut.
-  if mind_sync_voll "$PROJ/.claude-mind/rescued/sync-stand"; then SYNC_LIEF="ja"; else
+  mind_sync_voll "$PROJ/.claude-mind/rescued/sync-stand"; _SV_RC=$?
+  if [ "$_SV_RC" -eq 0 ]; then SYNC_LIEF="ja"
+  elif [ "$_SV_RC" -eq 3 ]; then
+    # ⛔ v5.113.1: rc 3 ist ein AUFRUFFEHLER (Pfad falsch, Ordner fehlt) — KEIN teil, KEIN
+    #    Reparatur-Pass: 2.96a-R kann daran nichts reparieren, die Schleife liefe endlos.
+    #    Melden, Merker entfernen, den Pfad pruefen (PROJ, .claude-mind/rescued vorhanden?).
+    SYNC_LIEF="nein"; rm -f "$PROJ/.claude-mind/rescued/sync-stand"
+    echo "⛔ AUFRUFFEHLER: mind_sync_voll rc 3 auf $PROJ/.claude-mind/rescued/sync-stand — kein Urteil. Pfad und Ordner pruefen; OPEN bleibt, kein letzter-sync."
+  else
     SYNC_LIEF="teil"; rm -f "$PROJ/.claude-mind/rescued/sync-stand"
     echo "⛔ Der geschriebene Merker ist TEIL (mind_sync_voll) — entfernt. Zurueck nach 2.96a-R: ${UNGEPRUEFT:-?}"
   fi

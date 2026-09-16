@@ -152,7 +152,13 @@ if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
       #    jedes Mal verschwand der ungepruefte Bereich spurlos.
       SYNC_LIEF_SCHON="nein"; TEIL_UNGEPRUEFT=""
       if [ -f "$RESCUE_DIR/sync-stand" ]; then
-        if mind_sync_voll "$RESCUE_DIR/sync-stand"; then
+        # ⛔ v5.113.1: rc 3 ist ein AUFRUFFEHLER (Pfad falsch), kein Teilsync — er wird
+        #    gemeldet und erzeugt Schuld mit grund=aufruffehler, nie „teil" mit ungepruef=.
+        mind_sync_voll "$RESCUE_DIR/sync-stand"; _SV_RC=$?
+        if [ "$_SV_RC" -eq 3 ]; then
+          SYNC_LIEF_SCHON="aufruffehler"
+          mind_log WARN "mind_sync_voll rc 3 (Aufruffehler) auf $RESCUE_DIR/sync-stand -> Schuld entsteht, grund=aufruffehler"
+        elif [ "$_SV_RC" -eq 0 ]; then
           SYNC_LIEF_SCHON="ja"
           mind_log "Sync lief vor dieser Kompaktierung -> keine neue Schuld"
           # ⛔ v5.88.0 — DER ZEITBEZUG (6. Vorkommen der Merker-Klasse, hooks.md):
@@ -287,6 +293,8 @@ if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
             echo "ungepruef=${TEIL_UNGEPRUEFT:-unbekannt}"
           elif [ "$SYNC_LIEF_SCHON" = "nach-sync" ]; then
             echo "grund=nach-sync"
+          elif [ "$SYNC_LIEF_SCHON" = "aufruffehler" ]; then
+            echo "grund=aufruffehler"
           fi
         } >> "$RESCUE_DIR/OPEN" 2>/dev/null
         # Neue Rettung -> in JEDER Sitzung neu ankuendigen, Notausgang-Zaehler auf 0
