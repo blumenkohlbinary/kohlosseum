@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # test_cleaner_memory.sh — v5.107.0 (Etappe 15): Memory ist Bestand im /mind-cleaner,
 # zwei Werkzeugfehler aus dem Zustellplan-Lauf, CLAUDE_PLUGIN_ROOT-Rueckfall.
 #

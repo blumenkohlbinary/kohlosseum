@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # WAS DER SNAPSHOT NICHT ABDECKT (v5.21.3)
 #
 # ⛔ BEFUND aus `Pc Forschung`, 26.08.2026 23:02:

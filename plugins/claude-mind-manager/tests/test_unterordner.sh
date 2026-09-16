@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # =============================================================================
 #  UNTERORDNER-AUFBAU — das Projekt ist der Ordner mit dem Roster  (NEU v5.80.0)
 # =============================================================================

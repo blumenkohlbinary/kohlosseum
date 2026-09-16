@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # KONTEXT-TOR (v5.26.0) — die neun Fragen, bevor eine Zeile Dauerkontext kostet.
 #
 # ⛔ DER ANLASS, woertlich vom Nutzer am 30.08.2026:

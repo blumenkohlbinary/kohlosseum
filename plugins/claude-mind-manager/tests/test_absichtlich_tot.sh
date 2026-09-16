@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # ABSICHTLICH TOTE PFADE (v5.21.2) — N1 aus plan.md
 #
 # ⛔ DER FALL, gemessen 26.08.2026 an `.claude/rules/hooks.md`:

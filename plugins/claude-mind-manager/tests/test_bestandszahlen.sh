@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # =============================================================================
 #  ART 6 — der Kandidaten-Lister fuer ungegatete Bestandszahlen  (NEU v5.79.0)
 # =============================================================================

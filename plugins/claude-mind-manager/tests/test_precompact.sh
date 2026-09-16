@@ -1,4 +1,5 @@
 #!/bin/bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # pre-compact.sh ist der EINZIGE Hook, der den Chat vor der Kompaktierung rettet.
 # Bricht er, merkt es niemand: die Kompaktierung laeuft durch, der Chat ist weg.
 #

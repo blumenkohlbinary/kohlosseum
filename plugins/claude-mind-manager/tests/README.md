@@ -15,8 +15,16 @@
 
 ```bash
 export CLAUDE_PLUGIN_ROOT=~/.claude/plugins/cache/kohlosseum/claude-mind-manager/<version>
-bash "$CLAUDE_PLUGIN_ROOT/tests/alle.sh"
+CLAUDE_PROJECT_DIR="<Workspace Claude Mind Manager>" bash "$CLAUDE_PLUGIN_ROOT/tests/alle.sh"
 ```
+
+⛔ **`CLAUDE_PROJECT_DIR` ist der WORKSPACE** (`Claude Mind Manager`, mit `tools/`, `Learnings/`,
+`.claude/archiv/`) — nicht das Plugin-Verzeichnis: mit dem Plugin-Pfad ueberspringen
+`test_bestandspass.sh` und `test_verdichten.sh` je einen Fall still, und `test_d1_wohin.py`
+meldet seit v5.114.0 rc 3 „nicht messbar" statt gruen.
+⭐ **Seit v5.114.0 liegt JEDES Fixture unter einem Pfad MIT Leerzeichen** (`<Temp>/Mind Test <pid>/`,
+`tests/lib_test.sh`, von jeder Sammlung gesourct): v5.113.0 war 75/75 gruen und brach an jedem
+echten Projektpfad, weil kein Fixture eines hatte.
 
 ⛔ **Seit v5.13.0 ist das der EINZIGE richtige Aufruf.** Hier stand bis v5.12.0 eine Liste
 von fünf einzelnen Aufrufen — wer sie abarbeitete, hatte danach das Gefühl, alles geprüft zu

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # Der Deckel-Anker (v5.47.0) — die Schuld, die viele kleine Schritte ueberlebt.
 #
 # ⛔ DER FALL, FUER DEN ER GEBAUT IST, IST FALL 3. Bis v5.46.0 schrieb

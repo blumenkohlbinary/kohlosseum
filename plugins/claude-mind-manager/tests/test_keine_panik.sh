@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # Kein Hook darf behaupten, das Kontextfenster sei voll (v5.9.3).
 #
 # ⛔ NUTZERBEFUND 21.08.2026, woertlich:

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # LEITPLANKE + GATE 5 (v5.24.0) — was `cleaner_umzug.py` bisher durchliess.
 #
 # ⛔ DER ANLASS, gemessen am eigenen Lauf 28.08.2026. `cleaner_umzug.py` sagt im

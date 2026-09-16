@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # Teilsync ist verboten — aber gemessen wird HINTERHER (v5.64.0).
 #
 # ⛔ NUTZER-ENTSCHEIDUNG 10.09.2026, woertlich: "die sollen garnicht mehr tokens

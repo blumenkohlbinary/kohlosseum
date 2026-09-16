@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # `ungepruef=` IST TEIL DES URTEILS (v5.21.1)
 #
 # ⛔ GEMESSEN im eigenen /mind-all-Lauf vom 26.08.2026:

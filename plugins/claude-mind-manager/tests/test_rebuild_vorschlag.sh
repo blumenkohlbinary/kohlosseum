@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # VORSCHLAGSMODUS von cleaner_rebuild (v5.29.0) — er war TOT.
 #
 # ⛔ DER DEFEKT, am Code gefunden (`cleaner_rebuild.py:160`):

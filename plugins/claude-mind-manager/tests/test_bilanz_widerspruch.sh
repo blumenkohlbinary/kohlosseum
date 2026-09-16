@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # v5.42.0: ERGEBNIS ohne DISPATCH ist ein eigener Zustand, keine Abwesenheit.
 #
 # ⛔ DER FEHLER. `mind_agent_bilanz` meldete bei DISPATCH=0 "kein einziger Agent

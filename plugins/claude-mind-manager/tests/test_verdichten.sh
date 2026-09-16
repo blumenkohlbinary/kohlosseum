@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # =============================================================================
 #  VERDICHTEN — das Gate nach dem Agenten  (NEU v5.78.0)
 # =============================================================================

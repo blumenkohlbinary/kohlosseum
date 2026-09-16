@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # =============================================================================
 #  DIE ROTATIONS-RATSCHE — ungelesene Rettungen rotieren nicht  (NEU v5.86.0)
 # =============================================================================

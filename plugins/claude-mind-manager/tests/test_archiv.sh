@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # ARCHIV JE SATZ (v5.21.0) — Kuerzen heisst Verschieben, nicht Loeschen.
 #
 # ⛔ WAS VORHER FEHLTE, gefunden im Plan-Review am 25.08.2026:

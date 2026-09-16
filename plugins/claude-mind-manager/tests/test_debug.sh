@@ -1,4 +1,5 @@
 #!/bin/bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # Pruefstand fuer den zentralen Debug-Ordner (Teil 2, v5.7.0).
 #
 # Die entscheidende Frage ist NICHT "wird geschrieben?", sondern:

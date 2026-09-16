@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # REBUILD — KUERZEN DURCH VERSCHIEBEN (v5.21.0), L11 aus
 # PLAN-mind-cleaner-vollstaendig.md
 #

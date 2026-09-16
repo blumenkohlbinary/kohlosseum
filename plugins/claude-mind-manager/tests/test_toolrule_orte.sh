@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # TOOL->RULE: DRITTER ORT UND AKTUALITAETS-VERDACHT (v5.21.2)
 #
 # B5 ⛔ `mind_check_tools_have_rules` sah NUR `tools/` und die Projektwurzel.

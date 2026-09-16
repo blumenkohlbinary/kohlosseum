@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # NEUN ABLAGEN STATT VIER (v5.21.0) — L4 aus PLAN-mind-cleaner-vollstaendig.md
 #
 # ⛔ WAS VORHER FEHLTE: dein AUDIT-Prompt vom 24.08.2026 nennt woertlich

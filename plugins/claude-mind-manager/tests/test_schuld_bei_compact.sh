@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # Die Sync-Schuld trägt jetzt ALLES allein (v5.65.0).
 #
 # ⛔ WAS DIESE SAMMLUNG WAR (v5.50.0): `prompt-submit.sh` ist eine Kette aus

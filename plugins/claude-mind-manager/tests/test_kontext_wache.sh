@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # KONTEXT-WACHE (v5.33.0) — meldet Wachstum, das an den Commands vorbei entsteht.
 #
 # ⛔ DER ANLASS IST GEMESSEN, nicht vermutet. Ueber die Git-Historie des Projekts

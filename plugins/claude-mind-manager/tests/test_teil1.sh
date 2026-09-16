@@ -1,4 +1,5 @@
 #!/bin/bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # Pruefstand fuer den 800k-Ablauf (Teil 1, v5.7.0).
 #
 # Die Fragen, die zaehlen:

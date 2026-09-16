@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # =============================================================================
 #  Das Negativfall-Gate — kann die Sperre selbst rot werden?  (NEU v5.14.0)
 # =============================================================================

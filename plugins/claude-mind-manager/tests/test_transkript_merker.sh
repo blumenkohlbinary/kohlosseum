@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # Das eigene Transkript — direkt adressiert statt über einen Merker (v5.66.0).
 #
 # ⛔ WAS DIESE SAMMLUNG WAR (v5.38.0): `.claude-mind/transkript-pfad` ist EINE

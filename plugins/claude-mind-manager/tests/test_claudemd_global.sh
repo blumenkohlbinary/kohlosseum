@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # MIND-CLAUDEMD, BEREICH `global` (v5.23.0) — ein Modus, der deklariert und nie
 # umgesetzt war.
 #

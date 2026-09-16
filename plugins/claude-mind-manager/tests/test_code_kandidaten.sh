@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # CODE-KANDIDATEN (v5.21.0) — L1 aus PLAN-mind-cleaner-vollstaendig.md
 #
 # Nutzer-Szenario 1 vom 24.08.2026, praezisiert am 25.08.:

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # SPERRE GEGEN PARALLELE /mind-all-LAEUFE (v5.30.0) — zwei Teile, beide noetig.
 #
 # ⛔ DER BEFUND kam aus dem Projekt `Creator` (30.08.2026) und ist HIER

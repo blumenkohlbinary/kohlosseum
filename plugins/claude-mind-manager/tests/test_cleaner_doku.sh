@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # CLEANER-DOKU (v5.21.0) — drei Aussagen, die falsch waren.
 #
 # L2  `SKILL.md:305` sagte „NIE kuerzen" — ohne Nutzer-Zuschreibung und im

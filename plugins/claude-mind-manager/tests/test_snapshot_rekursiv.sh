@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # SNAPSHOT REKURSIV (v5.21.0) — das Netz muss so weit reichen wie die Leser.
 #
 # ⛔ DER ANLASS, gemessen: am 23.08.2026 kamen **267 von 920** Ladevorgaengen aus

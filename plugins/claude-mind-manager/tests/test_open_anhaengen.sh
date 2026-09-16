@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # OPEN wird nur noch ANGEHAENGT (v5.56.0) — gleichzeitige Kompaktierungen.
 #
 # ⛔ DER FALL, FUER DEN ES GEBAUT IST, IST FALL 3. Bis v5.55.0 las

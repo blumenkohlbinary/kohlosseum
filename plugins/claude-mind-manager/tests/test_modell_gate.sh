@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # Punkt 19 (v5.37.0): kein Sync-Zwang unter einem ausgenommenen Modell.
 #
 # NUTZER-ENTSCHEIDUNG 04.09.2026: "wenn der fable aktiviert ist soll er kein

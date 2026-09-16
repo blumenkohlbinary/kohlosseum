@@ -96,7 +96,13 @@ ROT=()
 UEBERSPRUNGEN=0     # v5.73.0 — fiel bisher in KEINE Spalte
 MIT_SKIP=()
 NICHT_GEFAHREN=()
-LOGDIR="${TMPDIR:-/tmp}/mind-tests-$$"
+# ⛔ v5.114.0 (Etappe 21 §1): der GANZE Lauf legt seine Fixtures unter einem Pfad MIT
+#    Leerzeichen an — `mktemp -d` und Pythons tempfile nehmen $TMPDIR. Grund und Falle:
+#    tests/lib_test.sh (jede Sammlung sourct es und tut dasselbe, wenn sie allein laeuft).
+_MT_BASIS=$(cygpath -m "${TEMP:-${TMP:-/tmp}}" 2>/dev/null) || _MT_BASIS="${TMPDIR:-/tmp}"
+export TMPDIR="${_MT_BASIS%/}/Mind Test $$"
+mkdir -p "$TMPDIR"
+LOGDIR="$TMPDIR/mind-tests-$$"
 mkdir -p "$LOGDIR"
 
 for f in "${GEFUNDEN[@]}"; do

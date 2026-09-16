@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # ROLLBACK-LAYOUT (v5.21.0) — der Rueckweg war kaputt, nicht knapp.
 #
 # ⛔ ZWEI FEHLER UEBEREINANDER, gefunden im Plan-Review am 25.08.2026:

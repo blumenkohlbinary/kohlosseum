@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # test_unterordner_bestand.sh — v5.106.0 (Etappe 14 §1): im Rollen-Aufbau gehoeren die
 # CLAUDE.md und Rules der Roster-Unterordner zum Bestand von mind-claudemd, mind-rules,
 # mind-update und zum Snapshot.

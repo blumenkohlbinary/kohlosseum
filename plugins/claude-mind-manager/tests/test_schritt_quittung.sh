@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # SCHRITT-QUITTUNG (v5.25.0) — fuehrt ein Lauf aus, was in seinem Skill steht?
 #
 # ⛔ DER ANLASS ist ein eigener /mind-cleaner-Lauf am 30.08.2026: vollstaendig

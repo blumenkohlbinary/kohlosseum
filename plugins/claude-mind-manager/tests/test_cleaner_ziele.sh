@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # test_cleaner_ziele.sh — v5.108.0 (Etappe 16): DOCS und RULE-PATHS als Klassen, --ziel docs,
 # ERREICHBARKEIT-Ausnahme, paths-Sonde.
 #

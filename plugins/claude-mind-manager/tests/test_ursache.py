@@ -15,6 +15,10 @@
    (das zwänge zum Raten), und ein unbekannter Wert darf NICHT still in
    `sonstiges` verschwinden (dort verschwände jeder Tippfehler).
 """
+import os as _os, tempfile as _tf  # v5.114.0 (Etappe 21 §1): Fixtures unter einem Pfad MIT Leerzeichen
+if " " not in (_os.environ.get("TMPDIR") or ""):
+    _mt = _os.path.join(_tf.gettempdir(), "Mind Test %d" % _os.getpid())
+    _os.makedirs(_mt, exist_ok=True); _os.environ["TMPDIR"] = _mt; _tf.tempdir = _mt
 import io
 import json
 import os

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # SELBSTWIDERSPRUCH (v5.20.0) — eine Ergaenzung ohne Ruecknahme ist ein Widerspruch.
 #
 # ANLASS: der /mind-all-Lauf im Projekt `Creator` fand am 24.08.2026 SIEBEN

@@ -8,6 +8,10 @@ Gegenprobe: --full braucht ihn auch, dann faellt die Chat-Rettung ohnehin aus un
 beweist nichts ueber die neue Aenderung. (Genau das war der erste, wertlose Entwurf — mit
 einer Zusicherung `len(chat) >= 0`, die nie scheitern kann.)
 """
+import os as _os, tempfile as _tf  # v5.114.0 (Etappe 21 §1): Fixtures unter einem Pfad MIT Leerzeichen
+if " " not in (_os.environ.get("TMPDIR") or ""):
+    _mt = _os.path.join(_tf.gettempdir(), "Mind Test %d" % _os.getpid())
+    _os.makedirs(_mt, exist_ok=True); _os.environ["TMPDIR"] = _mt; _tf.tempdir = _mt
 import io
 import json
 import os

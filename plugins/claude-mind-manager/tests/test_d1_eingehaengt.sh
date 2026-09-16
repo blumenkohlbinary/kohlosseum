@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # v5.40.0: ist D1 EINGEHAENGT oder nur EINGEBAUT?
 #
 # ⛔ DER UNTERSCHIED IST DER GANZE PUNKT. "D1 laeuft nur, wenn jemand --wohin

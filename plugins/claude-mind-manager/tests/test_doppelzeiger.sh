@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # v5.39.0 / ZIEL 3: der Doppelzeiger ist ein GATE, kein Hinweis mehr.
 #
 # ⛔ WARUM. Bis v5.38.0 stand der Command als HINWEIS im Umzugs-Gate, mit der

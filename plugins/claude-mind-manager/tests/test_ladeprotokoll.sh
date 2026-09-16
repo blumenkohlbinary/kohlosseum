@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # Prueffaelle fuer hooks/instructions-loaded.sh (v5.12.0).
 #
 # ⛔ Zu jedem Positivfall steht ein Negativfall. Ein Hook, der IMMER eine Zeile

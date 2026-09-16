@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # =============================================================================
 #  Der Zeilenenden-Waechter — die Sperre, die selbst kaputt war  (NEU v5.13.0)
 # =============================================================================

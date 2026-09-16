@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # COMPACT-FAELLIG ist ENTFALLEN (v5.65.0) — diese Sammlung haelt fest, dass er
 # WEG ist und wo seine Zusicherungen geblieben sind.
 #

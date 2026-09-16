@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # Tool->Rule-Nachweis (mind_check_tools_have_rules) — Regression zu v5.7.1/v5.7.3.
 #
 # Der Befund kam aus einem FREMDEN Projekt (APP - Zustellplan) ueber den Debug-Ordner:

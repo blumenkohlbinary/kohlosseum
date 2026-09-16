@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # BESTANDS-PASS (v5.22.0) — jeder Skill sieht sich seinen eigenen Bestand an.
 #
 # ⛔ WOZU. `/mind-all` ist eine Anhaenge-Maschine: fuenf Skills tragen nach, keiner

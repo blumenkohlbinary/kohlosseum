@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # KONTEXT-BILANZ (v5.22.0) — was der Dauerkontext wirklich kostet.
 #
 # ⛔ WOZU. Gemessen 27.08.2026 wuchs der immer geladene Satz eines Projekts an

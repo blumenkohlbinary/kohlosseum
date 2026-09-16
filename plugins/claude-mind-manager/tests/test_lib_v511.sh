@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # Prueffaelle fuer die fuenf neuen lib.sh-Funktionen (v5.11.0).
 #
 # ⛔ Jede Zusicherung greift auf einen RUECKGABEWERT zu, nie auf Berichtstext.

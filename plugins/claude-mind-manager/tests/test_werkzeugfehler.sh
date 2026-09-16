@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # ZWEI WERKZEUGFEHLER, gefunden im /mind-cleaner-Lauf vom 25.08.2026.
 #
 # Beide gehoeren zur Klasse `instrument-misst-nichts` — mit 33 Vorkommen die

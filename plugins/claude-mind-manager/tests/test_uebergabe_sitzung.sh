@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # Die UEBERGABE gehoert der Sitzung, die kompaktiert hat (v5.61.0).
 #
 # ⛔ DER FALL, FUER DEN SIE GEBAUT IST, IST FALL 2 — und er ist gemessen, nicht

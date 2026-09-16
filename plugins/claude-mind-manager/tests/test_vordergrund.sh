@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # =============================================================================
 #  VORDERGRUND-DISPATCH + QUITTUNG PER DATEI  (NEU v5.94.0)
 # =============================================================================

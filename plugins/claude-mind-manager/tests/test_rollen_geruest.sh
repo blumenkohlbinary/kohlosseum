@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # rollen_geruest.py — der AUFRUF-Vertrag, nicht die Logik.
 #
 # ⭐ Die Logik prueft `--selbsttest` (mit Positiv- UND Negativkontrolle;

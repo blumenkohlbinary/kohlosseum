@@ -10,6 +10,10 @@
    Jeder Fall laeuft deshalb in einem EIGENEN Projekt, und geprueft wird die ANZAHL
    in der Meldung, nicht der (gekuerzte) Pfad.
 """
+import os as _os, tempfile as _tf  # v5.114.0 (Etappe 21 §1): Fixtures unter einem Pfad MIT Leerzeichen
+if " " not in (_os.environ.get("TMPDIR") or ""):
+    _mt = _os.path.join(_tf.gettempdir(), "Mind Test %d" % _os.getpid())
+    _os.makedirs(_mt, exist_ok=True); _os.environ["TMPDIR"] = _mt; _tf.tempdir = _mt
 import io
 import os
 import re

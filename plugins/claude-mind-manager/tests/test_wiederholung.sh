@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # INTRA-DATEI-WIEDERHOLUNG (v5.21.0) — L5 aus PLAN-mind-cleaner-vollstaendig.md,
 # urspruenglich B5 des ersten Cleaner-Plans, nie gebaut.
 #

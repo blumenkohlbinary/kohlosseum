@@ -127,13 +127,70 @@ if len(werte) == 4:
 else:
     print("  [uebersprungen] nicht alle vier Dateien vorhanden")
 
-arch = os.path.join(PROJ, "Claude Mind Manager/.claude/archiv/env-vars.archiv.md")
-if os.path.isfile(arch):
-    p = bremse_anteil(arch)
-    pruef("⭐ NEGATIVKONTROLLE: ein Archiv hat 0 %% BREMSE", p == 0,
-          "(ist %.0f %%)" % p)
-else:
-    print("  [uebersprungen] Archiv nicht gefunden: %s" % arch)
+# ⛔ v5.114.0 (Etappe 21 §2): die Negativkontrolle „ein Archiv hat 0 % BREMSE" hatte
+#    ihre Praemisse verloren UND wurde am Paket uebersprungen-gruen.
+#    (a) Der Archivpfad kam aus CLAUDE_PLUGIN_ROOT — im Cache gibt es ihn nicht, der Fall
+#        stand als [uebersprungen] da, die Sammlung war gruen, ohne zu messen (dieselbe
+#        Klasse wie CLAUDE_PROJECT_DIR/v5.72.0). Jetzt: CLAUDE_PROJECT_DIR/.claude/archiv/,
+#        und FEHLT er, ist das rc 3 „nicht messbar" — nie ein bestandener Lauf.
+#    (b) Seit dem Verdichten (v5.100.0, 12.09.2026) haelt das Archiv Entferntes WOERTLICH,
+#        samt ⛔-Absaetzen — env-vars.archiv.md traegt 8 % Bremsanteil, gewollt. Das ZIEL
+#        der Kontrolle bleibt (reine Erklaerung ist keine Bremse): sie misst jetzt ein
+#        festes Fixture ohne verbatim-Bremsen. Dazu die Kontrolle, die seit dem Verdichten
+#        zaehlt: jeder ⛔-Absatz im Archiv hat seine Marker (Code-Spans, Zahlen, Namen —
+#        coverage_gate.checkpoints) noch in der LEBENDEN Datei (Kasten-Zeile v5.101.0).
+import tempfile as _tempfile
+_fx = _tempfile.mkdtemp(prefix="d1 neg ")
+_neg = os.path.join(_fx, "erklaerung.md")
+with io.open(_neg, "w", encoding="utf-8") as fh:
+    fh.write(u"# Warum es diese Datei gibt\n\n"
+             u"Die Rotation der Snapshots wurde am 16.08.2026 gemessen, weil neun Kopien mit 32 MB im\n"
+             u"Ordner lagen. Ursache war eine Zeile, die Pfade an Leerzeichen zerlegte; seither gibt es\n"
+             u"die Funktion nur noch einmal.\n\n"
+             u"Der Auswaehler fuer das Gedaechtnis sieht nur Dateiname und Beschreibung. Deshalb traegt\n"
+             u"eine gute Beschreibung mehr als eine kurze Datei, und die Zahl der Dateien allein sagt\n"
+             u"wenig ueber die Erreichbarkeit.\n\n"
+             u"Die Formel fuer die Kompaktierung lautete lange 880 000 und wurde am 27.08.2026 an drei\n"
+             u"Werten widerlegt; gemessen greift sie bei etwa 966 000.\n")
+p = bremse_anteil(_neg)
+pruef("⭐ NEGATIVKONTROLLE: reine Erklaerung hat 0 %% BREMSE (festes Fixture)", p == 0,
+      "(ist %.0f %%)" % (p if p is not None else -1))
+import shutil as _shutil
+_shutil.rmtree(_fx, ignore_errors=True)
+
+PROJEKT = os.environ.get("CLAUDE_PROJECT_DIR") or ""
+arch = os.path.join(PROJEKT, ".claude/archiv/env-vars.archiv.md")
+lebend = os.path.join(PROJEKT, ".claude/rules/env-vars.md")
+if not (PROJEKT and os.path.isfile(arch) and os.path.isfile(lebend)):
+    print("  [ROT] NICHT MESSBAR: Archiv/lebende Datei nicht unter CLAUDE_PROJECT_DIR"
+          " (%s) — rc 3, kein bestandener Lauf" % (PROJEKT or "leer"))
+    print()
+    print("  %d gruen · %d rot · 1 nicht messbar" % (gruen, rot))
+    sys.exit(3)
+sys.path.insert(0, os.path.join(WURZEL, "references", "doc-templates"))
+_halte = sys.stdout  # coverage_gate legt beim Import einen neuen Wrapper um .buffer; ohne Referenz schloesse der GC unseren und damit den Puffer
+from coverage_gate import checkpoints, normalize  # noqa: E402,F841 — _halte bleibt referenziert, der neue Wrapper schreibt weiter
+from cleaner_einordnung import absaetze  # noqa: E402
+with io.open(lebend, encoding="utf-8", errors="replace") as fh:
+    _leb = normalize(fh.read())
+with io.open(arch, encoding="utf-8", errors="replace") as fh:
+    _abs, _, _ = absaetze(fh.read())
+_brems = [a for a in _abs if a.lstrip().startswith(u"\u26d4")]
+_fehl = []
+for _a in _brems:
+    _tf = _tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8")
+    _tf.write(_a); _tf.close()
+    _miss = [ph for ph, kw in checkpoints(_tf.name) if kw[0] not in _leb]
+    os.unlink(_tf.name)
+    if _miss:
+        _fehl.append((_a[:60].replace("\n", " "), _miss[:3]))
+p = bremse_anteil(arch)
+print("      Archiv env-vars: %d Absaetze, BREMSE %.0f %%, %d \u26d4-Absaetze" % (len(_abs), p, len(_brems)))
+pruef("\u26d4 Archiv: das Verdichten haelt Bremsen WOERTLICH (Bremsanteil > 0, Praemisse seit v5.100.0)",
+      p is not None and p > 0, "(ist %s)" % p)
+pruef("\u2b50 jeder \u26d4-Absatz im Archiv hat seine Marker in der lebenden env-vars.md (Kasten-Zeile v5.101.0)",
+      len(_brems) > 0 and not _fehl,
+      "(%d von %d ohne Marker: %s)" % (len(_fehl), len(_brems), _fehl[:2]))
 
 print()
 print("  %d gruen · %d rot" % (gruen, rot))

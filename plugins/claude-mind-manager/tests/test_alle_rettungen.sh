@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # Alle offenen Rettungen kommen an (v5.57.0) — die Messung zu Auftrag D.
 #
 # ⛔ DIE DOKU BEHAUPTETE ES SEIT v5.4.1, GEMESSEN WAR ES NIE. `hooks.md` sagt,

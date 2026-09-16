@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # Das Rollen-Gate (v5.54.0) — mahnt nur noch die Sitzung, die zustaendig ist.
 #
 # ⛔ DER FALL, FUER DEN ES GEBAUT IST, IST FALL 9: drei Sitzungen im selben

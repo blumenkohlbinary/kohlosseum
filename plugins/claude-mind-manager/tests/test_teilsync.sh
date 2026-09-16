@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+. "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
 # TEILSYNC (v5.19.0) — ein abgekuerzter Lauf muss eine Schuld hinterlassen.
 #
 # ANLASS, dreimal gemessen und in Debug/BEFUNDE.md protokolliert:
