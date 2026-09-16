@@ -103,6 +103,8 @@ def zeilen_aus_gruppen(gruppen, projekt):
     ANLAGE[:] = [(k, b, marken) for k, (b, marken) in enumerate(sorted(paare.items()), 1)]
     for p, g in gruppen.get("4", []):
         z.append(("ARCHIV", p, ".claude/archiv/ (cleaner_ratsche --archiviere)", "Ratsche: Grund Pflicht", "Snapshot / --entarchiviere"))
+    for p, g in gruppen.get("9", []):   # v5.117.0: unantastbar — nur Meldung
+        z.append(("MELDUNG", p, g[:100], "-", "-"))
     z.sort(key=lambda x: REIHE.get(x[0], 9))
     return z
 
@@ -205,22 +207,105 @@ def _ist_memory_pfad(d):
     return "/.claude/projects/" in n and "/memory/" in n
 
 
-def memory_index_zeile(topic_p, docs_p):
-    """Die neue Indexzeile: `- [Titel](<docs-pfad>) — umgezogen nach docs, lies zuerst \`<docs-pfad>\`: <Aufhaenger>`."""
+def _yaml_wert(s):
+    """description aus dem Frontmatter: aeussere Anfuehrungszeichen weg, innere Escapes aufgeloest
+    (v5.117.0 §0b c: `Routenplaner\\" ` blieb stehen)."""
+    s = (s or "").strip()
+    if len(s) >= 2 and s[0] == s[-1] and s[0] in "\"'":
+        q = s[0]; s = s[1:-1]
+        if q == "\"":
+            s = s.replace("\\\"", "\"").replace("\\\\", "\\")
+        else:
+            s = s.replace("''", "'")
+    return s.strip()
+
+
+def alte_indexzeile(idx_text, name):
+    """(titel, aufhaenger) der bestehenden Indexzeile `- [Titel](name.md) — Aufhaenger`, sonst (None, None)."""
+    m = re.search(r"^[-*]\s*\[([^\]]*)\]\(\s*%s\s*\)\s*(?:[—–-]+\s*(.*))?$" % re.escape(name), idx_text, re.M)
+    if not m:
+        return None, None
+    return m.group(1).strip(), (m.group(2) or "").strip()
+
+
+def memory_index_zeile(topic_p, docs_p, projekt=None, idx_text=None):
+    """Die neue Indexzeile (v5.117.0 §0b): `- [Titel](docs/<name>.md) — <alter Aufhaenger> (umgezogen
+    nach docs, lies zuerst dort)`. Pfad PROJEKTRELATIV, der alte Aufhaenger bleibt (description nur,
+    wenn der Index keinen hatte), YAML-Escapes aufgeloest, der Zeiger steht EINMAL."""
     t = open(topic_p, encoding="utf-8", errors="replace").read()
-    name = os.path.splitext(os.path.basename(topic_p))[0]
+    name = os.path.basename(topic_p)
     m = re.search(r"^\s*description:\s*(.+)$", t, re.M)
-    auf = (m.group(1).strip() if m else "").strip("\"'")
+    desc = _yaml_wert(m.group(1)) if m else ""
     m2 = re.search(r"^#\s+(.+)$", t, re.M)
-    titel = m2.group(1).strip() if m2 else name
+    titel_alt, auf_alt = alte_indexzeile(idx_text or "", name)
+    titel = titel_alt or (m2.group(1).strip() if m2 else os.path.splitext(name)[0])
+    auf = auf_alt or desc
     dp = docs_p.replace("\\", "/")
-    return "- [%s](%s) — umgezogen nach docs, lies zuerst `%s`%s" % (titel, dp, dp, (": " + auf) if auf else "")
+    if projekt:
+        try:
+            rel = os.path.relpath(docs_p, projekt).replace("\\", "/")
+            if not rel.startswith(".."):
+                dp = rel
+        except ValueError:
+            pass
+    return "- [%s](%s) — %s(umgezogen nach docs, lies zuerst dort)" % (titel, dp, (auf + " ") if auf else "")
 
 
-def memory_docs_zug(topic_p, docs_p, plan, nr):
+def _schreib_mit_zeilenenden(pfad, text_lf, vorlage_roh):
+    """Zeilenenden der Zieldatei beibehalten (v5.117.0 §0b a: MEMORY.md kam mit LF zurueck, 128 Zeilen Diff)."""
+    nl = "\r\n" if "\r\n" in vorlage_roh else "\n"
+    open(pfad, "w", encoding="utf-8", newline="").write(text_lf.replace("\r\n", "\n").replace("\n", nl))
+
+
+def reparieren_index(mem_dir, projekt, snapshot=None):
+    """`--reparieren-index <memory-dir> --projekt <proj> [--snapshot <dir>]` (v5.117.0 §0b e): zieht
+    Indexzeilen der 5.115.0-Form (`- [T](<abs>) — umgezogen nach docs, lies zuerst \`<abs>\`: <desc>`)
+    auf die neue Form nach — Pfad relativ, Aufhaenger aus dem Snapshot (snapshot/memory/MEMORY.md
+    oder <snapshot>/MEMORY.md), Escapes weg, Zeiger einmal, Zeilenenden wie in der Datei."""
+    idx = os.path.join(mem_dir, "MEMORY.md")
+    if not os.path.isfile(idx):
+        print("⛔ kein MEMORY.md unter %s" % mem_dir)
+        return 2
+    roh = open(idx, encoding="utf-8", errors="replace", newline="").read()
+    alt_idx = ""
+    for kand in ((os.path.join(snapshot, "memory", "MEMORY.md"), os.path.join(snapshot, "MEMORY.md")) if snapshot else ()):
+        if os.path.isfile(kand):
+            alt_idx = open(kand, encoding="utf-8", errors="replace").read().replace("\r\n", "\n")
+            break
+    muster = re.compile(r"^([-*])\s*\[([^\]]*)\]\(([^)]+)\)\s*—\s*umgezogen nach docs, lies zuerst `[^`]*`(?::\s*(.*))?$", re.M)
+    n = 0
+    def ersetze(m):
+        nonlocal n
+        n += 1
+        titel, ziel, desc = m.group(2).strip(), m.group(3).strip(), (m.group(4) or "").strip()
+        name = os.path.basename(ziel)
+        t_alt, auf_alt = alte_indexzeile(alt_idx, name)
+        auf = auf_alt or _yaml_wert(desc) or desc
+        titel = t_alt or titel
+        dp = ziel.replace("\\", "/")
+        try:
+            rel = os.path.relpath(ziel, projekt).replace("\\", "/")
+            if not rel.startswith(".."):
+                dp = rel
+        except ValueError:
+            pass
+        return "%s [%s](%s) — %s(umgezogen nach docs, lies zuerst dort)" % (m.group(1), titel, dp, (auf + " ") if auf else "")
+    neu = muster.sub(ersetze, roh.replace("\r\n", "\n"))
+    if n == 0:
+        print("  nichts zu reparieren: keine Zeile der 5.115.0-Form in %s" % idx)
+        return 1
+    _schreib_mit_zeilenenden(idx, neu, roh)
+    print("  %d Indexzeile(n) repariert in %s (Aufhaenger aus %s, Zeilenenden %s)"
+          % (n, idx, snapshot or "der description", "CRLF" if "\r\n" in roh else "LF"))
+    return 0
+
+
+def memory_docs_zug(topic_p, docs_p, plan, nr, projekt=None):
     """(ok, warum) — Gates ueber alt=Topic, kurz=Indexzeile, ziel=docs; dann Index umschreiben, Topic weg."""
     import tempfile
-    zeile = memory_index_zeile(topic_p, docs_p)
+    idx = os.path.join(os.path.dirname(topic_p), "MEMORY.md")
+    roh = open(idx, encoding="utf-8", errors="replace", newline="").read() if os.path.isfile(idx) else "# Memory\n\n"
+    zeile = memory_index_zeile(topic_p, docs_p, projekt, roh.replace("\r\n", "\n"))
     tf = tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8")
     tf.write(zeile + "\n"); tf.close()
     try:
@@ -232,18 +317,17 @@ def memory_docs_zug(topic_p, docs_p, plan, nr):
     bruch = [n for n, g, _ in gates if not g and n != "ENTLASTUNG"]   # eine Indexzeile ist immer kuerzer
     if bruch:
         return False, "Gate gebrochen: %s" % ", ".join(bruch)
-    idx = os.path.join(os.path.dirname(topic_p), "MEMORY.md")
     name = os.path.basename(topic_p)
-    alt = open(idx, encoding="utf-8", errors="replace").read() if os.path.isfile(idx) else "# Memory\n\n"
+    alt = roh.replace("\r\n", "\n")
     muster = re.compile(r"^[-*]\s*\[[^\]]*\]\(\s*%s\s*\).*$" % re.escape(name), re.M)
     if muster.search(alt):
         neu = muster.sub(lambda m: zeile, alt, count=1)
     else:
         neu = alt.rstrip("\n") + "\n" + zeile + "\n"
-    open(idx, "w", encoding="utf-8", newline="\n").write(neu)
+    _schreib_mit_zeilenenden(idx, neu, roh)   # v5.117.0: CRLF bleibt CRLF
     os.remove(topic_p)
     print("     Index: %s -> zeigt auf %s; Topic entfernt (im Snapshot unter memory/)" % (name, docs_p.replace("\\", "/")))
-    print("     danach: python Learnings/memory_gates.py <snapshot>/memory  (Gate 3 liest den docs-Zeiger, v5.115.0)")
+    print("     danach: python Learnings/memory_gates.py <snapshot>/memory --wurzel <projekt>  (Gate 3 liest den docs-Zeiger, v5.117.0)")
     return True, ""
 
 
@@ -273,6 +357,15 @@ def anwenden(plan, ohne=(), projekt=None):
         d = x["datei"] if os.path.isabs(x["datei"]) else os.path.join(projekt, x["datei"])
         kl = x["klasse"]
         ok, warum = True, ""
+        # ⛔ v5.117.0 (§0a): die Unantastbar-Liste gilt auch fuer einen von Hand geschriebenen Plan
+        _u = audit.ist_unantastbar(d) if kl in ("ARCHIV", "UMZUG", "DOCS", "REBUILD") else ""
+        if _u:
+            status_setzen(plan, x["nr"], "GEBROCHEN: unantastbar (%s)" % _u)
+            print("  %2d %-8s %s — ⛔ unantastbar: %s" % (x["nr"], kl, x["datei"], _u))
+            for y in aktiv[i + 1:]:
+                status_setzen(plan, y["nr"], "NICHT ANGEWENDET")
+            rc_gesamt = 1
+            break
         if kl in ("MELDUNG", "ZEIGER"):
             status_setzen(plan, x["nr"], "nur gemeldet")
             print("  %2d %-8s %s — keine Aktion" % (x["nr"], kl, x["datei"]))
@@ -298,7 +391,7 @@ def anwenden(plan, ohne=(), projekt=None):
             if not os.path.isfile(zielp):
                 ok, warum = False, "Ziel %s fehlt (Sitzung muss die docs-Datei vorbereiten)" % x["ziel"].split(" (")[0]
             else:
-                ok, warum = memory_docs_zug(d, zielp, plan, x["nr"])
+                ok, warum = memory_docs_zug(d, zielp, plan, x["nr"], projekt)
         elif kl in ("UMZUG", "DOCS"):
             k = _kurz_aus(x["ziel"])
             zielp = x["ziel"].split(" (")[0].strip()
@@ -419,6 +512,8 @@ def main(argv=None):
     if "--anwenden" in a:
         ohne = tuple(int(x) for x in (hol("--ohne") or "").split(",") if x.strip().isdigit())
         return anwenden(hol("--anwenden"), ohne, hol("--projekt"))
+    if "--reparieren-index" in a:
+        return reparieren_index(hol("--reparieren-index"), hol("--projekt") or os.getcwd(), hol("--snapshot"))
     print(__doc__)
     return 2
 

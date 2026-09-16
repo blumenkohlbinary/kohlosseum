@@ -167,30 +167,60 @@ if not (PROJEKT and os.path.isfile(arch) and os.path.isfile(lebend)):
     print()
     print("  %d gruen · %d rot · 1 nicht messbar" % (gruen, rot))
     sys.exit(3)
+# ⛔ v5.117.0 (Anton, 16.09.2026): die Marker eines Archiv-Absatzes muessen NICHT in der
+#    gleichnamigen Datei liegen — der 09.09.-Umzug („UMZIEHEN, nicht kopieren") trug vier
+#    Marker aus rollen.archiv.md nach werkzeuge-zuerst.md, kontext-anlegen.md und
+#    manager-chats.md. Gemessen wird deshalb gegen ALLE lebenden Dauerkontext-Dateien
+#    (global + Projekt, die Liste von mind_kontext_bilanz) und ueber ALLE Archive. Bekannte
+#    Loecher sind Historie (Anton, gemessen 16.09.): backup-usage 1, hooks 1, rollen 1 —
+#    die Ratsche laesst sie zu und wird rot, sobald ein Archiv MEHR verliert.
+import glob as _glob
+_H = os.path.expanduser("~")
+_lebend = [os.path.join(PROJEKT, "CLAUDE.md"), os.path.join(PROJEKT, ".claude", "CLAUDE.md"),
+           os.path.join(_H, ".claude", "CLAUDE.md")] \
+    + _glob.glob(os.path.join(PROJEKT, ".claude", "rules", "*.md")) \
+    + _glob.glob(os.path.join(_H, ".claude", "rules", "*.md"))
+_BEKANNT = {"backup-usage": 1, "hooks": 1, "rollen": 1}
 sys.path.insert(0, os.path.join(WURZEL, "references", "doc-templates"))
 _halte = sys.stdout  # coverage_gate legt beim Import einen neuen Wrapper um .buffer; ohne Referenz schloesse der GC unseren und damit den Puffer
 from coverage_gate import checkpoints, normalize  # noqa: E402,F841 — _halte bleibt referenziert, der neue Wrapper schreibt weiter
 from cleaner_einordnung import absaetze  # noqa: E402
-with io.open(lebend, encoding="utf-8", errors="replace") as fh:
-    _leb = normalize(fh.read())
-with io.open(arch, encoding="utf-8", errors="replace") as fh:
-    _abs, _, _ = absaetze(fh.read())
-_brems = [a for a in _abs if a.lstrip().startswith(u"\u26d4")]
-_fehl = []
-for _a in _brems:
-    _tf = _tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8")
-    _tf.write(_a); _tf.close()
-    _miss = [ph for ph, kw in checkpoints(_tf.name) if kw[0] not in _leb]
-    os.unlink(_tf.name)
-    if _miss:
-        _fehl.append((_a[:60].replace("\n", " "), _miss[:3]))
+_leb = normalize("\n".join(io.open(f, encoding="utf-8", errors="replace").read()
+                            for f in _lebend if os.path.isfile(f)))
+
+
+def _loecher(archiv):
+    with io.open(archiv, encoding="utf-8", errors="replace") as fh:
+        _abs, _, _ = absaetze(fh.read())
+    _brems = [a for a in _abs if a.lstrip().startswith(u"\u26d4")]
+    _fehl = []
+    for _a in _brems:
+        _tf = _tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8")
+        _tf.write(_a); _tf.close()
+        _miss = [ph for ph, kw in checkpoints(_tf.name) if kw[0] not in _leb]
+        os.unlink(_tf.name)
+        if _miss:
+            _fehl.append((_a[:60].replace("\n", " "), _miss[:3]))
+    return _abs, _brems, _fehl
+
+
+_abs, _brems, _fehl = _loecher(arch)
 p = bremse_anteil(arch)
 print("      Archiv env-vars: %d Absaetze, BREMSE %.0f %%, %d \u26d4-Absaetze" % (len(_abs), p, len(_brems)))
 pruef("\u26d4 Archiv: das Verdichten haelt Bremsen WOERTLICH (Bremsanteil > 0, Praemisse seit v5.100.0)",
       p is not None and p > 0, "(ist %s)" % p)
-pruef("\u2b50 jeder \u26d4-Absatz im Archiv hat seine Marker in der lebenden env-vars.md (Kasten-Zeile v5.101.0)",
+pruef("\u2b50 jeder \u26d4-Absatz im env-vars-Archiv hat seine Marker im lebenden Dauerkontext (Kasten-Zeile v5.101.0)",
       len(_brems) > 0 and not _fehl,
       "(%d von %d ohne Marker: %s)" % (len(_fehl), len(_brems), _fehl[:2]))
+for _ap in sorted(_glob.glob(os.path.join(PROJEKT, ".claude", "archiv", "*.archiv.md"))):
+    _n = os.path.basename(_ap)[:-len(".archiv.md")]
+    if _n == "env-vars":
+        continue
+    _abs2, _brems2, _fehl2 = _loecher(_ap)
+    _erlaubt = _BEKANNT.get(_n, 0)
+    pruef("   Ratsche %s: hoechstens %d bekannte(s) Loch/Loecher (Historie), gemessen %d von %d \u26d4-Absaetzen"
+          % (_n, _erlaubt, len(_fehl2), len(_brems2)), len(_fehl2) <= _erlaubt,
+          "(neu ohne Marker: %s)" % _fehl2[:2])
 
 print()
 print("  %d gruen · %d rot" % (gruen, rot))

@@ -47,7 +47,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.116.0"
+MIND_SKILL_VERSION="5.117.0"
 mind_schritt_start "$PROJ" mind-cleaner bestandsaufnahme cleaner_audit cleaner_einordnung cleaner_grenzen cleaner_leitplanke cleaner_ratsche cleaner_rebuild cleaner_umzug ladeprotokoll_auswertung mind_debug_write mind_snapshot
 ```
 
@@ -146,11 +146,23 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_audit.py" --bereich "$PROJ"   # P
 - **ZEIGER-Zeilen stehen je Dateipaar EINMAL im Plan** („n doppelte Marken zwischen a + b"),
   die Marken selbst in `<plan>.anlage.md` (Abschnitt je Paar). 1 823 Zeilen, davon 1 796
   ZEIGER, waren kein Plan, sondern ein Protokoll. `--anwenden` liest beide, ZEIGER bleibt „nur gemeldet".
-- **DOCS-Zug aus dem MEMORY:** die Indexzeile in `MEMORY.md` zeigt direkt auf `docs/<name>.md`
-  (direktiv, „lies zuerst"), **kein Stub bleibt zurueck, das Topic ist weg** (im Snapshot unter
-  `memory/`). Bis 5.114.0 blieb der Stub, die Themenzahl sank nicht, der Memory-Deckel blieb rot.
-  Danach `Learnings/memory_gates.py <snapshot>/memory` — Gate 3 liest den docs-Zeiger als gueltig,
-  Gate 1/1b zaehlen den ausgelagerten Inhalt als wiedergefunden.
+- **DOCS-Zug aus dem MEMORY:** die Indexzeile in `MEMORY.md` zeigt direkt auf `docs/<name>.md`,
+  **kein Stub bleibt zurueck, das Topic ist weg** (im Snapshot unter `memory/`). Bis 5.114.0 blieb
+  der Stub, die Themenzahl sank nicht, der Memory-Deckel blieb rot. Danach
+  `Learnings/memory_gates.py <snapshot>/memory --wurzel "$PROJ"` — Gate 3 liest den docs-Zeiger als
+  gueltig, Gate 1/1b zaehlen den ausgelagerten Inhalt als wiedergefunden.
+  ⛔ **v5.117.0 (Veras fuenf Zuege im Zustellplan):** die Zeile heisst
+  `- [Titel](docs/<name>.md) — <alter Aufhaenger> (umgezogen nach docs, lies zuerst dort)` —
+  Pfad PROJEKTRELATIV, der alte Aufhaenger bleibt (description nur ohne Aufhaenger, YAML-Escapes
+  aufgeloest), der Zeiger steht EINMAL, `MEMORY.md` behaelt ihre Zeilenenden. Schon geschriebene
+  Zeilen der 5.115.0-Form zieht `cleaner_plan.py --reparieren-index <memory-dir> --projekt "$PROJ"
+  --snapshot <sicherung>` nach (Aufhaenger aus dem Snapshot).
+- ⛔ **UNANTASTBAR (v5.117.0, Veras Audit setzte den AKTIVEN Roster als Plan-Zeile 1 ARCHIV):**
+  der Roster (`rollen.md` mit Rollentabelle), `CLAUDE.md`/`CLAUDE.local.md` und `MEMORY.md`
+  bekommen nie ARCHIV/UMZUG/DOCS — im Audit Gruppe 9 „nur Meldung", im Plan MELDUNG, und
+  `--anwenden` bricht an einer von Hand geschriebenen Zeile dazu. Und **„nie ueberarbeitet" ist
+  erst ein Fossil**, wenn die Datei aelter als `MIND_BELEG_FRISCH_TAGE` (21) ist UND das Projekt
+  seit ihrer Anlage mindestens 5 Commits hat — sonst „zu jung fuer ein Urteil" (Gruppe 5a).
 - **Memory-Dateien sind nie HOOK-KANDIDAT** (`type:` im Frontmatter): Lessons ZITIEREN Pfade und
   Funktionen — das `keine-annahmen`-Fehlurteil, am Memory reproduziert (8 von 40). Klasse `BLEIBT MEMORY`.
 - **`paths:` schon gesetzt → `BLEIBT (paths gesetzt)`**, Vorschlag nur „Sonde", nie „setzen".

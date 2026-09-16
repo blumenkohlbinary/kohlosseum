@@ -383,6 +383,8 @@ def pruefe(alt_p, kurz_p, skill_p, ziel="skill"):
         kand.add("/".join(teile[-3:]))
     elif len(teile) >= 2:
         kand.add("/".join(teile[-2:]))
+    if ziel == "docs" and len(teile) >= 2:
+        kand.add("/".join(teile[-2:]))   # v5.117.0: der projektrelative Zeiger `docs/<name>.md` traegt
     getroffen = next((k for k in sorted(kand, key=len, reverse=True)
                       if k.replace("\\", "/") in kurz_n), None)
     gates.append(("PFAD", getroffen is not None,

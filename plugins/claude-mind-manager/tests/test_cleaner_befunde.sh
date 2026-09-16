@@ -176,22 +176,75 @@ printf '# P\n' > "$P/proj/CLAUDE.md"
 INHALT='Die Zahl 42 Zeilen gilt fuer `werk.py`.\n\nEine lange Herleitung, die nur erklaert und im Dauerkontext nichts verloren hat, Satz um Satz.\n\nGemessen am 12.09.2026 an drei Dateien.\n'
 printf -- "---\ndescription: Herleitung zur Zahl 42 und zu werk.py, vierzig Zeichen lang\ntype: reference\n---\n# Herleitung 42\n\n$INHALT" > "$MEM/herleitung.md"
 printf -- "# Herleitung 42\n\n$INHALT" > "$P/proj/docs/herleitung.md"
-printf -- '# Memory\n\n- [Herleitung 42](herleitung.md) — warum 42\n- [Anderes](anderes.md) — bleibt\n' > "$MEM/MEMORY.md"
+printf -- '# Memory\r\n\r\n- [Herleitung 42](herleitung.md) — warum 42\r\n- [Anderes](anderes.md) — bleibt\r\n' > "$MEM/MEMORY.md"   # CRLF wie im Zustellplan
 printf -- '---\ndescription: anderes Thema, vierzig Zeichen lang mindestens\ntype: feedback\n---\n# Anderes\n\nBleibt.\n' > "$MEM/anderes.md"
 PLAN="$P/plan.md"
 printf '# Cleaner-Plan test — %s (--nur memory)\n\n| # | Klasse | Datei | Ziel | Gates | Rueckweg | Status |\n|---|---|---|---|---|---|---|\n| 1 | DOCS | %s | docs/herleitung.md | ZEIGER | Snapshot | offen |\n' "$(m "$P/proj")" "$(m "$MEM/herleitung.md")" > "$PLAN"
 A=$($PY "$(w "$REF/cleaner_plan.py")" --anwenden "$(w "$PLAN")" --projekt "$(w "$P/proj")" 2>&1); RC=$?
 janein "--anwenden rc 0, Zeile angewendet" ja "$([ "$RC" = 0 ] && grep -q '| angewendet |' "$PLAN" && echo ja || echo nein)"
 janein "   ... Topic ist WEG (kein Stub)" nein "$([ -f "$MEM/herleitung.md" ] && echo ja || echo nein)"
-janein "   ... Indexzeile zeigt direktiv auf docs/herleitung.md" ja "$(grep -q '^- .Herleitung 42..*proj/docs/herleitung.md. — umgezogen nach docs, lies zuerst `.*docs/herleitung.md`' "$MEM/MEMORY.md" && echo ja || echo nein)"
+janein "   ... Indexzeile: relativer Pfad, alter Aufhaenger, Zeiger EINMAL (v5.117.0)" ja "$(grep -q '^- .Herleitung 42..docs/herleitung.md. — warum 42 .umgezogen nach docs, lies zuerst dort.' "$MEM/MEMORY.md" && [ "$(grep -o 'herleitung.md' "$MEM/MEMORY.md" | wc -l | tr -d ' ')" = 1 ] && echo ja || echo nein)"
+janein "   ... MEMORY.md behaelt CRLF" ja "$($PY -c "import sys; b=open(sys.argv[1],'rb').read(); print('ja' if b.count(b'\\r\\n')==b.count(b'\\n') and b.count(b'\\n')>0 else 'nein')" "$(w "$MEM/MEMORY.md")")"
 janein "   ... die andere Indexzeile bleibt" ja "$(grep -q '^- .Anderes..anderes.md.' "$MEM/MEMORY.md" && echo ja || echo nein)"
 janein "   ... Snapshot haelt das Topic unter memory/" 1 "$(ls "$P/proj/.claude-mind/snapshots/"*_pre-cleaner-plan/memory/herleitung.md 2>/dev/null | wc -l | tr -d ' ')"
 janein "   ... die Ausgabe nennt memory_gates als naechsten Schritt" ja "$(printf '%s\n' "$A" | grep -q 'memory_gates.py' && echo ja || echo nein)"
 # Gegenprobe: Ziel fehlt -> GEBROCHEN, Topic bleibt
 printf -- "---\ndescription: zweite Herleitung, vierzig Zeichen lang mindestens\ntype: reference\n---\n# Zwei\n\nInhalt zwei mit \`zwei.py\`.\n" > "$MEM/zwei.md"
+# ohne alten Aufhaenger: description, YAML-Escapes aufgeloest
+printf -- "---\ndescription: \"Routenplaner\\\\\" und Bank, vierzig Zeichen lang mindestens\"\ntype: reference\n---\n# Drei\n\nInhalt drei mit \`drei.py\` und 7 Tagen.\n" > "$MEM/drei.md"
+printf -- "# Drei\n\nInhalt drei mit \`drei.py\` und 7 Tagen.\n" > "$P/proj/docs/drei.md"
+printf '# Cleaner-Plan test — %s (--nur memory)\n\n| # | Klasse | Datei | Ziel | Gates | Rueckweg | Status |\n|---|---|---|---|---|---|---|\n| 1 | DOCS | %s | docs/drei.md | ZEIGER | Snapshot | offen |\n' "$(m "$P/proj")" "$(m "$MEM/drei.md")" > "$PLAN"
+$PY "$(w "$REF/cleaner_plan.py")" --anwenden "$(w "$PLAN")" --projekt "$(w "$P/proj")" >/dev/null 2>&1
+janein "ohne alten Aufhaenger: description als Aufhaenger, Escape aufgeloest" ja "$(grep -q '^- .Drei..docs/drei.md. — Routenplaner\" und Bank, vierzig Zeichen lang mindestens .umgezogen nach docs' "$MEM/MEMORY.md" && echo ja || echo nein)"
+# --reparieren-index: eine Zeile der 5.115.0-Form (absolut, doppelter Zeiger, description statt Aufhaenger)
+SNAP="$P/snap"; mkdir -p "$SNAP/memory"; printf -- '# Memory\n\n- [Vier](vier.md) — der alte Aufhaenger vier\n' > "$SNAP/memory/MEMORY.md"
+printf -- '- [Vier](%s/docs/vier.md) — umgezogen nach docs, lies zuerst `%s/docs/vier.md`: eine description\r\n' "$(m "$P/proj")" "$(m "$P/proj")" >> "$MEM/MEMORY.md"
+janein "--reparieren-index: rc 0, eine Zeile" ja "$($PY "$(w "$REF/cleaner_plan.py")" --reparieren-index "$(w "$MEM")" --projekt "$(w "$P/proj")" --snapshot "$(w "$SNAP")" 2>&1 | grep -q '1 Indexzeile(n) repariert' && echo ja || echo nein)"
+janein "   ... relativ, Aufhaenger aus dem Snapshot, Zeiger einmal, CRLF" ja "$(grep -q '^- .Vier..docs/vier.md. — der alte Aufhaenger vier .umgezogen nach docs, lies zuerst dort.' "$MEM/MEMORY.md" && [ "$(grep -o 'vier.md' "$MEM/MEMORY.md" | wc -l | tr -d ' ')" = 1 ] && $PY -c "import sys; b=open(sys.argv[1],'rb').read(); sys.exit(0 if b.count(b'\\r\\n')==b.count(b'\\n') else 1)" "$(w "$MEM/MEMORY.md")" && echo ja || echo nein)"
+janein "   ... zweiter Lauf: nichts mehr zu reparieren (rc 1)" 1 "$($PY "$(w "$REF/cleaner_plan.py")" --reparieren-index "$(w "$MEM")" --projekt "$(w "$P/proj")" >/dev/null 2>&1; echo $?)"
 printf '# Cleaner-Plan test — %s (--nur memory)\n\n| # | Klasse | Datei | Ziel | Gates | Rueckweg | Status |\n|---|---|---|---|---|---|---|\n| 1 | DOCS | %s | docs/zwei.md | ZEIGER | Snapshot | offen |\n' "$(m "$P/proj")" "$(m "$MEM/zwei.md")" > "$PLAN"
 $PY "$(w "$REF/cleaner_plan.py")" --anwenden "$(w "$PLAN")" --projekt "$(w "$P/proj")" >/dev/null 2>&1; RC=$?
 janein "Ziel fehlt: rc 1, GEBROCHEN, Topic bleibt" ja "$([ "$RC" = 1 ] && grep -q 'GEBROCHEN' "$PLAN" && [ -f "$MEM/zwei.md" ] && echo ja || echo nein)"
+rm -rf "$P"
+
+echo "== §0  (Etappe 22, v5.117.0) Roster/CLAUDE.md/MEMORY.md unantastbar; Fossil braucht Alter =="
+P=$(mktemp -d); mkdir -p "$P/proj/.claude/rules" "$P/proj/Debug"; : > "$P/proj/Debug/index.jsonl"   # leerer Debug-Index: "kein Verstoss" ist messbar
+cd "$P/proj" && git init -q . && git config user.email t@t && git config user.name t
+printf '# P\n' > CLAUDE.md
+printf -- '| Rolle | Name | sessionId | Tut |\n|---|---|---|---|\n| **manager** | **Anton** | `x` | liest |\n| **arbeiter** | **Nils** | `y` | baut |\n' > .claude/rules/rollen.md
+printf -- '---\ndescription: alt\n---\n# Alt\n\nEine alte Regel ohne Verstoss.\n' > .claude/rules/alt.md
+git add -A >/dev/null && GIT_AUTHOR_DATE="2026-08-01T10:00:00" GIT_COMMITTER_DATE="2026-08-01T10:00:00" git commit -q -m init
+for i in 1 2 3 4 5 6; do printf 'x%s\n' "$i" >> CLAUDE.md; git commit -q -am "c$i"; done
+printf -- '---\ndescription: jung\n---\n# Jung\n\nEine junge Regel ohne Verstoss.\n' > .claude/rules/jung.md; git add -A >/dev/null; git commit -q -m jung
+cd - >/dev/null
+cat > "$P/u.py" <<'PYEOF'
+import os, subprocess, sys
+r = subprocess.run([sys.executable, os.environ["LAUF"]], capture_output=True)
+t = r.stdout.decode("utf-8", "replace")
+import re
+def gruppe(nr):
+    m = re.search(r"^  %s · .*?\n(.*?)(?=^  \d\w? · |\Z)" % nr, t, re.M | re.S)
+    return m.group(1) if m else ""
+print("rollen_in_4=%s" % ("ja" if "rollen.md" in gruppe("4") else "nein"))
+print("rollen_in_9=%s" % ("ja" if "rollen.md" in gruppe("9") and "unantastbar" in gruppe("9") else "nein"))
+print("alt_in_4=%s" % ("ja" if "alt.md" in gruppe("4") else "nein"))
+print("jung_zu_jung=%s" % ("ja" if "zu jung fuer ein Urteil" in t and "jung.md" not in gruppe("4") else "nein"))
+PYEOF
+cat > "$P/lauf.py" <<'PYEOF'
+import os, sys
+sys.path.insert(0, os.environ["REF"])
+import cleaner_audit as audit
+audit.lauf(os.environ["PROJ"], "projekt")
+PYEOF
+U=$(REF="$(w "$REF")" PROJ="$(w "$P/proj")" LAUF="$(w "$P/lauf.py")" MIND_BELEG_FRISCH_TAGE=21 $PY "$(w "$P/u.py")" 2>&1)
+janein "Roster (Ein-Commit, kein Verstoss) steht NICHT in Gruppe 4" ja "$(printf '%s\n' "$U" | grep -q 'rollen_in_4=nein' && echo ja || echo nein)"
+janein "   ... sondern in Gruppe 9 UNANTASTBAR, nur Meldung" ja "$(printf '%s\n' "$U" | grep -q 'rollen_in_9=ja' && echo ja || echo nein)"
+janein "alte Regel (46 Tage, 7 Projekt-Commits, kein Verstoss) -> Gruppe 4 wie bisher" ja "$(printf '%s\n' "$U" | grep -q 'alt_in_4=ja' && echo ja || echo nein)"
+janein "junge Regel (heute, 0 Commits danach) -> zu jung fuer ein Urteil, nicht Gruppe 4" ja "$(printf '%s\n' "$U" | grep -q 'jung_zu_jung=ja' && echo ja || echo nein)"
+# Plan von Hand mit ARCHIV rollen.md -> anwenden bricht: unantastbar
+PLAN="$P/plan.md"; printf '# Cleaner-Plan test — %s (--nur projekt)\n\n| # | Klasse | Datei | Ziel | Gates | Rueckweg | Status |\n|---|---|---|---|---|---|---|\n| 1 | ARCHIV | .claude/rules/rollen.md | .claude/archiv/ | Ratsche | Snapshot | offen |\n' "$(m "$P/proj")" > "$PLAN"
+$PY "$(w "$REF/cleaner_plan.py")" --anwenden "$(w "$PLAN")" --projekt "$(w "$P/proj")" >/dev/null 2>&1; RC=$?
+janein "--anwenden mit ARCHIV rollen.md: GEBROCHEN unantastbar, Roster liegt noch" ja "$([ "$RC" = 1 ] && grep -q 'GEBROCHEN: unantastbar' "$PLAN" && [ -f "$P/proj/.claude/rules/rollen.md" ] && echo ja || echo nein)"
 rm -rf "$P"
 
 echo

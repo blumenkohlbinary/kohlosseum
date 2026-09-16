@@ -150,6 +150,31 @@ _UNTER = {}
 LETZTE_GRUPPEN = None
 
 
+def ist_roster(p):
+    """v5.117.0 (§0a): der Roster — .claude/rules/rollen.md mit einer Rollentabelle."""
+    if os.path.basename(p) != "rollen.md":
+        return False
+    try:
+        t = open(p, encoding="utf-8", errors="replace").read()
+    except OSError:
+        return False
+    return bool(re.search(r"^\|\s*\*{0,2}manager\*{0,2}\s*\|", t, re.M))
+
+
+def ist_unantastbar(p):
+    """v5.117.0 (Etappe 22 §0a, Veras Zustellplan-Audit 16.09.2026: Plan-Zeile 1 = ARCHIV rollen.md,
+    der AKTIVE Roster, 2 Tage alt, 1 Commit): Roster, CLAUDE.md (alle drei Formen) und MEMORY.md
+    bekommen nie ARCHIV/UMZUG/DOCS — hoechstens MELDUNG. Rueckgabe: Grund oder ''."""
+    b = os.path.basename(p)
+    if b in ("CLAUDE.md", "CLAUDE.local.md"):
+        return "CLAUDE.md ist die Wurzel jedes Kontexts"
+    if b == "MEMORY.md":
+        return "MEMORY.md ist der Index des Gedaechtnisses"
+    if ist_roster(p):
+        return "der Roster traegt das Rollen-Gate (v5.54.0) und jede Sitzung"
+    return ""
+
+
 def _ist_memory(p):
     ap = os.path.abspath(p)
     if _MEMDIR and ap.startswith(os.path.abspath(_MEMDIR)):
@@ -352,7 +377,7 @@ def lauf(projekt, nur="alles", doku=None):
 
     idx = bel.debug_pfad(projekt)
     gruppen = {"5a": [], "5b": [], "1": [], "2": [], "3": [], "4": [],
-               "6": [], "7": [], "8": []}
+               "6": [], "7": [], "8": [], "9": []}   # 9 = unantastbar, nur Meldung (v5.117.0)
     # v5.111.0: Gruppe 7 Skills-Bestand (global; Plugin-Skills nur gemeldet), Gruppe 8 tote Regler
     if nur in ("alles", "global"):
         _plugins = []
@@ -375,12 +400,18 @@ def lauf(projekt, nur="alles", doku=None):
         e = ein.mit_skill(p)
         vorschlag = (e or {}).get("vorschlag_zusammen") or (e or {}).get("vorschlag", "?")
 
+        _unant = ist_unantastbar(p)
+        if _unant and u in ("VERALTUNGS-KANDIDAT", "SCHWACHER KANDIDAT"):
+            gruppen["9"].append((p, "%s — unantastbar (%s), nur Meldung, nie Archiv/Umzug" % (u, _unant)))
+            u = "UNANTASTBAR"
         if u == "BELEGT NOETIG":
             gruppen["1"].append((p, grund))
         elif u == "VERALTUNGS-KANDIDAT":
             gruppen["4"].append((p, grund))
         elif u == "SCHWACHER KANDIDAT":
             gruppen["4"].append((p, grund + " (schwach)"))
+        elif u == "UNANTASTBAR":
+            pass
         elif name in NICHT_LOGGBAR:
             gruppen["5b"].append((p, "Urteils-/Prozessregel — Verstoesse sind mit dem "
                                      "vorhandenen Instrumentarium NICHT loggbar"))
@@ -402,7 +433,9 @@ def lauf(projekt, nur="alles", doku=None):
                                          _tr[_k][0][1][:40])))
 
         # Falsch platziert? — v5.108.0: DOCS dazu, und die ZWEITE Klasse steht mit im Bericht
-        if vorschlag in ("HOOK-KANDIDAT", "COMMAND", "DOCS") and e:
+        if _unant and vorschlag in ("COMMAND", "DOCS"):
+            gruppen["9"].append((p, "%s — unantastbar (%s), nur Meldung, nie Umzug" % (vorschlag, _unant)))
+        elif vorschlag in ("HOOK-KANDIDAT", "COMMAND", "DOCS") and e:
             _txt = "%s — %s" % (vorschlag, e.get("grund_zusammen") or e.get("grund", ""))
             for _k in (e.get("vorschlaege") or [])[1:]:
                 _txt += " | ODER %s — %s" % (_k, (e.get("gruende") or {}).get(_k, ""))
@@ -486,8 +519,9 @@ def lauf(projekt, nur="alles", doku=None):
     print("         Regel kann GENAU DESHALB nie gebrochen worden sein, WEIL")
     print("         sie da ist. Aber der Widerspruch muss jetzt KOMMEN.")
     for p, g in gruppen["5a"]:
-        # v5.115.0: die Memory-Zeile traegt ihren Beleg (kein Git) — ungekuerzt, sonst faellt er weg
-        print("       %-32s %s" % (_nm(p)[:32], g if g.startswith("nicht messbar (kein Git)") else g[:44]))
+        # v5.115.0/v5.117.0: die 5a-Begruendung ist der ganze Punkt der Gruppe („Beweislast umgekehrt") —
+        # ungekuerzt, sonst fehlen „kein Git", „zu jung fuer ein Urteil" und die Zahlen dahinter
+        print("       %-32s %s" % (_nm(p)[:32], g))
     print()
     print("  5b · ⭐ GRUNDSAETZLICH NICHT LOGGBAR (%d) — der Kern, nicht der Rest"
           % len(gruppen["5b"]))
@@ -503,6 +537,7 @@ def lauf(projekt, nur="alles", doku=None):
                       ("2", "FALSCH PLATZIERT — Ort A nach Ort B"),
                       ("3", "DOPPELT — eine Stelle wird Zeiger"),
                       ("4", "BELEGT VERALTET — ins Archiv, mit Beleg"),
+                      ("9", "UNANTASTBAR — Roster, CLAUDE.md, MEMORY.md: nur Meldung (v5.117.0)"),
                       ("6", "KONTEXT-TOR — kostet Kontext ohne Gegenwert")):
         print()
         print("  %s · %s (%d)" % (nr, titel, len(gruppen[nr])))

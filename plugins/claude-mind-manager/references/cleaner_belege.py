@@ -45,6 +45,7 @@ Aufruf:
 
 Rueckgabe: 0 = ausgewertet · 1 = Veralterungs-Kandidaten gefunden · 2 = nicht messbar
 """
+import datetime
 import json
 import os
 import re
@@ -217,6 +218,31 @@ def git_commits(pfad):
     return len([z for z in r.stdout.split("\n") if z.strip()])
 
 
+def projekt_commits_seit_anlage(pfad):
+    """(alter_tage, projekt_commits_seit_anlage) — None/None ohne Git. v5.117.0 (Etappe 22 §0b):
+    „nie ueberarbeitet" ist erst ein Fossil, wenn die Datei aelter als MIND_BELEG_FRISCH_TAGE ist
+    UND das Projekt seit ihrer Anlage mindestens 5 Commits gesehen hat — Zustellplans aktiver
+    Roster (2 Tage, 1 Commit) war sonst „belegt veraltet"."""
+    d = os.path.dirname(os.path.abspath(pfad))
+    try:
+        r = subprocess.run(["git", "-C", d, "log", "--follow", "--format=%cI", "--", os.path.basename(pfad)],
+                           capture_output=True, text=True, timeout=20)
+        if r.returncode != 0 or not r.stdout.strip():
+            return None, None
+        erste = r.stdout.strip().split("\n")[-1].strip()
+        r2 = subprocess.run(["git", "-C", d, "rev-list", "--count", "HEAD", "--since=" + erste],
+                            capture_output=True, text=True, timeout=20)
+        n = int(r2.stdout.strip()) if r2.returncode == 0 and r2.stdout.strip().isdigit() else None
+        try:
+            tag = datetime.date.fromisoformat(erste[:10])
+            alter = (datetime.date.today() - tag).days
+        except ValueError:
+            alter = None
+        return alter, n
+    except (OSError, subprocess.SubprocessError):
+        return None, None
+
+
 def _frisch(datum):
     if not datum:
         return False
@@ -262,9 +288,17 @@ def urteile(pfad, index_pfad, projekt=None):
             "%d Verstoesse, letzter am %s — aelter als %d Tage"
             % (n_v, letztes, FRISCH_TAGE)), z
     if commits == 1:
+        alter, pc = projekt_commits_seit_anlage(pfad)
+        z["alter_tage"], z["projekt_commits"] = alter, pc
+        if alter is not None and pc is not None and (alter < FRISCH_TAGE or pc < 5):
+            return "NICHT ENTSCHEIDBAR", (
+                "kein Verstoss gefunden%s, Ein-Commit-Historie — aber zu jung fuer ein Urteil "
+                "(%d Tage, %d Projekt-Commits seit Anlage; Fossil erst ab %d Tagen UND 5 Commits)"
+                % (_fz, alter, pc, FRISCH_TAGE)), z
         return "SCHWACHER KANDIDAT", (
             "kein Verstoss gefunden UND seit Anlage nie ueberarbeitet "
-            "(Ein-Commit-Historie)"), z
+            "(Ein-Commit-Historie, %s Tage, %s Projekt-Commits seit Anlage)"
+            % (alter if alter is not None else "?", pc if pc is not None else "?")), z
     # ⛔ Die ehrliche Zeile.
     return "NICHT ENTSCHEIDBAR", (
         "kein Verstoss gefunden%s, aber %s — ueberfluessig und wirksam sind aus "
