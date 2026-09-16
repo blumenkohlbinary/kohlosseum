@@ -425,11 +425,11 @@ done
 printf '{"ereignis":"start","skill":"mind-all","erwartet":"mind_snapshot","ts":"2026-09-16T14:27:00Z","code":"5.112.0","text":"5.112.0","versionsbruch":false}\n' >> "$S"
 janein "Kopf nachgetragen: FORMAL=5 bleibt (Nachtrag heilt nichts)" ja "$(mind_schritt_bilanz "$P" --alle 2>/dev/null | grep -q '^  FORMAL=5$' && echo ja || echo nein)"
 # Ein Kopf aus einem FRUEHEREN Lauf zaehlt nicht: run_started liegt nach seiner ts
-printf 'run_started=%s\n' "$(date -u -d '2026-09-16T14:28:00Z' +%s)" > "$P/.claude-mind/analyzed-scopes"
+printf 'run_started=%s\n' "$(date -u -d '2026-09-16T15:28:00Z' +%s)" > "$P/.claude-mind/analyzed-scopes"   # v5.118.0: eine Stunde spaeter — 900 s Toleranz fuer den Snapshot (Etappe 26 §1)
 janein "   ... Kopf aelter als run_started (voriger Lauf): mind-update bricht ab" 1 "$(mind_schritt_start "$P" mind-update verdichten >/dev/null 2>&1; echo $?)"
 # Der ZWEITE Kettenlauf: alte Skill-Zeilen liegen vor dem neuen Kopf — das ist der Normalfall
 # (die Quittung wird in der Kette angehaengt, v5.67.0) und darf NICHT abbrechen
-printf '{"ereignis":"start","skill":"mind-all","erwartet":"mind_snapshot","ts":"2026-09-16T14:29:00Z","code":"5.113.0","text":"5.113.0","versionsbruch":false}\n' >> "$S"
+printf '{"ereignis":"start","skill":"mind-all","erwartet":"mind_snapshot","ts":"2026-09-16T15:29:00Z","code":"5.113.0","text":"5.113.0","versionsbruch":false}\n' >> "$S"
 janein "   ... Kopf dieses Laufs trotz alter Zeilen davor: mind-update rc 0 (zweiter Kettenlauf)" 0 "$(mind_schritt_start "$P" mind-update verdichten >/dev/null 2>&1; echo $?)"
 rm -rf "$(dirname "$P")"
 

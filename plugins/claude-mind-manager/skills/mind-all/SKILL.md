@@ -51,7 +51,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.117.0"
+MIND_SKILL_VERSION="5.118.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 # ⛔ v5.98.0: die fuenf Skills sind KEINE Schritte von mind-all — jeder hat seinen EIGENEN
 #    Start-Block (Step 2, Punkt 1). Bis v5.97.0 standen sie hier, Ritas Kalibrierlauf hakte
@@ -258,7 +258,10 @@ fi
 SCOPES_FILE="$PROJ/.claude-mind/analyzed-scopes"
 if [ "$DRY_RUN" = "no" ]; then
   mkdir -p "$(dirname "$SCOPES_FILE")"; : > "$SCOPES_FILE"
-  echo "run_started=$(date +%s)"   >> "$SCOPES_FILE"
+  # ⛔ v5.118.0 (Etappe 26 §1): run_started ist die Sekunde des KOPF-BLOCKS, nicht „jetzt" — der
+  #    Snapshot dazwischen kostete im Zustellplan 12 s, und mind_schritt_start hielt den Kopf
+  #    fuer einen aus dem vorigen Lauf. mind_kopf_epoch liest sie aus der Schritt-Quittung.
+  echo "run_started=$(mind_kopf_epoch "$PROJ")"   >> "$SCOPES_FILE"
   echo "snapshot=$SNAPSHOT"        >> "$SCOPES_FILE"
 else
   rm -f "$SCOPES_FILE"   # Probelauf hinterlaesst KEINE Marke

@@ -370,8 +370,15 @@ mind_check_tools_have_rules() {
       #    ⚠ Was bleibt: eine Rule MIT globs ist bedingt erreichbar, eine OHNE
       #      immer. BEIDE zaehlen als Treffer; die Unterscheidung geht in den
       #      Text, nicht in ein `continue`.
-      if head -12 "$r" | grep -qi '^globs:'; then
-        _wie="globs"
+      # ⛔ v5.118.0 (Etappe 26 §4): `paths:` FILTERT — gemessen Zustellplan 16.09.2026
+      #    (path_glob_match 11x, 13 von 13 Rules nicht beim Start, Dauerkontext 961 -> 131 kB).
+      #    Eine Rule mit paths: ist „bei Beruehrung" erreichbar, mit globs: oder ohne Feld immer.
+      if head -12 "$r" | grep -qi '^paths:'; then
+        _np=$(sed -n '2,40p' "$r" | sed '/^---/q' | grep -cE '^\s*-\s' ); case "$_np" in ''|*[!0-9]*) _np=0 ;; esac
+        [ "$_np" -eq 0 ] && _np=$(head -12 "$r" | grep -i '^paths:' | tr ',' '\n' | grep -c .)
+        _wie="bei Beruehrung: $_np Pfade"
+      elif head -12 "$r" | grep -qi '^globs:'; then
+        _wie="globs (laedt immer)"
       else
         _wie="immer"
       fi
@@ -1332,6 +1339,20 @@ mind_ungepruef_bilden() {
     out="${out}formal-${_n},"
   done
   printf '%s\n' "${out%,}"
+}
+
+# mind_kopf_epoch <projekt>
+# ⛔ v5.118.0 (Etappe 26 §1): die Sekunde der letzten mind-all-Startzeile in der Schritt-Quittung —
+#    mind-all Step 0 schreibt sie als run_started= in analyzed-scopes, damit der Kopf-Block nie
+#    „vor dem Lauf" liegt, egal wie lange der Snapshot dazwischen dauert. Ohne Kopf: jetzt.
+mind_kopf_epoch() {
+  local q ts ep
+  q=$(_mind_schritt_pfad "${1:-}")
+  ts=$(grep '"ereignis":"start","skill":"mind-all"' "$q" 2>/dev/null | tail -1 | sed -n 's/.*"ts":"\([^"]*\)".*/\1/p')
+  ep=""
+  [ -n "$ts" ] && ep=$(date -u -d "$ts" +%s 2>/dev/null)
+  case "$ep" in ''|*[!0-9]*) ep=$(date +%s) ;; esac
+  printf '%s\n' "$ep"
 }
 
 # mind_lauf_voll <projekt> [laufkennung] [agent-soll]
@@ -2469,7 +2490,15 @@ mind_schritt_start() {
         _rs=$(grep -m1 '^run_started=' "$proj/.claude-mind/analyzed-scopes" 2>/dev/null | cut -d= -f2)
         _rsiso=""
         case "$_rs" in ''|*[!0-9]*) ;; *) _rsiso=$(date -u -d "@$_rs" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null) ;; esac
-        if [ -z "$_kopf" ] || { [ -n "$_rsiso" ] && [ -n "$_kts" ] && [ "$_kts" \< "$_rsiso" ]; }; then
+        # ⛔ v5.118.0 (Etappe 26 §1, Veras Zustellplan-Lauf 22:41): der mind-all-Text schrieb
+        #    run_started= erst NACH dem Snapshot (12 s spaeter als der Kopf) — der erste Skill
+        #    brach mit „KOPF-BLOCK FEHLT" ab, obwohl die Reihenfolge stimmte. Zweite Regression
+        #    aus Etappe 20, beide durch Fixtures ohne Zeitabstand. Jetzt: run_started kommt aus
+        #    dem Kopf selbst (mind_kopf_epoch), und ein Kopf darf run_started bis 900 s
+        #    vorausgehen (Snapshot-Dauer) — ein Kopf aus einem FRUEHEREN Lauf liegt Stunden davor.
+        local _rstol=""
+        case "$_rs" in ''|*[!0-9]*) ;; *) _rstol=$(date -u -d "@$((_rs - 900))" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null) ;; esac
+        if [ -z "$_kopf" ] || { [ -n "$_rstol" ] && [ -n "$_kts" ] && [ "$_kts" \< "$_rstol" ]; }; then
           echo "⛔ KOPF-BLOCK FEHLT: $skill laeuft in der Kette, aber die mind-all-Startzeile steht nicht vor ihm." >&2
           echo "   mind-all Step 0 zuerst (mind_schritt_start \"\$PROJ\" mind-all …). Ein Nachtrag heilt nichts —" >&2
           echo "   die Bilanz liest ab der letzten mind-all-Zeile. Liegt analyzed-scopes aus einem abgebrochenen" >&2

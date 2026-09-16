@@ -56,6 +56,17 @@ _R=$(mind_schritt_bilanz "$P" --alle 2>/dev/null)
 janein "Rita 13.09. (echter Lauf, 3-9 min je Block): kein FORMAL" nein "$(printf '%s\n' "$_R" | grep -q 'FORMAL' && echo ja || echo nein)"
 rm -rf "$(dirname "$P")"
 
+echo "== §4  v5.118.0 (Etappe 26 §1): Kopf -> Snapshot (Zeitabstand) -> Skill: rc 0 =="
+# Veras Zustellplan-Lauf 22:41: run_started= kam 12 s nach dem Kopf -> mind-files brach ab.
+P=$(mktemp -d)/p; mkdir -p "$P/.claude-mind"; Q="$P/.claude-mind/schritt-quittung.jsonl"
+zeile_start mind-all "$(date -u -d '-30 seconds' +%Y-%m-%dT%H:%M:%SZ)" > "$Q"
+printf 'run_started=%s\n' "$(date -u -d '-15 seconds' +%s)" > "$P/.claude-mind/analyzed-scopes"   # 15 s NACH dem Kopf (Snapshot-Dauer)
+janein "Kopf 30 s alt, run_started 15 s spaeter: mind-files rc 0" 0 "$(mind_schritt_start "$P" mind-files verdichten >/dev/null 2>&1; echo $?)"
+janein "   mind_kopf_epoch liefert die Sekunde des Kopfes" ja "$([ "$(mind_kopf_epoch "$P")" = "$(date -u -d "$(head -1 "$Q" | sed -n 's/.*"ts":"\([^"]*\)".*/\1/p')" +%s)" ] && echo ja || echo nein)"
+janein "   Gegenprobe: Kopf 2 h alt (voriger Lauf), run_started jetzt -> rc 1" 1 "$(zeile_start mind-all "$(date -u -d '-2 hours' +%Y-%m-%dT%H:%M:%SZ)" > "$Q"; printf 'run_started=%s\n' "$(date -u +%s)" > "$P/.claude-mind/analyzed-scopes"; mind_schritt_start "$P" mind-claudemd verdichten >/dev/null 2>&1; echo $?)"
+janein "mind-all Step 0 schreibt run_started aus dem Kopf (mind_kopf_epoch)" ja "$(grep -q 'echo "run_started=$(mind_kopf_epoch "$PROJ")"' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && echo ja || echo nein)"
+rm -rf "$(dirname "$P")"
+
 echo "== §3  Skill-Text =="
 n=0; for s in mind-files mind-claudemd mind-memory mind-rules mind-update mind-all; do grep -q 'Eine geloeschte oder leere Schritt-Quittung wird nicht nachgetippt' "$CLAUDE_PLUGIN_ROOT/skills/$s/SKILL.md" && n=$((n+1)); done
 janein "die fuenf Skills und mind-all sagen: nicht nachtippen, Block neu fahren" 6 "$n"

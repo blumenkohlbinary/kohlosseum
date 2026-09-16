@@ -49,7 +49,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.117.0"
+MIND_SKILL_VERSION="5.118.0"
 mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
@@ -1423,8 +1423,13 @@ Lies sie.** Hier nur, was für diesen Skill gilt:
 # Kandidat: die groesste Datei aus CLAUDE.md + rules, ohne rollen.md, ohne die schon
 # in DIESEM Kettenlauf verdichteten (analyzed-scopes: verdichtet=<pfad>)
 _SCHON=$(grep '^verdichtet=' "$PROJ/.claude-mind/analyzed-scopes" 2>/dev/null | cut -d= -f2-)
+# ⛔ v5.118.0 (Etappe 26 §6): Rules mit `paths:` sind KEIN Kandidat — sie liegen nicht im
+#    Dauerkontext (Zustellplan: routenplaner.md 161 kB, laedt nur bei Beruehrung), das Kriterium
+#    „Dauerkontext kleiner" waere unerfuellbar. Gleiche Regel wie mind-rules 9b.
 DATEI=$(ls -S "$PROJ/CLAUDE.md" "$PROJ"/.claude/rules/*.md 2>/dev/null | grep -v '/rollen\.md$' \
-        | while IFS= read -r f; do case "
+        | while IFS= read -r f; do
+            head -12 "$f" | grep -qi '^paths:' && continue
+            case "
 $_SCHON
 " in *"
 $f

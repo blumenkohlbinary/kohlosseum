@@ -42,7 +42,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.117.0"
+MIND_SKILL_VERSION="5.118.0"
 mind_schritt_start "$PROJ" mind-files bestandszahlen_kandidaten cleaner_stichprobe mind_check_tools_have_rules mind_hook_health mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -309,7 +309,7 @@ Language: TypeScript (34 .ts files)
 [2] RECOMMENDED .claudeignore — No token savings configured
     -> Will create ignoring node_modules/, dist/, coverage/, .next/
 [3] NICE-TO-HAVE .claude/rules/testing.md — No testing conventions documented
-    -> Will create with globs: **/*.test.ts, **/*.spec.ts
+    -> Will create with paths: **/*.test.ts, **/*.spec.ts   (v5.118.0: paths: filtert, globs: laedt immer)
 
 ### Existing Files (3)
 [4] OK          CLAUDE.md — 85 lines, has build commands, architecture section
@@ -399,7 +399,7 @@ For each confirmed action:
 - Only include directories that actually exist
 
 **Rule files** (if missing):
-- Create with appropriate `globs:` pattern
+- Create with appropriate `paths:` pattern (v5.118.0 — `paths:` filtert, gemessen Zustellplan 16.09.2026; `globs:` ist das Cursor-Feld und laedt immer)
 - Use MUST/NEVER/ALWAYS format
 - Keep under 30 lines
 
@@ -498,7 +498,7 @@ export BACKUP_TEST_TIMEOUT=300
 
 Ohne diese Rule liegen die `tools/*.py` tot im Ordner — Claude weiss nicht WANN er sie
 aufrufen soll (`BACKUP_USAGE.md` ist Menschen-Doku, wird nicht auto-geladen). Die Rule
-mit `globs:`-Frontmatter laedt automatisch, sobald Claude eine passende Datei anfasst,
+mit `paths:`-Frontmatter laedt, sobald Claude eine passende Datei anfasst (gemessen v5.118.0; die Vorlage `backup-usage.md` traegt bewusst `globs: ["**/*"]` = laedt IMMER, damit das Werkzeug vom Start an erreichbar ist),
 und macht das Backup-Tool **erreichbar**.
 
 ```bash
@@ -1080,7 +1080,7 @@ Rule nachtragen.
 selbst ausfuellte — also eine Behauptung ueber die eigene Arbeit. Gemeldet 2026-08-16 als
 „Self-Check-Block nicht durchsetzbar", und das war berechtigt. `mind_check_tools_have_rules`
 prueft stattdessen am Dateisystem: Nennt eine `.claude/rules/*.md` das Tool **namentlich**, und
-hat sie **`globs:`** im Frontmatter (ohne die triggert sie nie)? Die Pruefung kann scheitern —
+traegt sie `paths:` (bei Beruehrung) oder `globs:`/kein Feld (laedt immer)? Die Pruefung kann scheitern —
 ein Tool ohne Rule ergibt nachweislich `FAIL`.
 
 > ⚠ **Was sie NICHT belegt:** dass die Rule je gelesen oder befolgt wird. Gemessen wird die

@@ -247,6 +247,25 @@ $PY "$(w "$REF/cleaner_plan.py")" --anwenden "$(w "$PLAN")" --projekt "$(w "$P/p
 janein "--anwenden mit ARCHIV rollen.md: GEBROCHEN unantastbar, Roster liegt noch" ja "$([ "$RC" = 1 ] && grep -q 'GEBROCHEN: unantastbar' "$PLAN" && [ -f "$P/proj/.claude/rules/rollen.md" ] && echo ja || echo nein)"
 rm -rf "$P"
 
+echo "== v5.118.0 (Etappe 26 §3-§6): --nur memory, [bei Beruehrung], paths: ist die Vorgabe =="
+P=$(mktemp -d); mkdir -p "$P/proj/.claude/rules" "$P/proj/tools"
+printf '# P\n' > "$P/proj/CLAUDE.md"; printf 'x\n' > "$P/proj/tools/werk.py"
+printf -- '---\ndescription: w\npaths: ["tools/*.py", "src/**/*.py"]\n---\n# W\n\nMUST `tools/werk.py` vor jedem Commit.\n' > "$P/proj/.claude/rules/werk.md"
+printf -- '---\ndescription: g\nglobs: ["**/*"]\n---\n# G\n\nMUST `tools/werk.py` sichern.\n' > "$P/proj/.claude/rules/gl.md"
+janein "cleaner_duplikate --nur memory: rc 0 (nicht mehr 2)" 0 "$(MIND_DEBUG_DIR= $PY "$(w "$REF/cleaner_duplikate.py")" --bereich "$(w "$P/proj")" --nur memory >/dev/null 2>&1; echo $?)"
+# shellcheck disable=SC1090
+. "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" >/dev/null 2>&1
+_T=$(mind_check_tools_have_rules "$P/proj" 2>/dev/null)
+janein "mind_check_tools_have_rules: paths-Rule heisst [bei Beruehrung: 2 Pfade]" ja "$(printf '%s\n' "$_T" | grep -q 'werk.md\[bei Beruehrung: 2 Pfade\]' && echo ja || echo nein)"
+janein "   ... globs-Rule heisst [globs (laedt immer)]" ja "$(printf '%s\n' "$_T" | grep -q 'gl.md\[globs (laedt immer)\]' && echo ja || echo nein)"
+rm -rf "$P"
+MR="$CLAUDE_PLUGIN_ROOT/skills/mind-rules/SKILL.md"; MU="$CLAUDE_PLUGIN_ROOT/skills/mind-update/SKILL.md"
+janein "mind-rules: Hard Constraint sagt paths:, nicht globs:" ja "$(grep -q 'ALWAYS use `paths:` in generated rules for file-bound rules, NEVER `globs:`' "$MR" && ! grep -q 'ALWAYS use `globs:` in generated rules' "$MR" && echo ja || echo nein)"
+janein "mind-rules check: globs: ist INFO (laedt immer), paths: keine WARNING mehr" ja "$(grep -q 'Uses `globs:` (laedt IMMER, filtert nicht' "$MR" && ! grep -q 'Uses `paths:` instead of `globs:` | WARNING' "$MR" && echo ja || echo nein)"
+janein "mind-rules migrate: Richtung globs -> paths ueber die Sonde" ja "$(grep -q 'die Richtung ist `globs:` → `paths:`' "$MR" && echo ja || echo nein)"
+janein "mind-update Step 5: paths:-Rules sind kein Verdichten-Kandidat" ja "$(grep -q "head -12 \"\$f\" | grep -qi '^paths:' && continue" "$MU" && echo ja || echo nein)"
+janein "mind-rules 9b: dito im Code, nicht nur in der Tabelle" ja "$(grep -q "grep -qi '^paths:' || { echo \"\$f\"; break; }" "$MR" && echo ja || echo nein)"
+
 echo
 echo "  $OK ok, $ROT rot"
 [ "$ROT" -eq 0 ] || exit 1

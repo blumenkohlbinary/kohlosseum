@@ -42,7 +42,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.117.0"
+MIND_SKILL_VERSION="5.118.0"
 mind_schritt_start "$PROJ" mind-rules bestandsaufnahme bestandszahlen_kandidaten cleaner_duplikate cleaner_stichprobe ladeprotokoll_auswertung mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -173,6 +173,12 @@ Optional flag: `--debug` (nur mit `check`) — Ladeprotokoll auswerten
 
 ### ⛔ P1 (v5.43.0): die Migration lief FUENF MONATE in die falsche Richtung
 
+⭐ **v5.118.0 — der Versuch ist gemacht, die Frage ist entschieden:** Zustellplan, 16.09.2026
+(Vera, `cleaner_paths_sonde.py --auswerten`): 13 Rules auf `paths:` umgestellt, in der
+naechsten Sitzung **13 von 13 nicht beim Start geladen**, `path_glob_match` **11x** bei
+Dateiberuehrung, Dauerkontext **961 kB → 131 kB**. `paths:` filtert; `globs:` laedt immer.
+Der Abschnitt darunter ist damit Historie — er erklaert, warum die Doku allein nicht reichte.
+
 **Bis v5.42.0 schrieb dieser Skill AUTONOM `paths:` nach `globs:` um** — auch in
 fremden Projekten. Die Begruendung stammte aus dem Januar 2026, als `paths:`
 tatsaechlich kaputt war.
@@ -239,10 +245,10 @@ auf, traegt `paths:` hier. Bis dahin gilt: **im Bericht beide Seiten nennen.**
 
 | File | Scope | Glob Pattern | Lines | Status |
 |------|-------|-------------|-------|--------|
-| .claude/rules/typescript.md | Project | **/*.ts, **/*.tsx | 30 | OK (globs:) |
-| .claude/rules/api.md | Project | src/api/**/* | 25 | OK (globs:) |
+| .claude/rules/typescript.md | Project | **/*.ts, **/*.tsx | 30 | OK (paths: — laedt bei Beruehrung) |
+| .claude/rules/api.md | Project | src/api/**/* | 25 | INFO (globs: — laedt IMMER, filtert nicht) |
 | .claude/rules/general.md | Project | (none — always loaded) | 15 | OK |
-| ~/.claude/rules/style.md | User | — | 20 | WARNING (paths: — won't work) |
+| ~/.claude/rules/style.md | User | — | 20 | INFO (paths: global — ungemessen, Issues #21858/#22170) |
 
 Total: 4 rules, 90 lines
 ```
@@ -258,8 +264,8 @@ Total: 4 rules, 90 lines
 | Issue | Severity | Detection |
 |-------|----------|-----------|
 | **Frontmatter nicht mit `---` geschlossen** | **CRITICAL** | erste Zeile ist `---`, aber es gibt keine zweite `---`-Zeile |
-| Uses `paths:` instead of `globs:` | WARNING | Grep `^paths:` |
-| User-level rule uses `paths:` | ERROR | paths: in ~/.claude/rules/ never works |
+| Uses `globs:` (laedt IMMER, filtert nicht — Cursor-Feld) | INFO | Grep `^globs:` — ⛔ v5.118.0: umgedreht, `paths:` ist die Vorgabe fuer dateigebundene Rules (gemessen Zustellplan 16.09.2026: `path_glob_match` 11x, 13/13 Rules nicht beim Start, Dauerkontext 961 → 131 kB) |
+| User-level rule uses `paths:` | INFO | in `~/.claude/rules/` ungemessen (Issues #21858/#22170 offen) — melden, nicht warnen |
 | YAML quoting issue | WARNING | `*` or `{` at line start without quotes |
 | Empty frontmatter | INFO | No globs: = always loaded (may be intentional) |
 | Rule >50 lines | INFO | Large rule may impact compliance |
@@ -269,9 +275,9 @@ Output:
 ```
 === Rules Syntax Check ===
 
-.claude/rules/typescript.md — OK (globs: **/*.ts, **/*.tsx)
-.claude/rules/testing.md   — WARNING: uses paths: instead of globs:
-~/.claude/rules/global.md  — ERROR: paths: in user-level rules (never works)
+.claude/rules/typescript.md — OK (paths: **/*.ts, **/*.tsx — laedt bei Beruehrung)
+.claude/rules/testing.md   — INFO: globs: laedt IMMER (filtert nicht) — paths: waere die Vorgabe
+~/.claude/rules/global.md  — INFO: paths: in user-level rules — ungemessen (#21858/#22170)
 
 Fixable: 2 issues (run /mind-rules migrate)
 ```
@@ -387,9 +393,12 @@ sonst ist es an einer Stelle unsichtbar.
 
 ### Subcommand: migrate
 
-Auto-convert `paths:` to `globs:` in all rule files:
+⛔ **v5.118.0: die Richtung ist `globs:` → `paths:`** — gemessen (Zustellplan 16.09.2026: 13 Rules
+mit `paths:` laden nicht beim Start, `path_glob_match` 11x, Dauerkontext 961 → 131 kB). Der Tausch
+selbst laeuft ueber `cleaner_paths_sonde.py --start` (Sicherung, Merker, Messung in der naechsten
+Sitzung) — dieser Schritt MELDET, welche Rules noch `globs:` tragen, und schreibt nichts um.
 
-1. Find all rule files with `paths:` frontmatter
+1. Find all rule files with `globs:` frontmatter (die Kandidaten fuer `paths:`)
 2. For each file, show diff:
 
 ```
@@ -407,10 +416,9 @@ After:
 ```
 
 3. ⛔ **SCHREIBT NICHTS UM (seit v5.43.0).** Der Ablauf endet hier: gemeldet wird,
-   welches Feld jede Regel traegt. Kein Edit, keine Bestaetigungsfrage, kein
-   Vorher/Nachher — die Richtung war fuenf Monate falsch, und die Gegenrichtung
-   ist hier NICHT gemessen (siehe P1 oben).
-4. Summary: "N Regeln mit `paths:`, M mit `globs:`, K ohne Feld (= laden immer)."
+   welches Feld jede Regel traegt. Der Tausch `globs:` → `paths:` geht ueber die Sonde
+   (`/mind-cleaner --paths-sonde`), damit die Ladung danach GEMESSEN wird.
+4. Summary: "N Regeln mit `paths:` (bei Beruehrung), M mit `globs:` (laden immer — Kandidaten), K ohne Feld (= laden immer)."
    ⚠ Dazu der Satz, was daran gemessen ist und was nicht — eine blosse Zahl
    verleitet zur naechsten Umschreibung.
 
@@ -460,9 +468,9 @@ das Netz darunter.**
 
 ## Hard Constraints
 
-- ALWAYS use `globs:` in generated rules, NEVER `paths:`
+- ALWAYS use `paths:` in generated rules for file-bound rules, NEVER `globs:` (v5.118.0 — umgedreht: `paths:` filtert, gemessen Zustellplan 16.09.2026, `path_glob_match` 11x, Dauerkontext 961 → 131 kB; `globs:` ist das Cursor-Feld und laedt immer). ⚠ Bis v5.117.0 stand hier das Gegenteil
 - ALWAYS show preview before writing new rule files
-- ALWAYS warn about user-level rules with paths: (known to not work)
+- ALWAYS report (not warn) user-level rules with paths: — global ungemessen (#21858/#22170)
 - **NEVER modify rules without a successful `mind_snapshot` (Step 0)** — Fehlschlag = Abbruch. (v5.0.0: im Autonom-Modus wird der Diff NACH dem Anwenden im Bericht gezeigt, statt vorher zur Freigabe; bei `--ask` weiter vorher.)
 - **ALWAYS report every applied change** mit `file:line` + before→after + Snapshot-Pfad.
 - Rules without globs: are valid — they always load (document this, don't warn)
@@ -736,7 +744,8 @@ Lies sie.** Hier nur, was für diesen Skill gilt:
 
 ```bash
 # Kandidat: die groesste Rule, ohne rollen.md
-DATEI=$(ls -S "$PROJ"/.claude/rules/*.md 2>/dev/null | grep -v '/rollen\.md$' | head -1)
+DATEI=$(ls -S "$PROJ"/.claude/rules/*.md 2>/dev/null | grep -v '/rollen\.md$' \
+        | while IFS= read -r f; do head -12 "$f" | grep -qi '^paths:' || { echo "$f"; break; }; done)   # v5.118.0: paths:-Rules ausgeschlossen, wie die Tabelle sagt
 [ -n "$DATEI" ] || { echo "VERDICHTEN: keine Kandidatin"; }
 # ... dann exakt der Lauf aus bestands-pass.md: Snapshot -> Agent -> mind_verdichtung_pruefen
 #     ⛔ v5.100.0: der Agent schreibt $PROJ/.claude-mind/verdichten-mind-rules.nachher.md (Zeilenenden

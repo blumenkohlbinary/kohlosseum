@@ -15,9 +15,10 @@
 # ⭐ DIESE SAMMLUNG IST EINE RATSCHE. Sie wird rot, sobald jemand die alte
 #    Richtung wieder einbaut — egal in welcher Formulierung.
 #
-# ⚠ Sie prueft NICHT, dass die Gegenrichtung gebaut ist. Die ist bewusst NICHT
-#   gebaut: gemessen ist, dass `globs:` nicht filtert; NICHT gemessen ist, dass
-#   `paths:` es hier tut.
+# ⚠ Sie prueft NICHT, dass die Gegenrichtung automatisch gebaut ist — der Tausch
+#   globs: -> paths: laeuft ueber die Sonde (Sicherung + Messung). Seit v5.118.0 ist
+#   gemessen, dass `paths:` filtert (Zustellplan 16.09.2026); die Sammlung verlangt,
+#   dass der Skill das sagt UND nennt, was weiter ungemessen ist (global).
 set -u
 R="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 GRUEN=0; ROT=0
@@ -46,7 +47,12 @@ echo "=== 3) ⭐ Beide Seiten der Messlage stehen da ==="
 D=$(cat "$S")
 hat "was GEMESSEN ist: globs filtert nicht" "path_glob_match" "$D"
 hat "   ... mit der Zahl" "3667" "$D"
-hat "⚠ was NICHT gemessen ist: dass paths hier filtert" "NICHT gemessen" "$D"
+# v5.118.0: die Gegenrichtung IST gemessen (Zustellplan 16.09.2026, Etappe 26) — die Zusicherung
+# „beide Seiten der Messlage stehen da" bleibt, die Seiten haben sich verschoben: gemessen ist jetzt
+# auch, dass paths: filtert; ungemessen bleibt paths: in ~/.claude/rules/ (Issues #21858/#22170).
+hat "⭐ was seit 16.09.2026 GEMESSEN ist: paths filtert (13 von 13 nicht beim Start)" "13 von 13 nicht beim Start" "$D"
+hat "   ... mit path_glob_match 11x und dem Dauerkontext 961 -> 131 kB" "961 kB → 131 kB" "$D"
+hat "⚠ was weiter NICHT gemessen ist: paths in ~/.claude/rules/ (global)" "ungemessen" "$D"
 hat "der Versuch, der es entscheiden wuerde, steht dabei" "frische Sitzung" "$D"
 hat "   ... und dass nur der Mensch ihn ausloesen kann" "Nur der Mensch" "$D"
 

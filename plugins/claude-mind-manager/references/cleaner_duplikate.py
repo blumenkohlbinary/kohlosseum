@@ -1250,8 +1250,14 @@ def main():
         i = argv.index("--nur") + 1
         if i < len(argv) and argv[i] in ("global", "projekt", "alles"):
             bereich = argv[i]
+        elif i < len(argv) and argv[i] == "memory":
+            # v5.118.0 (Etappe 26 §3): mind-memory 6c und mind-cleaner Step 0 nennen `--nur memory`
+            # (Bestand seit v5.107.0) — es fehlte hier (rc 2). Das Memory wird gegen die
+            # Projekt-Ablagen verglichen (p:memory liegt in `projekt`), wie im Audit.
+            bereich = "projekt"
+            print("Hinweis: --nur memory vergleicht das Memory gegen die Projekt-Ablagen (CLAUDE.md, Rules, Memory aller Slugs).")
         else:
-            print("--nur braucht global|projekt|alles")
+            print("--nur braucht global|projekt|alles|memory")
             return 2
     # ⛔ Ein Projektpfad, den es nicht gibt, bricht AB. Vorher wurde still ein
     #    leeres Projekt gemessen und das Ergebnis sah aus wie ein Befund.
