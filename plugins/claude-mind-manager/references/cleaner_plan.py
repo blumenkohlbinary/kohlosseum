@@ -64,6 +64,13 @@ def docs_ziel(projekt):
     return "docs", True
 
 
+ANLAGE = []   # v5.115.0: (abschnitt, dateipaar, [marken]) — von zeilen_aus_gruppen gefuellt, von neu() geschrieben
+
+
+def anlage_pfad(plan):
+    return plan[:-3] + ".anlage.md" if plan.endswith(".md") else plan + ".anlage.md"
+
+
 def zeilen_aus_gruppen(gruppen, projekt):
     """Planzeilen aus den Audit-Gruppen 2 (falsch platziert), 3 (doppelt), 4 (veraltet)."""
     z = []
@@ -84,8 +91,16 @@ def zeilen_aus_gruppen(gruppen, projekt):
             z.append(("MELDUNG", p, "Hook-Kandidat — nur melden (Nutzer 24.08.2026), --hook-bauen auf Ansage", "-", "-"))
         else:
             z.append(("MELDUNG", p, txt[:80], "-", "-"))
+    # ⛔ v5.115.0 (Etappe 23 §5, Veras Zustellplan-Plan: 1 823 Zeilen, 1 796 davon ZEIGER):
+    #    je DATEIPAAR eine Zeile („n doppelte Marken zwischen a + b"), die Marken selbst in
+    #    die Anlage <plan>.anlage.md (Abschnitt je Paar). Der Plan bleibt lesbar.
+    paare = {}
     for a, b in gruppen.get("3", []):
-        z.append(("ZEIGER", str(a), "doppelt mit %s — eine Stelle wird Zeiger (von Hand, Stufe 3)" % str(b)[:60], "-", "-"))
+        paare.setdefault(str(b), []).append(str(a))
+    for k, (b, marken) in enumerate(sorted(paare.items()), 1):
+        z.append(("ZEIGER", b[:80], "%d doppelte Marke(n) — eine Stelle wird Zeiger (von Hand, Stufe 3); Anlage Abschnitt %d"
+                  % (len(marken), k), "-", "-"))
+    ANLAGE[:] = [(k, b, marken) for k, (b, marken) in enumerate(sorted(paare.items()), 1)]
     for p, g in gruppen.get("4", []):
         z.append(("ARCHIV", p, ".claude/archiv/ (cleaner_ratsche --archiviere)", "Ratsche: Grund Pflicht", "Snapshot / --entarchiviere"))
     z.sort(key=lambda x: REIHE.get(x[0], 9))
@@ -101,6 +116,11 @@ def neu(projekt, nur="alles", plan=None):
         d = os.path.join(d, "laeufe") if d and os.path.isdir(d) else os.path.join(projekt, ".claude-mind")
         os.makedirs(d, exist_ok=True)
         plan = os.path.join(d, time.strftime("%Y-%m-%d_%H%M") + "_plan.md")
+    return schreibe_plan(plan, z, projekt, nur)
+
+
+def schreibe_plan(plan, z, projekt, nur="alles"):
+    """Plandatei (+ Anlage fuer die ZEIGER-Marken, v5.115.0) schreiben. rc 0 mit Zeilen, sonst 1."""
     with open(plan, "w", encoding="utf-8", newline="\n") as fh:
         fh.write("# Cleaner-Plan %s — %s (--nur %s)\n\n" % (time.strftime("%Y-%m-%d %H:%M"), projekt, nur))
         fh.write("EIN ok wendet ALLE Zeilen an (`--anwenden <plan>`); streichen mit `--ohne 3,7`.\n")
@@ -110,7 +130,18 @@ def neu(projekt, nur="alles", plan=None):
             fh.write("| %d | %s | %s | %s | %s | %s | offen |\n" % (i, kl, _rel(p, projekt), ziel, gates, rueck))
         if not z:
             fh.write("| - | - | (keine Befunde in den Gruppen 2-4) | - | - | - | - |\n")
-    print("Plan: %s  (%d Zeile(n))" % (plan, len(z)))
+        if ANLAGE:
+            fh.write("\nAnlage (die einzelnen doppelten Marken je Dateipaar): `%s`\n" % os.path.basename(anlage_pfad(plan)))
+    if ANLAGE:
+        with open(anlage_pfad(plan), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write("# Anlage zum Cleaner-Plan %s — doppelte Marken je Dateipaar\n\n" % os.path.basename(plan))
+            for k, b, marken in ANLAGE:
+                fh.write("## %d · %s (%d)\n\n" % (k, b, len(marken)))
+                for m in marken:
+                    fh.write("- %s\n" % m)
+                fh.write("\n")
+    print("Plan: %s  (%d Zeile(n)%s)" % (plan, len(z),
+                                         (", Anlage %d Abschnitt(e) mit %d Marke(n)" % (len(ANLAGE), sum(len(m) for _, _, m in ANLAGE))) if ANLAGE else ""))
     return 0 if z else 1
 
 
@@ -169,6 +200,53 @@ def _kurz_aus(ziel):
     return m.group(1) if m else None
 
 
+def _ist_memory_pfad(d):
+    n = d.replace("\\", "/")
+    return "/.claude/projects/" in n and "/memory/" in n
+
+
+def memory_index_zeile(topic_p, docs_p):
+    """Die neue Indexzeile: `- [Titel](<docs-pfad>) — umgezogen nach docs, lies zuerst \`<docs-pfad>\`: <Aufhaenger>`."""
+    t = open(topic_p, encoding="utf-8", errors="replace").read()
+    name = os.path.splitext(os.path.basename(topic_p))[0]
+    m = re.search(r"^\s*description:\s*(.+)$", t, re.M)
+    auf = (m.group(1).strip() if m else "").strip("\"'")
+    m2 = re.search(r"^#\s+(.+)$", t, re.M)
+    titel = m2.group(1).strip() if m2 else name
+    dp = docs_p.replace("\\", "/")
+    return "- [%s](%s) — umgezogen nach docs, lies zuerst `%s`%s" % (titel, dp, dp, (": " + auf) if auf else "")
+
+
+def memory_docs_zug(topic_p, docs_p, plan, nr):
+    """(ok, warum) — Gates ueber alt=Topic, kurz=Indexzeile, ziel=docs; dann Index umschreiben, Topic weg."""
+    import tempfile
+    zeile = memory_index_zeile(topic_p, docs_p)
+    tf = tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8")
+    tf.write(zeile + "\n"); tf.close()
+    try:
+        gates, fehlt = umz.pruefe(topic_p, tf.name, docs_p, "docs")
+    finally:
+        os.unlink(tf.name)
+    if gates is None:
+        return False, "nicht messbar: %s" % ", ".join(fehlt)
+    bruch = [n for n, g, _ in gates if not g and n != "ENTLASTUNG"]   # eine Indexzeile ist immer kuerzer
+    if bruch:
+        return False, "Gate gebrochen: %s" % ", ".join(bruch)
+    idx = os.path.join(os.path.dirname(topic_p), "MEMORY.md")
+    name = os.path.basename(topic_p)
+    alt = open(idx, encoding="utf-8", errors="replace").read() if os.path.isfile(idx) else "# Memory\n\n"
+    muster = re.compile(r"^[-*]\s*\[[^\]]*\]\(\s*%s\s*\).*$" % re.escape(name), re.M)
+    if muster.search(alt):
+        neu = muster.sub(lambda m: zeile, alt, count=1)
+    else:
+        neu = alt.rstrip("\n") + "\n" + zeile + "\n"
+    open(idx, "w", encoding="utf-8", newline="\n").write(neu)
+    os.remove(topic_p)
+    print("     Index: %s -> zeigt auf %s; Topic entfernt (im Snapshot unter memory/)" % (name, docs_p.replace("\\", "/")))
+    print("     danach: python Learnings/memory_gates.py <snapshot>/memory  (Gate 3 liest den docs-Zeiger, v5.115.0)")
+    return True, ""
+
+
 def anwenden(plan, ohne=(), projekt=None):
     projekt = projekt or _projekt_aus(plan)
     z = lies_plan(plan)
@@ -205,6 +283,22 @@ def anwenden(plan, ohne=(), projekt=None):
         elif kl == "REBUILD":
             rc = reb.rebuild(projekt, d, auto=True, anwenden=True)
             ok, warum = rc != 2, "" if rc != 2 else "Rebuild: Gate gebrochen (rc 2)"
+        elif kl == "DOCS" and _ist_memory_pfad(d):
+            # ⛔ v5.115.0 (Etappe 23 §8, Otto/Vera): bis 5.114.0 blieb nach dem DOCS-Zug ein STUB
+            #    in memory/ und MEMORY.md blieb unangetastet — die Themenzahl sank nicht, der
+            #    Memory-Deckel blieb rot, Zustellplan stellte fuenf Zuege zurueck. Jetzt: die
+            #    Indexzeile zeigt direkt auf docs/<name>.md, kein Stub, das Topic ist weg
+            #    (Snapshot haelt es unter memory/); die Zeile ist zugleich die Kurz-Fassung fuer
+            #    die Gates (PFAD, ZEIGER, INHALT). Danach: Learnings/memory_gates.py auf den
+            #    Snapshot — Gate 3 liest den docs-Zeiger seit v5.115.0 als gueltig.
+            zielp = x["ziel"].split(" (")[0].strip()
+            zielp = os.path.expanduser(zielp)
+            if not zielp.startswith(("/", "~")) and not os.path.isabs(zielp):
+                zielp = os.path.join(projekt, zielp)
+            if not os.path.isfile(zielp):
+                ok, warum = False, "Ziel %s fehlt (Sitzung muss die docs-Datei vorbereiten)" % x["ziel"].split(" (")[0]
+            else:
+                ok, warum = memory_docs_zug(d, zielp, plan, x["nr"])
         elif kl in ("UMZUG", "DOCS"):
             k = _kurz_aus(x["ziel"])
             zielp = x["ziel"].split(" (")[0].strip()

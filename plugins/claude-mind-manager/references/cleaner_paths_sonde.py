@@ -14,12 +14,18 @@
       tauscht `globs:` -> `paths:` (nur im Frontmatter), schreibt den Merker
       <projekt>/.claude-mind/paths-sonde (datei=, ts=, sid=, sicherung=) und sagt:
       "neue Sitzung starten, dann /mind-cleaner erneut".
-   2. --auswerten <projekt>
+   2. --auswerten <projekt> [--seit <YYYY-MM-DD HH:MM:SS>] [--datei <rule.md>] [--log <pfad>]
       liest das Ladeprotokoll (ladeprotokoll_auswertung.finde_log) SEIT dem Merker aus einer
       ANDEREN Sitzung: Rule geladen mit Grund session_start -> `paths:` filtert NICHT;
       geladen mit path_glob_match -> filtert (Grund belegt); Protokoll traegt neue Sitzung,
       Rule fehlt -> filtert; keine neue Sitzung -> noch nicht messbar. Ergebnis nach
       $MIND_DEBUG_DIR/paths-sonde-<ts>.md und als Satz fuer kontext-anlegen.md.
+      ⛔ v5.115.0 (Etappe 23 §1): OHNE Merker geht es auch — der globs->paths-Tausch im
+      Zustellplan lief von Hand (15.09., vor v5.108.0), und das Ergebnis lag trotzdem vor:
+      13 paths-Rules fehlten beim Sitzungsstart, ein Read lud 3 nach (Sitzung Otto, 16.09.).
+      Dann gilt `--seit` als Merkerzeit (fehlt es: der ganze Log) und `--datei` als Rule;
+      ohne `--datei` werden ALLE Rules mit `paths:` im Frontmatter gemessen, je Rule ein
+      Urteil und eines fuer den Bestand.
 
 ⛔ Schritt 1 AENDERT eine Datei. Er laeuft nur nach dem OK des Cleaners, wie jeder Umzug.
    Rueckweg: die Sicherung (der Merker nennt sie). Die Sonde stellt NICHT selbst zurueck.
@@ -158,65 +164,133 @@ def start(projekt, datei=None, sicherung_wurzel=None):
     return 0
 
 
-def auswerten(projekt, log=None):
+def paths_rules(projekt):
+    """Alle Rules unter .claude/rules/ mit `paths:` im Frontmatter (v5.115.0)."""
+    rd = os.path.join(projekt, ".claude", "rules")
+    out = []
+    for f in sorted(os.listdir(rd)) if os.path.isdir(rd) else []:
+        if not f.endswith(".md"):
+            continue
+        p = os.path.join(rd, f)
+        t = open(p, encoding="utf-8", errors="replace").read()
+        if t.startswith("---") and len(t.split("---", 2)) >= 3 \
+                and re.search(r"^\s*paths:", t.split("---", 2)[1], re.M):
+            out.append(p)
+    return out
+
+
+def _urteil(base, neue_sitzungen, treffer):
+    gruende = set(g for _, g, _ in treffer)
+    if not neue_sitzungen:
+        return "NOCH NICHT MESSBAR", "keine neue Sitzung im Protokoll seit dem Merker", 3
+    if not treffer:
+        return ("paths: FILTERT",
+                "`paths:` filtert: die Rule `%s` wurde in %d neuen Sitzung(en) NICHT geladen "
+                "(gemessen %s)" % (base, len(neue_sitzungen), time.strftime("%d.%m.%Y")), 0)
+    if gruende == {"path_glob_match"}:
+        return ("paths: FILTERT (Grund path_glob_match)",
+                "`paths:` filtert: die Rule `%s` lud nur mit Grund `path_glob_match` "
+                "(gemessen %s)" % (base, time.strftime("%d.%m.%Y")), 0)
+    return ("paths: FILTERT NICHT",
+            "`paths:` filtert NICHT: die Rule `%s` lud in einer neuen Sitzung mit Grund %s "
+            "(gemessen %s)" % (base, ", ".join(sorted(gruende)), time.strftime("%d.%m.%Y")), 1)
+
+
+def auswerten(projekt, log=None, seit=None, datei=None):
+    """Mit Merker wie bisher (eine Rule, seit dem Merker, eigene Sitzung ausgenommen).
+    ⛔ v5.115.0: OHNE Merker gilt --seit als Merkerzeit (fehlt es: der ganze Log), --datei als
+    Rule; ohne --datei ALLE Rules mit paths: — je Rule ein Urteil, eines fuer den Bestand."""
     m = _lies_merker(projekt)
-    if not m:
-        print("⛔ kein Merker paths-sonde — zuerst --start")
-        return 2
+    if m and not datei:
+        rules = [m["datei"]]
+        seit = seit or m.get("ts", "")
+        sid = m.get("sid", "")
+        quelle = "Merker"
+    else:
+        if datei:
+            p = datei if os.path.isabs(datei) else os.path.join(projekt, ".claude", "rules", datei)
+            if not os.path.isfile(p):
+                print("⛔ Rule nicht gefunden: %s" % datei)
+                return 2
+            rules = [p]
+        else:
+            rules = paths_rules(projekt)
+            if not rules:
+                print("⛔ kein Merker paths-sonde und keine Rule mit paths: unter .claude/rules/ — "
+                      "zuerst --start, oder --datei <rule>")
+                return 2
+        seit = seit or ""
+        sid = os.environ.get("CLAUDE_CODE_SESSION_ID", "") or ""
+        quelle = "ohne Merker (--seit %s)" % (seit or "Anfang des Protokolls")
     log = log or lp.finde_log()
     if not os.path.isfile(log):
         print("⛔ kein Ladeprotokoll: %s" % log)
         return 2
-    base = os.path.basename(m["datei"])
-    seit, sid = m.get("ts", ""), m.get("sid", "")
-    neue_sitzungen, treffer = set(), []
+    basen = dict((os.path.basename(r), r) for r in rules)
+    neue_sitzungen = set()
+    treffer = dict((b, []) for b in basen)
     for z in open(log, encoding="utf-8", errors="replace"):
         t = z.rstrip("\n").split("\t")
-        if len(t) < 3 or t[0] <= seit:
+        if len(t) < 3 or (seit and t[0] <= seit):
             continue
         s = t[3] if len(t) > 3 else ""
         if sid and s and sid.startswith(s):
             continue                      # dieselbe Sitzung zaehlt nicht
         neue_sitzungen.add(s or "?")
-        if t[2].replace("\\", "/").endswith("/" + base):
-            treffer.append((t[0], t[1], s))
+        pf = t[2].replace("\\", "/")
+        for b in basen:
+            if pf.endswith("/" + b):
+                treffer[b].append((t[0], t[1], s))
     print("=" * 72)
-    print("PATHS-SONDE auswerten — %s" % base)
+    print("PATHS-SONDE auswerten — %s" % (", ".join(sorted(basen)) if len(basen) <= 3 else "%d Rules" % len(basen)))
     print("=" * 72)
-    print("  Merker seit %s (Sitzung %s), Protokoll %s" % (seit, sid[:8], log))
-    print("  neue Sitzungen seit dem Merker: %d, Ladungen der Rule: %d" % (len(neue_sitzungen), len(treffer)))
-    if not neue_sitzungen:
-        urteil, satz = "NOCH NICHT MESSBAR", "keine neue Sitzung im Protokoll seit dem Merker"
-        rc = 3
+    print("  Quelle %s, Sitzung %s, Protokoll %s" % (quelle, sid[:8] or "-", log))
+    print("  neue Sitzungen seit dem Merker: %d" % len(neue_sitzungen))
+    zeilen, rcs, urteile_ = [], [], {}
+    for b in sorted(basen):
+        u, satz, rc = _urteil(b, neue_sitzungen, treffer[b])
+        urteile_[b] = (u, satz, rc, treffer[b])
+        rcs.append(rc)
+        print("  %-40s Ladungen %2d  %s" % (b[:40], len(treffer[b]), u))
+    if len(basen) == 1:
+        b = list(basen)[0]
+        urteil, satz, rc = urteile_[b][0], urteile_[b][1], urteile_[b][2]
     else:
-        gruende = set(g for _, g, _ in treffer)
-        if not treffer:
-            urteil = "paths: FILTERT"
-            satz = ("`paths:` filtert: die Rule `%s` wurde in %d neuen Sitzung(en) NICHT geladen "
-                    "(gemessen %s)" % (base, len(neue_sitzungen), time.strftime("%d.%m.%Y")))
-            rc = 0
-        elif gruende == {"path_glob_match"}:
-            urteil = "paths: FILTERT (Grund path_glob_match)"
-            satz = ("`paths:` filtert: die Rule `%s` lud nur mit Grund `path_glob_match` "
-                    "(gemessen %s)" % (base, time.strftime("%d.%m.%Y")))
+        n_f = sum(1 for b in basen if urteile_[b][2] == 0)
+        n_n = sum(1 for b in basen if urteile_[b][2] == 1)
+        n_nach = sum(1 for b in basen if urteile_[b][3] and set(g for _, g, _ in urteile_[b][3]) == {"path_glob_match"})
+        if not neue_sitzungen:
+            urteil, satz, rc = "NOCH NICHT MESSBAR", "keine neue Sitzung im Protokoll", 3
+        elif n_n == 0:
+            urteil = "paths: FILTERT (%d von %d Rules nicht beim Start, %d bei Dateiberuehrung nachgeladen)" % (n_f, len(basen), n_nach)
+            satz = ("`paths:` filtert — gemessen %s, %s, %d Rules, Nachladen bei Dateiberuehrung (%d)"
+                    % (time.strftime("%d.%m.%Y"), os.path.basename(os.path.abspath(projekt)), len(basen), n_nach))
             rc = 0
         else:
-            urteil = "paths: FILTERT NICHT"
-            satz = ("`paths:` filtert NICHT: die Rule `%s` lud in einer neuen Sitzung mit Grund %s "
-                    "(gemessen %s)" % (base, ", ".join(sorted(gruende)), time.strftime("%d.%m.%Y")))
+            urteil = "paths: FILTERT NICHT bei %d von %d Rules" % (n_n, len(basen))
+            satz = ("`paths:` filtert NICHT durchgehend: %d von %d Rules luden in einer neuen Sitzung mit "
+                    "session_start (gemessen %s, %s)" % (n_n, len(basen), time.strftime("%d.%m.%Y"),
+                                                         os.path.basename(os.path.abspath(projekt))))
             rc = 1
     print("  URTEIL: %s" % urteil)
     print("  Satz fuer kontext-anlegen.md: %s" % satz)
     _andere_melden(projekt)
-    print("  Rueckweg: cp \"%s\" \"%s\"" % (m.get("sicherung", "?"), m["datei"]))
+    if m and not datei:
+        print("  Rueckweg: cp \"%s\" \"%s\"" % (m.get("sicherung", "?"), m["datei"]))
     d = os.environ.get("MIND_DEBUG_DIR")
     if d and os.path.isdir(d):
         out = os.path.join(d, "paths-sonde-%s.md" % time.strftime("%Y%m%d-%H%M%S"))
         with open(out, "w", encoding="utf-8", newline="\n") as fh:
             fh.write("# paths-Sonde %s\n\n- Projekt: %s\n- Rule: `%s`\n- Merker seit: %s\n- neue Sitzungen: %d\n"
                      "- Ladungen: %s\n- URTEIL: %s\n- Satz: %s\n"
-                     % (time.strftime("%Y-%m-%d %H:%M"), os.path.abspath(projekt), m["datei"], seit, len(neue_sitzungen),
-                        "; ".join("%s %s %s" % t for t in treffer) or "keine", urteil, satz))
+                     % (time.strftime("%Y-%m-%d %H:%M"), os.path.abspath(projekt),
+                        "`, `".join(sorted(basen)), seit or "Anfang", len(neue_sitzungen),
+                        "; ".join("%s %s %s %s" % (b, t[0], t[1], t[2]) for b in sorted(basen) for t in treffer[b]) or "keine",
+                        urteil, satz))
+            if len(basen) > 1:
+                fh.write("\n## je Rule\n\n")
+                for b in sorted(basen):
+                    fh.write("- `%s`: %s (%d Ladungen)\n" % (b, urteile_[b][0], len(treffer[b])))
         print("  Ergebnis: %s" % out)
     return rc
 
@@ -289,7 +363,7 @@ def main(argv=None):
     if "--start" in a:
         return start(hol("--start"), hol("--datei"))
     if "--auswerten" in a:
-        return auswerten(hol("--auswerten"), hol("--log"))
+        return auswerten(hol("--auswerten"), hol("--log"), hol("--seit"), hol("--datei"))
     print(__doc__)
     return 2
 

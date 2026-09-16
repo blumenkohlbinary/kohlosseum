@@ -47,7 +47,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.114.0"
+MIND_SKILL_VERSION="5.115.0"
 mind_schritt_start "$PROJ" mind-cleaner bestandsaufnahme cleaner_audit cleaner_einordnung cleaner_grenzen cleaner_leitplanke cleaner_ratsche cleaner_rebuild cleaner_umzug ladeprotokoll_auswertung mind_debug_write mind_snapshot
 ```
 
@@ -137,6 +137,29 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_plan.py" --neu "$PROJ" --nur proj
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_plan.py" --anwenden <plan> [--ohne 3,7]
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_audit.py" --bereich "$PROJ"   # Pflicht danach
 ```
+
+⭐ **v5.115.0 (Veras erster Lauf im Zustellplan, 16.09.2026 — acht Befunde):**
+- **ZEIGER-Zeilen stehen je Dateipaar EINMAL im Plan** („n doppelte Marken zwischen a + b"),
+  die Marken selbst in `<plan>.anlage.md` (Abschnitt je Paar). 1 823 Zeilen, davon 1 796
+  ZEIGER, waren kein Plan, sondern ein Protokoll. `--anwenden` liest beide, ZEIGER bleibt „nur gemeldet".
+- **DOCS-Zug aus dem MEMORY:** die Indexzeile in `MEMORY.md` zeigt direkt auf `docs/<name>.md`
+  (direktiv, „lies zuerst"), **kein Stub bleibt zurueck, das Topic ist weg** (im Snapshot unter
+  `memory/`). Bis 5.114.0 blieb der Stub, die Themenzahl sank nicht, der Memory-Deckel blieb rot.
+  Danach `Learnings/memory_gates.py <snapshot>/memory` — Gate 3 liest den docs-Zeiger als gueltig,
+  Gate 1/1b zaehlen den ausgelagerten Inhalt als wiedergefunden.
+- **Memory-Dateien sind nie HOOK-KANDIDAT** (`type:` im Frontmatter): Lessons ZITIEREN Pfade und
+  Funktionen — das `keine-annahmen`-Fehlurteil, am Memory reproduziert (8 von 40). Klasse `BLEIBT MEMORY`.
+- **`paths:` schon gesetzt → `BLEIBT (paths gesetzt)`**, Vorschlag nur „Sonde", nie „setzen".
+- **Gruppe 5a fuer Memory: „nicht messbar (kein Git)"** mit Beleg aus Datei-Zeiten, `[[Verweisen]]`
+  und Index-Eintrag — die Git-Quelle greift ausserhalb des Repos nie, und „Historie nicht messbar"
+  las sich wie „ohne Beleg → streichen".
+- **`cleaner_belege` zaehlt nur Verstoesse DIESES Projekts** (Fremdtreffer getrennt: „n in anderen
+  Projekten") und trifft Stichwoerter als **ganzes Wort** — Zustellplans `rollen.md` hatte „4
+  Verstoesse" aus zwei anderen Projekten, einer ueber „Kontrollen".
+- **Bestand auf der PLATTE ist nicht der Dauerkontext:** `bestandsaufnahme.py` und
+  `mind_kontext_bilanz` trennen „laedt beim START" (ohne `paths:`, zaehlt im Deckel) von „laedt bei
+  BERUEHRUNG" (`paths:`, Zeile 3 `BERUEHRUNG=<n> BERUEHRUNG_B=<bytes>`). Zustellplan: 874 kB auf
+  der Platte, 131 kB beim Start.
 
 ⛔ **`/mind-memory` bleibt AUTONOM** (Nutzer 15.09.2026: *„oh man /mind-memory arbeitet
 autonom und mind cleaner nicht"*) — das ok gehört NUR zum Cleaner, weil er über alles
@@ -311,7 +334,7 @@ Sechs Wege, nach dem **Moment der Erkennbarkeit** (v5.108.0: zwei dazu):
 | am **Werkzeugaufruf** (Pfad, Endung, Befehlswort) | **Hook** |
 | an der **Aufgabe**, oder der Nutzer ruft es **beim Namen** | **Command** (`/name`) |
 | **gar nicht** — es **erklärt** statt anzuweisen, kein Aufruf-Anker (imp < 0,15, kon < 0,30) | **DOCS**: `docs/<name>.md` + Zeiger-Satz am alten Ort — 0 B Dauerkontext, der Pfad trägt 4/4 |
-| an **benannten Dateien** — Gebote für `x.py`, Datei-Listen (dat ≥ 0,30) | **RULE-PATHS**: Rule behalten, `paths:` setzen, Ladung **messen** (`--paths-sonde`) |
+| an **benannten Dateien** — Gebote für `x.py`, Datei-Listen (dat ≥ 0,30) | **RULE-PATHS**: Rule behalten, `paths:` setzen, Ladung **messen** (`--paths-sonde`); steht `paths:` schon: **BLEIBT (paths gesetzt)**, nur Sonde (v5.115.0) |
 | **gar nicht**, gilt vor jedem Eingriff | **bleibt Rule** |
 
 ⛔ **v5.108.0 — passen ZWEI Klassen, stehen BEIDE im Bericht, mit Grund.** Nutzer (14.09.2026):
@@ -662,6 +685,11 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_paths_sonde.py" --start "$PROJ" [
 #    -> „neue Sitzung starten, dann /mind-cleaner erneut"  ⛔ die Sitzung startet der Mensch
 # 2  im naechsten Lauf, wenn der Merker liegt
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_paths_sonde.py" --auswerten "$PROJ"
+#    ⛔ v5.115.0: OHNE Merker (Tausch lief von Hand, wie im Zustellplan 15.09.) geht es auch:
+#       --auswerten "$PROJ" --seit "YYYY-MM-DD HH:MM:SS" [--datei <rule.md>]
+#       ohne --datei ALLE Rules mit paths: — je Rule ein Urteil, eines fuer den Bestand,
+#       Satz fuer kontext-anlegen.md („paths: filtert — gemessen <Datum>, <Projekt>, n Rules,
+#       Nachladen bei Dateiberuehrung"). Der Satz kommt erst mit dem ZWEITEN Projekt.
 #    Ladeprotokoll SEIT dem Merker aus einer ANDEREN Sitzung: geladen mit session_start ->
 #    filtert NICHT (rc 1) · geladen nur mit path_glob_match -> filtert (rc 0) · neue Sitzung,
 #    Rule fehlt -> filtert (rc 0) · keine neue Sitzung -> noch nicht messbar (rc 3)

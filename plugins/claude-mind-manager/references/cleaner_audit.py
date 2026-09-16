@@ -150,6 +150,44 @@ _UNTER = {}
 LETZTE_GRUPPEN = None
 
 
+def _ist_memory(p):
+    ap = os.path.abspath(p)
+    if _MEMDIR and ap.startswith(os.path.abspath(_MEMDIR)):
+        return True
+    return any(ap.startswith(d) for d in _MEMDIRS)
+
+
+def memory_beleg(p, z=None):
+    """v5.115.0 (§2): Beleg einer Memory-Datei OHNE Git — mtime, eingehende [[Verweise]] aus
+    den Nachbarn, Index-Eintrag in MEMORY.md. Ein Satz fuer Gruppe 5a."""
+    import time as _t
+    d = os.path.dirname(p)
+    name = os.path.splitext(os.path.basename(p))[0]
+    try:
+        tage = int((_t.time() - os.path.getmtime(p)) / 86400)
+    except OSError:
+        tage = -1
+    verweise = 0
+    for f in os.listdir(d) if os.path.isdir(d) else []:
+        if not f.endswith(".md") or f == os.path.basename(p):
+            continue
+        try:
+            if ("[[%s]]" % name) in open(os.path.join(d, f), encoding="utf-8", errors="replace").read():
+                verweise += 1
+        except OSError:
+            pass
+    idx = os.path.join(d, "MEMORY.md")
+    im_index = False
+    if os.path.isfile(idx):
+        try:
+            im_index = ("(%s.md)" % name) in open(idx, encoding="utf-8", errors="replace").read()
+        except OSError:
+            pass
+    fz = (" (%d Verstoesse in anderen Projekten)" % z["fremd"]) if z and z.get("fremd") else ""
+    return ("nicht messbar (kein Git)%s — Beleg: geaendert vor %s Tagen, %d [[Verweis(e)]], Index %s"
+            % (fz, tage if tage >= 0 else "?", verweise, "ja" if im_index else "NEIN"))
+
+
 def _nm(p):
     """Anzeigename: Memory-Dateien als `memory/<name>` (v5.107.0), die eines Roster-Ordners
     als `memory[<ordner>]/<name>` (v5.109.0), Dateien eines Roster-Unterordners als
@@ -327,7 +365,13 @@ def lauf(projekt, nur="alles", doku=None):
 
     for p in ds:
         name = os.path.splitext(os.path.basename(p))[0]
-        u, grund, z = bel.urteile(p, idx)
+        u, grund, z = bel.urteile(p, idx, projekt)
+        # ⛔ v5.115.0 (Etappe 23 §2): Memory liegt AUSSERHALB des Repos — die Git-Quelle greift
+        #    nie, und „Historie nicht messbar" las sich wie „ohne Beleg -> streichen" (Vera,
+        #    40 Memory-Dateien im Zustellplan). Beleg fuer Memory: Datei-Zeiten, [[Verweise]],
+        #    Index-Eintrag — und die Zeile sagt „nicht messbar (kein Git)".
+        if _ist_memory(p) and u in ("NICHT ENTSCHEIDBAR", "SCHWACHER KANDIDAT", "NICHT MESSBAR"):
+            u, grund = "NICHT ENTSCHEIDBAR", memory_beleg(p, z)
         e = ein.mit_skill(p)
         vorschlag = (e or {}).get("vorschlag_zusammen") or (e or {}).get("vorschlag", "?")
 
@@ -442,7 +486,8 @@ def lauf(projekt, nur="alles", doku=None):
     print("         Regel kann GENAU DESHALB nie gebrochen worden sein, WEIL")
     print("         sie da ist. Aber der Widerspruch muss jetzt KOMMEN.")
     for p, g in gruppen["5a"]:
-        print("       %-32s %s" % (_nm(p)[:32], g[:44]))
+        # v5.115.0: die Memory-Zeile traegt ihren Beleg (kein Git) — ungekuerzt, sonst faellt er weg
+        print("       %-32s %s" % (_nm(p)[:32], g if g.startswith("nicht messbar (kein Git)") else g[:44]))
     print()
     print("  5b · ⭐ GRUNDSAETZLICH NICHT LOGGBAR (%d) — der Kern, nicht der Rest"
           % len(gruppen["5b"]))

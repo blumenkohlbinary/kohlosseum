@@ -97,10 +97,20 @@ def debug_pfad(projekt):
     return None
 
 
-def verstoesse(index_pfad, stichworte):
+def _norm_projekt(p):
+    return (p or "").replace("\\", "/").rstrip("/").lower()
+
+
+def verstoesse(index_pfad, stichworte, projekt=None):
     """Befunde, die eines der Stichworte nennen.
 
-    (gesamt, letztes_datum, liste, je_wort)
+    (gesamt, letztes_datum, liste, je_wort[, fremd])
+
+    ⛔ v5.115.0 (Etappe 23 §7, Veras Zustellplan-Lauf 16.09.2026): Zustellplans `rollen.md`
+       bekam „4 Verstoesse, belegt noetig" — zwei aus Claude Mind Manager, zwei aus Palvedo,
+       einer davon nur ueber „Kontrollen" (Teilstring von `rollen`). Jetzt: mit `projekt`
+       zaehlen nur Eintraege DIESES Projekts (`e["projekt"]`), Fremdtreffer stehen getrennt in
+       `fremd`; und ein Stichwort trifft als GANZES Wort (`\\brollen\\b`), nie als Teilstring.
 
     ⛔ `je_wort` KAM AM 09.09.2026 DAZU, und ohne es war die Zahl irrefuehrend.
        Vorher stand hier `any(s.lower() in txt for s in stichworte)` — alle
@@ -130,6 +140,9 @@ def verstoesse(index_pfad, stichworte):
         return None
     treffer = []
     je_wort = {}
+    fremd = 0
+    pn = _norm_projekt(projekt) if projekt else ""
+    muster = [(s, re.compile(r"(?<![\w-])" + re.escape(s.lower()) + r"(?![\w-])")) for s in stichworte]
     for z in t.split("\n"):
         z = z.strip()
         if not z:
@@ -139,14 +152,18 @@ def verstoesse(index_pfad, stichworte):
         except ValueError:
             continue
         txt = (e.get("kurz", "") + " " + e.get("klasse", "")).lower()
-        passend = [s for s in stichworte if s.lower() in txt]
-        if passend:
-            treffer.append(e)
-            for s in passend:
-                je_wort[s] = je_wort.get(s, 0) + 1
+        passend = [s for s, mu in muster if mu.search(txt)]
+        if not passend:
+            continue
+        if pn and _norm_projekt(e.get("projekt", "")) != pn:
+            fremd += 1
+            continue
+        treffer.append(e)
+        for s in passend:
+            je_wort[s] = je_wort.get(s, 0) + 1
     treffer.sort(key=lambda e: e.get("ts", ""))
     letztes = treffer[-1].get("ts", "")[:10] if treffer else ""
-    return len(treffer), letztes, treffer, je_wort
+    return len(treffer), letztes, treffer, je_wort, fremd
 
 
 def stichworte_aus(pfad):
@@ -211,11 +228,12 @@ def _frisch(datum):
     return (datetime.date.today() - d).days <= FRISCH_TAGE
 
 
-def urteile(pfad, index_pfad):
-    """(urteil, begruendung, zahlen)"""
+def urteile(pfad, index_pfad, projekt=None):
+    """(urteil, begruendung, zahlen) — v5.115.0: mit `projekt` nur eigene Verstoesse, fremde ausgewiesen."""
     sw = stichworte_aus(pfad)
-    v = verstoesse(index_pfad, sw) if index_pfad else None
+    v = verstoesse(index_pfad, sw, projekt) if index_pfad else None
     n_v, letztes = (v[0], v[1]) if v else (None, "")
+    fremd = v[4] if v and len(v) > 4 else 0
     commits = git_commits(pfad)
     # ⭐ Welches Stichwort hat die Zahl getragen? Ist es NICHT der Dateiname,
     #   ist die Zahl unsicher — sie kann von einem Fliesstextwort stammen.
@@ -227,13 +245,14 @@ def urteile(pfad, index_pfad):
         if _top[0] not in (_name, _name.replace("-", " ")) and n_v:
             _traeger = "%s (%d von %d)" % (_top[0], _top[1], n_v)
     z = {"verstoesse": n_v, "letzter": letztes, "commits": commits,
-         "stichworte": sw[:4], "traeger": _traeger}
+         "stichworte": sw[:4], "traeger": _traeger, "fremd": fremd}
+    _fz = (" (%d in anderen Projekten, nicht gezaehlt)" % fremd) if fremd else ""
 
     if n_v is None:
         return "NICHT MESSBAR", "kein Verstoss-Protokoll erreichbar", z
     if n_v > 0 and _frisch(letztes):
-        return "BELEGT NOETIG", ("%d Verstoss/Verstoesse, letzter am %s"
-                                 % (n_v, letztes)), z
+        return "BELEGT NOETIG", ("%d Verstoss/Verstoesse, letzter am %s%s"
+                                 % (n_v, letztes, _fz)), z
     if n_v > 0:
         if commits == 1:
             return "VERALTUNGS-KANDIDAT", (
@@ -248,9 +267,9 @@ def urteile(pfad, index_pfad):
             "(Ein-Commit-Historie)"), z
     # ⛔ Die ehrliche Zeile.
     return "NICHT ENTSCHEIDBAR", (
-        "kein Verstoss gefunden, aber %s — ueberfluessig und wirksam sind aus "
+        "kein Verstoss gefunden%s, aber %s — ueberfluessig und wirksam sind aus "
         "den Daten NICHT unterscheidbar"
-        % ("Historie nicht messbar" if commits is None
+        % (_fz, "Historie nicht messbar" if commits is None
            else "%d Commits, jemand pflegt sie" % commits)), z
 
 

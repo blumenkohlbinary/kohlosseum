@@ -341,6 +341,24 @@ def d1_bericht(dateien):
     print("     ein Mensch entscheidet. Eine geratene Zelle waere schlimmer als eine leere.")
     return 0
 
+def frontmatter_kopf(text):
+    """Der Frontmatter-Kopf (zwischen den ersten beiden ---) oder ''."""
+    if not text.startswith("---"):
+        return ""
+    teile = text.split("---", 2)
+    return teile[1] if len(teile) >= 3 else ""
+
+
+def ist_memory_datei(text):
+    """v5.115.0 (§3): Memory-Dateien tragen `type: feedback|reference|project|user` im Frontmatter."""
+    return bool(re.search(r"^\s*type:\s*(feedback|reference|project|user)\b", frontmatter_kopf(text), re.M))
+
+
+def paths_gesetzt(text):
+    """v5.115.0 (§4): traegt das Frontmatter schon ein `paths:`?"""
+    return bool(re.search(r"^\s*paths:", frontmatter_kopf(text), re.M))
+
+
 def einordnen(pfad, projekt=None):
     try:
         with open(pfad, encoding="utf-8", errors="replace") as fh:
@@ -412,10 +430,25 @@ def einordnen(pfad, projekt=None):
         v, g = "UNKLAR", "zwischen Gebot und Nachschlagewerk — hier entscheidet der Mensch"
     # UNKLAR mit Datei-Bezug ist derselbe Fall (gemessen 14.09.2026: imp 0,27 bei dat 0,48,
     # imp 0,29 bei dat 0,42) — ab imp 0,15 gibt es Gebote, die an Dateien haengen.
+    # ⛔ v5.115.0 (Etappe 23 §3, Veras Zustellplan-Lauf): 8 von 40 Memory-Dateien waren
+    #    HOOK-KANDIDAT — Lessons ZITIEREN Pfade und Funktionen, das dokumentierte
+    #    keine-annahmen-Fehlurteil (Zitierung ist kein Aufruf-Anker), am Memory reproduziert.
+    #    Die Anker-Regel gilt nur fuer Rules: eine Memory-Datei ist nie HOOK-KANDIDAT.
+    memory = ist_memory_datei(t)
+    if memory and v == "HOOK-KANDIDAT":
+        v, g = "BLEIBT MEMORY", ("Memory-Datei: Zitierung von Pfaden und Funktionen ist kein "
+                                 "Aufruf-Anker (keine-annahmen-Fehlurteil) — kein Hook")
     if dat >= 0.30 and imp >= 0.15 and v in ("HOOK-KANDIDAT", "BLEIBT RULE", "UNKLAR"):
-        zweite.append(("RULE-PATHS", ("Gebote an benannte Dateien gebunden (dat %.2f) — Rule "
-                                      "behalten, `paths:` setzen, Ladung MESSEN "
-                                      "(cleaner_paths_sonde.py)" % dat)))
+        # ⛔ v5.115.0 (§4): steht `paths:` schon (Zustellplan build-process.md seit 15.09.,
+        #    Commit 9eaf4fa), ist nichts zu setzen — Klasse BLEIBT (paths gesetzt), nur Sonde.
+        if paths_gesetzt(t):
+            zweite.append(("BLEIBT (paths gesetzt)", ("Gebote an benannte Dateien gebunden (dat %.2f), "
+                                                       "`paths:` steht schon — nur die Ladung MESSEN "
+                                                       "(cleaner_paths_sonde.py --auswerten)" % dat)))
+        else:
+            zweite.append(("RULE-PATHS", ("Gebote an benannte Dateien gebunden (dat %.2f) — Rule "
+                                          "behalten, `paths:` setzen, Ladung MESSEN "
+                                          "(cleaner_paths_sonde.py)" % dat)))
 
     return {"pfad": pfad, "bytes": len(t.encode("utf-8")), "absaetze": n,
             "imperativ": imp, "konkret": kon, "code": cod, "dateibezug": dat,
@@ -569,7 +602,7 @@ def mit_skill(pfad):
     e["konkret_zusammen"] = max(e["konkret"], zus["konkret"])
     e["imperativ_zusammen"] = max(e["imperativ"], zus["imperativ"])
     if e["konkret_zusammen"] >= 0.30 and e["imperativ_zusammen"] >= 0.30 \
-            and e["vorschlag"] != "HOOK-KANDIDAT":
+            and e["vorschlag"] not in ("HOOK-KANDIDAT", "BLEIBT MEMORY"):   # v5.115.0 §3: Memory nie
         e["vorschlag_zusammen"] = "HOOK-KANDIDAT"
         e["grund_zusammen"] = ("allein betrachtet kein Anker (kon %.2f) — MIT dem "
                                "Skill zusammen aber sehr wohl (kon %.2f). Der Umzug "

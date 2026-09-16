@@ -2182,6 +2182,13 @@ mind_kontext_bilanz() {
   local projekt="${1:-}" modus="${2:-}"
   local liste zeilen=0 anw=0 bytes=0 dateien=0 f n a b
   local crlf_n=0 crlf_b=0 crlf_liste="" ze cr
+  # ⛔ v5.115.0 (Etappe 23 §6, Otto/Vera, Zustellplan): 874 kB Rules auf der PLATTE, aber seit
+  #    dem paths:-Tausch laden beim Start nur CLAUDE.md 38 kB + rollen.md 8,7 kB — und der
+  #    Bericht nannte die 874. Eine Rule MIT `paths:` im Frontmatter laedt bei BERUEHRUNG,
+  #    nicht beim Start. Zeile 1 zaehlt nur den Start (der Deckel haengt daran), Zeile 3
+  #    `BERUEHRUNG=<n> BERUEHRUNG_B=<bytes>` das andere. `globs:` filtert nicht (Cursor) und
+  #    zaehlt zum Start.
+  local ber_n=0 ber_b=0 kopf
   local stand="$projekt/.claude-mind/kontext-bilanz$(mind_kontext_kennung "$projekt")"
 
   [ -n "$projekt" ] || { echo "ZEILEN=0 ANWEISUNGEN=0 DATEIEN=0 BYTES=0"; return 1; }
@@ -2236,6 +2243,17 @@ mind_kontext_bilanz() {
     #    einem core dump ausgestiegen und hat 24 Scheinbefunde erzeugt (v4.1.0).
     a=$(grep -cE '(MUST|NEVER|ALWAYS|⛔)' "$f" 2>/dev/null); case "$a" in ''|*[!0-9]*) a=0 ;; esac
     b=$(wc -c < "$f" 2>/dev/null); case "$b" in ''|*[!0-9]*) b=0 ;; esac
+    # paths: im Frontmatter (nur bei Rules) -> laedt bei Beruehrung, nicht beim Start (v5.115.0 §6)
+    kopf=""
+    case "$f" in */rules/*.md)
+      if [ "$(head -1 "$f" 2>/dev/null | tr -d '\r')" = "---" ]; then
+        kopf=$(sed -n '2,40p' "$f" 2>/dev/null | sed '/^---/q')
+      fi ;;
+    esac
+    if printf '%s\n' "$kopf" | grep -qE '^[[:space:]]*paths:'; then
+      ber_n=$((ber_n + 1)); ber_b=$((ber_b + b))
+      continue
+    fi
     zeilen=$((zeilen + n)); anw=$((anw + a)); bytes=$((bytes + b))
     dateien=$((dateien + 1))
     # v5.93.0: CRLF zaehlen — `mind_zeilenenden` liefert "<crlf>/<lf>", byte-genau.
@@ -2251,6 +2269,7 @@ mind_kontext_bilanz() {
 
   echo "ZEILEN=$zeilen ANWEISUNGEN=$anw DATEIEN=$dateien BYTES=$bytes"
   echo "CRLF=$crlf_n CRLF_B=$crlf_b"
+  echo "BERUEHRUNG=$ber_n BERUEHRUNG_B=$ber_b"
   [ "$dateien" -eq 0 ] && return 1
 
   # ── Vergleich gegen den gemerkten Vorstand ─────────────────────────────────
@@ -2286,6 +2305,10 @@ mind_kontext_bilanz() {
   # v5.93.0: der CRLF-Befund im Bericht — eine Zeile je Datei, dann die Summe.
   #   Meldung, kein Gate: wer sie beheben will, setzt `*.md text eol=lf` in
   #   .gitattributes und normalisiert einmal (`git add --renormalize .`).
+  if [ "$modus" = "--vergleichen" ] && [ "$ber_n" -gt 0 ]; then
+    printf '              laedt bei Beruehrung (paths:): %s Rule(s), %s B — nicht im Dauerkontext, nicht im Deckel\n' \
+      "$ber_n" "$ber_b"
+  fi
   if [ "$modus" = "--vergleichen" ] && [ "$crlf_n" -gt 0 ]; then
     printf '%s' "$crlf_liste" | while IFS='|' read -r f cr; do
       [ -n "$f" ] || continue

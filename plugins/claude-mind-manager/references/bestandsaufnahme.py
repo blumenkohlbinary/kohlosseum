@@ -85,11 +85,21 @@ def absaetze(t):
     return [a for a in raus if a.strip()]
 
 
+def laedt_bei_beruehrung(t):
+    """v5.115.0 (Etappe 23 §6): `paths:` im Frontmatter -> laedt bei Beruehrung, nicht beim Start.
+    `globs:` filtert nicht (Cursor) und zaehlt zum Start."""
+    if not t.startswith("---"):
+        return False
+    teile = t.split("---", 2)
+    return len(teile) >= 3 and re.search(r"^\s*paths:", teile[1], re.M) is not None
+
+
 def messe(pfad):
     t = open(pfad, "rb").read().decode("utf-8", "replace")
     ab = absaetze(t)
     z = {"absaetze": len(ab), "bytes": len(t.encode("utf-8")),
-         "beleg": 0, "vorfall": 0, "code": 0, "code_zeilen": 0, "rein": 0}
+         "beleg": 0, "vorfall": 0, "code": 0, "code_zeilen": 0, "rein": 0,
+         "beruehrung": laedt_bei_beruehrung(t)}
     for a in ab:
         if a.lstrip().startswith("```"):
             z["code"] += 1
@@ -273,6 +283,16 @@ def main():
     print("  %-32s %6.1f %5d | %5d %5d %5d %6d"
           % ("GESAMT", g["bytes"] / 1000, g["absaetze"], g["beleg"],
              g["vorfall"], g["code"], g["code_zeilen"]))
+    # ⛔ v5.115.0 (Etappe 23 §6): der Bestand auf der PLATTE ist nicht der Dauerkontext —
+    #    Zustellplan 874 kB Rules, davon laden seit dem paths:-Tausch beim Start ~47 kB.
+    #    Zwei Summen, die Deckel-Schuld zaehlt nur die erste.
+    b_start = sum(werte[n]["bytes"] for n in werte if not werte[n]["beruehrung"])
+    b_ber = sum(werte[n]["bytes"] for n in werte if werte[n]["beruehrung"])
+    n_ber = sum(1 for n in werte if werte[n]["beruehrung"])
+    print("  %-32s %6.1f kB  (%d Datei(en) ohne paths: — der Dauerkontext, zaehlt im Deckel)"
+          % ("laedt beim START", b_start / 1000, len(werte) - n_ber))
+    print("  %-32s %6.1f kB  (%d Datei(en) mit paths: — nur bei Dateiberuehrung)"
+          % ("laedt bei BERUEHRUNG", b_ber / 1000, n_ber))
 
     a = max(1, g["absaetze"])
     print()
