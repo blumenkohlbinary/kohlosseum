@@ -354,6 +354,36 @@ def ist_memory_datei(text):
     return bool(re.search(r"^\s*type:\s*(feedback|reference|project|user)\b", frontmatter_kopf(text), re.M))
 
 
+# v5.120.0 (Etappe 29 §5): Status-Woerter in MEMORY.md-Abschnittsnamen. Eine Datei, die der
+# Index unter „⛔ HAUPTBEFUND — zuerst lesen" oder „LAUFENDER AUFTRAG (nicht stoppen)" fuehrt,
+# ist ein aktiver Auftrag im Nutzer-Wortlaut — die Form (imp 0,07) sieht das nicht.
+# Erweiterbar ueber MIND_INDEX_STATUS (Komma-Liste); die Liste steht im Skill (mind-cleaner).
+INDEX_STATUS = tuple(w.strip().upper() for w in
+                     os.environ.get("MIND_INDEX_STATUS", "HAUPTBEFUND,LAUFEND,OFFEN,AKTUELL").split(",")
+                     if w.strip())
+
+
+def index_status(pfad):
+    """Abschnittsname aus MEMORY.md (neben der Datei), unter dem die Datei verlinkt ist —
+    wenn er ein Status-Wort traegt. Sonst ''."""
+    d = os.path.dirname(os.path.abspath(pfad))
+    idx = os.path.join(d, "MEMORY.md")
+    name = os.path.basename(pfad)
+    if name == "MEMORY.md" or not os.path.isfile(idx):
+        return ""
+    kopf = ""
+    try:
+        for z in open(idx, encoding="utf-8", errors="replace"):
+            if z.startswith("#"):
+                kopf = z.lstrip("#").strip()
+            elif ("(%s)" % name) in z or ("[[%s]]" % name[:-3]) in z:
+                if any(w in kopf.upper() for w in INDEX_STATUS):
+                    return kopf
+    except OSError:
+        return ""
+    return ""
+
+
 def paths_gesetzt(text):
     """v5.115.0 (§4): traegt das Frontmatter schon ein `paths:`?"""
     return bool(re.search(r"^\s*paths:", frontmatter_kopf(text), re.M))
@@ -438,6 +468,23 @@ def einordnen(pfad, projekt=None):
     if memory and v == "HOOK-KANDIDAT":
         v, g = "BLEIBT MEMORY", ("Memory-Datei: Zitierung von Pfaden und Funktionen ist kein "
                                  "Aufruf-Anker (keine-annahmen-Fehlurteil) — kein Hook")
+    # ⛔ v5.120.0 (Etappe 29 §4, Ottos Plan 17.09.2026: agent-review-prompt-too-long,
+    #    gruende-gruppen-stufen → COMMAND unter ~/.claude/skills/): fuer Memory-Dateien gilt die
+    #    DOCS-Klasse wie fuer Rules — Nutzer 14.09.2026: Nachschlagewerk → docs/ mit Zeiger.
+    #    COMMAND bleibt hoechstens der ZWEITE Vorschlag.
+    if memory and v == "COMMAND" and imp < 0.15:
+        zweite = [("COMMAND", g)] + [x for x in zweite if x[0] != "COMMAND"]
+        v, g = "DOCS", ("Memory-Nachschlagewerk (imp %.2f, kon %.2f, code %.2f) — nach docs/<name>.md "
+                        "mit Indexzeile (Nutzer 14.09.2026); Command hoechstens als Alternative"
+                        % (imp, kon, cod))
+    # ⛔ v5.120.0 (Etappe 29 §5): fuehrt MEMORY.md die Datei unter einem Status-Abschnitt
+    #    (HAUPTBEFUND, LAUFENDER AUFTRAG, OFFEN, AKTUELL — `INDEX_STATUS`), ist sie ein aktiver
+    #    Auftrag, kein Nachschlagewerk: DOCS/COMMAND gesperrt → BLEIBT MEMORY (Status im Index).
+    _st = index_status(pfad) if memory else ""
+    if _st and v in ("DOCS", "COMMAND"):
+        v, g = "BLEIBT MEMORY", ("Status im Index: „%s\" — aktiver Auftrag, kein Umzug, solange "
+                                 "MEMORY.md ihn so fuehrt" % _st)
+        zweite = []
     if dat >= 0.30 and imp >= 0.15 and v in ("HOOK-KANDIDAT", "BLEIBT RULE", "UNKLAR"):
         # ⛔ v5.115.0 (§4): steht `paths:` schon (Zustellplan build-process.md seit 15.09.,
         #    Commit 9eaf4fa), ist nichts zu setzen — Klasse BLEIBT (paths gesetzt), nur Sonde.

@@ -101,9 +101,12 @@ def checkpoints(path: str):
     text = open(path, encoding="utf-8", errors="replace").read()
 
     # 1) Inline-Code — Bezeichner, Pfade, Frontmatter-Schluessel
+    #    ⛔ v5.120.0 (Etappe 29 §2): `x`. **`y` paart gierig zu `. **` — eine „Marke" ohne
+    #       Buchstaben oder Ziffer ist Markdown-Rest, keine Marke. Gemessen in Ottos
+    #       Zustellplan-Plan 17.09.2026 (zwei ZAHLENDRIFT-Zeilen CLAUDE.md <-> tab1-berechnung).
     for m in re.findall(P_CODE, text):
         tok = normalize(m).strip()
-        if len(tok) >= 4 and not tok.isdigit():
+        if len(tok) >= 4 and not tok.isdigit() and re.search(r"[a-z0-9]", tok):
             out.append((f"`{m}`", (tok,)))
 
     # 2) Zahlen mit Aussage: Prozent, Tausender, K-Angaben, Dezimalwerte

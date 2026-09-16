@@ -211,7 +211,7 @@ def marken(text):
     stuecke = ohne_fence.split("`")
     for i in range(1, len(stuecke), 2):          # nur die INNEREN Stuecke
         w = stuecke[i].strip().lower()
-        if 3 <= len(w) <= 60 and "\n" not in w:
+        if 3 <= len(w) <= 60 and "\n" not in w and re.search(r"[a-z0-9\u00c0-\u024f]", w):   # v5.120.0 §2: ohne Buchstabe/Ziffer keine Marke
             aus.add(w)
     for rx in _MARKER:
         for m in rx.finditer(text):

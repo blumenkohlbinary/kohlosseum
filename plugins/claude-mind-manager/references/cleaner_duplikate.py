@@ -100,12 +100,29 @@ _MARKE = re.compile(
 
 _STOPP = {"claude", "nicht", "keine", "kein", "memory", "skill", "rules", "hook",
           "hooks", "datei", "dateien", "immer", "code", "projekt", "kohlektiv"}
+_ZEICHEN = re.compile(r"[A-Za-z0-9\u00c0-\u024f]")
+
+
+def hat_zeichen(m):
+    """v5.120.0: traegt die Marke wenigstens einen Buchstaben oder eine Ziffer? Sonst ist sie
+    Markdown-Rest (`. **`, `**:`) aus einer Backtick-Paarung ueber zwei Spans hinweg."""
+    return bool(_ZEICHEN.search(m))
 
 
 def _spezifisch(m):
     """⛔ Ohne diesen Filter ist fast die Haelfte der Meldungen Rauschen."""
     m = m.strip()
     if len(m) < 4 or m.lower() in _STOPP:
+        return False
+    # ⛔ v5.120.0 (Etappe 29 §2, Ottos Plan-Lektuere Zustellplan 17.09.2026): die gierige
+    #    Backtick-Paarung machte aus `x`. **`y` die „Marke" `. **` — zwei ZAHLENDRIFT-Zeilen
+    #    ohne einen Buchstaben darin. Eine Marke ohne Buchstaben oder Ziffer ist keine.
+    if not hat_zeichen(m):
+        return False
+    # ⛔ v5.120.0 (Etappe 29 §2, Ottos Plan-Lektuere Zustellplan 17.09.2026): die gierige
+    #    Backtick-Paarung machte aus `x`. **`y` die „Marke" `. **` — zwei ZAHLENDRIFT-Zeilen
+    #    ohne einen Buchstaben darin. Eine Marke ohne Buchstaben oder Ziffer ist keine.
+    if not hat_zeichen(m):
         return False
     return bool(re.search(r"[/\\.\d_-]", m)) or m.isupper()
 
@@ -129,6 +146,34 @@ def _inhalt(p):
 
 def _zeilen_mit(text, marke):
     return [z.strip() for z in text.split("\n") if marke in z and z.strip()]
+
+
+def fundstelle(pfad, text, marke, projekt=None, tot=False, breite=120):
+    """v5.120.0 (Etappe 29 §1, Otto liess 14 ZAHLENDRIFT-Zeilen liegen — „nicht entscheidbar",
+    weil nur die Marke und die Zahlen dastanden): `<datei>:<zeile> „<satz>"`. Bevorzugt die
+    Zeile, in der das Statuswort NAHE der Marke steht (tot=True), sonst die erste mit der Marke."""
+    rel = pfad
+    if projekt:
+        try:
+            rel = os.path.relpath(pfad, projekt).replace("\\", "/")
+        except ValueError:
+            rel = pfad
+    if rel.startswith("../"):
+        rel = os.path.basename(pfad)
+    wahl = None
+    for nr, z in enumerate(text.split("\n"), 1):
+        if marke not in z:
+            continue
+        if wahl is None:
+            wahl = (nr, z.strip())
+        if tot and _naehe(z, marke, _TOT):
+            wahl = (nr, z.strip()); break
+    if wahl is None:
+        return "%s:? (Marke nicht mehr gefunden)" % rel
+    satz = wahl[1]
+    if len(satz) > breite:
+        satz = satz[:breite - 1] + "…"
+    return "%s:%d „%s\"" % (rel, wahl[0], satz)
 
 
 # ⛔ Die erste Fassung war VIEL zu locker und hat sich selbst begraben.

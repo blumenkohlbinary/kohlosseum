@@ -401,6 +401,10 @@ def lauf(projekt, nur="alles", doku=None):
         vorschlag = (e or {}).get("vorschlag_zusammen") or (e or {}).get("vorschlag", "?")
 
         _unant = ist_unantastbar(p)
+        # v5.120.0 (Etappe 29 §5): Status im MEMORY.md-Index sperrt ARCHIV — belegt noetig
+        _st = ein.index_status(p) if _ist_memory(p) else ""
+        if _st and u in ("VERALTUNGS-KANDIDAT", "SCHWACHER KANDIDAT"):
+            u, grund = "BELEGT NOETIG", "Status im Index: „%s\" — aktiver Auftrag (MEMORY.md)" % _st
         if _unant and u in ("VERALTUNGS-KANDIDAT", "SCHWACHER KANDIDAT"):
             gruppen["9"].append((p, "%s — unantastbar (%s), nur Meldung, nie Archiv/Umzug" % (u, _unant)))
             u = "UNANTASTBAR"
@@ -487,7 +491,13 @@ def lauf(projekt, nur="alles", doku=None):
                 if kat == "duplikat":
                     gruppen["3"].append((m, "%s + %s" % (na, nb)))
                 elif kat == "zahlendrift":
-                    gruppen["3"].append((m, "⛔ ZAHLENDRIFT: %s + %s — %s" % (na, nb, g)))
+                    # v5.120.0 (Etappe 29 §1): beide Fundstellen <datei>:<zeile> „satz" an die
+                    # Marke — Plan und Anlage tragen sie, Otto kann entscheiden.
+                    _a_tot = g.startswith("eine Stelle fuehrt es als entfallen, die andere als geltend: tot")
+                    _m = "`%s` — %s ↔ %s" % (m,
+                                             dup.fundstelle(pa, text[pa], m, projekt, tot=_a_tot),
+                                             dup.fundstelle(pb, text[pb], m, projekt, tot=not _a_tot))
+                    gruppen["3"].append((_m, "⛔ ZAHLENDRIFT: %s + %s — %s" % (na, nb, g)))
 
     # --- Bericht ----------------------------------------------------------
     print("=" * 88)

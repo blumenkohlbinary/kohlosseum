@@ -47,7 +47,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.119.0"
+MIND_SKILL_VERSION="5.120.0"
 mind_schritt_start "$PROJ" mind-cleaner bestandsaufnahme cleaner_audit cleaner_einordnung cleaner_grenzen cleaner_leitplanke cleaner_ratsche cleaner_rebuild cleaner_umzug ladeprotokoll_auswertung mind_debug_write mind_snapshot
 ```
 
@@ -165,6 +165,19 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_audit.py" --bereich "$PROJ"   # P
   seit ihrer Anlage mindestens 5 Commits hat — sonst „zu jung fuer ein Urteil" (Gruppe 5a).
 - **Memory-Dateien sind nie HOOK-KANDIDAT** (`type:` im Frontmatter): Lessons ZITIEREN Pfade und
   Funktionen — das `keine-annahmen`-Fehlurteil, am Memory reproduziert (8 von 40). Klasse `BLEIBT MEMORY`.
+- ⛔ **v5.120.0 (Etappe 29, Ottos Plan-Lektuere Zustellplan 17.09.2026), fuenf Befunde:**
+  **(1)** eine `ZAHLENDRIFT`-Zeile traegt BEIDE Fundstellen `<datei>:<zeile> „<satz>"` ↔ `<datei>:<zeile> „<satz>"`
+  (Satz auf 120 Zeichen gekuerzt), im Plan UND in der Anlage — Otto liess 14 Zeilen liegen, weil nur Marke und
+  Zahlen dastanden. **(2)** eine Marke ohne Buchstaben oder Ziffer (`. **` aus der Backtick-Paarung ueber zwei
+  Spans) zaehlt nirgends: `cleaner_duplikate.marken`, `cleaner_umzug.marken`, `coverage_gate.checkpoints`
+  (Verdichten-Gate, Umzug, Duplikate — eine Regel, alle Zaehler). **(3)** Plan-Zeile 1 ist „offen" wie alle —
+  Prueffall; am Plan 0034 nicht reproduzierbar (die Datei trug „offen", `lies_plan` liest es).
+  **(4)** Memory-Nachschlagewerk (imp < 0,15, kein Gebot) → **DOCS zuerst**, COMMAND hoechstens als zweiter
+  Vorschlag (Nutzer 14.09.2026: Nachschlagewerk → `docs/`) — vorher COMMAND unter `~/.claude/skills/`.
+  **(5)** fuehrt `MEMORY.md` die Datei unter einem Abschnitt mit **Status-Wort** (`HAUPTBEFUND`, `LAUFEND`,
+  `OFFEN`, `AKTUELL` — `INDEX_STATUS`, erweiterbar per `MIND_INDEX_STATUS="HAUPTBEFUND,LAUFEND,…"`), ist sie ein
+  aktiver Auftrag: DOCS/COMMAND/ARCHIV gesperrt → `BLEIBT MEMORY (Status im Index)`. Die Form (imp 0,07) sieht
+  den Status nicht — `loeser-ist-schlecht.md` („⛔ HAUPTBEFUND — zuerst lesen") stand als DOCS im Plan.
 - **`paths:` schon gesetzt → `BLEIBT (paths gesetzt)`**, Vorschlag nur „Sonde", nie „setzen".
 - **Gruppe 5a fuer Memory: „nicht messbar (kein Git)"** mit Beleg aus Datei-Zeiten, `[[Verweisen]]`
   und Index-Eintrag — die Git-Quelle greift ausserhalb des Repos nie, und „Historie nicht messbar"

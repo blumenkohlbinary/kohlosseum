@@ -98,8 +98,13 @@ def zeilen_aus_gruppen(gruppen, projekt):
     for a, b in gruppen.get("3", []):
         paare.setdefault(str(b), []).append(str(a))
     for k, (b, marken) in enumerate(sorted(paare.items()), 1):
-        z.append(("ZEIGER", b[:80], "%d doppelte Marke(n) — eine Stelle wird Zeiger (von Hand, Stufe 3); Anlage Abschnitt %d"
-                  % (len(marken), k), "-", "-"))
+        if b.startswith("⛔ ZAHLENDRIFT"):
+            # v5.120.0 (Etappe 29 §1): die Drift-Zeile traegt beide Fundstellen IM PLAN —
+            # <datei>:<zeile> „satz" ↔ <datei>:<zeile> „satz" (die Marke aus dem Audit)
+            z.append(("ZEIGER", b[:80], "ZAHLENDRIFT %s; Anlage Abschnitt %d" % ("; ".join(marken), k), "-", "-"))
+        else:
+            z.append(("ZEIGER", b[:80], "%d doppelte Marke(n) — eine Stelle wird Zeiger (von Hand, Stufe 3); Anlage Abschnitt %d"
+                      % (len(marken), k), "-", "-"))
     ANLAGE[:] = [(k, b, marken) for k, (b, marken) in enumerate(sorted(paare.items()), 1)]
     for p, g in gruppen.get("4", []):
         z.append(("ARCHIV", p, ".claude/archiv/ (cleaner_ratsche --archiviere)", "Ratsche: Grund Pflicht", "Snapshot / --entarchiviere"))

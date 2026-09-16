@@ -10,6 +10,7 @@
 #   §7 cleaner_belege: Projektgrenze und ganzes Wort (Zustellplans rollen.md: 4 fremde Treffer)
 #   §8 DOCS-Zug aus dem Memory: Indexzeile auf docs/, kein Stub, Topic weg
 #   v5.119.0 (Etappe 27 §1): „laedt immer“ = KEIN Feld — Vorlagen, rollen_geruest, check/migrate-Text
+#   v5.120.0 (Etappe 29, Ottos Plan-Lektuere): Drift-Fundstellen, „. **“ keine Marke, Zeile 1 offen, Memory DOCS vor COMMAND, Status im Index
 # Jeder Fall gegen 5.114.0 rot (Gegenprobe in der NACH).
 set -u
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { echo "CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 2; }
@@ -289,6 +290,52 @@ janein "mind-rules check: globs: [\"**/*\"] ist INFO „wirkungslos, laedt ohneh
 janein "mind-rules migrate: schlaegt „Feld entfernen“ vor, schreibt nichts" ja "$(grep -q 'ist der Vorschlag \*\*„Feld entfernen"\*\*' "$MR" && grep -q 'Vorgeschlagen wird, geschrieben nichts' "$MR" && echo ja || echo nein)"
 janein "mind-rules Companion-Vorlage: „KEIN Feld“, kein globs: [\"**/*\"] (always-on) mehr als Beispiel" ja "$(grep -q 'Soll die Rule bei jedem Start laden: KEIN Feld' "$MR" && ! grep -q -- '-> `globs: \["\*\*/\*"\]` (always-on)' "$MR" && echo ja || echo nein)"
 janein "mind-files Step 5: Vorlage traegt KEIN Feld (nicht mehr „bewusst globs“)" ja "$(grep -q 'traegt seit v5.119.0 \*\*KEIN Feld\*\*' "$MF" && ! grep -q 'traegt bewusst `globs: \["\*\*/\*"\]`' "$MF" && echo ja || echo nein)"
+
+echo "== v5.120.0 (Etappe 29, Ottos Plan-Lektuere): Drift-Fundstellen, „. **“ keine Marke, Zeile 1 offen, Memory DOCS vor COMMAND, Status im Index =="
+P=$(mktemp -d); mkdir -p "$P/proj/.claude/rules" "$P/proj/.claude-mind" "$P/mem"
+RW="$(w "$REF")"; FW="$(w "$P/mem/werk.md")"; PLW="$(w "$P/proj/.claude-mind/plan.md")"
+# §2 — „. **“ aus der gierigen Backtick-Paarung ist keine Marke (drei Zaehler, eine Regel)
+printf 'Zwei Spans: **`alpha.py`**. **`beta.py`** stehen hier. Und `.  **` allein.\n' > "$P/punkt.md"
+cat > "$P/marken.py" <<'EOF'
+import sys, os, io
+sys.path.insert(0, os.environ["REF"]); sys.path.insert(0, os.path.join(os.environ["REF"], "doc-templates"))
+import cleaner_duplikate as d, cleaner_umzug as u, coverage_gate as c
+t = io.open(os.environ["F"], encoding="utf-8").read()
+m1 = d.marken(t); m2 = u.marken(t); m3 = [x[0] for x in c.checkpoints(os.environ["F"])]
+schlecht = lambda ms: [m for m in ms if not any(ch.isalnum() for ch in m)]
+print("dup=%d umzug=%d cov=%d ohne_zeichen=%d" % (len(m1), len(m2), len(m3), len(schlecht(m1)) + len(schlecht(m2)) + len(schlecht(m3))))
+EOF
+_M=$(REF="$(w "$REF")" F="$(w "$P/punkt.md")" $PY "$(w "$P/marken.py")" 2>&1)
+janein "§2 „. **“ ist in keinem der drei Zaehler eine Marke" ja "$(printf '%s' "$_M" | grep -q 'ohne_zeichen=0' && echo ja || echo nein)"
+janein "   ... die echten Marken alpha.py/beta.py bleiben (dup, umzug, coverage je >= 2)" ja "$(printf '%s' "$_M" | grep -qE 'dup=[2-9].*umzug=[2-9].*cov=[2-9]' && echo ja || echo nein)"
+# §1 + §3 — ZAHLENDRIFT-Zeile traegt beide Fundstellen; Zeile 1 des Plans ist „offen“
+printf '# P\n\n`MIND_ALT_X` ist seit v5.9.3 entfallen und wird nicht mehr gelesen.\n' > "$P/proj/CLAUDE.md"
+printf -- '---\ndescription: a\n---\n# A\n\n`MIND_ALT_X` gilt weiter, Vorgabe 940000 Tokens.\n' > "$P/proj/.claude/rules/a.md"
+PL="$P/proj/.claude-mind/plan.md"
+MIND_DEBUG_DIR= $PY "$(w "$REF/cleaner_plan.py")" --neu "$(w "$P/proj")" --nur projekt --plan "$(w "$PL")" >/dev/null 2>&1
+_Z=$(grep -m1 'ZAHLENDRIFT' "$PL" 2>/dev/null)
+janein "§1 Plan hat eine ZAHLENDRIFT-Zeile" ja "$([ -n "$_Z" ] && echo ja || echo nein)"
+janein "   ... mit beiden Fundstellen datei:zeile (CLAUDE.md:3 und a.md:6)" ja "$(printf '%s' "$_Z" | grep -q 'CLAUDE.md:3 „' && printf '%s' "$_Z" | grep -q 'rules/a.md:6 „' && echo ja || echo nein)"
+janein "   ... und dem Satz je Seite (entfallen / gilt weiter)" ja "$(printf '%s' "$_Z" | grep -q 'entfallen' && printf '%s' "$_Z" | grep -q 'gilt weiter' && echo ja || echo nein)"
+janein "   ... Anlage-Abschnitt traegt dieselben Fundstellen" ja "$(grep -q 'CLAUDE.md:3 „' "$P/proj/.claude-mind/plan.anlage.md" 2>/dev/null && echo ja || echo nein)"
+janein "§3 Zeile 1 des Plans hat Status „offen“ (Datei und lies_plan)" ja "$(grep -qE '^\| 1 \|.*\| offen \|$' "$PL" && [ "$(REF="$RW" F="$FW" PL="$PLW" $PY -c "import sys,os;sys.path.insert(0,os.environ['REF']);import cleaner_plan as c;print(c.lies_plan(os.environ['PL'])[0]['status'])" 2>/dev/null)" = offen ] && echo ja || echo nein)"
+# §4 — Memory-Nachschlagewerk: DOCS zuerst, COMMAND hoechstens zweiter
+printf -- '---\nname: werk\ndescription: Nachschlagewerk mit vielen Aufrufen und ohne ein einziges Gebot fuer den Leser\ntype: reference\n---\n# Werk\n\nDer Aufruf `python tools/a.py --x` liefert die Tabelle.\n\nDaneben gibt es `python tools/b.py` mit `--y`.\n\nUnd `tools/c.py` schreibt `out.json`.\n\nDie Zahl steht in `tools/d.py`.\n' > "$P/mem/werk.md"
+printf '# Index\n\n## Standing lessons\n- [Werk](werk.md) — das Nachschlagewerk\n' > "$P/mem/MEMORY.md"
+_E=$(REF="$RW" F="$FW" PL="$PLW" $PY -c "import sys,os,json;sys.path.insert(0,os.environ['REF']);import cleaner_einordnung as e;r=e.einordnen(os.environ['F']);print(json.dumps(r['vorschlaege']), '%.2f'%r['imperativ'])" 2>/dev/null)
+janein "§4 Memory-Nachschlagewerk (imp < 0,05): DOCS zuerst" ja "$(printf '%s' "$_E" | grep -q '^\["DOCS"' && echo ja || echo nein)"
+janein "   ... COMMAND hoechstens als zweiter Vorschlag" ja "$(printf '%s' "$_E" | grep -q '^\["DOCS", "COMMAND"' && echo ja || echo nein)"
+# §5 — Status im Index sperrt DOCS: HAUPTBEFUND / LAUFENDER AUFTRAG -> BLEIBT MEMORY
+printf '# Index\n\n## ⛔ HAUPTBEFUND — zuerst lesen\n- [Werk](werk.md) — das Nachschlagewerk\n\n## Standing lessons\n- [Anderes](anderes.md) — x\n' > "$P/mem/MEMORY.md"
+_E5=$(REF="$RW" F="$FW" PL="$PLW" $PY -c "import sys,os,json;sys.path.insert(0,os.environ['REF']);import cleaner_einordnung as e;r=e.einordnen(os.environ['F']);print(json.dumps(r['vorschlaege']), '|', r['grund'])" 2>/dev/null)
+janein "§5 Datei unter „HAUPTBEFUND“ im Index: BLEIBT MEMORY, kein DOCS" ja "$(printf '%s' "$_E5" | grep -q '^\["BLEIBT MEMORY"\]' && echo ja || echo nein)"
+janein "   ... der Grund nennt den Index-Abschnitt" ja "$(printf '%s' "$_E5" | grep -q 'Status im Index: „⛔ HAUPTBEFUND' && echo ja || echo nein)"
+printf '# Index\n\n## LAUFENDER AUFTRAG (nicht stoppen)\n- [Werk](werk.md) — laeuft\n' > "$P/mem/MEMORY.md"
+janein "   ... dito „LAUFENDER AUFTRAG“" ja "$(REF="$RW" F="$FW" PL="$PLW" $PY -c "import sys,os;sys.path.insert(0,os.environ['REF']);import cleaner_einordnung as e;print(e.einordnen(os.environ['F'])['vorschlag'])" 2>/dev/null | grep -q 'BLEIBT MEMORY' && echo ja || echo nein)"
+printf '# Index\n\n## Standing lessons\n- [Werk](werk.md) — das Nachschlagewerk\n' > "$P/mem/MEMORY.md"
+janein "   ... Negativkontrolle: unter „Standing lessons“ bleibt es DOCS" ja "$(REF="$RW" F="$FW" PL="$PLW" $PY -c "import sys,os;sys.path.insert(0,os.environ['REF']);import cleaner_einordnung as e;print(e.einordnen(os.environ['F'])['vorschlag'])" 2>/dev/null | grep -q '^DOCS' && echo ja || echo nein)"
+janein "   ... MIND_INDEX_STATUS erweitert die Liste (STANDING)" ja "$(MIND_INDEX_STATUS="HAUPTBEFUND,STANDING" REF="$RW" F="$FW" PL="$PLW" $PY -c "import sys,os;sys.path.insert(0,os.environ['REF']);import cleaner_einordnung as e;print(e.einordnen(os.environ['F'])['vorschlag'])" 2>/dev/null | grep -q 'BLEIBT MEMORY' && echo ja || echo nein)"
+rm -rf "$P"
 
 echo
 echo "  $OK ok, $ROT rot"
