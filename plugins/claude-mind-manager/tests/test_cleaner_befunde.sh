@@ -11,6 +11,7 @@
 #   §8 DOCS-Zug aus dem Memory: Indexzeile auf docs/, kein Stub, Topic weg
 #   v5.119.0 (Etappe 27 §1): „laedt immer“ = KEIN Feld — Vorlagen, rollen_geruest, check/migrate-Text
 #   v5.120.0 (Etappe 29, Ottos Plan-Lektuere): Drift-Fundstellen, „. **“ keine Marke, Zeile 1 offen, Memory DOCS vor COMMAND, Status im Index
+#   v5.121.0 (Etappe 31): DOCS-Zug schreibt [[Wikilinks]] im ganzen Memory um (inkl. MEMORY.md), Snapshot vorher; memory_gates Gate 3 liest den Index
 # Jeder Fall gegen 5.114.0 rot (Gegenprobe in der NACH).
 set -u
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { echo "CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 2; }
@@ -335,6 +336,28 @@ janein "   ... dito „LAUFENDER AUFTRAG“" ja "$(REF="$RW" F="$FW" PL="$PLW" $
 printf '# Index\n\n## Standing lessons\n- [Werk](werk.md) — das Nachschlagewerk\n' > "$P/mem/MEMORY.md"
 janein "   ... Negativkontrolle: unter „Standing lessons“ bleibt es DOCS" ja "$(REF="$RW" F="$FW" PL="$PLW" $PY -c "import sys,os;sys.path.insert(0,os.environ['REF']);import cleaner_einordnung as e;print(e.einordnen(os.environ['F'])['vorschlag'])" 2>/dev/null | grep -q '^DOCS' && echo ja || echo nein)"
 janein "   ... MIND_INDEX_STATUS erweitert die Liste (STANDING)" ja "$(MIND_INDEX_STATUS="HAUPTBEFUND,STANDING" REF="$RW" F="$FW" PL="$PLW" $PY -c "import sys,os;sys.path.insert(0,os.environ['REF']);import cleaner_einordnung as e;print(e.einordnen(os.environ['F'])['vorschlag'])" 2>/dev/null | grep -q 'BLEIBT MEMORY' && echo ja || echo nein)"
+rm -rf "$P"
+
+echo "== v5.121.0 (Etappe 31): DOCS-Zug schreibt [[Wikilinks]] im ganzen Memory um, Snapshot vorher =="
+P=$(mktemp -d); MEM="$P/home/.claude/projects/slug/memory"; mkdir -p "$MEM" "$P/proj/docs" "$P/proj/.claude-mind"
+printf '# P\n' > "$P/proj/CLAUDE.md"
+printf -- '---\ndescription: Karten-Thema mit vierzig Zeichen in der Beschreibung, mindestens\ntype: reference\n---\n# Karten\n\nInhalt mit `karte.py` und 12 Zeilen.\n' > "$MEM/karten.md"
+printf -- '# Karten\n\nInhalt mit `karte.py` und 12 Zeilen.\n' > "$P/proj/docs/karten.md"
+printf -- '---\ndescription: Loeser-Thema mit vierzig Zeichen in der Beschreibung, mindestens\ntype: feedback\n---\n# Loeser\n\nSiehe [[karten]] und nochmal [[ karten ]].\r\nBleibt: [[anderes]].\r\n' > "$MEM/loeser.md"   # CRLF-Datei
+printf -- '---\ndescription: anderes Thema, vierzig Zeichen lang mindestens, ohne Link\ntype: feedback\n---\n# Anderes\n\nOhne Link.\n' > "$MEM/anderes.md"
+printf -- '# Memory\n\n- [Karten](karten.md) — die Karten\n- [Loeser](loeser.md) — der Loeser, siehe [[karten]]\n- [Anderes](anderes.md) — bleibt\n\nAktueller Stand: [[karten]] (16.09.).\n' > "$MEM/MEMORY.md"
+PLAN="$P/plan.md"
+mkdir -p "$P/vergleich/slug" && cp "$MEM"/*.md "$P/vergleich/slug/"   # die Sicherung VOR dem Lauf (backup-usage.md Schritt 1)
+printf '# Cleaner-Plan test — %s (--nur memory)\n\n| # | Klasse | Datei | Ziel | Gates | Rueckweg | Status |\n|---|---|---|---|---|---|---|\n| 1 | DOCS | %s | docs/karten.md | ZEIGER | Snapshot | offen |\n' "$(m "$P/proj")" "$(m "$MEM/karten.md")" > "$PLAN"
+A=$($PY "$(w "$REF/cleaner_plan.py")" --anwenden "$(w "$PLAN")" --projekt "$(w "$P/proj")" 2>&1); RC=$?
+janein "DOCS-Zug rc 0, angewendet" ja "$([ "$RC" = 0 ] && grep -q '| angewendet |' "$PLAN" && echo ja || echo nein)"
+janein "   ... kein [[karten]] mehr im Memory-Verzeichnis (loeser.md, MEMORY.md)" 0 "$(grep -l '\[\[ *karten *\]\]' "$MEM"/*.md 2>/dev/null | wc -l | tr -d ' ')"
+janein "   ... loeser.md: zweimal auf docs/karten.md umgeschrieben, [[anderes]] bleibt" ja "$([ "$(grep -o 'docs/karten.md' "$MEM/loeser.md" | wc -l | tr -d ' ')" = 2 ] && grep -q '\[\[anderes\]\]' "$MEM/loeser.md" && echo ja || echo nein)"
+janein "   ... MEMORY.md: Indexzeile UND der Satz „Aktueller Stand“ zeigen auf docs/" ja "$(grep -q '^- .Karten..docs/karten.md.' "$MEM/MEMORY.md" && grep -q 'Aktueller Stand: `docs/karten.md`' "$MEM/MEMORY.md" && grep -q 'siehe `docs/karten.md`' "$MEM/MEMORY.md" && echo ja || echo nein)"
+janein "   ... loeser.md behaelt CRLF" ja "$($PY -c "import sys; b=open(sys.argv[1],'rb').read(); print('ja' if b.count(b'\\r\\n')>0 and b.count(b'\\r\\n')==b.count(b'\\n') else 'nein')" "$(w "$MEM/loeser.md")")"
+janein "   ... Snapshot haelt loeser.md und MEMORY.md (Wikilink-Traeger) VOR dem Umschreiben" ja "$(SN=$(ls -d "$P/proj/.claude-mind/snapshots/"*_pre-cleaner-plan 2>/dev/null | head -1); [ -n "$SN" ] && grep -q '\[\[karten\]\]' "$SN/memory/loeser.md" 2>/dev/null && grep -q '\[\[karten\]\]' "$SN/memory/MEMORY.md" 2>/dev/null && echo ja || echo nein)"
+janein "   ... die Ausgabe nennt die Umschreibung" ja "$(printf '%s\n' "$A" | grep -q 'Wikilink: loeser.md — 2 x \[\[karten\]\]' && echo ja || echo nein)"
+janein "   ... memory_gates gegen die Sicherung: kein Gate gebrochen (Gate 3 liest [[Links]] auch im Index)" 0 "$(mkdir -p "$P/nach/slug" && cp "$MEM"/*.md "$P/nach/slug/" && $PY "$(w "$CLAUDE_PROJECT_DIR/Learnings/memory_gates.py")" "$(w "$P/vergleich")" --nachher "$(w "$P/nach")" --wurzel "$(w "$P/proj")" >/dev/null 2>&1; echo $?)"
 rm -rf "$P"
 
 echo

@@ -305,8 +305,60 @@ def reparieren_index(mem_dir, projekt, snapshot=None):
     return 0
 
 
+_WIKI = r"\[\[\s*%s\s*\]\]"
+
+
+def _docs_rel(docs_p, projekt):
+    """docs/<name>.md projektrelativ — wie in der Indexzeile; ohne Projekt die letzten zwei Pfadteile."""
+    d = docs_p.replace("\\", "/")
+    if projekt:
+        try:
+            r = os.path.relpath(docs_p, projekt).replace("\\", "/")
+            if not r.startswith(".."):
+                return r
+        except ValueError:
+            pass
+    return "/".join(d.split("/")[-2:])
+
+
+def wikilink_traeger(mem_dir, name):
+    """v5.121.0 (Etappe 31): alle .md im Memory-Verzeichnis (inkl. MEMORY.md), die `[[name]]` tragen."""
+    aus = []
+    if not os.path.isdir(mem_dir):
+        return aus
+    rx = re.compile(_WIKI % re.escape(name))
+    for f in sorted(os.listdir(mem_dir)):
+        if not f.endswith(".md") or f == name + ".md":
+            continue
+        p = os.path.join(mem_dir, f)
+        try:
+            if rx.search(open(p, encoding="utf-8", errors="replace", newline="").read()):
+                aus.append(p)
+        except OSError:
+            pass
+    return aus
+
+
+def wikilinks_umschreiben(mem_dir, name, docs_rel):
+    """v5.121.0 (Etappe 31, Otto 17.09.2026: `MEMORY.md:20` zeigte per `[[karten-vereinheitlichung]]`
+    weiter auf das nach docs/ umgezogene Thema — fuer die Wikilink-Aufloesung `memory/<name>.md` tot).
+    Schreibt `[[name]]` im GANZEN Memory-Verzeichnis inkl. MEMORY.md auf `docs/<name>.md` um
+    (Zeilenenden je Datei erhalten). Rueckgabe: [(datei, anzahl)]."""
+    rx = re.compile(_WIKI % re.escape(name))
+    ersatz = "`%s`" % docs_rel.replace("\\", "/")
+    aus = []
+    for p in wikilink_traeger(mem_dir, name):
+        roh = open(p, encoding="utf-8", errors="replace", newline="").read()
+        neu, k = rx.subn(ersatz, roh)
+        if k:
+            _schreib_mit_zeilenenden(p, neu.replace("\r\n", "\n"), roh)
+            aus.append((p, k))
+    return aus
+
+
 def memory_docs_zug(topic_p, docs_p, plan, nr, projekt=None):
-    """(ok, warum) — Gates ueber alt=Topic, kurz=Indexzeile, ziel=docs; dann Index umschreiben, Topic weg."""
+    """(ok, warum) — Gates ueber alt=Topic, kurz=Indexzeile, ziel=docs; dann Index umschreiben, Topic weg.
+    v5.121.0: danach `[[name]]` im ganzen Memory-Verzeichnis auf docs/<name>.md umschreiben."""
     import tempfile
     idx = os.path.join(os.path.dirname(topic_p), "MEMORY.md")
     roh = open(idx, encoding="utf-8", errors="replace", newline="").read() if os.path.isfile(idx) else "# Memory\n\n"
@@ -332,6 +384,10 @@ def memory_docs_zug(topic_p, docs_p, plan, nr, projekt=None):
     _schreib_mit_zeilenenden(idx, neu, roh)   # v5.117.0: CRLF bleibt CRLF
     os.remove(topic_p)
     print("     Index: %s -> zeigt auf %s; Topic entfernt (im Snapshot unter memory/)" % (name, docs_p.replace("\\", "/")))
+    # v5.121.0 (Etappe 31): Wikilinks auf das Thema sterben mit dem Umzug — umschreiben, nicht liegen lassen.
+    docs_rel = _docs_rel(docs_p, projekt)
+    for p_w, k in wikilinks_umschreiben(os.path.dirname(topic_p), os.path.splitext(name)[0], docs_rel):
+        print("     Wikilink: %s — %d x [[%s]] -> `%s`" % (os.path.basename(p_w), k, os.path.splitext(name)[0], docs_rel))
     print("     danach: python Learnings/memory_gates.py <snapshot>/memory --wurzel <projekt>  (Gate 3 liest den docs-Zeiger, v5.117.0)")
     return True, ""
 
@@ -353,6 +409,9 @@ def anwenden(plan, ohne=(), projekt=None):
         k = _kurz_aus(x["ziel"])
         if k:
             betroffen.append(k if os.path.isabs(k) else os.path.join(projekt, k))
+        if x["klasse"] == "DOCS" and _ist_memory_pfad(d):
+            # v5.121.0 (Etappe 31): jede Memory-Datei mit [[name]] wird umgeschrieben — Snapshot vorher
+            betroffen.extend(wikilink_traeger(os.path.dirname(d), os.path.splitext(os.path.basename(d))[0]))
     snap = snapshot(projekt, betroffen)
     print("=" * 72)
     print("CLEANER-PLAN anwenden — %d Zeile(n), Snapshot %s" % (len(aktiv), snap))

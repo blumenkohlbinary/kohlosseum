@@ -47,7 +47,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.120.0"
+MIND_SKILL_VERSION="5.121.0"
 mind_schritt_start "$PROJ" mind-cleaner bestandsaufnahme cleaner_audit cleaner_einordnung cleaner_grenzen cleaner_leitplanke cleaner_ratsche cleaner_rebuild cleaner_umzug ladeprotokoll_auswertung mind_debug_write mind_snapshot
 ```
 
@@ -178,6 +178,12 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_audit.py" --bereich "$PROJ"   # P
   `OFFEN`, `AKTUELL` — `INDEX_STATUS`, erweiterbar per `MIND_INDEX_STATUS="HAUPTBEFUND,LAUFEND,…"`), ist sie ein
   aktiver Auftrag: DOCS/COMMAND/ARCHIV gesperrt → `BLEIBT MEMORY (Status im Index)`. Die Form (imp 0,07) sieht
   den Status nicht — `loeser-ist-schlecht.md` („⛔ HAUPTBEFUND — zuerst lesen") stand als DOCS im Plan.
+- ⛔ **v5.121.0 (Etappe 31, Otto 17.09.2026): ein `[[Wikilink]]` auf ein nach `docs/` umgezogenes Thema ist TOT** —
+  Claude Code loest `[[name]]` als `memory/<name>.md` auf, der docs-Zeiger in der Indexzeile rettet ihn nicht
+  (`MEMORY.md:20` → `[[karten-vereinheitlichung]]` nach dem 16.09.-Zug). Der DOCS-Zug schreibt deshalb `[[name]]`
+  im GANZEN Memory-Verzeichnis inkl. `MEMORY.md` auf `` `docs/<name>.md` `` um (Zeilenenden je Datei erhalten;
+  die Traeger liegen VORHER im gemeinsamen Snapshot), und `Learnings/memory_gates.py` Gate 3 liest Wikilinks
+  auch im Index: gueltig nur, wenn `<name>.md` im Memory liegt; schon vorher tote Links sind Meldung, kein Bruch.
 - **`paths:` schon gesetzt → `BLEIBT (paths gesetzt)`**, Vorschlag nur „Sonde", nie „setzen".
 - **Gruppe 5a fuer Memory: „nicht messbar (kein Git)"** mit Beleg aus Datei-Zeiten, `[[Verweisen]]`
   und Index-Eintrag — die Git-Quelle greift ausserhalb des Repos nie, und „Historie nicht messbar"
