@@ -231,6 +231,9 @@ R=$( D=$(mktemp -d); mkdir -p "$D/.claude-mind"
      # shellcheck disable=SC1090
      . "$LIB" >/dev/null 2>&1
      : > "$D/.claude-mind/analyzed-scopes"
+     # v5.113.0: in der Kette ist der Kopf-Block erzwungen — ohne ihn schreibt kein Skill
+     # eine Zeile (Etappe 20 §1). Das Fixture legt ihn wie mind-all Step 0 an; Ziel unveraendert.
+     mind_schritt_start "$D" mind-all mind_snapshot >/dev/null 2>&1
      for s in mind-claudemd mind-memory mind-rules mind-files mind-update; do
        mind_schritt_start "$D" "$s" schrittX >/dev/null 2>&1
        if [ "$s" = "mind-claudemd" ]; then
@@ -315,6 +318,16 @@ janein "ohne mind-all-Start: ganze Datei (TEIL=1, wie v5.86.0)" "1" \
 janein "   ... und die Bilanz SAGT, dass Laeufe vermischt sein koennen" "ja" \
   "$(printf '%s' "$_A8" | grep -q 'vermischt' && echo ja || echo nein)"
 rm -rf "$_D7" "$_D8"
+
+# --- v5.113.0 (Etappe 20 §5b, Noras Lauf 11): X/Y mit X=Y ist VOLL, X<Y bleibt TEIL ---
+_V=$(lauf 'mind_schritt_start "$D" x a b c; mind_schritt a "gelaufen:3/3" 5 "$D"; mind_schritt b "gelaufen:2/3" 5 "$D"; mind_schritt c "gelaufen:1/1" 5 "$D"')
+janein "gelaufen:3/3 und 1/1 zaehlen als voll, 2/3 als TEIL -> TEIL=1" "ja" "$(echo "$_V" | grep -q 'TEIL=1' && echo ja || echo nein)"
+janein "   ... und die Teilliste nennt nur b" "ja" "$(echo "$_V" | grep -q 'b 2/3' && ! echo "$_V" | grep -q 'a 3/3' && ! echo "$_V" | grep -q 'c 1/1' && echo ja || echo nein)"
+janein "   ... GELAUFEN=3 (alle drei gelaufen)" "ja" "$(echo "$_V" | grep -q 'GELAUFEN=3' && echo ja || echo nein)"
+_W=$(lauf 'mind_schritt_start "$D" x a; mind_schritt a "gelaufen:0/0" 5 "$D"')
+janein "   Gegenprobe: 0/0 ist voll (nichts zu tun, nichts ausgelassen)" "ja" "$(echo "$_W" | grep -q 'TEIL=0' && echo ja || echo nein)"
+_X=$(lauf 'mind_schritt_start "$D" x a; mind_schritt a "gelaufen:x/y" 5 "$D"')
+janein "   Gegenprobe: nicht numerisch bleibt TEIL" "ja" "$(echo "$_X" | grep -q 'TEIL=1' && echo ja || echo nein)"
 
 echo
 echo "  $OK ok, $ROT rot"

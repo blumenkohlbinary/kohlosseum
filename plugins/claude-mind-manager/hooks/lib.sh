@@ -1188,6 +1188,22 @@ PYEOF
 #      - unparsbares umfang=   (ein Formatfehler darf nicht festnageln)
 mind_sync_voll() {
   local stand="${1:-}" u paar a b teil=0 _glob=0 _ung
+  # ⛔ v5.113.0 (Etappe 20 §5a, Noras Lauf 11): ein FALSCHES Argument ist kein Merker.
+  #    `mind_sync_voll "$UMFANG"` (der String statt des Pfads) fiel an `[ -f ]` vorbei
+  #    und sagte still rc 0 = voll. Leer, mit Leerzeichen oder ein Verzeichnis -> rc 3 + WARN.
+  #    Der Fail-safe bleibt fuer die DATEI: ein fehlender Merker unter einem Pfad ist
+  #    „kein Merker" (rc 0, test_teilsync Fall 7), ein Merker ohne umfang= gilt als voll.
+  case "$stand" in
+    ''|*[[:space:]]*)
+      mind_log WARN "mind_sync_voll: kein Dateipfad: '$stand' (rc 3)"
+      echo "⛔ mind_sync_voll: kein Dateipfad, sondern '$stand' — Aufruffehler, kein Urteil (rc 3)." >&2
+      return 3 ;;
+  esac
+  if [ -d "$stand" ]; then
+    mind_log WARN "mind_sync_voll: Verzeichnis statt Datei: '$stand' (rc 3)"
+    echo "⛔ mind_sync_voll: '$stand' ist ein Verzeichnis — Aufruffehler, kein Urteil (rc 3)." >&2
+    return 3
+  fi
   [ -f "$stand" ] || return 0
 
   # v5.21.1: `ungepruef=` ist Teil des Urteils, nicht nur Beiwerk.
@@ -1313,6 +1329,56 @@ mind_ungepruef_bilden() {
     out="${out}formal-${_n},"
   done
   printf '%s\n' "${out%,}"
+}
+
+# mind_lauf_voll <projekt> [laufkennung] [agent-soll]
+# ⛔ v5.113.0 (Etappe 20 §2): EIN Urteil ueber den Lauf — aus mind_umfang_bilden und
+#    mind_ungepruef_bilden, durch mind_sync_voll. Ausgabe `voll` (rc 0) oder `teil` (rc 1).
+#    Step 2.96a fragt es VOR dem Schreiben von sync-stand und nach jedem Reparatur-Pass.
+mind_lauf_voll() {
+  local proj="${1:-}" lauf="${2:-}" soll="${3:-4}" tmp u g rc
+  tmp="${TMPDIR:-/tmp}/.mind_lauf_voll_$$"
+  u=$(mind_umfang_bilden "$proj" "$lauf" "$soll" 2>/dev/null)
+  g=$(mind_ungepruef_bilden "$proj" "$lauf" 2>/dev/null)
+  printf 'ts=%s\numfang=%s\nungepruef=%s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$u" "$g" > "$tmp"
+  mind_sync_voll "$tmp" >/dev/null 2>&1; rc=$?
+  rm -f "$tmp"
+  if [ "$rc" -eq 0 ]; then printf 'voll\n'; return 0; fi
+  printf 'teil\n'; return 1
+}
+
+# mind_manager_kennung <projekt>
+# Die sessionId (Spalte 3) der manager-Zeile aus rollen.md — leer ohne Roster.
+mind_manager_kennung() {
+  local datei="${1:-}/.claude/rules/rollen.md" zeile k
+  [ -r "$datei" ] || return 1
+  while IFS= read -r zeile; do
+    case "$zeile" in '|'*) ;; *) continue ;; esac
+    [ "$(_mind_zelle "$zeile" 1)" = "manager" ] || continue
+    k=$(_mind_zelle "$zeile" 3)
+    _mind_kennung_gueltig "$k" || continue
+    printf '%s\n' "$k"; return 0
+  done < "$datei"
+  return 1
+}
+
+# mind_teilsync_meldung <projekt> <ungepruef> [umfang]
+# ⛔ v5.113.0 (Etappe 20 §2): bleibt der Lauf nach zwei Reparatur-Paessen `teil`, wird das
+#    SICHTBAR — nicht beendet. Diese Funktion schreibt die Meldung an den manager nach
+#    .claude-mind/rescued/teilsync-meldung (Kennung aus dem Roster, EIN Satz: welcher Bereich,
+#    warum) und ins Log; der Skill schickt sie mit send_message (Kennung -> list_sessions).
+#    Ohne Roster: die Datei entsteht trotzdem, Kennung `unbekannt` — der Mensch liest sie.
+#    ⛔ Nutzer 16.09.2026 direkt: "verboten zu stoppen" — die Meldung ist INFORMATION, rc 0,
+#    der Lauf repariert weiter. Sie ist kein Endzustand und ersetzt keine Arbeit.
+mind_teilsync_meldung() {
+  local proj="${1:-}" ung="${2:-}" umf="${3:-}" k d
+  d="$proj/.claude-mind/rescued"; mkdir -p "$d" 2>/dev/null
+  k=$(mind_manager_kennung "$proj" 2>/dev/null); [ -n "$k" ] || k="unbekannt"
+  printf 'ts=%s\nmanager=%s\nungepruef=%s\numfang=%s\nsatz=Teilsync nach zwei Reparatur-Paessen — ungeprueft: %s (umfang %s); ich repariere weiter, bis voll — Information, keine Frage.\n' \
+    "$(date '+%Y-%m-%d %H:%M:%S')" "$k" "$ung" "$umf" "${ung:-?}" "${umf:-?}" > "$d/teilsync-meldung"
+  mind_log WARN "TEILSYNC nach zwei Reparatur-Paessen: ungeprueft=$ung — Meldung an manager $k vorbereitet, Lauf laeuft weiter"
+  echo "⚠ TEILSYNC nach zwei Reparatur-Paessen. Meldung an den manager ($k) liegt in $d/teilsync-meldung — JETZT mit send_message zustellen und WEITER reparieren (Nutzer 16.09.2026: verboten zu stoppen)."
+  return 0
 }
 
 # mind_rollen_ordner <wurzel>
@@ -2331,6 +2397,36 @@ mind_schritt_start() {
       mind_log WARN "schritt-quittung bei $zeilen Zeilen geleert (Notbremse, Kettenmarke liegt)"
     : > "$q" || return 1
   fi
+  # ⛔ v5.113.0 (Etappe 20 §1, Nutzer 16.09.2026 „die sollen ihre Arbeit machen"): in der
+  #    KETTE ist der Kopf-Block ERZWUNGEN, nicht geprueft. Noras Palvedo-Lauf 16.09. 16:27
+  #    quittierte den mind-all-Kopf NACH den fuenf Skills — alle fuenf FORMAL, `0/5 echt`,
+  #    Teilsync, OPEN blieb, obwohl der Lauf inhaltlich voll war. Ein nachgetragener Kopf
+  #    heilt nichts (die Bilanz liest ab der LETZTEN mind-all-Zeile — dahinter stuende dann
+  #    nichts). Deshalb bricht der Skill hier ab, BEVOR er etwas tut: kein Kopf, kein Block.
+  #    Standalone (ohne analyzed-scopes) unveraendert.
+  case "$skill" in
+    mind-files|mind-claudemd|mind-memory|mind-rules|mind-update)
+      if [ "$kette" -eq 1 ]; then
+        # Die Quittung traegt in der Kette MEHRERE Laeufe (angehaengt, v5.67.0). Ein Kopf
+        # zaehlt nur, wenn er zu DIESEM Lauf gehoert: seine ts liegt nicht vor run_started=
+        # aus analyzed-scopes. Ein Kopf aus dem vorigen Lauf ist keiner; ein nachgetragener
+        # (Noras Fall) existiert beim Skill-Start noch nicht. Ohne run_started= reicht der Kopf.
+        local _kopf _kts _rs _rsiso
+        _kopf=$(grep '"ereignis":"start","skill":"mind-all"' "$q" 2>/dev/null | tail -1)
+        _kts=$(printf '%s' "$_kopf" | sed -n 's/.*"ts":"\([^"]*\)".*/\1/p')
+        _rs=$(grep -m1 '^run_started=' "$proj/.claude-mind/analyzed-scopes" 2>/dev/null | cut -d= -f2)
+        _rsiso=""
+        case "$_rs" in ''|*[!0-9]*) ;; *) _rsiso=$(date -u -d "@$_rs" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null) ;; esac
+        if [ -z "$_kopf" ] || { [ -n "$_rsiso" ] && [ -n "$_kts" ] && [ "$_kts" \< "$_rsiso" ]; }; then
+          echo "⛔ KOPF-BLOCK FEHLT: $skill laeuft in der Kette, aber die mind-all-Startzeile steht nicht vor ihm." >&2
+          echo "   mind-all Step 0 zuerst (mind_schritt_start \"\$PROJ\" mind-all …). Ein Nachtrag heilt nichts —" >&2
+          echo "   die Bilanz liest ab der letzten mind-all-Zeile. Liegt analyzed-scopes aus einem abgebrochenen" >&2
+          echo "   Lauf: nach .done umbenennen, dann standalone fahren. (v5.113.0, Etappe 20)" >&2
+          mind_log WARN "mind_schritt_start $skill: Kopf-Block fehlt in der Kette — abgebrochen"
+          return 1
+        fi
+      fi ;;
+  esac
   # ⛔ v5.77.0 — WELCHE VERSION LAEUFT HIER EIGENTLICH? Zwei Antworten, und sie
   #    koennen auseinanderlaufen:
   #      code  = basename "$CLAUDE_PLUGIN_ROOT"   — woher lib.sh und references kommen
@@ -2433,7 +2529,7 @@ mind_schritt_bilanz() {
   local q; q=$(_mind_schritt_pfad "${1:-}")
   local alle=0; [ "${2:-}" = "--alle" ] && alle=1
   local erwartet="" n_erw=0 gel=0 ueb=0 feh=0 leer=0 n_teil=0
-  local zeile name status bytes fehlt="" teil="" ueberliste="" fehlliste="" leerliste=""
+  local zeile name status bytes fehlt="" teil="" ueberliste="" fehlliste="" leerliste="" _xy _xa _xb
 
   if [ ! -f "$q" ]; then
     echo "ERWARTET=? GELAUFEN=0 UEBERSPRUNGEN=0 FEHLER=0 LEER=0"
@@ -2493,8 +2589,19 @@ mind_schritt_bilanz() {
     case "$status" in
       uebersprungen*) ueb=$((ueb+1)); ueberliste="$ueberliste $name(${status#uebersprungen:})" ;;
       fehler*)        feh=$((feh+1)); fehlliste="$fehlliste $name(${status#fehler:})" ;;
-      gelaufen:*)     gel=$((gel+1)); n_teil=$((n_teil+1))
-                      teil="$teil $name ${status#gelaufen:}" ;;
+      gelaufen:*)     gel=$((gel+1)); _xy="${status#gelaufen:}"
+                      # ⛔ v5.113.0 (Etappe 20 §5b, Noras Lauf 11): `1/1` ist VOLL, keine
+                      #    Teilabdeckung — X=Y zaehlt wie `gelaufen`. Alles andere (X<Y,
+                      #    nicht numerisch, `a/b/c`) bleibt TEIL wie bisher.
+                      case "$_xy" in
+                        [0-9]*/[0-9]*)
+                          _xa="${_xy%%/*}"; _xb="${_xy#*/}"
+                          case "$_xa$_xb" in
+                            *[!0-9]*) n_teil=$((n_teil+1)); teil="$teil $name $_xy" ;;
+                            *) [ "$_xa" -eq "$_xb" ] 2>/dev/null || { n_teil=$((n_teil+1)); teil="$teil $name $_xy"; } ;;
+                          esac ;;
+                        *) n_teil=$((n_teil+1)); teil="$teil $name $_xy" ;;
+                      esac ;;
       *)              gel=$((gel+1)) ;;
     esac
     # 0 Bytes ist ein ERGEBNIS. -1 heisst "nicht gemessen" und zaehlt nicht.
@@ -2882,6 +2989,28 @@ mind_uebergabe_pfad() {
   local proj="${1:-}" sid
   sid=$(mind_sid_kurz "${2:-}")
   printf '%s/.claude-mind/rescued/UEBERGABE-%s' "$proj" "$sid"
+}
+
+# mind_schuld_begleichen <projekt>
+# ⛔ v5.113.0 (Etappe 20 §4b, Noras Fund): Step 2.96 nahm `grep -m1 '^resume='` — nur die
+#    AELTESTE RESUME wurde .done, zwei juengere blieben liegen. Jetzt: JEDE resume=-Zeile
+#    (dieselbe Klasse wie `path=` seit v5.57.0), dann OPEN und OPEN.seen-* weg.
+#    Ausgabe: `<n> RESUME .done`. rc 1 ohne OPEN — nichts zu begleichen.
+#    ⛔ Nur nach einem VOLLEN Sync rufen (mind_sync_voll auf dem frischen sync-stand rc 0).
+mind_schuld_begleichen() {
+  local proj="${1:-}" open r n=0
+  [ -n "$proj" ] || return 1
+  open="$proj/.claude-mind/rescued/OPEN"
+  [ -f "$open" ] || return 1
+  while IFS= read -r r; do
+    r="${r#resume=}"
+    [ -n "$r" ] && [ -f "$r" ] || continue
+    mv -f "$r" "${r%.md}.done.md" 2>/dev/null && n=$((n + 1))
+  done < <(grep '^resume=' "$open" 2>/dev/null)
+  rm -f "$open" "${open}.seen-"* 2>/dev/null
+  mind_log "Sync-Schuld beglichen: OPEN entfernt, $n RESUME .done"
+  printf '%s RESUME .done\n' "$n"
+  return 0
 }
 
 # ===== v5.57.0: ALLE offenen Rettungen, an EINER Stelle ====================

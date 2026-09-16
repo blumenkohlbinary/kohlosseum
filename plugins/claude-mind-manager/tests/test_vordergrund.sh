@@ -402,6 +402,50 @@ janein "   getippte Skip-Zeile fuer rules -> UNGEPRUEFT (Quittung ungueltig)" ja
   "$(mind_agent_bilanz "$P" 2>/dev/null | grep -q 'UNGEPRUEFT: rules (Ueberspringen gilt nur' && echo ja || echo nein)"
 rm -rf "$T"
 
+echo "== 4l  v5.113.0 (Etappe 20 §1): der Kopf-Block ist ERZWUNGEN =="
+# Noras Palvedo-Lauf 16.09.2026 16:27: Kopf NACH den fuenf -> alle fuenf FORMAL, Teilsync.
+P=$(mktemp -d)/p; mkdir -p "$P/.claude-mind"; S="$P/.claude-mind/schritt-quittung.jsonl"
+printf 'run_started=1\n' > "$P/.claude-mind/analyzed-scopes"          # Kette liegt
+janein "Kette ohne Kopf-Block: mind-files bricht ab (rc 1)" 1 "$(mind_schritt_start "$P" mind-files verdichten >/dev/null 2>&1; echo $?)"
+janein "   ... und schreibt KEINE Startzeile" 0 "$(grep -c '"skill":"mind-files"' "$S" 2>/dev/null || echo 0)"
+janein "   ... Meldung nennt den Kopf-Block" ja "$(mind_schritt_start "$P" mind-files verdichten 2>&1 >/dev/null | grep -q 'KOPF-BLOCK FEHLT' && echo ja || echo nein)"
+rm -f "$P/.claude-mind/analyzed-scopes"
+janein "standalone (keine Kette): mind-files laeuft wie bisher (rc 0)" 0 "$(mind_schritt_start "$P" mind-files verdichten >/dev/null 2>&1; echo $?)"
+# Kopf zuerst, dann die Skills -> rc 0
+rm -f "$S"; mind_schritt_start "$P" mind-all mind_snapshot >/dev/null 2>&1; printf 'run_started=1\n' > "$P/.claude-mind/analyzed-scopes"
+janein "Kopf zuerst: mind-files rc 0" 0 "$(mind_schritt_start "$P" mind-files verdichten >/dev/null 2>&1; echo $?)"
+janein "   ... mind-claudemd rc 0" 0 "$(mind_schritt_start "$P" mind-claudemd verdichten >/dev/null 2>&1; echo $?)"
+# Kopf NACHGETRAGEN (Noras Reihenfolge) -> die Bilanz bleibt FORMAL fuer alle fuenf
+rm -f "$S" "$P/.claude-mind/analyzed-scopes"
+for s in mind-files mind-claudemd mind-memory mind-rules mind-update; do
+  printf '{"ereignis":"start","skill":"%s","erwartet":"verdichten","ts":"2026-09-16T14:2%d:00Z","code":"5.112.0","text":"5.112.0","versionsbruch":false}\n{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"2026-09-16T14:2%d:30Z"}\n' "$s" 1 1 >> "$S"
+done
+printf '{"ereignis":"start","skill":"mind-all","erwartet":"mind_snapshot","ts":"2026-09-16T14:27:00Z","code":"5.112.0","text":"5.112.0","versionsbruch":false}\n' >> "$S"
+janein "Kopf nachgetragen: FORMAL=5 bleibt (Nachtrag heilt nichts)" ja "$(mind_schritt_bilanz "$P" --alle 2>/dev/null | grep -q '^  FORMAL=5$' && echo ja || echo nein)"
+# Ein Kopf aus einem FRUEHEREN Lauf zaehlt nicht: run_started liegt nach seiner ts
+printf 'run_started=%s\n' "$(date -u -d '2026-09-16T14:28:00Z' +%s)" > "$P/.claude-mind/analyzed-scopes"
+janein "   ... Kopf aelter als run_started (voriger Lauf): mind-update bricht ab" 1 "$(mind_schritt_start "$P" mind-update verdichten >/dev/null 2>&1; echo $?)"
+# Der ZWEITE Kettenlauf: alte Skill-Zeilen liegen vor dem neuen Kopf — das ist der Normalfall
+# (die Quittung wird in der Kette angehaengt, v5.67.0) und darf NICHT abbrechen
+printf '{"ereignis":"start","skill":"mind-all","erwartet":"mind_snapshot","ts":"2026-09-16T14:29:00Z","code":"5.113.0","text":"5.113.0","versionsbruch":false}\n' >> "$S"
+janein "   ... Kopf dieses Laufs trotz alter Zeilen davor: mind-update rc 0 (zweiter Kettenlauf)" 0 "$(mind_schritt_start "$P" mind-update verdichten >/dev/null 2>&1; echo $?)"
+rm -rf "$(dirname "$P")"
+
+echo "== 4m  v5.113.0 (Etappe 20 §4b): mind_schuld_begleichen nimmt ALLE RESUME =="
+# Noras Fund 16.09.2026: grep -m1 '^resume=' -> nur die aelteste .done, zwei blieben liegen
+P=$(mktemp -d)/p; D="$P/.claude-mind/rescued"; mkdir -p "$D"
+for i in 1 2 3; do printf '# r%s\n' "$i" > "$D/r${i}_RESUME.md"; printf 'path=%s/r%s_chat.md\nresume=%s/r%s_RESUME.md\nsid=s%s\n' "$D" "$i" "$D" "$i" "$i" >> "$D/OPEN"; done
+: > "$D/OPEN.seen-abc"
+janein "drei resume= -> Ausgabe '3 RESUME .done'" "3 RESUME .done" "$(mind_schuld_begleichen "$P" 2>/dev/null)"
+janein "   ... alle drei liegen als .done.md" 3 "$(ls "$D"/r*_RESUME.done.md 2>/dev/null | wc -l | tr -d ' ')"
+janein "   ... keine _RESUME.md mehr" 0 "$(ls "$D"/r*_RESUME.md 2>/dev/null | wc -l | tr -d ' ')"
+janein "   ... OPEN und OPEN.seen-* weg" 0 "$(ls "$D"/OPEN* 2>/dev/null | wc -l | tr -d ' ')"
+janein "ohne OPEN: rc 1, nichts zu begleichen" 1 "$(mind_schuld_begleichen "$P" >/dev/null 2>&1; echo $?)"
+printf 'path=x\nresume=%s/fehlt_RESUME.md\n' "$D" > "$D/OPEN"
+janein "toter resume-Zeiger: 0 .done, OPEN trotzdem weg" "0 RESUME .done" "$(mind_schuld_begleichen "$P" 2>/dev/null)"
+janein "   ... OPEN weg" nein "$([ -f "$D/OPEN" ] && echo ja || echo nein)"
+rm -rf "$(dirname "$P")"
+
 echo
 echo "  $OK ok, $ROT rot"
 [ "$ROT" -eq 0 ] || exit 1

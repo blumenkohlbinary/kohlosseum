@@ -148,7 +148,8 @@ janein "   nur Ziffern und / in den Bruechen (kein annotierter Wert moeglich)" 0
 janein "   fremde Laufkennung -> skills 0/5 (die Spur eines anderen Laufs zaehlt nicht)" ja "$(mind_umfang_bilden "$P" "L2" 4 | grep -q '^0/5 skills ' && echo ja || echo nein)"
 rm -rf "$P"
 # Text-Gate: mind-all baut UMFANG nicht mehr aus Variablen
-janein "mind-all: UMFANG kommt aus mind_umfang_bilden" 1 "$(grep -c 'UMFANG=$(mind_umfang_bilden "$PROJ"' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md")"
+# v5.113.0: 2.96a-R bildet den Wert nach der Reparatur ERNEUT — zwei Zuweisungen, beide aus der Funktion (Ziel unveraendert: nie von Hand)
+janein "mind-all: UMFANG kommt aus mind_umfang_bilden" 2 "$(grep -c 'UMFANG=$(mind_umfang_bilden "$PROJ"' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md")"
 janein "mind-all: kein UMFANG=\"...\" aus Shell-Variablen mehr" 0 "$(grep -c '^UMFANG="' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md")"
 
 # --- 6d · v5.106.0 (Etappe 14 §2): ungepruef= wird GEBILDET — Doros Lauf als Fixture ----
@@ -172,13 +173,60 @@ printf '{"ereignis":"start","lauf":"L2","erwartet":4,"ts":"2026-09-13T23:00:00Z"
 janein "   neuer Lauf, nur memory dispatcht: die drei anderen sind ungeprueft, memory nicht" ja "$(mind_ungepruef_bilden "$P" | grep -q '^claude-md,rules,custom-context,' && echo ja || echo nein)"
 rm -rf "$P"
 # Text-Gate: mind-all baut UNGEPRUEFT nicht mehr aus Schleifen; Hand wird nur angehaengt
-janein "mind-all: UNGEPRUEFT kommt aus mind_ungepruef_bilden" 1 "$(grep -c 'UNGEPRUEFT=$(mind_ungepruef_bilden "$PROJ"' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md")"
+# v5.113.0: 2.96a-R bildet den Wert nach der Reparatur ERNEUT — zwei Zuweisungen, beide aus der Funktion (Ziel unveraendert: nie von Hand)
+janein "mind-all: UNGEPRUEFT kommt aus mind_ungepruef_bilden" 2 "$(grep -c 'UNGEPRUEFT=$(mind_ungepruef_bilden "$PROJ"' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md")"
 janein "mind-all: keine Schleife mehr, die UNGEPRUEFT zusammensetzt" 0 "$(grep -c 'UNGEPRUEFT="${UNGEPRUEFT}${_b},"' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md")"
 janein "mind-all: Handzusatz nur als hand:<text> angehaengt" 1 "$(grep -c 'hand:${UNGEPRUEFT_HAND' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md")"
+
+# --- 6e · v5.113.0 (Etappe 20 §2): mind_lauf_voll, Reparatur, Meldung an den manager ----
+P=$(neu_projekt); Q="$P/.claude-mind/agent-quittung.jsonl"; SQ="$P/.claude-mind/schritt-quittung.jsonl"
+_ALT=$(date -u -d '-120 seconds' +%Y-%m-%dT%H:%M:%SZ); _NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+printf 'run_started=1\nskill=mind-files|L1\nskill=mind-claudemd|L1\nskill=mind-memory|L1\nskill=mind-rules|L1\nskill=mind-update|L1\nbestand=mind-files:3/3\nbestand=mind-claudemd:3/3\nbestand=mind-memory:3/3\nbestand=mind-rules:3/3\nbestand=mind-update:3/3\n' > "$P/.claude-mind/analyzed-scopes"
+mind_agent_quittung_start "$P" 4
+for b in claude-md memory rules; do
+  printf '{"ereignis":"dispatch","bereich":"%s","ts":"%s"}\n' "$b" "$_ALT" >> "$Q"
+  printf 'x%.0s' $(seq 1 300) > "$P/.claude-mind/agent-$b.md"
+  mind_agent_ergebnis "$b" --datei "$P/.claude-mind/agent-$b.md" "$P" >/dev/null 2>&1
+done
+mind_agent_uebersprungen custom-context 0 "$P" >/dev/null 2>&1
+# Kopf-Block + fuenf eigene Bloecke, alle mit Artefakt
+printf '{"ereignis":"start","skill":"mind-all","erwartet":"mind_snapshot","ts":"%s","code":"5.113.0","text":"5.113.0","versionsbruch":false}\n{"ereignis":"schritt","name":"mind_snapshot","status":"gelaufen","bytes":10,"ts":"%s"}\n' "$_ALT" "$_ALT" > "$SQ"
+i=0; for s in mind-files mind-claudemd mind-memory mind-rules mind-update; do i=$((i+1))
+  printf '{"ereignis":"start","skill":"%s","erwartet":"verdichten","ts":"%s","code":"5.113.0","text":"5.113.0","versionsbruch":false}\n{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"%s"}\n' "$s" "$(date -u -d "-$((100 - i * 10)) seconds" +%Y-%m-%dT%H:%M:%SZ)" "$_NOW" >> "$SQ"
+done
+janein "voller Lauf: mind_lauf_voll sagt voll (rc 0)" "voll" "$(mind_lauf_voll "$P" L1 4 2>/dev/null)"
+# ein formal-: mind-memory OHNE eigenen Block -> teil; Reparatur (Block nachgefahren) -> voll
+grep -v '"skill":"mind-memory"' "$SQ" > "$SQ.tmp"; mv "$SQ.tmp" "$SQ"
+janein "ein formal-mind-memory -> teil" "teil" "$(mind_lauf_voll "$P" L1 4 2>/dev/null)"
+janein "   ... ungepruef nennt formal-mind-memory" ja "$(mind_ungepruef_bilden "$P" L1 | grep -q 'formal-mind-memory' && echo ja || echo nein)"
+printf '{"ereignis":"start","skill":"mind-memory","erwartet":"verdichten","ts":"%s","code":"5.113.0","text":"5.113.0","versionsbruch":false}\n{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"%s"}\n' "$_NOW" "$_NOW" >> "$SQ"
+janein "   Reparatur: Block nachgefahren -> voll" "voll" "$(mind_lauf_voll "$P" L1 4 2>/dev/null)"
+# toter Agent bleibt tot: nach zwei Paessen -> Meldung an den manager (Datei + Kennung aus dem Roster)
+mkdir -p "$P/.claude/rules"; printf '| Rolle | Name | sessionId | Tut |\n|---|---|---|---|\n| manager | Anton | `62ca5f72-5e0e-452c-a165-fcde84811771` | liest |\n| arbeiter | Nils | `1be7f7a8-88a7-4842-99ac-56140694935c` | baut |\n' > "$P/.claude/rules/rollen.md"
+printf '{"ereignis":"dispatch","bereich":"rules","ts":"%s"}\n{"ereignis":"ergebnis","bereich":"rules","bytes":0,"quelle":"datei","grund":"keine-datei","ts":"%s"}\n' "$_NOW" "$_NOW" >> "$Q"
+janein "toter Agent -> teil" "teil" "$(mind_lauf_voll "$P" L1 4 2>/dev/null)"
+janein "mind_manager_kennung liest Spalte 3 der manager-Zeile" "62ca5f72-5e0e-452c-a165-fcde84811771" "$(mind_manager_kennung "$P")"
+mind_teilsync_meldung "$P" "$(mind_ungepruef_bilden "$P" L1)" "$(mind_umfang_bilden "$P" L1 4)" >/dev/null 2>&1
+janein "Meldung liegt: teilsync-meldung mit manager= und satz=" ja "$(grep -q '^manager=62ca5f72' "$P/.claude-mind/rescued/teilsync-meldung" && grep -q '^satz=Teilsync nach zwei' "$P/.claude-mind/rescued/teilsync-meldung" && grep -q 'rules' "$P/.claude-mind/rescued/teilsync-meldung" && echo ja || echo nein)"
+janein "   ... rc 0 — Information, der Lauf laeuft weiter (Nutzer 16.09.: verboten zu stoppen)" 0 "$(mind_teilsync_meldung "$P" x y >/dev/null 2>&1; echo $?)"
+rm -rf "$P"
+# Text-Gate: mind-all sagt es oben und repariert vor dem Schreiben
+janein "mind-all: der Satz steht oben (Teilsync ist kein Ergebnis)" ja "$(grep -q 'Ein Teilsync ist kein Ergebnis' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && echo ja || echo nein)"
+janein "mind-all: Reparatur ohne Pass-Limit, Meldung nach dem zweiten Pass, sync-stand nur bei ja" ja "$(grep -q 'while \[ "$(mind_lauf_voll "$PROJ" "${LAUF:-}" "${AGENT_SOLL:-4}")" = "teil" \]; do' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && grep -q '_PASS" -eq 2 \] && mind_teilsync_meldung' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && grep -q '\[ "$SYNC_LIEF" = "ja" \]; then' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && ! grep -q '"$SYNC_LIEF" = "teil" \] && \' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && echo ja || echo nein)"
 
 # --- 7 · gar kein Merker ist nicht unsere Frage ---------------------------
 P=$(neu_projekt)
 janein "kein sync-stand -> vollstaendig" voll "$(voll_p "$P/.claude-mind/rescued/sync-stand")"
+# --- 7b · v5.113.0 (Etappe 20 §5a): ein FALSCHES Argument ist kein Merker — rc 3, nie still 0
+#     Noras Lauf 11: mind_sync_voll "$UMFANG" (der String) sagte voll.
+janein "umfang-String statt Pfad -> rc 3" rc3 "$(voll_p "5/5 skills 3/4 agents 5/5 bestand")"
+janein "leeres Argument -> rc 3" rc3 "$(voll_p "")"
+janein "Verzeichnis statt Datei -> rc 3" rc3 "$(voll_p "$P/.claude-mind/rescued")"
+janein "   ... WARN auf stderr nennt den Aufruffehler" ja "$(mind_sync_voll "5/5 skills" 2>&1 >/dev/null | grep -q 'kein Dateipfad' && echo ja || echo nein)"
+# Text-Gate §4a: das Urteil ist mind_sync_voll auf dem frischen Merker, kein teil-Merker bleibt
+janein "mind-all 2.96a: SYNC_LIEF ist mind_sync_voll auf dem geschriebenen sync-stand" ja "$(grep -q 'if mind_sync_voll "$PROJ/.claude-mind/rescued/sync-stand"; then SYNC_LIEF="ja"; else' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && echo ja || echo nein)"
+janein "mind-all 2.96a-R: ab Pass 3 warten (60 s x Pass, Deckel 600), nie abbrechen" ja "$(grep -q 'if \[ "$_PASS" -ge 3 \]; then _W=$((60 \* _PASS)); \[ "$_W" -gt 600 \] && _W=600' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && echo ja || echo nein)"
+janein "mind-all 2.96: OPEN nur nach mind_sync_voll rc 0, alle RESUME (mind_schuld_begleichen)" ja "$(grep -q '&& mind_sync_voll "$PROJ/.claude-mind/rescued/sync-stand"; then' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && grep -q 'mind_schuld_begleichen "$PROJ"' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && ! grep -v '^ *#' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" | grep -q "RF=\$(grep -m1 '^resume='" && echo ja || echo nein)"   # gezaehlt wird die AUSFUEHRBARE Zeile, nicht die Erwaehnung im Kommentar
 rm -rf "$P"
 
 # --- ⭐ v5.67.0: das Paar `abdeckung` ------------------------------------

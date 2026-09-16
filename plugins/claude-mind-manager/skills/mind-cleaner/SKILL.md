@@ -47,7 +47,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.112.0"
+MIND_SKILL_VERSION="5.113.0"
 mind_schritt_start "$PROJ" mind-cleaner bestandsaufnahme cleaner_audit cleaner_einordnung cleaner_grenzen cleaner_leitplanke cleaner_ratsche cleaner_rebuild cleaner_umzug ladeprotokoll_auswertung mind_debug_write mind_snapshot
 ```
 
@@ -83,6 +83,10 @@ lief `cleaner_leitplanke.py` ueber 5 von 11 Dateien und wurde als **Bereichsprue
 berichtet. Der Fehler war nicht ein fehlender Aufruf, sondern ein gelaufener, der
 weniger abdeckte als der Bericht behauptete. `5/11` ist eine gueltige Antwort;
 sie als `11/11` zu berichten ist es nicht.
+⚠ **`X/Y` mit X=Y (`1/1`) zaehlt seit v5.113.0 als voll** — vollstaendig heisst trotzdem
+`gelaufen`, nicht `1/1` (Noras Lauf 11, 16.09.2026). ⛔ **Nachquittieren geht nur im SELBEN
+Block:** die Bilanz nimmt den letzten Eintrag je Block×Name; ein Nachtrag in einem spaeteren
+Block heilt nichts — den Block erneut fahren (mind-all 2.96a-R).
 
 ⛔ **Die Bytezahl ist Pflicht, wo ein Schritt etwas ausgeben MUSS.** Am selben Tag
 lief `cleaner_belege.py` und seine Ausgabe wurde weggegreppt — aus Sicht einer

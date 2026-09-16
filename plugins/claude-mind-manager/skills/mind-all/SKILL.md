@@ -17,6 +17,15 @@ allowed-tools: Read Glob Grep Edit Write Bash Agent
 
 # Alle Context-Commands autonom nacheinander
 
+⛔ **Ein Teilsync ist kein Ergebnis und kein Endzustand. Der Lauf endet NUR mit `voll` —
+er repariert, bis es voll ist, und stoppt nicht** (Nutzer 10.09.2026 „keine Ausreden",
+16.09.2026 woertlich: „teilsync komplett raus aus dem plugin, verboten zu stoppen … es darf
+nix uebersprungen werden oder verschoben"; v5.113.0, Step 2.96a-R). Nach zwei
+Reparatur-Paessen bekommt der manager eine Nachricht — als Information, der Lauf laeuft weiter.
+Der Kopf-Block ist erzwungen: ohne ihn bricht jeder der fuenf Skills ab, bevor er etwas tut —
+ein Nachtrag heilt nichts. Kein Wort und keine Zeile dieses Skills wird uebersprungen oder
+auf spaeter verschoben.
+
 ## ⛔ PFLICHTSCHRITTE — dieser Skill fuehrt aus, was hier steht (NEU v5.25.0)
 
 ```
@@ -42,7 +51,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.112.0"
+MIND_SKILL_VERSION="5.113.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 # ⛔ v5.98.0: die fuenf Skills sind KEINE Schritte von mind-all — jeder hat seinen EIGENEN
 #    Start-Block (Step 2, Punkt 1). Bis v5.97.0 standen sie hier, Ritas Kalibrierlauf hakte
@@ -81,6 +90,10 @@ lief `cleaner_leitplanke.py` ueber 5 von 11 Dateien und wurde als **Bereichsprue
 berichtet. Der Fehler war nicht ein fehlender Aufruf, sondern ein gelaufener, der
 weniger abdeckte als der Bericht behauptete. `5/11` ist eine gueltige Antwort;
 sie als `11/11` zu berichten ist es nicht.
+⚠ **`X/Y` mit X=Y (`1/1`) zaehlt seit v5.113.0 als voll** — vollstaendig heisst trotzdem
+`gelaufen`, nicht `1/1` (Noras Lauf 11, 16.09.2026). ⛔ **Nachquittieren geht nur im SELBEN
+Block:** die Bilanz nimmt den letzten Eintrag je Block×Name; ein Nachtrag in einem spaeteren
+Block heilt nichts — den Block erneut fahren (mind-all 2.96a-R).
 
 ⛔ **Die Bytezahl ist Pflicht, wo ein Schritt etwas ausgeben MUSS.** Am selben Tag
 lief `cleaner_belege.py` und seine Ausgabe wurde weggegreppt — aus Sicht einer
@@ -822,8 +835,57 @@ fi
 bestehen. `teil` heisst: die Kette lief, der Fan-out nicht — dann entsteht ein Merker,
 **der seine eigene Unvollstaendigkeit traegt**.
 
+### ⛔ 2.96a-R: bei `teil` REPARIEREN, bis es voll ist (v5.113.0, Etappe 20 §2 + Nutzer 16.09.)
+
+`mind_lauf_voll` sagt `teil` → der Lauf ist NICHT fertig, und er ENDET auch nicht. Gemessen
+16.09.2026 (Palvedo, Nora): Kopf-Block nach den Skills, fuenf `formal-*`, `0/5 echt`, Teilsync
+geschrieben, OPEN mit drei Rettungen blieb — obwohl drei Agenten liefen und zwei Fixe sassen.
+Das Werkzeug hat den Fehler richtig gemeldet und den Lauf DAMIT ENDEN LASSEN. **Nutzer
+16.09.2026, woertlich:** *„teilsync komplett raus aus dem plugin, ist verboten zu stoppen oder
+ueberhaupt auf die idee zu kommen auch nur ein wort oder zeile vom plugin zu missachten, es
+darf nix uebersprungen werden oder verschoben."*
+
 ```bash
-if [ "$DRY_RUN" = "no" ] && [ "$SYNC_LIEF" != "nein" ]; then
+# Vor dem Schreiben: Reparatur-Paesse, so viele wie noetig — der Lauf stoppt NICHT bei teil.
+# Je Eintrag in ungepruef=:
+#   formal-<skill>      -> den Skill-Block ERNEUT ausfuehren (Kopf-Block liegt, §1) — nicht nachtippen
+#   <bereich>           -> mind_agent_dispatch + Agent (blockierend) + mind_agent_ergebnis --datei, JETZT;
+#                          stirbt er, engerer Auftrag, wieder JETZT (workflow-agent-rate-limit.md)
+#   bestand-<skill>     -> den Bestands-Pass des Skills nachfahren, bestand= quittieren
+#   abdeckung-<schritt> -> den Schritt nachfahren und mit --datei quittieren
+#   formal-mind-all     -> kann seit §1 nicht mehr entstehen; steht es doch da: Kopf-Block und
+#                          die fuenf Bloecke erneut, in dieser Reihenfolge
+_PASS=0
+while [ "$(mind_lauf_voll "$PROJ" "${LAUF:-}" "${AGENT_SOLL:-4}")" = "teil" ]; do
+  _PASS=$((_PASS + 1))
+  echo "⚠ Lauf ist teil — Reparatur-Pass $_PASS: $(mind_ungepruef_bilden "$PROJ" "${LAUF:-}")"
+  # Anton 16.09.2026: ab Pass 3 WARTEN, nie abbrechen — 60 s je Pass, Deckel 10 min. Kein Stopp,
+  # aber kein Haemmern auf ein Rate-Limit. (python statt `sleep`: das Bash-Werkzeug der
+  # Desktop-App blockt ein Vordergrund-sleep laut seiner Werkzeugbeschreibung.)
+  if [ "$_PASS" -ge 3 ]; then _W=$((60 * _PASS)); [ "$_W" -gt 600 ] && _W=600
+    echo "   warte ${_W}s vor Pass $_PASS — warten, nie abbrechen"; python -c "import time; time.sleep($_W)"; fi
+  [ "$_PASS" -eq 2 ] && mind_teilsync_meldung "$PROJ" "$(mind_ungepruef_bilden "$PROJ" "${LAUF:-}")" "$(mind_umfang_bilden "$PROJ" "${LAUF:-}" "${AGENT_SOLL:-4}")"
+  #   -> nach dem ZWEITEN Pass: Kennung aus .claude-mind/rescued/teilsync-meldung (manager=), per
+  #      mcp__ccd_session_mgmt__list_sessions die local_-Kennung, send_message mit der satz=-Zeile —
+  #      als INFORMATION. Der Lauf laeuft weiter; er wartet nicht auf eine Antwort.
+  # ... hier die Eintraege ABARBEITEN (oben) ...
+  break   # ⛔ der Skill fuehrt die Reparatur als Werkzeugaufrufe aus und ruft diesen Block danach ERNEUT — so lange, bis mind_lauf_voll voll sagt
+done
+UMFANG=$(mind_umfang_bilden "$PROJ" "${LAUF:-}" "${AGENT_SOLL:-4}")
+UNGEPRUEFT=$(mind_ungepruef_bilden "$PROJ" "${LAUF:-}")
+if [ "$(mind_lauf_voll "$PROJ" "${LAUF:-}" "${AGENT_SOLL:-4}")" = "voll" ]; then SYNC_LIEF="ja"; elif [ "$SYNC_LIEF" != "nein" ]; then SYNC_LIEF="teil"; fi
+# ⛔ Mit SYNC_LIEF=teil geht es hier NICHT weiter: kein sync-stand, kein Bericht, kein Ende —
+#    zurueck in die Schleife oben. Ein Teilsync wird nie mehr geschrieben.
+```
+
+⛔ **Kein Pass-Limit, kein Abbruch, kein Verschieben — ab Pass 3 warten, nie abbrechen.**
+Die Meldung nach dem zweiten Pass ersetzt nicht die Arbeit — sie macht sie sichtbar. Was der manager daraufhin entscheidet,
+kommt als Nachricht; bis dahin laeuft die Reparatur.
+
+```bash
+# ⛔ v5.113.0: NUR bei `ja`. Ein Merker fuer teil entsteht nicht mehr — teil ist kein Zustand,
+#    in dem dieser Block erreicht wird (2.96a-R laeuft, bis voll).
+if [ "$DRY_RUN" = "no" ] && [ "$SYNC_LIEF" = "ja" ]; then
   mkdir -p "$PROJ/.claude-mind/rescued"
   # ⛔ v5.65.0: HIER STAND `tokens=` UND DIE ERZEUGUNG VON `COMPACT-FAELLIG`.
   #    Beides ist weg. Nutzer-Entscheidung 10.09.2026: "die sollen garnicht
@@ -845,6 +907,15 @@ if [ "$DRY_RUN" = "no" ] && [ "$SYNC_LIEF" != "nein" ]; then
   printf 'ts=%s\numfang=%s\nungepruef=%s\n' \
     "$(date '+%Y-%m-%d %H:%M:%S')" "$UMFANG" "$UNGEPRUEFT" \
     > "$PROJ/.claude-mind/rescued/sync-stand"
+  # ⛔ v5.113.0 (Etappe 20 §4a): das Urteil IST mind_sync_voll auf dem GERADE geschriebenen
+  #    Merker — nicht die Zaehler oben. Noras Lauf 10 (16.09. 17:00): `ungepruef=abdeckung-…`,
+  #    mind_sync_voll rc 1, und SYNC_LIEF stand trotzdem auf ja — OPEN getilgt, letzter-sync
+  #    geschrieben, zu Unrecht. Sagt es teil, bleibt KEIN teil-Merker liegen (Nutzer 16.09.):
+  #    zurueck nach 2.96a-R, die Eintraege abarbeiten, diesen Block erneut.
+  if mind_sync_voll "$PROJ/.claude-mind/rescued/sync-stand"; then SYNC_LIEF="ja"; else
+    SYNC_LIEF="teil"; rm -f "$PROJ/.claude-mind/rescued/sync-stand"
+    echo "⛔ Der geschriebene Merker ist TEIL (mind_sync_voll) — entfernt. Zurueck nach 2.96a-R: ${UNGEPRUEFT:-?}"
+  fi
   # v5.86.0: der Merker der Rotations-Ratsche — NUR bei einem vollen Sync, und er
   #   wird von niemandem verbraucht. Was juenger ist als diese Zeit, rotiert nicht.
   #   v5.88.0: `utc=` dazu — die Beitraege der Rettungen sind in UTC gestempelt;
@@ -852,8 +923,6 @@ if [ "$DRY_RUN" = "no" ] && [ "$SYNC_LIEF" != "nein" ]; then
   #   dem Sync traegt (Ja/Nein, keine Schwelle).
   [ "$SYNC_LIEF" = "ja" ] && printf 'ts=%s\nutc=%s\n' "$(date +%Y%m%d-%H%M%S)" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     > "$PROJ/.claude-mind/rescued/letzter-sync"
-  [ "$SYNC_LIEF" = "teil" ] && \
-    echo "⚠ TEILSYNC: $UMFANG — ungeprueft: ${UNGEPRUEFT:-(nichts)}. Die Schuld bleibt bestehen."
 fi
 ```
 
@@ -891,21 +960,21 @@ stand es bis v5.7.4, und genau das war der Fehler.
 Erst **nach** einem tatsaechlich gelaufenen Sync (nicht im Probelauf, nicht nach Abbruch von
 mind-update) wird die offene Schuld entfernt — sonst blockt der Stop-Hook zu Recht weiter:
 
-⛔ **Hier steht `= "ja"` und bleibt dabei — anders als in Step 2.96a.** Ein Teilsync setzt
-zwar einen Merker (der seine Unvollstaendigkeit selbst traegt), begleicht aber **keine
-Schuld**. Der Unterschied ist der ganze Zweck von v5.19.0: `sync-stand` sagt „so weit bin
-ich gekommen", `OPEN` sagt „das steht noch aus". Wer beides an dieselbe Bedingung haengt,
-hat wieder zwei Zustaende statt drei.
+⛔ **Hier steht `= "ja"` und bleibt dabei.** Bis v5.112.0 stand in Step 2.96a `!= "nein"`:
+ein Teilsync setzte einen Merker (der seine Unvollstaendigkeit selbst trug), beglich aber
+**keine Schuld** — `sync-stand` sagte „so weit bin ich gekommen", `OPEN` „das steht noch
+aus" (v5.19.0). Seit v5.113.0 wird ein Teilsync gar nicht mehr geschrieben (2.96a-R
+repariert, bis voll); beide Bloecke haengen jetzt an `ja`, und `OPEN` verschwindet weiterhin
+nur hier.
 
 ```bash
-if [ "$DRY_RUN" = "no" ] && [ "$SYNC_LIEF" = "ja" ]; then
-  OPEN="$PROJ/.claude-mind/rescued/OPEN"
-  if [ -f "$OPEN" ]; then
-    RF=$(grep -m1 '^resume=' "$OPEN" | cut -d= -f2-)
-    [ -n "$RF" ] && [ -f "$RF" ] && mv -f "$RF" "${RF%.md}.done.md" 2>/dev/null
-    rm -f "$OPEN" "${OPEN}.seen-"* 2>/dev/null
-    echo "Sync-Schuld beglichen: OPEN entfernt."
-  fi
+# ⛔ v5.113.0 (Etappe 20 §4): getilgt wird NUR, wenn mind_sync_voll den frischen Merker
+#    mit rc 0 bestaetigt — und ALLE resume=-Zeilen werden .done (mind_schuld_begleichen).
+#    Bis v5.112.0 stand hier `grep -m1 '^resume='`: nur die aelteste RESUME wurde .done,
+#    zwei juengere blieben liegen (Noras Fund, 16.09.2026).
+if [ "$DRY_RUN" = "no" ] && [ "$SYNC_LIEF" = "ja" ] \
+   && mind_sync_voll "$PROJ/.claude-mind/rescued/sync-stand"; then
+  _BEGL=$(mind_schuld_begleichen "$PROJ") && echo "Sync-Schuld beglichen: OPEN entfernt, $_BEGL."
 fi
 
 # ⛔ v5.28.0: Die PLAN-PAUSE wird IMMER aufgehoben — ausserhalb des
@@ -1014,8 +1083,9 @@ NICHT GEFAHREN:    knowledge-sync (Kontext 914k) -> claude-md, memory, rules, cu
   aus der Erinnerung.**
 - `NICHT GEFAHREN: (nichts)` ist die zulaessige Antwort bei einem vollstaendigen Lauf.
   **Ein leerer Wert ist es nicht** — dieselbe Regel wie bei `listeverbesserungen.md`.
-- Ein Teilsync gehoert zusaetzlich als Befund der Klasse **`lauf-unvollstaendig`** in die
-  Befundzeilen von Step 2.95. Nicht als `agent-gestorben`: dort lieferte ein **gestarteter**
+- Ein Lauf, der in 2.96a-R Reparatur-Paesse brauchte (seit v5.113.0 endet keiner mehr als
+  Teilsync), gehoert zusaetzlich als Befund der Klasse **`lauf-unvollstaendig`** in die
+  Befundzeilen von Step 2.95 — mit der Pass-Zahl und dem, was ungeprueft war. Nicht als `agent-gestorben`: dort lieferte ein **gestarteter**
   Agent nichts, hier wurde nie einer gestartet. Der Unterschied ist nicht akademisch —
   am 24.08.2026 wurde derselbe Vorfall in zwei Projekten **verschieden** einsortiert, und
   solange ein Ereignis zwei Namen traegt, sieht die Wiederholungserkennung kein Muster.
