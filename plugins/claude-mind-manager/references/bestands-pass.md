@@ -193,6 +193,12 @@ mind_verdichtung_pruefen "$DATEI" "$ERGEBNIS" "$BERICHT" || { echo "verworfen"; 
 
 # 3  ⛔ STUFE 3: den Wort-Diff GANZ lesen (git diff --no-index --word-diff). Ohne Leser:
 #    NICHT anwenden — Ergebnis, Bericht und Diff ablegen, Pfad melden, hier aufhören.
+#    ⛔ v5.124.0 (Etappe 30, Anton 17.09.2026): der Diff heisst
+#       verdichten-<skill>.wortdiff.<YYYYMMDD-HHMM>.txt — MIT Zeitstempel, frisch aus DIESEM
+#       Ergebnis erzeugt. Anton las am 17.09. den liegenden .wortdiff.txt vom 16.09. und
+#       lehnte Ritas neues Ergebnis aus dessen Inhalt ab. Stufe 3 liest .nachher.md UND den
+#       frisch erzeugten Diff — nie einen, der schon da lag.
+git diff --no-index --word-diff "$DATEI" "$ERGEBNIS" > "$PROJ/.claude-mind/verdichten-<skill>.wortdiff.$(date +%Y%m%d-%H%M).txt"
 # 4  Anwenden, dann das ERFOLGSMASS — und zurück, wenn es nicht kleiner wurde
 cp "$ERGEBNIS" "$DATEI"
 NACHHER=$(mind_kontext_bilanz "$PROJ" | sed -n 's/.*BYTES=\([0-9]*\).*/\1/p')
