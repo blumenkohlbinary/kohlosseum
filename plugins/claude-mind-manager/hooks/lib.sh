@@ -2763,37 +2763,57 @@ mind_schritt_bilanz() {
     # ⛔ v5.116.0 (Etappe 22 §2, Doros Creator-Lauf 16.09.2026): (d) eine GETIPPTE Quittung.
     #    Fuenf Skill-Startzeilen 15:17:27-15:17:32, 39 Schritte in fuenf Sekunden — die Bilanz
     #    las 39/39. Reale Skills brauchen Minuten (Rita 13.09.: 3-9 min je Block). Signatur:
-    #    zwei Context-Skill-Starts weniger als MIND_SCHRITT_MIN_S (Vorgabe 60 s, gemessen an
-    #    Ritas Laeufen: kleinster Abstand 116 s) auseinander, oder >= 5 Schrittzeilen eines
-    #    Blocks innerhalb von 10 s. Dann FORMAL: <skill> (Block in n s — nachgetippt), der Lauf
-    #    ist teil, und der Block wird NEU GEFAHREN, nicht neu getippt.
-    local _min_s="${MIND_SCHRITT_MIN_S:-60}" _prev_sk="" _prev_ep=0 _ep _d _n5 _e1 _e5 _i5
-    case "$_min_s" in ''|*[!0-9]*) _min_s=60 ;; esac
+    #    zwei Context-Skill-Starts weniger als MIND_SCHRITT_MIN_S auseinander, oder >= 5
+    #    Schrittzeilen eines Blocks innerhalb von 10 s. Dann FORMAL: <skill> (Block in n s —
+    #    nachgetippt), der Lauf ist teil, und der Block wird NEU GEFAHREN, nicht neu getippt.
+    # ⛔ v5.122.0 (Etappe 32, Noras Palvedo-Lauf auf 5.120.0), zwei Fehler:
+    #    §1 Die Abstaende liefen chronologisch ueber ALLE Startzeilen — ein einmal zu knapper
+    #       Block blieb FORMAL, auch wenn derselbe Skill danach mit Abstand NEU gefahren wurde
+    #       (die Dedup verhinderte nur den doppelten Namen). Das widersprach Etappe 20 §2
+    #       („Reparatur = Block neu fahren"); Nora fuhr den ganzen Lauf neu. Jetzt zaehlt je
+    #       Skill der LETZTE Start, verglichen mit dem zeitlich vorangehenden letzten Start
+    #       eines anderen Skills — und die Dichte-Pruefung sieht nur den letzten Block je Skill.
+    #    §2 Vorgabe 60 s traf einen ECHTEN 59-s-Block (mind-rules mit „0/0 schon geprueft").
+    #       Der Start-Abstand ist die schwaechere Signatur, die Dichte (>= 5 in 10 s) die
+    #       primaere (Doro: 8 Schritte in 1 s). Vorgabe jetzt 20 s: Snapshot + Startzeile +
+    #       eine Bilanz brauchen mindestens das. Ritas kleinster echter Abstand: 116 s.
+    local _min_s="${MIND_SCHRITT_MIN_S:-20}" _prev_sk="" _prev_ep=0 _ep _d _n5 _e1 _e5 _i5
+    case "$_min_s" in ''|*[!0-9]*) _min_s=20 ;; esac
+    local _lst="${TMPDIR:-/tmp}/.mind_schritt_l$$"; : > "$_lst"
     while IFS= read -r zeile; do
       [ -n "$zeile" ] || continue
       _skill=$(printf '%s' "$zeile" | sed -n 's/.*"skill":"\([^"]*\)".*/\1/p')
       _ts=$(printf '%s' "$zeile" | sed -n 's/.*"ts":"\([^"]*\)".*/\1/p')
       case "$_skill" in mind-files|mind-claudemd|mind-memory|mind-rules|mind-update) ;; *) continue ;; esac
       _ep=$(date -u -d "$_ts" +%s 2>/dev/null); case "$_ep" in ''|*[!0-9]*) _ep=0 ;; esac
-      if [ -n "$_prev_sk" ] && [ "$_ep" -gt 0 ] && [ "$_prev_ep" -gt 0 ]; then
+      [ "$_ep" -gt 0 ] || continue
+      grep -v " $_skill\$" "$_lst" > "$_lst.n" 2>/dev/null; mv -f "$_lst.n" "$_lst"   # nur der LETZTE Start je Skill
+      printf '%s %s\n' "$_ep" "$_skill" >> "$_lst"
+    done < <(grep '"ereignis":"start"' "$_bl" 2>/dev/null)
+    while read -r _ep _skill; do
+      [ -n "$_skill" ] || continue
+      if [ -n "$_prev_sk" ]; then
         _d=$((_ep - _prev_ep)); [ "$_d" -lt 0 ] && _d=$((0 - _d))
         if [ "$_d" -lt "$_min_s" ]; then
-          case "$formalliste" in *"FORMAL: $_skill ("*) ;; *)
+          case "$formalliste" in *"FORMAL: $_skill ("*) ;; *)   # ein Skill, EIN Grund (Bytes/Sekunde/Abstand)
             formal=$((formal + 1)); formalliste="${formalliste}  FORMAL: $_skill (Block in $_d s nach $_prev_sk — nachgetippt; MIND_SCHRITT_MIN_S=$_min_s)"$'\n' ;;
           esac
         fi
       fi
       _prev_sk="$_skill"; _prev_ep="$_ep"
-    done < <(grep '"ereignis":"start"' "$_bl" 2>/dev/null)
-    # >= 5 Schrittzeilen eines Blocks innerhalb von 10 s
+    done < <(sort -n "$_lst")
+    rm -f "$_lst"
+    # >= 5 Schrittzeilen eines Blocks innerhalb von 10 s — nur der LETZTE Block je Skill (v5.122.0)
     if [ "$_bn" -gt 1 ]; then
-      local _sblk="${TMPDIR:-/tmp}/.mind_schritt_d$$" _sts
+      local _sblk="${TMPDIR:-/tmp}/.mind_schritt_d$$" _sts _letzt
       _starts=$(grep -n '"ereignis":"start"' "$_bl" | cut -d: -f1 | tr '\n' ' '); _i=1
       for _von in $_starts; do
         _bis=$(printf '%s\n' $_starts | sed -n "$((_i + 1))p"); _i=$((_i + 1))
         if [ -n "$_bis" ]; then sed -n "${_von},$((_bis - 1))p" "$_bl" > "$_sblk"; else sed -n "${_von},\$p" "$_bl" > "$_sblk"; fi
         _skill=$(head -1 "$_sblk" | sed -n 's/.*"skill":"\([^"]*\)".*/\1/p')
         case "$_skill" in mind-files|mind-claudemd|mind-memory|mind-rules|mind-update) ;; *) continue ;; esac
+        _letzt=$(grep -n '"ereignis":"start"' "$_bl" | grep "\"skill\":\"$_skill\"" | tail -1 | cut -d: -f1)
+        [ "$_letzt" = "$_von" ] || continue      # ein spaeterer, sauberer Block heilt den getippten
         _sts=$(grep '"ereignis":"schritt"' "$_sblk" | sed -n 's/.*"ts":"\([^"]*\)".*/\1/p')
         _n5=$(printf '%s\n' "$_sts" | grep -c .); [ "$_n5" -ge 5 ] || continue
         _e1=$(date -u -d "$(printf '%s\n' "$_sts" | head -1)" +%s 2>/dev/null); _e5=$(date -u -d "$(printf '%s\n' "$_sts" | tail -1)" +%s 2>/dev/null)

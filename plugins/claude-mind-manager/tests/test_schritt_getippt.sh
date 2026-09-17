@@ -9,6 +9,7 @@
 #   §1 Notbremse: frische Bloecke bleiben, alte werden geleert, 600 Zeilen rotieren
 #   §2 getippte Quittung -> FORMAL (nachgetippt), formal-<skill> in ungepruef, Regler MIND_SCHRITT_MIN_S
 #   §3 Skill-Text: „wird nicht nachgetippt — der Block wird neu gefahren"
+#   §5 v5.122.0 (Etappe 32, Noras Palvedo-Lauf): letzter Start je Skill zaehlt (ein sauberer Block heilt), Vorgabe 20 s
 # Gegen 5.115.0: §1/§2 rot.
 set -u
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { echo "CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 2; }
@@ -47,7 +48,7 @@ echo "== §2  getippte Quittung: Doros Datei -> fuenf FORMAL, Ritas -> keins =="
 P=$(mktemp -d)/p; mkdir -p "$P/.claude-mind"; cp "$FX/schritt-quittung_getippt_creator_2026-09-16.jsonl" "$P/.claude-mind/schritt-quittung.jsonl"
 _B=$(mind_schritt_bilanz "$P" --alle 2>/dev/null)
 janein "Doro 16.09.: FORMAL=5" ja "$(printf '%s\n' "$_B" | grep -q '^  FORMAL=5$' && echo ja || echo nein)"
-janein "   ... vier ueber den Start-Abstand (< 60 s), einer ueber 8 Schritte in 1 s" ja "$([ "$(printf '%s\n' "$_B" | grep -c 'nachgetippt; MIND_SCHRITT_MIN_S=60')" = 4 ] && printf '%s\n' "$_B" | grep -q 'mind-files (8 Schritte in 1 s — nachgetippt)' && echo ja || echo nein)"
+janein "   ... vier ueber den Start-Abstand (< 20 s, v5.122.0 — vorher 60), einer ueber 8 Schritte in 1 s" ja "$([ "$(printf '%s\n' "$_B" | grep -c 'nachgetippt; MIND_SCHRITT_MIN_S=20')" = 4 ] && printf '%s\n' "$_B" | grep -q 'mind-files (8 Schritte in 1 s — nachgetippt)' && echo ja || echo nein)"
 janein "   ... mind_ungepruef_bilden traegt alle fuenf formal-<skill>" 5 "$(mind_ungepruef_bilden "$P" 2>/dev/null | tr ',' '\n' | grep -c '^formal-mind-')"
 janein "   ... der Lauf ist damit teil (mind_lauf_voll)" teil "$(mind_lauf_voll "$P" "" 4 2>/dev/null)"
 janein "   Regler: MIND_SCHRITT_MIN_S=1 -> der Start-Abstand greift nicht mehr, vier Bloecke bleiben ueber >= 5 Schritte in 10 s FORMAL" ja "$(MIND_SCHRITT_MIN_S=1 mind_schritt_bilanz "$P" --alle 2>/dev/null | grep -q '^  FORMAL=4$' && echo ja || echo nein)"
@@ -70,6 +71,43 @@ rm -rf "$(dirname "$P")"
 echo "== §3  Skill-Text =="
 n=0; for s in mind-files mind-claudemd mind-memory mind-rules mind-update mind-all; do grep -q 'Eine geloeschte oder leere Schritt-Quittung wird nicht nachgetippt' "$CLAUDE_PLUGIN_ROOT/skills/$s/SKILL.md" && n=$((n+1)); done
 janein "die fuenf Skills und mind-all sagen: nicht nachtippen, Block neu fahren" 6 "$n"
+
+echo "== §5  v5.122.0 (Etappe 32, Noras Palvedo-Lauf): letzter Start je Skill zaehlt, Vorgabe 20 s =="
+# Noras Fall: mind-update erst 10 s nach mind-rules (getippt), dann NEU gefahren mit Abstand ->
+# der spaetere saubere Block heilt das FORMAL (Etappe 20 §2: Reparatur = Block neu fahren).
+P=$(mktemp -d)/p; mkdir -p "$P/.claude-mind"; Q="$P/.claude-mind/schritt-quittung.jsonl"
+T0=$(date -u -d '-3600 seconds' +%s)
+at() { date -u -d "@$((T0 + $1))" +%Y-%m-%dT%H:%M:%SZ; }
+{ zeile_start mind-all "$(at 0)"
+  zeile_start mind-files "$(at 120)";    zeile_schritt bestand "$(at 150)";  zeile_schritt verdichten "$(at 200)"
+  zeile_start mind-claudemd "$(at 300)"; zeile_schritt bestand "$(at 330)";  zeile_schritt verdichten "$(at 400)"
+  zeile_start mind-memory "$(at 500)";   zeile_schritt bestand "$(at 530)";  zeile_schritt verdichten "$(at 600)"
+  zeile_start mind-rules "$(at 700)";    zeile_schritt bestand "$(at 720)";  zeile_schritt verdichten "$(at 760)"
+  zeile_start mind-update "$(at 710)";   zeile_schritt bestand "$(at 711)";  zeile_schritt verdichten "$(at 712)"   # 10 s nach dem mind-rules-START: getippt
+} > "$Q"
+_B=$(mind_schritt_bilanz "$P" --alle 2>/dev/null)
+janein "knapper mind-update-Block (10 s nach mind-rules): FORMAL=1" ja "$(printf '%s\n' "$_B" | grep -q '^  FORMAL=1$' && printf '%s\n' "$_B" | grep -q 'FORMAL: mind-update (Block in 10 s nach mind-rules' && echo ja || echo nein)"
+{ zeile_start mind-update "$(at 1000)"; zeile_schritt bestand "$(at 1040)"; zeile_schritt verdichten "$(at 1100)"; } >> "$Q"   # NEU gefahren, mit Abstand
+_B=$(mind_schritt_bilanz "$P" --alle 2>/dev/null)
+janein "   ... mind-update danach NEU gefahren (300 s nach mind-rules): kein FORMAL — der saubere Block heilt" ja "$(printf '%s\n' "$_B" | grep -q 'nachgetippt' && echo nein || echo ja)"
+# Dichte: ein getippter Block (6 Schritte in 2 s), danach derselbe Skill echt (3 Schritte ueber 90 s) -> nur der letzte zaehlt
+{ zeile_start mind-all "$(at 0)"
+  zeile_start mind-files "$(at 120)"; for i in 1 2 3 4 5 6; do zeile_schritt "s$i" "$(at $((120 + i / 3)))"; done
+  zeile_start mind-files "$(at 400)"; zeile_schritt bestand "$(at 430)"; zeile_schritt verdichten "$(at 460)"; zeile_schritt abdeckung "$(at 490)"
+} > "$Q"
+_B=$(mind_schritt_bilanz "$P" --alle 2>/dev/null)
+janein "Dichte: getippter mind-files-Block, danach echt neu gefahren: kein FORMAL (nur der letzte Block je Skill)" ja "$(printf '%s\n' "$_B" | grep -q 'nachgetippt' && echo nein || echo ja)"
+{ zeile_start mind-all "$(at 0)"; zeile_start mind-files "$(at 120)"; for i in 1 2 3 4 5 6; do zeile_schritt "s$i" "$(at $((120 + i / 3)))"; done; } > "$Q"
+janein "   Gegenprobe: bleibt der getippte Block der letzte, bleibt er FORMAL (6 Schritte in 2 s)" ja "$(mind_schritt_bilanz "$P" --alle 2>/dev/null | grep -q 'mind-files (6 Schritte in 2 s — nachgetippt)' && echo ja || echo nein)"
+# §2 Noras 59-s-Block: echt gelaufen („0/0 schon geprueft") -> mit Vorgabe 20 s kein FORMAL; mit 60 s war er einer
+{ zeile_start mind-all "$(at 0)"
+  zeile_start mind-rules "$(at 700)";  zeile_schritt bestand "$(at 720)"; zeile_schritt verdichten "$(at 740)"
+  zeile_start mind-update "$(at 759)"; zeile_schritt bestand "$(at 800)"; zeile_schritt verdichten "$(at 900)"
+} > "$Q"
+janein "59 s zwischen mind-rules und mind-update: Vorgabe 20 s -> kein FORMAL" ja "$(mind_schritt_bilanz "$P" --alle 2>/dev/null | grep -q 'nachgetippt' && echo nein || echo ja)"
+janein "   ... MIND_SCHRITT_MIN_S=60 (die alte Vorgabe) macht ihn wieder FORMAL — der Regler traegt" ja "$(MIND_SCHRITT_MIN_S=60 mind_schritt_bilanz "$P" --alle 2>/dev/null | grep -q 'mind-update (Block in 59 s nach mind-rules — nachgetippt; MIND_SCHRITT_MIN_S=60)' && echo ja || echo nein)"
+janein "   ... 19 s bleibt auch mit 20 s FORMAL" ja "$({ zeile_start mind-all "$(at 0)"; zeile_start mind-rules "$(at 700)"; zeile_schritt bestand "$(at 720)"; zeile_start mind-update "$(at 719)"; zeile_schritt bestand "$(at 800)"; } > "$Q"; mind_schritt_bilanz "$P" --alle 2>/dev/null | grep -q 'MIND_SCHRITT_MIN_S=20)' && echo ja || echo nein)"
+rm -rf "$(dirname "$P")"
 
 echo
 echo "  $OK ok, $ROT rot"
