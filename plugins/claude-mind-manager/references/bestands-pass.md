@@ -162,7 +162,16 @@ Auftraggebers anschwärzt, weil sie es verdient, ist eines, dem man trauen kann.
 SNAP=$(mind_snapshot "$PROJ" "pre-verdichten") || exit 1
 VORHER=$(mind_kontext_bilanz "$PROJ" | sed -n 's/.*BYTES=\([0-9]*\).*/\1/p')
 
+# 0b ⛔ v5.123.0 (Etappe 33 §2): STUFE-3-KORREKTUREN aus frueheren Laeufen mitgeben — der Agent
+#    sieht sie sonst nicht. Gemessen 17.09.2026: zum ZWEITEN Mal „die SUMME kann wachsen, waehrend"
+#    → „waechst" in backup-usage.md, obwohl Etappe 24 §1 es korrigiert hatte. Merker je Datei:
+#    <projekt>/.claude/archiv/<name>.stufe3.md, Zeilen `unantastbar: „<Wortlaut>"  # Datum, Grund`.
+#    Jede Zeile geht WOERTLICH in den Auftrag: „NICHT anfassen, byteweise erhalten: „…"" —
+#    und mind_verdichtung_pruefen ist rot, wenn ein Wortlaut im Ergebnis fehlt (Schritt 2).
+#    Wer in Stufe 3 einen Satz korrigiert, traegt ihn dort ein — sonst korrigiert er ihn wieder.
+STUFE3=$(mind_stufe3_zeilen "$DATEI")     # leer, wenn es keine Datei gibt
 # 1  EIN Agent je Datei: model sonnet, Denkstufe low, EIN Auftrag, die Datei benannt.
+#    Traegt $STUFE3 Zeilen: je Zeile „NICHT anfassen, byteweise erhalten: „<Wortlaut>"".
 #    ⛔ Höchstens 2 gleichzeitig. Der Auftrag trägt WÖRTLICH die Regeln aus dem Kasten
 #    unten — der Agent sieht nichts.
 #    ⛔ v5.100.0 — DAS ERGEBNIS IST EINE DATEI, KEINE BESCHREIBUNG. Der Agent SCHREIBT
@@ -202,6 +211,7 @@ fi
 | Herleitungen auf Datum + Zahl eindampfen | die **Anzahl** von ⛔ ⚠ ⭐ verringern — er zählt am Ende nach |
 | einen ⛔/⚠/⭐-Absatz ganz entfernen, wenn er überholt ist — **nur benannt:** `entfernt: ⛔ „…"` im Bericht | einen ⛔-Absatz in einen Nachbarn einschmelzen |
 | ⭐ **benannte Überholt-Kandidaten** des Aufrufers entfernen (aus dem Deckel-Ausweis, aus `cleaner_belege.py`) — benannt | raten, was überholt ist. ⛔ Was nur in einer **anderen** Datei steht, kann er nicht wissen — Kalibrierung: „sync-Rolle ist ABSPRACHE" war laut `rollen.md` hinfällig, der Agent sah einen Absatz mit eigener Aussage und ließ ihn, zu Recht |
+| **die als „NICHT anfassen" mitgegebenen Wortlaute byteweise stehen lassen** (v5.123.0 — Stufe-3-Korrekturen aus `.claude/archiv/<name>.stufe3.md`; das Gate prueft jeden) | einen davon umformulieren, auch wenn er „falsch" aussieht — Stufe 3 hat ihn so entschieden |
 | ⭐ **einen Absatz ins Archiv geben — seine Code-Spans (`…`), Zahlen und ALLCAPS-Wörter bleiben im ZEIGER-Satz** („Herleitung (`mind_transkript_pfad`, `APP - Palvedo`, 833 431): `.claude/archiv/…`") — v5.101.0 | eine Marke mit dem Absatz verschwinden lassen: Stufe 1 zählt jede Marke der Quelle, auch die aus Herleitungen. Gemessen 12.09.2026 (`env-vars.md`): erster Durchgang 94,9 %, neun Marken in Archiv-Absätzen, zweiter Durchgang 319k Tokens — die Zeile hier spart ihn |
 
 ⛔ **Das Kriterium für eine Bremse ist das ⛔ am Absatzanfang** — nicht NUR/KEIN im Absatz.

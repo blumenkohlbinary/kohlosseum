@@ -254,6 +254,31 @@ else
   echo "         ⚠ Ein uebersprungener Fall ist KEIN bestandener."
 fi
 
+# --- 7) v5.123.0 (Etappe 33 §2): Stufe-3-Korrekturen je Datei sind unantastbar ---------------
+echo
+echo "=============================================================================="
+echo "  7) v5.123.0 — .claude/archiv/<name>.stufe3.md: der Agent darf den Wortlaut nicht anfassen"
+echo "=============================================================================="
+# Anton, 17.09.2026: „die SUMME kann wachsen, waehrend" wurde zum zweiten Mal zu „waechst" —
+# die Korrektur aus Etappe 24 §1 stand nirgends, wo der naechste Agent sie sieht.
+S3="$D/proj"; mkdir -p "$S3/.claude/rules" "$S3/.claude/archiv"
+printf -- '---\ndescription: s\n---\n# S\n\n⛔ Die SUMME kann wachsen, waehrend eine Datei verliert — Prueffall `5 -> 7`.\n\nEin zweiter Absatz mit `werk.py` und 12 Zeilen, der nur erklaert und gekuerzt werden darf.\n\nDritter Absatz, ebenfalls nur Erklaerung, mit 3 Tagen Messung.\n' > "$S3/.claude/rules/s.md"
+printf -- '# Stufe 3\n\nunantastbar: „Die SUMME kann wachsen, waehrend eine Datei verliert"  # 16.09.2026, Etappe 24 §1\nunantastbar: "mit `werk.py` und 12 Zeilen"\n' > "$S3/.claude/archiv/s.stufe3.md"
+janein "mind_stufe3_datei: .claude/archiv/<stamm>.stufe3.md neben der Rule" ja "$(case "$(mind_stufe3_datei "$S3/.claude/rules/s.md")" in */proj/.claude/archiv/s.stufe3.md) echo ja ;; *) echo nein ;; esac)"
+janein "mind_stufe3_zeilen: zwei Wortlaute, ohne Anfuehrungszeichen und Kommentar (deutsch UND ascii)" 2 "$(mind_stufe3_zeilen "$S3/.claude/rules/s.md" | grep -c '^Die SUMME kann wachsen, waehrend eine Datei verliert$\|^mit `werk.py` und 12 Zeilen$')"
+# Ergebnis A: Agent macht „waechst" daraus (Marken alle da, coverage 100 %) -> rot
+printf -- '---\ndescription: s\n---\n# S\n\n⛔ Die SUMME waechst, waehrend eine Datei verliert — Prueffall `5 -> 7`.\n\nZweiter Absatz mit `werk.py` und 12 Zeilen, gekuerzt.\n\nDritter: 3 Tagen.\n' > "$D/s_a.md"
+_G=$(mind_verdichtung_pruefen "$S3/.claude/rules/s.md" "$D/s_a.md" 2>&1); _RC=$?
+janein "„kann wachsen“ -> „waechst“: Gate rot (rc 1) trotz coverage 100 %" 1 "$_RC"
+janein "   ... nennt den fehlenden Wortlaut und die Stufe-3-Datei" ja "$(printf '%s\n' "$_G" | grep -q 'UNANTASTBAR fehlt: „Die SUMME kann wachsen, waehrend eine Datei verliert' && printf '%s\n' "$_G" | grep -q 's.stufe3.md' && echo ja || echo nein)"
+# Ergebnis B: beide Wortlaute byteweise da, Rest gekuerzt -> gruen, und der Bericht nennt den Merker
+printf -- '---\ndescription: s\n---\n# S\n\n⛔ Die SUMME kann wachsen, waehrend eine Datei verliert — Prueffall `5 -> 7`.\n\nZweiter Absatz mit `werk.py` und 12 Zeilen, gekuerzt.\n\nDritter: 3 Tagen.\n' > "$D/s_b.md"
+_G=$(mind_verdichtung_pruefen "$S3/.claude/rules/s.md" "$D/s_b.md" 2>&1); _RC=$?
+janein "beide Wortlaute erhalten: rc 0" 0 "$_RC"
+janein "   ... Bericht: „Stufe 3-Merker: 2 Wortlaut(e) unantastbar, alle da“" ja "$(printf '%s\n' "$_G" | grep -q 'Stufe 3-Merker: 2 Wortlaut(e) unantastbar, alle da' && echo ja || echo nein)"
+rm -f "$S3/.claude/archiv/s.stufe3.md"
+janein "ohne Stufe-3-Datei: wie bisher (rc 1 fuer A kommt NICHT vom Merker)" 0 "$(mind_verdichtung_pruefen "$S3/.claude/rules/s.md" "$D/s_a.md" >/dev/null 2>&1; echo $?)"
+
 rm -rf "$D"
 echo
 echo "=============================================================================="

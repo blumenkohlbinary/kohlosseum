@@ -3410,6 +3410,46 @@ _mind_ze_form() {
   else echo gemischt; fi
 }
 
+# ⛔ v5.123.0 (Etappe 33 §2, Anton 17.09.2026): STUFE-3-KORREKTUREN WERDEN JE DATEI GEMERKT.
+#    Der Verdichten-Agent machte ZUM ZWEITEN MAL aus „die SUMME kann wachsen, waehrend …"
+#    ein „waechst" — die Korrektur aus Etappe 24 §1 stand nirgends, wo der naechste Agent
+#    sie sieht. Merker: <projekt>/.claude/archiv/<name>.stufe3.md, eine Zeile je Wortlaut:
+#        unantastbar: „<Wortlaut, byteweise>"   # Datum, Grund
+#    bestands-pass.md haengt die Zeilen an den Auftrag („NICHT anfassen"), und
+#    mind_verdichtung_pruefen ist rot, wenn ein Wortlaut im Ergebnis fehlt.
+mind_stufe3_datei() {
+  # <datei> -> Pfad der Stufe-3-Datei. Projektwurzel = naechster Elternordner mit .claude/;
+  # ohne einen solchen: neben der Datei. Immer <stamm>.stufe3.md (wie <stamm>.archiv.md).
+  local datei="${1:-}" d stamm wurzel=""
+  [ -n "$datei" ] || return 1
+  d=$(cd "$(dirname "$datei")" 2>/dev/null && pwd -P) || d=$(dirname "$datei")
+  stamm=$(basename "$datei"); stamm="${stamm%.md}"
+  local p="$d"
+  while [ -n "$p" ] && [ "$p" != "/" ] && [ "$p" != "." ]; do
+    if [ -d "$p/.claude" ]; then wurzel="$p"; break; fi
+    case "$p" in */*) p="${p%/*}"; [ -n "$p" ] || p="/" ;; *) break ;; esac
+  done
+  if [ -n "$wurzel" ]; then printf '%s/.claude/archiv/%s.stufe3.md\n' "$wurzel" "$stamm"
+  else printf '%s/%s.stufe3.md\n' "$d" "$stamm"; fi
+}
+
+mind_stufe3_zeilen() {
+  # <datei> -> die unantastbaren Wortlaute, einer je Zeile (leer, wenn es keine Datei gibt)
+  # ⛔ Kein sed mit [„"“]: in der C-Locale zerlegt die Klammer das Mehrbyte-Zeichen. Bash-
+  #    Parameterexpansion arbeitet byteweise mit der ganzen Zeichenfolge und ist locale-frei.
+  local f z
+  f=$(mind_stufe3_datei "${1:-}") || return 0
+  [ -f "$f" ] || return 0
+  while IFS= read -r z; do
+    case "$z" in unantastbar:*) ;; *) continue ;; esac
+    z="${z#unantastbar:}"; z="${z#"${z%%[! ]*}"}"
+    z="${z%%  #*}"; z="${z%"${z##*[! ]}"}"
+    z="${z#„}"; z="${z#\"}"; z="${z#“}"
+    z="${z%\"}"; z="${z%“}"; z="${z%”}"
+    [ -n "$z" ] && printf '%s\n' "$z"
+  done < "$f"
+}
+
 mind_verdichtung_pruefen() {
   local orig="${1:-}" erg="${2:-}" ber="${3:-}" name="${4:-}"
   local gate="${CLAUDE_PLUGIN_ROOT:-}/references/doc-templates/coverage_gate.py"
@@ -3448,6 +3488,21 @@ mind_verdichtung_pruefen() {
     echo "               ⛔ VERWERFEN: nicht kleiner ($b_vor -> $b_nach B). Ein Lauf, der nichts kuerzt, hat nichts getan."
     return 1
   fi
+  # v5.123.0: Stufe-3-Korrekturen (mind_stufe3_zeilen) muessen byteweise im Ergebnis stehen
+  local _s3 _s3fehlt=0 _s3n=0
+  while IFS= read -r _s3; do
+    [ -n "$_s3" ] || continue
+    _s3n=$((_s3n + 1))
+    if ! grep -qF -- "$_s3" "$erg" 2>/dev/null; then
+      _s3fehlt=$((_s3fehlt + 1))
+      echo "               ⛔ UNANTASTBAR fehlt: „$_s3\" ($(mind_stufe3_datei "$orig"))"
+    fi
+  done < <(mind_stufe3_zeilen "$orig")
+  if [ "$_s3fehlt" -gt 0 ]; then
+    echo "               ⛔ VERWERFEN: $_s3fehlt von $_s3n Stufe-3-Korrektur(en) nicht mehr im Ergebnis — der Agent hat sie nicht gesehen oder uebergangen."
+    return 1
+  fi
+  [ "$_s3n" -gt 0 ] && echo "               Stufe 3-Merker: $_s3n Wortlaut(e) unantastbar, alle da"
   # v5.84.0: ZEILENENDEN. Gemessen 11.09.2026 (Anton): hooks.md und env-vars.md lagen
   #   nach dem Verdichten mit CRLF auf der Platte — ein Byte je Zeile mehr, jede
   #   Zeile geaendert, fuer Stufe 1/2 unsichtbar, im Git-Diff normalisiert. Git laedt
