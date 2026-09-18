@@ -1922,6 +1922,26 @@ mind_agent_ergebnis() {
   local bereich="${1:-}" bytes=0 q quelle="zahl" pfad="" grund="" _proj
   if [ "${2:-}" = "--datei" ]; then _proj="${4:-}"; else _proj="${3:-}"; fi
   _mind_args_pruefen mind_agent_ergebnis 'mind_agent_ergebnis <bereich> --datei <pfad> [projekt]' "$bereich" "$_proj" "$_MIND_AGENT_BEREICHE" || return 2
+  # ⛔ v5.126.0 (Etappe 38 §1, Z319/Z425): OHNE DISPATCH DESSELBEN LAUFS KEIN ERGEBNIS.
+  #    Vertauschte Argumente weist v5.125.0 ab; das schlichte VERGESSEN von mind_agent_dispatch
+  #    blieb still (03.09.: DISPATCH=0 bei drei gelaufenen Agents, 13.09.: vier vergessen,
+  #    18.09.: DISPATCH=0 bei ERGEBNIS=8) — erst die Bilanz sah es, und dann wurde nachgetragen.
+  #    Jetzt: kein `dispatch` fuer diesen Bereich seit der letzten Start-Zeile (ohne Start-Zeile:
+  #    in der ganzen Datei; keine Datei: gar keiner) -> rc 2, nichts geschrieben. Rueckdatieren
+  #    faengt die Bilanz weiter (< MIND_AGENT_MIN_S), der Weg ist: Agent erneut MIT Quittung.
+  local _dq _dab _dn=0
+  _dq=$(_mind_quittung_pfad "$_proj")
+  if [ -f "$_dq" ]; then
+    _dab=$(grep -n '"ereignis":"start"' "$_dq" 2>/dev/null | tail -1 | cut -d: -f1)
+    case "$_dab" in ''|*[!0-9]*) _dab=1 ;; esac
+    _dn=$(sed -n "${_dab},\$p" "$_dq" 2>/dev/null | grep -c "\"ereignis\":\"dispatch\",\"bereich\":\"$bereich\"")
+    case "$_dn" in ''|*[!0-9]*) _dn=0 ;; esac
+  fi
+  if [ "$_dn" -eq 0 ]; then
+    echo "⛔ $bereich: dispatch fehlt — kein \`mind_agent_dispatch $bereich\` seit der letzten Start-Zeile. Agent erneut MIT Quittung fahren (dispatch VOR dem Start, ergebnis danach); nichts geschrieben (v5.126.0)." >&2
+    mind_log WARN "mind_agent_ergebnis $bereich: dispatch fehlt — abgewiesen"
+    return 2
+  fi
   if [ "${2:-}" = "--datei" ]; then
     pfad="${3:-}"; quelle="datei"
     q=$(_mind_quittung_pfad "${4:-}")

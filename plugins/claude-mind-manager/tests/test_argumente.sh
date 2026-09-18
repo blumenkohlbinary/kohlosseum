@@ -64,6 +64,7 @@ janein "   ... kein Ordner '4' im cwd" 0 "$(streuner x)"
 janein "mind_agent_quittung_start <projekt> vier (keine Zahl): rc 2" 2 "$(mind_agent_quittung_start "$P" vier >/dev/null 2>&1; echo $?)"
 janein "mind_agent_quittung_start <projekt> 4 (richtig): rc 0" 0 "$(mind_agent_quittung_start "$P" 4 >/dev/null 2>&1; echo $?)"
 janein "mind_agent_ergebnis <projekt> --datei f memory (vertauscht): rc 2" 2 "$(mind_agent_ergebnis "$P" --datei "$P/x" memory >/dev/null 2>&1; echo $?)"
+mind_agent_dispatch memory "$P" >/dev/null 2>&1   # v5.126.0: ergebnis braucht den dispatch (Ziel gleich)
 janein "mind_agent_ergebnis memory 5 <projekt> (Zahlform, bekannt): rc 0, bytes:0" 1 "$(mind_agent_ergebnis memory 5 "$P" >/dev/null 2>&1; grep -c '"ergebnis","bereich":"memory","bytes":0' "$Q")"
 janein "mind_agent_uebersprungen custom-context 0 <kein-verzeichnis>: rc 2" 2 "$(mind_agent_uebersprungen custom-context 0 "$T/nein" >/dev/null 2>&1; echo $?)"
 janein "mind_agent_uebersprungen rules 0 <projekt>: weiter rc 1 (nur custom-context)" 1 "$(mind_agent_uebersprungen rules 0 "$P" >/dev/null 2>&1; echo $?)"
@@ -76,6 +77,29 @@ janein "mind_schritt a gelaufen 5 <projekt> (richtig): rc 0" 0 "$(mind_schritt a
 janein "ohne Projekt-Argument (Vorgabe mind_projekt_wurzel): rc 0 wie bisher" 0 "$(cd "$P" && mind_agent_dispatch rules >/dev/null 2>&1; echo $?)"
 janein "mind_ungepruef_bilden nutzt dieselbe Menge (_MIND_SYNC_BEREICHE, keine zweite Liste)" 1 "$(grep -c 'for _b in \$_MIND_SYNC_BEREICHE' "$LIB")"
 janein "Skill-Texte zeigen die Reihenfolge <bereich> <projekt> weiterhin ausdruecklich" ja "$(grep -q 'mind_agent_dispatch "<bereich>" "\$PROJ"' "$WURZEL/skills/mind-update/SKILL.md" && echo ja || echo nein)"
+
+echo
+echo "=============================================================================="
+echo "  §1b (v5.126.0, Etappe 38 §1)  mind_agent_ergebnis verlangt den dispatch desselben Laufs"
+echo "=============================================================================="
+# 03.09./13.09./18.09.2026: dispatch vergessen, Ergebnisse geschrieben, DISPATCH=0 bei ERGEBNIS=n —
+# erst die Bilanz sah es. Gegen 5.125.0: die drei Abweisungen rot (rc 0, Zeile geschrieben).
+P2="$T/proj zwei"; mkdir -p "$P2/.claude-mind"; Q2="$P2/.claude-mind/agent-quittung.jsonl"
+printf 'x\n' > "$P2/erg.md"
+_E=$(mind_agent_ergebnis memory --datei "$P2/erg.md" "$P2" 2>&1 >/dev/null); _RC=$?
+janein "ergebnis ohne jede Quittung: rc 2, nichts geschrieben" "2 nein" "$_RC $([ -f "$Q2" ] && echo ja || echo nein)"
+janein "   ... Meldung: dispatch fehlt, Agent erneut MIT Quittung" ja "$(printf '%s\n' "$_E" | grep -q 'dispatch fehlt' && printf '%s\n' "$_E" | grep -q 'MIT Quittung' && echo ja || echo nein)"
+mind_agent_quittung_start "$P2" 4 >/dev/null 2>&1
+janein "ergebnis nach Start, ohne dispatch: rc 2" 2 "$(mind_agent_ergebnis memory --datei "$P2/erg.md" "$P2" >/dev/null 2>&1; echo $?)"
+mind_agent_dispatch rules "$P2" >/dev/null 2>&1
+janein "dispatch fuer ANDEREN Bereich (rules) zaehlt nicht fuer memory: rc 2" 2 "$(mind_agent_ergebnis memory --datei "$P2/erg.md" "$P2" >/dev/null 2>&1; echo $?)"
+janein "   ... Zahlform ebenso: rc 2" 2 "$(mind_agent_ergebnis memory 5 "$P2" >/dev/null 2>&1; echo $?)"
+janein "   ... keine ergebnis-Zeile in der Quittung" 0 "$(grep -c '"ereignis":"ergebnis"' "$Q2")"
+mind_agent_dispatch memory "$P2" >/dev/null 2>&1
+janein "dispatch memory, dann ergebnis memory: rc 0, eine ergebnis-Zeile" "0 1" "$(mind_agent_ergebnis memory --datei "$P2/erg.md" "$P2" >/dev/null 2>&1; echo "$? $(grep -c '"ereignis":"ergebnis","bereich":"memory"' "$Q2")")"
+mind_agent_quittung_start "$P2" 4 >/dev/null 2>&1     # neuer Lauf: der alte dispatch zaehlt nicht mehr
+janein "neuer Lauf (neue Start-Zeile): alter dispatch zaehlt nicht, rc 2" 2 "$(mind_agent_ergebnis memory --datei "$P2/erg.md" "$P2" >/dev/null 2>&1; echo $?)"
+janein "Skill-Text mind-update nennt die Folge (dispatch fehlt)" ja "$(grep -q 'ergebnis ohne dispatch\|dispatch fehlt' "$WURZEL/skills/mind-update/SKILL.md" && echo ja || echo nein)"
 
 echo
 echo "=============================================================================="

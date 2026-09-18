@@ -862,7 +862,8 @@ darf nix uebersprungen werden oder verschoben."*
 # Vor dem Schreiben: Reparatur-Paesse, so viele wie noetig — der Lauf stoppt NICHT bei teil.
 # Je Eintrag in ungepruef=:
 #   formal-<skill>      -> den Skill-Block ERNEUT ausfuehren (Kopf-Block liegt, §1) — nicht nachtippen
-#   <bereich>           -> mind_agent_dispatch + Agent (blockierend) + mind_agent_ergebnis --datei, JETZT;
+#   <bereich>           -> mind_agent_dispatch + Agent (blockierend) + mind_agent_ergebnis --datei, JETZT
+#                          (v5.126.0: ergebnis ohne dispatch desselben Laufs = rc 2, nichts geschrieben);
 #                          stirbt er, engerer Auftrag, wieder JETZT (workflow-agent-rate-limit.md)
 #   bestand-<skill>     -> den Bestands-Pass des Skills nachfahren, bestand= quittieren
 #   abdeckung-<schritt> -> den Schritt nachfahren und mit --datei quittieren

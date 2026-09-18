@@ -101,6 +101,7 @@ janein "   ... Zeile 1: DISPATCH=2 ERGEBNIS=2 LEER=1" "DISPATCH=2 ERGEBNIS=2 LEE
 # ⛔ v5.97.0: die Zahlform schreibt 0. Bis v5.96.0 stand hier "Zahlform bleibt erlaubt und
 #    traegt quelle:zahl" mit bytes:4096 — Ritas Lauf 22:05 (11.09.2026) hat genau damit
 #    900/900/900/1000 getippt. Die Zusicherung ist umgekehrt, nicht gestrichen.
+_disp "rules" "$P"     # v5.126.0: ergebnis braucht den dispatch desselben Laufs (Ziel gleich)
 mind_agent_ergebnis "rules" 4096 "$P" 2>/dev/null
 janein "⛔ Zahlform schreibt bytes:0, quelle:zahl, grund:zahlform" ja "$(grep -q '"bereich":"rules","bytes":0,"quelle":"zahl","grund":"zahlform"' "$Q" && echo ja || echo nein)"
 janein "   ... Projekt-Argument an Position 4 bei --datei wird gelesen (Quittung liegt im Projekt)" 3 \

@@ -1206,6 +1206,9 @@ mind_agent_dispatch "<bereich>" "$PROJ"    # VOR dem Start — ⛔ Reihenfolge: 
 # ⛔ v5.94.0: die Bytes kommen aus einer DATEI, nie aus dem Kopf. Den tool_result
 #    mit `Write` nach $PROJ/.claude-mind/agent-<bereich>.md legen, dann:
 mind_agent_ergebnis "<bereich>" --datei "$PROJ/.claude-mind/agent-<bereich>.md" "$PROJ"
+#    ⛔ v5.126.0: OHNE den dispatch oben (derselbe Lauf, seit der letzten Start-Zeile) ist das
+#       rc 2 und schreibt nichts — „dispatch fehlt“. Vergessen heisst: Agent erneut MIT Quittung
+#       fahren, nicht nachtragen (03.09., 13.09., 18.09.: DISPATCH=0 bei gelaufenen Agents).
 # Kein tool_result (Agent gestorben, Aufruf abgebrochen)? Dann OHNE Datei quittieren —
 # `--datei` auf eine fehlende Datei schreibt bytes:0, und 0 heisst `ungepruef=`.
 # ⛔ v5.97.0 — DREI DINGE, die die Bilanz seither SELBST prueft (Ritas Lauf 22:05, 11.09.):
