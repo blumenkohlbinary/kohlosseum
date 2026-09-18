@@ -3649,6 +3649,45 @@ mind_verdichtung_anwenden() {
 
 
 # =============================================================================
+# SAMPLER-PFAD JE SITZUNG (v5.126.0, Etappe 38 §2 — Z271, Z445, Z498)
+# =============================================================================
+# ⛔ WOZU. Bis v5.125.0 schrieb mind-update den Live-Auszug fest nach
+#    /tmp/mind_update_session.json (mind-compact: /tmp/mind_compact_data.json,
+#    mind-session-log: /tmp/session-slice.jsonl). Zwei Sitzungen gleichzeitig
+#    ueberschrieben sich (Creator 16.09.2026, zwei Projekte auf Windows/git-bash),
+#    und aus der Agent-Sandbox war /tmp nicht erreichbar (hier 17./18.09.2026,
+#    memory-Agent, wiederholt). Jetzt: <projekt>/.claude-mind/sampler/<name>.<sid>.<ext>
+#    — im Projekt (die Agenten lesen es), mit Sitzungskennung (kein Kollidieren).
+#    ⚠ Leere CLAUDE_CODE_SESSION_ID -> `unbekannt` — dann kollidiert es wie frueher,
+#      und der Name sagt es. mind_sampler_aufraeumen raeumt NUR die eigene Kennung.
+# mind_sampler_pfad <projekt> [name[.ext]]   -> Pfad (Ordner wird angelegt)
+mind_sampler_pfad() {
+  local proj="${1:-$(mind_projekt_wurzel)}" name="${2:-session}" sid="${CLAUDE_CODE_SESSION_ID:-}" d stem ext
+  case "$name" in ''|*/*|*\\*) name=session ;; esac
+  case "$name" in *.*) stem="${name%.*}"; ext="${name##*.}" ;; *) stem="$name"; ext=json ;; esac
+  [ -n "$sid" ] || sid=unbekannt
+  sid="${sid%%-*}"
+  d="$proj/.claude-mind/sampler"
+  [ -d "$proj" ] && mkdir -p "$d" 2>/dev/null
+  printf '%s/%s.%s.%s\n' "$d" "$stem" "$sid" "$ext"
+}
+
+# mind_sampler_aufraeumen <projekt>   -> loescht die Dateien DIESER Sitzung (am Laufende)
+mind_sampler_aufraeumen() {
+  local proj="${1:-$(mind_projekt_wurzel)}" sid="${CLAUDE_CODE_SESSION_ID:-}" d f n=0
+  [ -n "$sid" ] || sid=unbekannt
+  sid="${sid%%-*}"
+  d="$proj/.claude-mind/sampler"
+  [ -d "$d" ] || return 0
+  for f in "$d"/*."$sid".*; do
+    [ -f "$f" ] || continue
+    rm -f "$f" && n=$((n + 1))
+  done
+  rmdir "$d" 2>/dev/null
+  echo "$n"
+}
+
+# =============================================================================
 # mind_projekt_wurzel — das PROJEKT ist der naechste Elternordner mit Roster (v5.80.0)
 # =============================================================================
 # ⛔ WARUM. Nutzer-Frage 11.09.2026 (Creator, 9 Chats in 9 Unterordnern): "alle 9

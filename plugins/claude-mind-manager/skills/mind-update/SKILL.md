@@ -1076,7 +1076,10 @@ if [ -x ".venv/Scripts/python.exe" ]; then PYTHON=".venv/Scripts/python.exe"
 elif command -v python3 &>/dev/null; then PYTHON="python3"
 else PYTHON="python"; fi
 
-SESSION_SAMPLE_BASH="/tmp/mind_update_session.json"
+# ⛔ v5.126.0 (Etappe 38 §2): JE SITZUNG, IM PROJEKT — nicht mehr fest /tmp/mind_update_session.json.
+#    Der feste Pfad kollidierte zwischen gleichzeitigen Sitzungen (Creator 16.09.2026) und war
+#    aus der Agent-Sandbox nicht erreichbar (17./18.09.2026, memory-Agent). Aufraeumen: Step 6.
+SESSION_SAMPLE_BASH=$(mind_sampler_pfad "$PROJ" mind-update)     # <PROJ>/.claude-mind/sampler/mind-update.<sid>.json
 SESSION_SAMPLE_WIN=$(cygpath -w "$SESSION_SAMPLE_BASH")
 "$PYTHON" "$SAMPLER_WIN" "$JSONL_WIN" "$SESSION_SAMPLE_WIN"
 
@@ -1744,6 +1747,13 @@ Want me to apply [1]? [Yes / Select / Skip]
 
 If `QUICK_MODE=yes`: Knowledge-Sync-Sektion komplett ueberspringen, Report endet bei
 Total-Context-Zeile.
+
+**Nach dem Bericht (v5.126.0):** den Live-Auszug dieser Sitzung wegraeumen — nur die eigene
+Kennung, fremde Sitzungen bleiben unberuehrt:
+
+```bash
+mind_sampler_aufraeumen "$PROJ"    # loescht .claude-mind/sampler/*.<sid>.*
+```
 
 ## Hard Constraints
 

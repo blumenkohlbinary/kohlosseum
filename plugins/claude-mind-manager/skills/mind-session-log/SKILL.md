@@ -389,8 +389,9 @@ PYEOF
   fi
 
   # v3.3.1: ALL_COMMANDS Arg ans Python-Script weitergeben (Default "no" → Filter mind-*)
-  RANGES_TXT=$("$PYTHON" "$RANGES_WIN" "$JSONL_WIN" "$ALL_COMMANDS" 2>/tmp/range_stats.txt)
-  RANGE_STATS=$(cat /tmp/range_stats.txt 2>/dev/null | grep '^# STATS:' | head -1)
+  RANGE_STATS_BASH=$(mind_sampler_pfad "$PROJ" range_stats.txt)     # v5.126.0: je Sitzung
+  RANGES_TXT=$("$PYTHON" "$RANGES_WIN" "$JSONL_WIN" "$ALL_COMMANDS" 2>"$RANGE_STATS_BASH")
+  RANGE_STATS=$(cat "$RANGE_STATS_BASH" 2>/dev/null | grep '^# STATS:' | head -1)
 
   # Fallback: keine Commands gefunden -> ganze JSONL als 1 Range (mode=combined)
   if [ -z "$RANGES_TXT" ]; then
@@ -469,7 +470,7 @@ pro Range im Loop. Step 4 setzt nur die Pfade + schreibt den Python-Parser einma
 
 ```bash
 # Bash-Pfade (fuer Write/Read/awk im Skill — IMMER /tmp/... egal welche Plattform)
-SLICE_BASH="/tmp/session-slice.jsonl"
+SLICE_BASH=$(mind_sampler_pfad "$PROJ" session-slice.jsonl)   # v5.126.0: je Sitzung im Projekt, nicht fest /tmp
 PARSE_BASH="/tmp/parse_session.py"
 
 # Windows-Pfade fuer Python-Aufruf (getrennt von Bash-Pfaden)
@@ -823,6 +824,7 @@ if [ "$SPLIT_MODE" = "combined" ] && [ ${#CREATED_FILES[@]} -gt 0 ]; then
   echo "Tool-Statistik (combined):"
   grep -hoE '\*\*Tool:\*\* `[A-Za-z_]+`' "${CREATED_FILES[@]}" 2>/dev/null | sort | uniq -c | sort -rn
 fi
+mind_sampler_aufraeumen "$PROJ"    # v5.126.0: Slice und range_stats dieser Sitzung wegraeumen
 ```
 
 ## Hard Constraints

@@ -233,8 +233,9 @@ SAMPLER_BASH="$CLAUDE_PLUGIN_ROOT/references/session_sampler.py"
 SAMPLER_WIN=$(cygpath -w "$SAMPLER_BASH")
 JSONL_WIN=$(cygpath -w "$JSONL")
 
-# Output-Datei fuer JSON-Zwischenergebnis
-EXTRACT_JSON_BASH="/tmp/mind_compact_data.json"
+# Output-Datei fuer JSON-Zwischenergebnis — v5.126.0: je Sitzung im Projekt, nicht fest /tmp
+# (kollidierte zwischen Sitzungen, Etappe 38 §2); Aufraeumen nach Step 5.
+EXTRACT_JSON_BASH=$(mind_sampler_pfad "$PROJ" mind-compact)
 EXTRACT_JSON_WIN=$(cygpath -w "$EXTRACT_JSON_BASH")
 ```
 
@@ -342,6 +343,7 @@ print("kein Auto-Klassifizierer — User hat finale Kontrolle.")
 PYEOF
 
 "$PYTHON" "$RENDER_WIN" "$EXTRACT_JSON_WIN"
+mind_sampler_aufraeumen "$PROJ"    # v5.126.0: nur die Dateien dieser Sitzung
 ```
 
 ## Step 6 (optional, Skill-Review M8): CLAUDE.md `# Compact instructions` Block
