@@ -279,6 +279,33 @@ janein "   ... Bericht: „Stufe 3-Merker: 2 Wortlaut(e) unantastbar, alle da“
 rm -f "$S3/.claude/archiv/s.stufe3.md"
 janein "ohne Stufe-3-Datei: wie bisher (rc 1 fuer A kommt NICHT vom Merker)" 0 "$(mind_verdichtung_pruefen "$S3/.claude/rules/s.md" "$D/s_a.md" >/dev/null 2>&1; echo $?)"
 
+# --- 8) v5.125.0 (Etappe 37 §2): das Deponat weiss, von welcher Vorher-Fassung es stammt --------
+echo
+echo "=============================================================================="
+echo "  8) v5.125.0 — Fingerabdruck im Deponat; Anwenden verweigert, wenn die Datei sich aenderte"
+echo "=============================================================================="
+# Ritas Lauf 18.09.2026: .nachher.md von 22:51, CLAUDE.md danach zweimal geaendert (23:41) — das
+# Deponat trug trotzdem „✅ anwenden"; ein cp haette ihren Fix zurueckgedreht. Gegen 5.124.0: keine
+# md5-Zeile, mind_verdichtung_anwenden fehlt (4 rot).
+D8="$D/dep"; mkdir -p "$D8"
+cp "$D/orig.md" "$D8/live.md"; cp "$D/gut.md" "$D8/live.nachher.md"
+mind_verdichtung_pruefen "$D8/live.md" "$D8/live.nachher.md" "" live.md > "$D8/verdichten-probe.txt" 2>&1
+_MD5=$(_md5 "$D8/live.md")
+janein "Gate-Ausgabe traegt „Vorher-Fassung  md5 <hash>  <pfad>\"" ja "$(grep -q "Vorher-Fassung  md5 $_MD5  $D8/live.md" "$D8/verdichten-probe.txt" && echo ja || echo nein)"
+janein "   ... und „✅ anwenden, solange md5 <hash> steht\"" ja "$(grep -q "✅ anwenden, solange md5 $_MD5 steht" "$D8/verdichten-probe.txt" && echo ja || echo nein)"
+janein "unveraenderte Datei: mind_verdichtung_anwenden rc 0, kopiert" "0 ja" "$(mind_verdichtung_anwenden "$D8/live.md" "$D8/live.nachher.md" "$D8/verdichten-probe.txt" >/dev/null 2>&1; echo "$? $(cmp -s "$D8/live.md" "$D8/live.nachher.md" && echo ja || echo nein)")"
+# jetzt der 18.09.-Fall: Deponat liegt, die Datei aendert sich danach
+cp "$D/orig.md" "$D8/live.md"
+mind_verdichtung_pruefen "$D8/live.md" "$D8/live.nachher.md" "" live.md > "$D8/verdichten-probe.txt" 2>&1
+printf '\n- Auftraege/: eine Zeile, die nach dem Deponieren dazukam\n' >> "$D8/live.md"
+_A=$(mind_verdichtung_anwenden "$D8/live.md" "$D8/live.nachher.md" "$D8/verdichten-probe.txt" 2>&1 >/dev/null); _RC=$?
+janein "Datei nach dem Deponieren geaendert: rc 1, KEIN cp" "1 ja" "$_RC $(grep -q 'Auftraege/' "$D8/live.md" && echo ja || echo nein)"
+janein "   ... Meldung: „Deponat veraltet … neu verdichten\"" ja "$(printf '%s\n' "$_A" | grep -q 'Deponat veraltet' && printf '%s\n' "$_A" | grep -q 'neu verdichten' && echo ja || echo nein)"
+janein "Deponat ohne md5-Zeile (vor v5.125.0): rc 3, KEIN cp" "3 ja" "$(printf 'alt\n' > "$D8/alt.txt"; mind_verdichtung_anwenden "$D8/live.md" "$D8/live.nachher.md" "$D8/alt.txt" >/dev/null 2>&1; echo "$? $(grep -q 'Auftraege/' "$D8/live.md" && echo ja || echo nein)")"
+janein "blanker md5 als Deponat (passend): rc 0" 0 "$(mind_verdichtung_anwenden "$D8/live.md" "$D8/live.nachher.md" "$(_md5 "$D8/live.md")" >/dev/null 2>&1; echo $?)"
+janein "bestands-pass.md Schritt 4: mind_verdichtung_anwenden statt blankem cp" ja "$(grep -q '^mind_verdichtung_anwenden "\$DATEI" "\$ERGEBNIS"' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
+janein "alle fuenf Traeger nennen mind_verdichtung_anwenden" 5 "$(grep -l 'mind_verdichtung_anwenden' "$WURZEL"/skills/mind-{claudemd,files,memory,rules,update}/SKILL.md | wc -l | tr -d ' ')"
+
 rm -rf "$D"
 echo
 echo "=============================================================================="

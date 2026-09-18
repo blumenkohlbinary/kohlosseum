@@ -23,6 +23,9 @@ set -u
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { echo "CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 2; }
 LIB="$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 [ -f "$LIB" ] || { echo "lib.sh fehlt: $LIB" >&2; exit 2; }
+# v5.125.0 (Etappe 37 §3): ein Skill-Name des Plugins (mind-*) braucht MIND_SKILL_VERSION in derselben
+#   Bash wie mind_schritt_start — sonst rc 1, keine Zeile. Fixture: Stempel = Code, kein Versionsbruch.
+export MIND_SKILL_VERSION="$(basename "$CLAUDE_PLUGIN_ROOT")"
 OK=0; ROT=0
 janein() { if [ "$2" = "$3" ]; then echo "  [ok ] $1"; OK=$((OK+1))
            else echo "  [ROT] $1 — erwartet '$2', bekommen '$3'"; ROT=$((ROT+1)); fi; }

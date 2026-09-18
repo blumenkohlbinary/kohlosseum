@@ -1320,7 +1320,7 @@ mind_ungepruef_bilden() {
   case "$ab" in ''|*[!0-9]*) ab=1 ;; esac
   sed -n "${ab},\$p" "$q" 2>/dev/null > "$tmp"
   bil=$(mind_agent_bilanz "$proj" 2>/dev/null)
-  for _b in claude-md memory rules custom-context; do
+  for _b in $_MIND_SYNC_BEREICHE; do
     if ! grep -q "\"bereich\":\"$_b\"" "$tmp" 2>/dev/null \
        || printf '%s\n' "$bil" | grep -q "^ *UNGEPRUEFT: $_b "; then
       out="${out}${_b},"
@@ -1735,6 +1735,47 @@ mind_zeilenenden_waechter() {
 #
 # Ablage: $projekt/.claude-mind/agent-quittung.jsonl, pro Lauf neu.
 
+# ⛔ v5.125.0 (Etappe 37 §1, Ritas Lauf 18.09.2026 22:29) — VERTAUSCHTE ARGUMENTE WERDEN
+#    ABGEWIESEN, NICHT GESCHRIEBEN. `mind_agent_dispatch "$PROJ" "<bereich>"` (Reihenfolge
+#    vertauscht) lief mit rc 0 durch: `bereich` war der Projektpfad, `_mind_quittung_pfad
+#    "<bereich>"` legte im cwd vier Streuner-Ordner an (claude-md/ custom-context/ memory/
+#    rules/, je .claude-mind/agent-quittung.jsonl, 121–242 B). Aufgefallen erst in der Bilanz
+#    (DISPATCH=0 bei ERGEBNIS=8). Jetzt prueft EINE Hilfsfunktion vor JEDEM Schreiber:
+#      bereich/name  nicht leer, kein / oder \; Agent-Bereiche aus $_MIND_AGENT_BEREICHE
+#      projekt       leer (Vorgabe mind_projekt_wurzel) ODER ein vorhandenes Verzeichnis —
+#                    nie `mkdir -p` ausserhalb eines bestehenden Projektordners
+#    rc 2 auf stderr mit der richtigen Aufrufform, kein Byte geschrieben.
+_MIND_SYNC_BEREICHE="claude-md memory rules custom-context"      # die vier des Knowledge-Sync (mind_ungepruef_bilden)
+_MIND_AGENT_BEREICHE="$_MIND_SYNC_BEREICHE project-scanner"      # plus der Scanner (mind-files/mind-claudemd)
+
+# _mind_proj_pruefen <fn> <aufrufform> <projekt>   — rc 2, wenn <projekt> gesetzt und kein Verzeichnis
+_mind_proj_pruefen() {
+  local fn="$1" form="$2" proj="${3:-}"
+  if [ -n "$proj" ] && [ ! -d "$proj" ]; then
+    echo "⛔ $fn: projekt '$proj' ist kein vorhandenes Verzeichnis — Aufruf ist \`$form\`; nichts geschrieben (v5.125.0)" >&2
+    return 2
+  fi
+  return 0
+}
+
+# _mind_args_pruefen <fn> <aufrufform> <bereich|name> <projekt> [erlaubte-menge]
+#   ohne 5. Argument: Name nur formal (Schritt-Quittung, freie Namen); mit: aus der Menge.
+_mind_args_pruefen() {
+  local fn="$1" form="$2" name="${3:-}" proj="${4:-}" menge="${5:-}"
+  case "$name" in
+    ''|*/*|*\\*)
+      echo "⛔ $fn: '$name' ist kein Bereich/Name (leer oder Pfadtrenner) — Aufruf ist \`$form\`; nichts geschrieben (v5.125.0)" >&2
+      return 2 ;;
+  esac
+  if [ -n "$menge" ]; then
+    case " $menge " in *" $name "*) ;; *)
+      echo "⛔ $fn: bereich '$name' unbekannt (erlaubt: $menge) — Aufruf ist \`$form\`; nichts geschrieben (v5.125.0)" >&2
+      return 2 ;;
+    esac
+  fi
+  _mind_proj_pruefen "$fn" "$form" "$proj"
+}
+
 _mind_quittung_pfad() {
   local proj="${1:-$(mind_projekt_wurzel)}"
   printf '%s\n' "$proj/.claude-mind/agent-quittung.jsonl"
@@ -1800,6 +1841,12 @@ mind_snapshot_luecken() {
 mind_agent_quittung_start() {
   local q; q=$(_mind_quittung_pfad "${1:-}")
   local erwartet="${2:-}" zeilen=0 lauf
+  # v5.125.0: <projekt> [erwartet] — vertauscht (`4 "$PROJ"`) heisst: kein Verzeichnis, rc 2
+  _mind_proj_pruefen mind_agent_quittung_start 'mind_agent_quittung_start <projekt> [erwartet]' "${1:-}" || return 2
+  case "$erwartet" in *[!0-9]*)
+    echo "⛔ mind_agent_quittung_start: erwartet '$erwartet' ist keine Zahl — Aufruf ist \`mind_agent_quittung_start <projekt> [erwartet]\`; nichts geschrieben (v5.125.0)" >&2
+    return 2 ;;
+  esac
   mkdir -p "$(dirname "$q")" 2>/dev/null || return 1
   # ⛔ v5.97.0 — ANHAENGEN, nicht leeren. Achtes Vorkommen der Merker-Klasse aus
   #    hooks.md: `: > "$q"` loeschte den vorigen Lauf. Ritas Lauf 21:44 (11.09.2026)
@@ -1824,7 +1871,8 @@ mind_agent_quittung_start() {
 
 # VOR dem Start des Agents aufrufen.
 mind_agent_dispatch() {
-  local bereich="$1" q
+  local bereich="${1:-}" q
+  _mind_args_pruefen mind_agent_dispatch 'mind_agent_dispatch <bereich> [projekt]' "$bereich" "${2:-}" "$_MIND_AGENT_BEREICHE" || return 2
   q=$(_mind_quittung_pfad "${2:-}")
   mkdir -p "$(dirname "$q")" 2>/dev/null
   printf '{"ereignis":"dispatch","bereich":"%s","ts":"%s"}\n' \
@@ -1844,6 +1892,7 @@ mind_agent_dispatch() {
 #    dann bleibt der Bereich stumm/fehlend und damit ungeprueft, wie bisher.
 mind_agent_uebersprungen() {
   local bereich="${1:-}" n="${2:-}" q
+  _mind_args_pruefen mind_agent_uebersprungen 'mind_agent_uebersprungen <bereich> <anzahl> [projekt]' "$bereich" "${3:-}" "$_MIND_AGENT_BEREICHE" || return 2
   q=$(_mind_quittung_pfad "${3:-}")
   if [ "$bereich" != "custom-context" ]; then
     echo "⛔ nur custom-context darf uebersprungen werden — '$bereich' wird dispatcht" >&2; return 1
@@ -1870,7 +1919,9 @@ mind_agent_uebersprungen() {
 #   und die Bilanz sagte 4/4. Mit --datei ist die Zahl die Groesse einer Datei, die es
 #   gibt, oder 0: fehlt die Datei, steht 0 da, und 0 heisst `ungepruef=`.
 mind_agent_ergebnis() {
-  local bereich="$1" bytes=0 q quelle="zahl" pfad="" grund=""
+  local bereich="${1:-}" bytes=0 q quelle="zahl" pfad="" grund="" _proj
+  if [ "${2:-}" = "--datei" ]; then _proj="${4:-}"; else _proj="${3:-}"; fi
+  _mind_args_pruefen mind_agent_ergebnis 'mind_agent_ergebnis <bereich> --datei <pfad> [projekt]' "$bereich" "$_proj" "$_MIND_AGENT_BEREICHE" || return 2
   if [ "${2:-}" = "--datei" ]; then
     pfad="${3:-}"; quelle="datei"
     q=$(_mind_quittung_pfad "${4:-}")
@@ -2425,7 +2476,22 @@ _mind_schritt_pfad() {
 mind_schritt_start() {
   local q; q=$(_mind_schritt_pfad "${1:-}")
   local proj="${1:-$(mind_projekt_wurzel)}"
+  # v5.125.0 (§1): <projekt> <skill> — vertauscht (`mind-files "$PROJ"`) heisst: kein Verzeichnis, rc 2
+  _mind_args_pruefen mind_schritt_start 'mind_schritt_start <projekt> <skill> [schritte…]' "${2:-unbekannt}" "${1:-}" || return 2
   local skill="${2:-unbekannt}"; shift 2 2>/dev/null || shift $#
+  # ⛔ v5.125.0 (Etappe 37 §3, Ritas Lauf 18.09.2026): fuer einen Skill DIESES Plugins muss
+  #    MIND_SKILL_VERSION in DERSELBEN Bash stehen wie dieser Aufruf — sonst traegt die Startzeile
+  #    `text:unbekannt`, und ein VERSIONSBRUCH kann fuer diesen Skill nie feuern. Der mind-all-Kopf
+  #    vom 18.09. 20:29:50 stand ohne Stempel da, obwohl SKILL.md beides in EINEM Block vorschreibt.
+  #    Deshalb: fehlt der Stempel und gibt es skills/<skill>/SKILL.md im Plugin, rc 1, KEINE Zeile —
+  #    der Kopf-Block wird als Ganzes neu gefahren. Freie Namen (Prueffaelle, fremde Skills): wie bisher.
+  if [ -z "${MIND_SKILL_VERSION:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT:-/nonexistent}/skills/$skill/SKILL.md" ]; then
+    echo "⛔ STEMPEL FEHLT: MIND_SKILL_VERSION ist in dieser Bash nicht gesetzt — der Kopf-Block von $skill gehoert in EINE Bash:" >&2
+    echo "   MIND_SKILL_VERSION=\"<version>\" und mind_schritt_start … (SKILL.md, erster Block). Nichts geschrieben; sonst koennte" >&2
+    echo "   VERSIONSBRUCH fuer $skill nie feuern (v5.125.0, Etappe 37 §3)." >&2
+    mind_log WARN "mind_schritt_start $skill: MIND_SKILL_VERSION fehlt — Kopf-Block abgewiesen"
+    return 1
+  fi
   mkdir -p "$(dirname "$q")" 2>/dev/null || return 1
   local kette=0 zeilen=0
   # ⛔ NUR `analyzed-scopes`, NICHT `.done`. Die `.done` bleibt nach jedem
@@ -2524,6 +2590,8 @@ mind_schritt_start() {
   #    ⚠ Fehlt der Stempel (aelterer Skill-Text): `unbekannt`, KEIN Bruch gemeldet.
   #      Ein alter Text ohne Stempel ist genau der Fall, den man sehen will —
   #      aber "unbekannt gegen 5.77.0" ist ein Befund, keine Luege.
+  #    ⛔ v5.125.0: fuer die zehn Skills dieses Plugins kommt es nicht mehr so weit —
+  #      ohne Stempel bricht der Aufruf oben mit rc 1 ab (Etappe 37 §3).
   local v_code v_text bruch
   v_code=$(basename "${CLAUDE_PLUGIN_ROOT:-}" 2>/dev/null); [ -n "$v_code" ] || v_code="unbekannt"
   v_text="${MIND_SKILL_VERSION:-unbekannt}"
@@ -2558,7 +2626,9 @@ mind_schritt_start() {
 #      GEGENSTAND nicht haben (kein Git, kein Quellbaum, --dry-run). Ein
 #      vorhandener Gegenstand plus ein Sparwunsch ist kein solcher Grund.
 mind_schritt() {
-  local name="${1:-?}" status="${2:-gelaufen}" bytes="${3:-}" q quelle="zahl" pfad=""
+  local name="${1:-?}" status="${2:-gelaufen}" bytes="${3:-}" q quelle="zahl" pfad="" _proj
+  if [ "${3:-}" = "--datei" ]; then _proj="${5:-}"; else _proj="${4:-}"; fi
+  _mind_args_pruefen mind_schritt 'mind_schritt <name> <status> <bytes>|--datei <pfad> [projekt]' "$name" "$_proj" || return 2
   if [ "${3:-}" = "--datei" ]; then
     pfad="${4:-}"; quelle="datei"; q=$(_mind_schritt_pfad "${5:-}")
     if [ -n "$pfad" ] && [ -f "$pfad" ]; then bytes=$(wc -c < "$pfad" 2>/dev/null | tr -d ' ')
@@ -3471,6 +3541,12 @@ mind_verdichtung_pruefen() {
   ausw=$(printf '%s\n' "$out"   | sed -n 's/^AUSWEIS: markenfrei entfernt: //p' | head -1)
 
   # --- der Bericht: drei Zeilen, keine weniger ---
+  # ⛔ v5.125.0 (Etappe 37 §2): der FINGERABDRUCK der Vorher-Fassung steht im Deponat. Ritas Lauf
+  #    18.09.2026: .nachher.md von 22:51, CLAUDE.md danach zweimal geaendert (23:41) — das Deponat
+  #    trug trotzdem „✅ anwenden", ein cp haette ihren Fix zurueckgedreht. mind_verdichtung_anwenden
+  #    vergleicht Live-Datei gegen diesen md5 und kopiert nur bei Gleichheit.
+  local md5_vor; md5_vor=$(_md5 "$orig")
+  printf '%-14s Vorher-Fassung  md5 %s  %s\n' "$name" "$md5_vor" "$orig"
   printf '%-14s Dauerkontext  %s -> %s B  (%+d B, %.1f %%)\n' "$name" "$b_vor" "$b_nach" \
     "$((b_nach - b_vor))" "$(awk "BEGIN{printf \"%.1f\", ($b_nach-$b_vor)*100/$b_vor}")"
   printf '%-14s Stufe 1       coverage %s   Marker %s\n' "" "${deck:-?}" "${marker:-?}"
@@ -3516,7 +3592,38 @@ mind_verdichtung_pruefen() {
     echo "               ⛔ VERWERFEN: Zeilenenden geaendert (vorher $f_vor $ze_vor, nachher $f_nach $ze_nach). Quelle erhalten: newline='' lesen, byteweise schreiben."
     return 1
   fi
-  echo "               ✅ anwenden — danach mind_kontext_bilanz gegen vorher, sonst Snapshot zurueck."
+  echo "               ✅ anwenden, solange md5 $md5_vor steht — mind_verdichtung_anwenden prueft es und kopiert; danach mind_kontext_bilanz gegen vorher, sonst Snapshot zurueck."
+  return 0
+}
+
+# mind_verdichtung_anwenden <datei> <ergebnis> <deponat>   (v5.125.0, Etappe 37 §2)
+#   <deponat> = die verdichten-<skill>.txt mit der Gate-Ausgabe (die LETZTE Zeile
+#   „Vorher-Fassung  md5 …" zaehlt) ODER ein blanker 32-stelliger md5.
+#   rc 0 = Live-Datei traegt den md5 des Deponats -> `cp <ergebnis> <datei>` (nie nachtippen)
+#   rc 1 = Deponat veraltet: die Datei wurde seit dem Deponieren geaendert -> KEIN cp, neu verdichten
+#   rc 3 = nicht pruefbar (kein md5 im Deponat, kein md5-Werkzeug, Ergebnis fehlt) -> KEIN cp
+#   ⛔ Stufe 3 (Leser) bleibt davor Pflicht — das hier prueft nur, dass der Leser DIESE Fassung las.
+mind_verdichtung_anwenden() {
+  local datei="${1:-}" erg="${2:-}" dep="${3:-}" soll="" ist=""
+  [ -n "$datei" ] && [ -f "$datei" ] || { echo "⛔ ANWENDEN: Datei '$datei' fehlt — nicht pruefbar, kein cp." >&2; return 3; }
+  [ -n "$erg" ] && [ -f "$erg" ]     || { echo "⛔ ANWENDEN: Ergebnis '$erg' fehlt — nicht pruefbar, kein cp." >&2; return 3; }
+  case "$dep" in
+    *[!0-9a-f]*|'') [ -n "$dep" ] && [ -f "$dep" ] && soll=$(grep 'Vorher-Fassung  md5 ' "$dep" 2>/dev/null | tail -1 | sed -n 's/.*md5 \([0-9a-f]*\).*/\1/p') ;;
+    *) soll="$dep" ;;
+  esac
+  case "$soll" in
+    ????????????????????????????????) ;;
+    *) echo "⛔ ANWENDEN: Deponat '$dep' traegt keinen Fingerabdruck (Zeile „Vorher-Fassung  md5 …“, seit v5.125.0) — Gate neu fahren, kein cp." >&2; return 3 ;;
+  esac
+  ist=$(_md5 "$datei")
+  case "$ist" in ????????????????????????????????) ;; *) echo "⛔ ANWENDEN: kein md5-Werkzeug ($ist) — nicht pruefbar, kein cp." >&2; return 3 ;; esac
+  if [ "$ist" != "$soll" ]; then
+    echo "⛔ Deponat veraltet — $(basename "$datei") seit dem Deponieren geaendert (md5 $soll -> $ist): neu verdichten, kein cp. (v5.125.0)" >&2
+    mind_log WARN "mind_verdichtung_anwenden: Deponat fuer $datei veraltet ($soll -> $ist)"
+    return 1
+  fi
+  cp "$erg" "$datei" || { echo "⛔ ANWENDEN: cp fehlgeschlagen." >&2; return 3; }
+  echo "angewendet: $datei (Vorher md5 $soll, jetzt $(_md5 "$datei"))"
   return 0
 }
 

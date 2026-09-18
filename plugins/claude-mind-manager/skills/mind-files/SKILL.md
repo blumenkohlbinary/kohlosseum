@@ -42,7 +42,13 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
+#    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
 MIND_SKILL_VERSION="5.124.0"
+# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
+#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
+#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
+#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
+MIND_SKILL_VERSION="5.125.0"
 mind_schritt_start "$PROJ" mind-files bestandszahlen_kandidaten cleaner_stichprobe mind_check_tools_have_rules mind_hook_health mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -1037,7 +1043,10 @@ DATEI=$(ls -S "$PROJ"/.claude/rules/{backup-usage,wissenstransfer-pruefen,zaehlw
 #     globs: als unantastbar WOERTLICH) -> mind_verdichtung_pruefen
 #     -> mind_check_tools_have_rules "$PROJ" auf das ERGEBNIS: rc 0, sonst verwerfen
 #     -> ⛔ STUFE 3 (Wort-Diff lesen; ohne Leser NICHT anwenden, ablegen und melden)
-#     -> anwenden -> mind_kontext_bilanz gegen vorher -> sonst rollback.py restore
+#     -> mind_verdichtung_anwenden "$DATEI" "$ERGEBNIS" "$PROJ/.claude-mind/verdichten-<skill>.txt" (v5.125.0:
+#        vergleicht die Live-Datei mit dem md5 der Vorher-Fassung aus dem Deponat — seitdem geaendert = rc 1,
+#        kein cp, neu verdichten; Ritas CLAUDE.md-Deponat 22:51 hinter Live 23:41 am 18.09.2026)
+#     -> mind_kontext_bilanz gegen vorher -> sonst rollback.py restore
 echo "verdichtet=$DATEI" >> "$PROJ/.claude-mind/analyzed-scopes" 2>/dev/null
 ```
 

@@ -49,7 +49,13 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
+#    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
 MIND_SKILL_VERSION="5.124.0"
+# ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
+#    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
+#    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
+#    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
+MIND_SKILL_VERSION="5.125.0"
 mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
@@ -1194,7 +1200,8 @@ if [ "${#CUSTOM_CONTEXT_FILES[@]}" -eq 0 ]; then
 else
   [ -f "$PROJ/.claude-mind/agent-quittung.jsonl" ] || mind_agent_quittung_start "$PROJ" 4
 fi
-mind_agent_dispatch "<bereich>" "$PROJ"    # VOR dem Start
+mind_agent_dispatch "<bereich>" "$PROJ"    # VOR dem Start — ⛔ Reihenfolge: <bereich> <projekt>. v5.125.0: vertauscht
+                                            #   oder unbekannt = rc 2, nichts geschrieben (18.09.: vier Streuner-Ordner im cwd)
 # ... Agent laeuft (run_in_background: false — der tool_result IST die Rueckgabe) ...
 # ⛔ v5.94.0: die Bytes kommen aus einer DATEI, nie aus dem Kopf. Den tool_result
 #    mit `Write` nach $PROJ/.claude-mind/agent-<bereich>.md legen, dann:
@@ -1442,7 +1449,10 @@ $f
 #        bleiben im Zeiger-Satz — Stufe 1 zaehlt jede Marke, auch aus Herleitungen
 #     WOERTLICH) -> mind_verdichtung_pruefen -> (CLAUDE.md: Pipeline vorher/nachher)
 #     -> ⛔ STUFE 3 (Wort-Diff lesen; ohne Leser NICHT anwenden, ablegen und melden)
-#     -> anwenden -> mind_kontext_bilanz gegen vorher -> sonst rollback.py restore
+#     -> mind_verdichtung_anwenden "$DATEI" "$ERGEBNIS" "$PROJ/.claude-mind/verdichten-<skill>.txt" (v5.125.0:
+#        vergleicht die Live-Datei mit dem md5 der Vorher-Fassung aus dem Deponat — seitdem geaendert = rc 1,
+#        kein cp, neu verdichten; Ritas CLAUDE.md-Deponat 22:51 hinter Live 23:41 am 18.09.2026)
+#     -> mind_kontext_bilanz gegen vorher -> sonst rollback.py restore
 echo "verdichtet=$DATEI" >> "$PROJ/.claude-mind/analyzed-scopes" 2>/dev/null
 ```
 

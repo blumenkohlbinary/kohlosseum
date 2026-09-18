@@ -21,6 +21,9 @@ set -u
 R="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 export CLAUDE_PLUGIN_ROOT="$R"
 [ -f "$R/hooks/lib.sh" ] || { echo "ABBRUCH: lib.sh fehlt"; exit 2; }
+# v5.125.0 (Etappe 37 §3): ein Skill-Name des Plugins (mind-*) braucht MIND_SKILL_VERSION in derselben
+#   Bash wie mind_schritt_start — sonst rc 1, keine Zeile. Fixture: Stempel = Code, kein Versionsbruch.
+export MIND_SKILL_VERSION="$(basename "$R")"
 
 # ⛔ v5.97.0 — DIE QUITTUNG LAESST SICH NICHT MEHR TIPPEN: die Zahlform schreibt bytes:0,
 #    und dispatch->ergebnis unter 30 s gilt als nachgetragen. Die Fixture liefert deshalb,
