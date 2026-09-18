@@ -1089,8 +1089,33 @@ mind_debug_write() {
 
   # index.jsonl: eine Zeile je Befund. Anhaengen ueber mind_append, damit die Zeilenenden
   # der bestehenden Datei erhalten bleiben.
+  # ⛔ v5.126.0 (Etappe 38 §4, Z231): JEDE Zeile muss gueltiges JSON sein — `jq -e .` (jq ist
+  #    Pflicht, hooks.md). Zwei Befunde aus `Pc Forschung` lagen 27.08.2026 einen Tag unlesbar
+  #    im gemeinsamen Index; debug_auswertung.py uebersprang sie still. Kaputte Zeile: WARN
+  #    ins Log, Zeile verworfen, nie angehaengt. Ohne jq: WARN, alles ungeprueft anhaengen
+  #    (fail-safe zum Behalten — ein Befund, der verloren geht, ist schlimmer als einer,
+  #    den die Auswertung ueberspringt).
   if [ -f "$befunde" ] && [ -s "$befunde" ]; then
-    mind_append "$dir/index.jsonl" < "$befunde"
+    local _gut _z _n_ok=0 _n_rot=0
+    _gut="${TMPDIR:-/tmp}/.mind_debug_gut_$$"; : > "$_gut"
+    if command -v jq >/dev/null 2>&1; then
+      while IFS= read -r _z || [ -n "$_z" ]; do
+        _z="${_z%$'\r'}"
+        [ -n "$_z" ] || continue
+        if printf '%s\n' "$_z" | jq -e . >/dev/null 2>&1; then
+          printf '%s\n' "$_z" >> "$_gut"; _n_ok=$((_n_ok + 1))
+        else
+          _n_rot=$((_n_rot + 1))
+          mind_log WARN "mind_debug_write: Befundzeile ist kein JSON, verworfen: ${_z:0:120}"
+        fi
+      done < "$befunde"
+      [ "$_n_rot" -gt 0 ] && echo "⚠ mind_debug_write: $_n_rot Befundzeile(n) kein gueltiges JSON — verworfen, $_n_ok angehaengt (/tmp/mind-manager.log)" >&2
+    else
+      mind_log WARN "mind_debug_write: jq fehlt — Befundzeilen ungeprueft angehaengt"
+      cat "$befunde" > "$_gut"
+    fi
+    [ -s "$_gut" ] && mind_append "$dir/index.jsonl" < "$_gut"
+    rm -f "$_gut"
   fi
 
   # Auswertung neu erzeugen — sie ist der eigentliche Zweck.

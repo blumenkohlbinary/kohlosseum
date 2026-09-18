@@ -106,6 +106,22 @@ python "$CLAUDE_PLUGIN_ROOT/references/debug_auswertung.py" "$MIND_DEBUG_DIR" >/
 pruef "Projektliste nennt Creator genau einmal" \
       "$(grep -c 'Creator, Creator' "$MIND_DEBUG_DIR/BEFUNDE.md")" "0"
 
+# --- v5.126.0 (Etappe 38 §4, Z231): kaputte Befundzeilen werden VERWORFEN, nie angehaengt ---
+# 27.08.2026: zwei Befunde aus Pc Forschung lagen einen Tag unlesbar im Index. Gegen 5.125.0:
+# die kaputte Zeile landet im Index (3 statt 2), die Auswertung ueberspringt sie still.
+export MIND_DEBUG_DIR="$T/dbg json"; mkdir -p "$MIND_DEBUG_DIR"; : > "$MIND_DEBUG_DIR/index.jsonl"
+{
+  printf '{"ts":"2026-09-19 01:00","projekt":"P","klasse":"doku-veraltet","kurz":"gut eins"}\n'
+  printf '{"ts":"2026-09-19 01:01","projekt":"P","klasse":"doku-veraltet","kurz":"kaputt \n'
+  printf 'kein json\n'
+  printf '{"ts":"2026-09-19 01:02","projekt":"P","klasse":"doku-veraltet","kurz":"gut zwei"}\n'
+} > "$T/j.jsonl"
+_W=$(mind_debug_write "/x/p" "test" "$T/bericht.md" "$T/j.jsonl" 2>&1 >/dev/null)
+pruef "⛔ zwei kaputte Zeilen verworfen, zwei gute angehaengt" "$(grep -c '' "$MIND_DEBUG_DIR/index.jsonl")" "2"
+pruef "   ... jede angehaengte Zeile ist JSON (jq -e)" "$(n=0; while IFS= read -r z; do printf '%s\n' "$z" | jq -e . >/dev/null 2>&1 || n=$((n+1)); done < "$MIND_DEBUG_DIR/index.jsonl"; echo $n)" "0"
+pruef "   ... die Warnung nennt die Zahl (2 verworfen)" "$(printf '%s\n' "$_W" | grep -c '2 Befundzeile(n) kein gueltiges JSON')" "1"
+pruef "   ... Auswertung liest beide Guten (2 Befunde)" "$(grep -oE '\| Befunde gesamt \| \*\*[0-9]+\*\* \|' "$MIND_DEBUG_DIR/BEFUNDE.md" | grep -oE '[0-9]+' | head -1)" "2"
+
 
 rm -rf "$T"
 echo
