@@ -88,6 +88,32 @@ janein "Kontrollskript hat den Block verloren" nein "$(grep -q 'WORKSPACE" bash 
 RC=$(lauf "$T/release_ohne_c2.sh")
 janein "ohne Gate: Sync laeuft trotz rc 1 der Sammlung (der Prueffall misst also das Gate)" ja "$([ -f "$T/SYNC-LIEF" ] && echo ja || echo nein)"
 
+echo "== (6) Etappe 38 §5: (e) misst die Lebendigkeit JETZT, nicht aus der Gate-Liste =="
+# 19.09.2026 01:05: 5.94.0–5.96.0 standen im Gate als lebend, die PID starb in den 13 Minuten
+# Suite, der Sync entfernte sie — (e) rot, (g) blieb aus. Attrappe: Gate meldet 1.1.1 mit einer
+# lebenden PID, der Sync loescht 1.1.1; einmal ist die .in_use-PID tot (4000000), einmal lebt sie ($$).
+echo 0 > "$T/suite_rc"
+printf 'print("  Version   .in_use   lebend   geschuetzt")\nprint("  1.1.1          1        1   ja")\n' > "$Q/references/sync_schutz_gate.py"
+cat > "$T/sync.py" <<'EOF'
+import json, os, shutil, sys
+d = os.environ["STUB_DIR"]; ver = sys.argv[3]; cache = os.environ["MIND_RELEASE_CACHE"]
+shutil.rmtree(os.path.join(cache, "1.1.1"), ignore_errors=True)
+open(os.path.join(d, "SYNC-LIEF"), "w").write(ver)
+json.dump({"plugins": {"claude-mind-manager@kohlosseum": {"version": ver}}}, open(os.path.join(d, "installed.json"), "w"))
+print("Attrappe Sync: 1.1.1 entfernt, registriert", ver)
+EOF
+mkdir -p "$T/cache/1.1.1/.in_use"; printf '{"pid":4000000}' > "$T/cache/1.1.1/.in_use/4000000"
+RC=$(lauf "$REL")
+janein "weg, aber die .in_use-PID ist tot: rc 0 (kein Fehler)" 0 "$RC"
+janein "   ... Meldung: inzwischen alle tot, kein Fehler" ja "$(grep -q 'inzwischen alle tot' "$T/out.txt" && echo ja || echo nein)"
+janein "   ... (g) lief (Schutz eingetragen)" ja "$(grep -q '(g) .sync-protect.json' "$T/out.txt" && echo ja || echo nein)"
+rm -rf "$T/cache/1.1.1"; mkdir -p "$T/cache/1.1.1/.in_use"; printf '{"pid":%s}' "$$" > "$T/cache/1.1.1/.in_use/$$"
+RC=$(lauf "$REL")
+janein "weg, und die PID lebt JETZT ($$): rc 1" 1 "$RC"
+janein "   ... Meldung nennt die lebende PID" ja "$(grep -q "leben JETZT noch: $$" "$T/out.txt" && echo ja || echo nein)"
+janein "   ... (g) schreibt den Schutz der NEUEN Version trotzdem (sie ist installiert)" ja "$(python -c "import json,sys;print('ja' if sys.argv[2] in json.load(open(sys.argv[1])) else 'nein')" "$T/cache/.sync-protect.json" "$V" 2>/dev/null)"
+rm -rf "$T/cache/1.1.1"
+
 rm -rf "$T"
 echo
 echo "  $OK ok, $ROT rot"

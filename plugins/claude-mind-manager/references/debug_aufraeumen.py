@@ -27,7 +27,7 @@ Aufruf:
   debug_aufraeumen.py <debug-dir> --scanner-neu <neue.jsonl>   Scanner-Zeilen ersetzen
   debug_aufraeumen.py <debug-dir> --verwaiste                  Laufdateien ohne Befunde weg
   debug_aufraeumen.py <debug-dir> --entferne-lauf <name>       einen Laufbericht entfernen
-  debug_aufraeumen.py <debug-dir> --behoben <zeile> --commit <sha> [--repo <dir>]
+  debug_aufraeumen.py <debug-dir> --behoben <zeile>[,<zeile>…] --commit <sha> [--repo <dir>]
                                                               einen ZUSTAND-Befund schliessen
 Rueckgabe: 0 = erledigt · 1 = kein index.jsonl · 2 = Aufruffehler
 """
@@ -95,7 +95,24 @@ def main():
     sich = os.path.join(d, "_verlauf")
     os.makedirs(sich, exist_ok=True)
     stempel = time.strftime("%Y%m%d_%H%M%S")
-    shutil.copy2(idx, os.path.join(sich, "index-%s.jsonl" % stempel))
+    # ⛔ Etappe 38 (Anton 19.09.2026): EIN Abzug je Aufruf-SERIE fuer --behoben. 47 Schliessungen
+    #    in Folge legten je eine Kopie (~142 kB) an — ~7 MB im Repo fuer einen Status-Wechsel,
+    #    der selbst kein Loeschen ist. Liegt der juengste Abzug keine MIND_VERLAUF_SERIE_MIN
+    #    (30) Minuten zurueck, traegt er den Stand vor der Serie; ein neuer entfaellt. Loeschende
+    #    Aufrufe (--scanner-neu, --entferne-lauf, --verwaiste) sichern weiterhin JEDES Mal.
+    serie = False
+    if "--behoben" in sys.argv:
+        try:
+            grenze = float(os.environ.get("MIND_VERLAUF_SERIE_MIN", "30")) * 60
+        except ValueError:
+            grenze = 1800.0
+        alte = sorted(x for x in os.listdir(sich) if x.startswith("index-") and x.endswith(".jsonl"))
+        if alte and time.time() - os.path.getmtime(os.path.join(sich, alte[-1])) < grenze:
+            serie = alte[-1]
+    if serie:
+        print("  Sicherung: Serie — letzter Abzug %s traegt den Stand vor der Serie, kein neuer" % serie)
+    else:
+        shutil.copy2(idx, os.path.join(sich, "index-%s.jsonl" % stempel))
 
     if "--scanner-neu" in sys.argv:
         neu_datei = sys.argv[sys.argv.index("--scanner-neu") + 1]
@@ -115,10 +132,13 @@ def main():
         #    Ohne diese Bedingung koennte ein Lauf seine eigenen Befunde
         #    wegschreiben — ein Zaehler, der sich selbst leerraeumt, waere
         #    schlimmer als der heutige, der nur waechst.
+        # Etappe 38: mehrere Zeilen je Aufruf (`--behoben 1,4,9`), derselbe Commit fuer alle.
         try:
-            nr = int(sys.argv[sys.argv.index("--behoben") + 1])
+            nrs = [int(x) for x in sys.argv[sys.argv.index("--behoben") + 1].split(",") if x.strip()]
+            if not nrs:
+                raise ValueError
         except (IndexError, ValueError):
-            print("--behoben braucht eine ZEILENNUMMER (1-basiert)", file=sys.stderr)
+            print("--behoben braucht ZEILENNUMMERN (1-basiert, kommagetrennt)", file=sys.stderr)
             return 2
         if "--commit" not in sys.argv:
             print("--behoben verlangt --commit <sha>. Ohne Beleg wird nichts "
@@ -132,19 +152,26 @@ def main():
         if not re.fullmatch(r"[0-9a-fA-F]{7,40}", sha):
             print("kein gueltiger Commit-Hash: %r (7-40 hex)" % sha, file=sys.stderr)
             return 2
-        if nr < 1 or nr > len(alt):
-            print("Zeile %d gibt es nicht (index.jsonl hat %d)" % (nr, len(alt)),
-                  file=sys.stderr)
-            return 2
-        e = alt[nr - 1]
-
-        # ⛔ Ein EREIGNIS wird nie geschlossen. Was passiert ist, ist passiert —
-        #    das steht seit v5.9.2 oben in diesem Docstring und heisst dort
-        #    Geschichtsfaelschung.
-        a = art(e)
-        if a != "zustand":
-            print("Zeile %d ist '%s', kein ZUSTAND — wird nicht geschlossen.\n"
-                  "  %s" % (nr, a, e.get("kurz", "")[:120]), file=sys.stderr)
+        abgelehnt = 0
+        zu = []
+        for nr in nrs:
+            if nr < 1 or nr > len(alt):
+                print("Zeile %d gibt es nicht (index.jsonl hat %d)" % (nr, len(alt)),
+                      file=sys.stderr)
+                abgelehnt += 1
+                continue
+            e = alt[nr - 1]
+            # ⛔ Ein EREIGNIS wird nie geschlossen. Was passiert ist, ist passiert —
+            #    das steht seit v5.9.2 oben in diesem Docstring und heisst dort
+            #    Geschichtsfaelschung.
+            a = art(e)
+            if a != "zustand":
+                print("Zeile %d ist '%s', kein ZUSTAND — wird nicht geschlossen.\n"
+                      "  %s" % (nr, a, e.get("kurz", "")[:120]), file=sys.stderr)
+                abgelehnt += 1
+                continue
+            zu.append((nr, e))
+        if not zu:
             return 2
 
         # Der Beleg wird GEPRUEFT, wenn ein Repo genannt ist — nicht geglaubt.
@@ -160,12 +187,17 @@ def main():
                 return 2
             geprueft = "Existenz in " + repo
 
-        e["status"] = "behoben"
-        e["commit"] = sha
+        for nr, e in zu:
+            e["status"] = "behoben"
+            e["commit"] = sha
+            print("  Zeile %d als BEHOBEN vermerkt (Beleg geprueft: %s)" % (nr, geprueft))
+            print("    %s" % e.get("kurz", "")[:140])
         schreib(idx, alt)
-        print("  Zeile %d als BEHOBEN vermerkt (Beleg geprueft: %s)" % (nr, geprueft))
-        print("    %s" % e.get("kurz", "")[:140])
-        print("    commit=%s" % sha)
+        print("    commit=%s  (%d Zeile(n) geschlossen%s)" % (sha, len(zu), ", %d abgelehnt" % abgelehnt if abgelehnt else ""))
+        if abgelehnt:
+            rc_behoben = 2
+        else:
+            rc_behoben = 0
 
     if "--entferne-lauf" in sys.argv:
         name = sys.argv[sys.argv.index("--entferne-lauf") + 1]
@@ -220,8 +252,11 @@ def main():
                   % (r.returncode, (r.stderr or "")[:200]))
     if kaputt:
         print("  ⚠ %d unlesbare Zeilen uebersprungen" % kaputt)
-    print("  Sicherung: %s/index-%s.jsonl" % (sich, stempel))
-    return 0
+    if serie:
+        print("  Sicherung: %s/%s (Serie)" % (sich, serie))
+    else:
+        print("  Sicherung: %s/index-%s.jsonl" % (sich, stempel))
+    return rc_behoben if "rc_behoben" in dir() else 0
 
 
 if __name__ == "__main__":

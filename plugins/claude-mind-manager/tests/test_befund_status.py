@@ -190,6 +190,25 @@ try:
           "(rc=%s)" % r.returncode)
 
     print()
+    print("=== 3b) Etappe 38: mehrere Zeilen je Aufruf, EIN Verlauf-Abzug je Serie ===")
+    fixture_neu()
+    verl = os.path.join(tmp, "_verlauf")
+    shutil.rmtree(verl, ignore_errors=True)
+    r = lauf("--behoben", "1,99", "--commit", "1e6f718")
+    pruef("--behoben 1,99: Zeile 1 geschlossen, 99 abgelehnt, rc 2",
+          r.returncode == 2 and "Zeile 1 als BEHOBEN" in (r.stdout or "") and "1 abgelehnt" in (r.stdout or ""),
+          "(rc=%s)" % r.returncode)
+    n1 = len(os.listdir(verl))
+    r = lauf("--behoben", "1", "--commit", "1e6f718")
+    r = lauf("--behoben", "1", "--commit", "1e6f718")
+    pruef("⛔ drei --behoben in Folge: EIN Abzug in _verlauf (Serie), nicht drei",
+          n1 == 1 and len(os.listdir(verl)) == 1 and "Serie" in (r.stdout or ""),
+          "(%d / %d)" % (n1, len(os.listdir(verl))))
+    r = lauf("--entferne-lauf", "gibt-es-nicht")
+    pruef("   ... ein LOESCHENDER Aufruf sichert trotzdem (2 Abzuege)", len(os.listdir(verl)) == 2,
+          "(%d)" % len(os.listdir(verl)))
+
+    print()
     print("=== 4) BEFUNDE.md — der dreiteilige Abschnitt ===")
     r = subprocess.run([sys.executable, AUSWERTUNG, tmp],
                        capture_output=True, text=True, encoding="utf-8",
