@@ -43,6 +43,7 @@ Rueckgabe beim Pruefen: 0 = nichts auferstanden · 1 = Wiederauferstehung · 2 =
 
 import json
 import os
+import re
 import sys
 import time
 
@@ -118,6 +119,44 @@ def geladene_dateien(projekt, nur_projekt=False):
     return out
 
 
+# ⛔ v5.129.0 (Etappe 41, Z262/Z294): DIE RATSCHE MISST SAETZE, NICHT WOERTER.
+#    Gemessen 19.09.2026 am Workspace: 71 „Wiederauferstehungen" — DISPATCH, JEDEN, mind-all,
+#    custom-context, knowledge/ … Marken aus archivierten Belegen, die als Vokabular in jeder
+#    Regel stehen. Kein einziger archivierter SATZ war zurueck. Jetzt: ein Eintrag traegt seine
+#    normalisierten Saetze (>= MIND_RATSCHE_SATZ_MIN Zeichen); auferstanden ist ein Satz, der
+#    in einer geladenen Datei wieder steht. Marken zaehlen nur noch als SCHWACHES Signal, wenn
+#    sie spezifisch sind (>= MIND_RATSCHE_MARKE_MIN Zeichen oder mit Leerzeichen, kein blanker
+#    Ordnername, kein kurzes ALLCAPS-Wort) — und nur fuer Alt-Eintraege ohne Saetze.
+SATZ_MIN = int(os.environ.get("MIND_RATSCHE_SATZ_MIN", "30") or 30)
+MARKE_MIN = int(os.environ.get("MIND_RATSCHE_MARKE_MIN", "16") or 16)
+
+
+def _norm(s):
+    s = re.sub(r"^[\s>*+\-|#\d.]+", "", s.strip())          # Bullet, Zitat, Tabelle, Nummer
+    s = s.replace("**", "").replace("~~", "")
+    return re.sub(r"\s+", " ", s).strip()          # Gross/Klein bleibt: die Ausgabe zeigt den Satz wie geschrieben
+
+
+def saetze_aus(text):
+    """Normalisierte Zeilen ab SATZ_MIN Zeichen — das Korn der Ratsche."""
+    out = []
+    for z in (text or "").split("\n"):
+        n = _norm(z)
+        if len(n) >= SATZ_MIN and not n.startswith("---"):
+            out.append(n)
+    return sorted(set(out))
+
+
+def marke_spezifisch(m):
+    if re.fullmatch(r"[\w.-]+[/\\]", m):
+        return False                     # blanker Ordnername (`knowledge/`)
+    if " " in m:
+        return True                      # Satzstueck oder Wert mit Einheit (`32 MB`)
+    if re.fullmatch(r"[A-Z0-9_]+", m) and len(m) < MARKE_MIN:
+        return False                     # kurzes ALLCAPS-Wort (`DISPATCH`, `JEDEN`)
+    return len(m) >= MARKE_MIN
+
+
 def archiviere(projekt, datei, grund):
     t = _lies(datei)
     if t is None:
@@ -130,6 +169,7 @@ def archiviere(projekt, datei, grund):
         "datei": datei.replace("\\", "/"),
         "grund": grund,
         "marken": sorted(marken(t)),
+        "saetze": saetze_aus(t),
     }
     bestand.append(e)
     with open(p, "w", encoding="utf-8", newline="\n") as fh:
@@ -223,6 +263,7 @@ def archiviere_saetze(projekt, quelle, saetze, grund, rest=None):
         "datei": ziel.replace("\\", "/"),
         "grund": grund,
         "marken": _marken_der_saetze(saetze, rest),
+        "saetze": saetze_aus("\n".join(saetze)),
     }
     bestand.append(e)
     with open(p, "w", encoding="utf-8", newline="\n") as fh:
@@ -264,16 +305,26 @@ def pruefe(projekt, nur_projekt=False):
 
     dateien = geladene_dateien(projekt, nur_projekt)
     inhalt = {d: (_lies(d) or "") for d in dateien}
+    norm = {d: "\n".join(saetze_aus(t)) for d, t in inhalt.items()}
     auferstanden = []
     for e in bestand:
         # ⚠ Die Quelldatei selbst zaehlt nicht — sie liegt im Archiv und laedt
         #   ohnehin nicht mit. Gesucht wird nur in dem, was WIRKLICH laedt.
         quelle = e.get("datei", "").replace("\\", "/")
+        if e.get("saetze"):
+            for s in e["saetze"]:
+                wo = [d for d, t in norm.items() if s in t and d.replace("\\", "/") != quelle]
+                if wo:
+                    auferstanden.append((s, e, wo))
+            continue
+        # Alt-Eintrag ohne Saetze (vor v5.129.0): nur spezifische Marken, als schwaches Signal
         for m in e.get("marken", []):
+            if not marke_spezifisch(m):
+                continue
             wo = [d for d, t in inhalt.items()
                   if m in t and d.replace("\\", "/") != quelle]
             if wo:
-                auferstanden.append((m, e, wo))
+                auferstanden.append((m, dict(e, schwach=True), wo))
     return auferstanden, len(dateien)
 
 
@@ -362,7 +413,7 @@ def selbsttest():
     pruef("Marke zurueck -> Wiederauferstehung", len(a) >= 1, True)
     if a:
         m, eintrag, wo = a[0]
-        pruef("nennt die Marke", m, "MIND_NOTFALL_TOKENS")
+        pruef("nennt den Satz mit der Marke (v5.129.0: Saetze, nicht Woerter)", "MIND_NOTFALL_TOKENS" in m, True)
         pruef("nennt den Grund von damals", eintrag.get("grund"), "im Code entfallen")
         pruef("nennt den Fundort", any("CLAUDE.md" in x for x in wo), True)
 
@@ -464,10 +515,19 @@ def main():
     print("=" * 78)
     print("  Ratsche — %d geladene Datei(en) durchsucht" % n)
     print("=" * 78)
-    if not a:
-        print("  Nichts auferstanden.")
+    _alt = sum(1 for e in json.loads(_lies(_mp(projekt)) or "[]") if not e.get("saetze"))
+    stark = [x for x in a if not x[1].get("schwach")]
+    schwach = [x for x in a if x[1].get("schwach")]
+    if _alt:
+        print("  ⚠ %d Alt-Eintrag/-Eintraege (vor v5.129.0) tragen nur Marken, keine Saetze — fuer sie ist" % _alt)
+        print("    die Ratsche NICHT MESSBAR; ihre Marken zaehlen hoechstens als schwaches Signal (%d)." % len(schwach))
+    if not stark:
+        print("  Kein archivierter Satz auferstanden.")
+        for m, e, wo in schwach[:5]:
+            print("    ⚠ schwach: `%s` (%s) wieder in %s" % (m[:40], os.path.basename(e.get("datei", "?")), ", ".join(os.path.basename(x) for x in wo)[:60]))
         return 0
-    print("  ⛔ %d WIEDERAUFERSTEHUNG(EN)\n" % len(a))
+    print("  ⛔ %d WIEDERAUFERSTEHUNG(EN) — archivierte Saetze stehen wieder im Dauerkontext\n" % len(stark))
+    a = stark
     for m, e, wo in a[:15]:
         print("  `%s`" % m)
         print("     archiviert am %s aus %s"

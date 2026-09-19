@@ -379,6 +379,34 @@ janein "   ... loeser.md behaelt CRLF" ja "$($PY -c "import sys; b=open(sys.argv
 janein "   ... Snapshot haelt loeser.md und MEMORY.md (Wikilink-Traeger) VOR dem Umschreiben" ja "$(SN=$(ls -d "$P/proj/.claude-mind/snapshots/"*_pre-cleaner-plan 2>/dev/null | head -1); [ -n "$SN" ] && grep -q '\[\[karten\]\]' "$SN/memory/loeser.md" 2>/dev/null && grep -q '\[\[karten\]\]' "$SN/memory/MEMORY.md" 2>/dev/null && echo ja || echo nein)"
 janein "   ... die Ausgabe nennt die Umschreibung" ja "$(printf '%s\n' "$A" | grep -q 'Wikilink: loeser.md — 2 x \[\[karten\]\]' && echo ja || echo nein)"
 janein "   ... memory_gates gegen die Sicherung: kein Gate gebrochen (Gate 3 liest [[Links]] auch im Index)" 0 "$(mkdir -p "$P/nach/slug" && cp "$MEM"/*.md "$P/nach/slug/" && $PY "$(w "$CLAUDE_PROJECT_DIR/Learnings/memory_gates.py")" "$(w "$P/vergleich")" --nachher "$(w "$P/nach")" --wurzel "$(w "$P/proj")" >/dev/null 2>&1; echo $?)"
+echo "== Etappe 41 (v5.129.0): Gruppe 3 nur echte Dopplung — Nennung zaehlt als Zahl =="
+# 19.09.2026: 77 DOPPELT, 69 davon Pfade/Befehle, die zwei Dateien beide NENNEN. Gegen 5.128.0 rot.
+P=$(mktemp -d); mkdir -p "$P/proj/.claude/rules" "$P/proj/Debug"; : > "$P/proj/Debug/index.jsonl"
+cd "$P/proj" && git init -q . && git config user.email t@t && git config user.name t
+printf '# P\n\nDie Pruefsammlung faehrt `tests/alle.sh` am gebauten Paket.\n\nDer Regler `MIND_KEEP_X` haelt drei Staende, nie mehr als drei Staende.\n' > CLAUDE.md
+printf -- '---\ndescription: a\n---\n# A\n\nLiegt ein Lock, aendert niemand `tests/alle.sh` bis zur Meldung.\n\nDer Regler `MIND_KEEP_X` haelt drei Staende, nie mehr als drei Staende.\n' > .claude/rules/a.md
+git add -A >/dev/null && git commit -q -m init; cd - >/dev/null
+cat > "$P/u3.py" <<'PYEOF'
+import os, subprocess, sys, re
+r = subprocess.run([sys.executable, os.environ["LAUF"]], capture_output=True)
+t = r.stdout.decode("utf-8", "replace")
+m = re.search(r"^  3 · .*?\n(.*?)(?=^  \d\w? · |\Z)", t, re.M | re.S); g = m.group(1) if m else ""
+print("alle_sh_in_3=%s" % ("ja" if "alle.sh" in g else "nein"))
+print("keep_in_3=%s" % ("ja" if "MIND_KEEP_X" in g else "nein"))
+n = re.search(r"\+ (\d+) Zeiger-Nennung", t); print("nennungen=%s" % (n.group(1) if n else "-"))
+PYEOF
+cat > "$P/lauf.py" <<'PYEOF'
+import os, sys
+sys.path.insert(0, os.environ["REF"])
+import cleaner_audit as audit
+audit.lauf(os.environ["PROJ"], "projekt")
+PYEOF
+U3=$(REF="$(w "$REF")" PROJ="$(w "$P/proj")" LAUF="$(w "$P/lauf.py")" $PY "$(w "$P/u3.py")" 2>&1)
+janein "tests/alle.sh in beiden genannt, kein gemeinsamer Satz -> NICHT in Gruppe 3" ja "$(printf '%s\n' "$U3" | grep -q 'alle_sh_in_3=nein' && echo ja || echo nein)"
+janein "   ... sondern als Zeiger-Nennung gezaehlt (>= 1)" ja "$(printf '%s\n' "$U3" | grep -qE 'nennungen=[1-9]' && echo ja || echo nein)"
+janein "derselbe Satz ueber MIND_KEEP_X in beiden -> Gruppe 3 (echte Dopplung)" ja "$(printf '%s\n' "$U3" | grep -q 'keep_in_3=ja' && echo ja || echo nein)"
+rm -rf "$P"
+
 rm -rf "$P"
 
 echo

@@ -53,7 +53,7 @@ MIND_SKILL_VERSION="5.124.0"
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.128.0"
+MIND_SKILL_VERSION="5.129.0"
 mind_schritt_start "$PROJ" mind-cleaner bestandsaufnahme cleaner_audit cleaner_einordnung cleaner_grenzen cleaner_leitplanke cleaner_ratsche cleaner_rebuild cleaner_umzug ladeprotokoll_auswertung mind_debug_write mind_snapshot
 ```
 
@@ -235,7 +235,7 @@ Er fährt **alle sechs Werkzeuge** und legt fünf Gruppen vor — **Gruppe 5 zue
 5b  GRUNDSAETZLICH NICHT LOGGBAR        ⭐ der Kern, nicht der Rest
 1   belegt noetig                       bleibt, wo es ist
 2   falsch platziert                    Ort A -> Ort B, mit Zielpfad
-3   doppelt                             eine Stelle wird Zeiger
+3   doppelt                             eine Stelle wird Zeiger — nur echte Inhalts-Dopplung (gemeinsamer Satz) oder ZAHLENDRIFT; blosse Nennung derselben Datei/Marke zaehlt als Zahl (v5.129.0)
 4   belegt veraltet                     ins Archiv, mit Beleg
 7   SKILLS-BESTAND (v5.111.0)           BLEIBT · ZU LANG · ZU WEICH · OHNE ZEIGER · TOT-VERDACHT · ZURUECK IN RULE · DOPPELT
 8   TOTE REGLER (v5.111.0)              MIND_*-Variablen in settings.json ohne Leser — nur melden
@@ -637,6 +637,15 @@ unbemerkt zurückkommt:
 
 ⚠ **Eine Wiederauferstehung ist NICHT automatisch ein Fehler.** Vielleicht wurde damals zu
 Unrecht archiviert. Die Ratsche meldet **mit Vorgeschichte**, sie urteilt nicht.
+
+⛔ **Die Ratsche misst SAETZE, nicht Woerter (v5.129.0, Etappe 41).** Gemessen 19.09.2026 am
+Workspace: 71 „Wiederauferstehungen" — `DISPATCH`, `JEDEN`, `mind-all`, `knowledge/` … Marken aus
+archivierten Belegen, die als Vokabular in jeder Regel stehen; kein archivierter Satz war zurueck.
+Ein Eintrag traegt seit v5.129.0 seine normalisierten Saetze (`MIND_RATSCHE_SATZ_MIN`, 30 Zeichen);
+auferstanden ist ein Satz, der wieder in einer geladenen Datei steht. Alt-Eintraege ohne Saetze
+(01.–03.09.2026) sind **nicht messbar** — der Bericht sagt es; ihre spezifischen Marken
+(`MIND_RATSCHE_MARKE_MIN` 16 Zeichen, kein blanker Ordnername, kein kurzes ALLCAPS-Wort) stehen
+hoechstens als schwaches Signal, nie als Befund (rc 0).
 
 ⛔ **Ohne `--grund` gibt es keinen Eintrag.** *„X ist zurück"* ohne *„warum es wegging"* hilft
 beim nächsten Mal niemandem.

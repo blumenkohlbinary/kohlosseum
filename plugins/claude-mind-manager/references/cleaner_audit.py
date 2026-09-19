@@ -481,6 +481,7 @@ def lauf(projekt, nur="alles", doku=None):
             text[p] = t
             for m in dup.marken(t):
                 wo[m].add((nname, p))
+    nennungen = 0
     for m, stellen in wo.items():
         st = sorted(stellen)
         if len({n for n, _ in st}) < 2:
@@ -494,8 +495,10 @@ def lauf(projekt, nur="alles", doku=None):
                 zustand, eintrag = urt.pruefen(projekt, [pa, pb])
                 if zustand == "gueltig" and eintrag.get("urteil") in urt.GESCHUETZT:
                     continue          # ⛔ Das Buch hat entschieden.
-                if kat == "duplikat":
-                    gruppen["3"].append((m, "%s + %s" % (na, nb)))
+                if kat == "nennung":
+                    nennungen += 1          # v5.129.0: dieselbe Marke ohne gemeinsamen Satz — Zahl, kein Eintrag
+                elif kat == "duplikat":
+                    gruppen["3"].append((m, "%s + %s — %s" % (na, nb, g)))
                 elif kat == "zahlendrift":
                     # v5.120.0 (Etappe 29 §1): beide Fundstellen <datei>:<zeile> „satz" an die
                     # Marke — Plan und Anlage tragen sie, Otto kann entscheiden.
@@ -557,6 +560,8 @@ def lauf(projekt, nur="alles", doku=None):
                       ("6", "KONTEXT-TOR — kostet Kontext ohne Gegenwert")):
         print()
         print("  %s · %s (%d)" % (nr, titel, len(gruppen[nr])))
+        if nr == "3":
+            print("       + %d Zeiger-Nennung(en): dieselbe Marke an zwei Orten ohne gemeinsamen Satz — kein Handlungsbedarf (v5.129.0)" % nennungen)
         # ⛔ v5.27.0: keine STILLE Kappung mehr. Vorher wurden ab dem 13.
         #    Eintrag welche weggelassen, ohne es zu sagen — und ein Bericht,
         #    der still kappt, liest sich wie "das war alles".

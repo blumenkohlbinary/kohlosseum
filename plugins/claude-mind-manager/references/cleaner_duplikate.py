@@ -148,6 +148,97 @@ def _zeilen_mit(text, marke):
     return [z.strip() for z in text.split("\n") if marke in z and z.strip()]
 
 
+def _tabellenkoepfe(text):
+    """v5.129.0 (Z421): die Kopfzeile einer Markdown-Tabelle — eine `|`-Zeile, auf die eine
+    `|---|`-Zeile folgt. Ein Spaltenname wie „entfallen" ist keine Aussage ueber die Marke."""
+    z = text.split("\n")
+    koepfe = set()
+    for i in range(len(z) - 1):
+        if z[i].lstrip().startswith("|") and re.match(r"^\s*\|?\s*:?-{3,}", z[i + 1]):
+            koepfe.add(z[i].strip())
+    return koepfe
+
+
+_WORT = re.compile(r"[\wäöüÄÖÜß]{4,}")
+
+
+def satzaehnlichkeit(a_zeilen, b_zeilen):
+    """v5.129.0 (Etappe 41 §1): groesste Wort-Ueberlappung (Jaccard, Woerter ab 4 Zeichen)
+    zwischen je einer Zeile beider Seiten. Gemessen am Workspace: von 77 „DOPPELT" trugen 7 einen
+    gemeinsamen Satz (>= 0,5), die uebrigen 70 nennen nur dieselbe Datei, denselben Befehl oder
+    dasselbe Wort — ein Verweis, kein Duplikat."""
+    best = 0.0
+    for x in a_zeilen:
+        wx = set(w.lower() for w in _WORT.findall(x))
+        if len(wx) < 4:
+            continue
+        for y in b_zeilen:
+            wy = set(w.lower() for w in _WORT.findall(y))
+            if len(wy) < 4:
+                continue
+            j = len(wx & wy) / len(wx | wy)
+            if j > best:
+                best = j
+    return best
+
+
+NENNUNG_AB = 0.5      # darunter: dieselbe Marke ohne gemeinsamen Satz = Nennung, kein Duplikat
+
+
+def _zahlen_in(zeile):
+    rest = _VERSION.sub(" ", _DATUM.sub(" ", zeile))
+    out = []
+    for w in _WERT.findall(rest):
+        w = w.strip().replace(" ", "")
+        try:
+            out.append(float(w.replace(".", "")) if w.count(".") and not re.fullmatch(r"\d+\.\d{1,2}", w) else float(w))
+        except ValueError:
+            pass
+    return out
+
+
+def zahl_nachbarschaft(text, min_abstand=1, toleranz=0.01):
+    """v5.129.0 (Z382): dieselbe Marke, zwei Zahlen, die NAHE beieinander liegen (±1 %) — der
+    Fall 11434 gegen 11435: `--widersprueche` prueft Marken-GLEICHHEIT, ein Nachbarwert ist eine
+    andere Marke und war unsichtbar. Dazu Schraegstrich-Listen (4/6/7 gegen 4/5/6/7), wenn eine
+    echte Teilmenge der anderen ist. Liste von dicts: marke, zeile_a, zeile_b, a, b."""
+    zeilen = text.split("\n")
+    koepfe = _tabellenkoepfe(text)
+    befunde = []
+    for marke in marken(text):
+        if re.fullmatch(r"[\d\s.,/%]+", marke):
+            continue                                    # die Marke selbst ist eine Zahl
+        treffer = [(i, z.strip()) for i, z in enumerate(zeilen, 1)
+                   if marke in z and z.strip() and z.strip() not in koepfe]
+        if len(treffer) < 2 or len(treffer) > _MAX_ZEILEN:
+            continue
+        werte = [(i, z, _zahlen_in(z), set(re.findall(r"\b\d+(?:/\d+)+\b", z))) for i, z in treffer]
+        for x in range(len(werte)):
+            for y in range(x + 1, len(werte)):
+                (ia, za, na, la), (ib, zb, nb, lb) = werte[x], werte[y]
+                if abs(ia - ib) < min_abstand:
+                    continue
+                grund = None
+                for a in na:
+                    for b in nb:
+                        if a != b and a and b and abs(a - b) / max(abs(a), abs(b)) <= toleranz:
+                            grund = "%g gegen %g" % (a, b)
+                for a in la:
+                    for b in lb:
+                        sa, sb = set(a.split("/")), set(b.split("/"))
+                        if sa != sb and (sa < sb or sb < sa):
+                            grund = "%s gegen %s" % (a, b)
+                if grund:
+                    befunde.append({"marke": marke, "zeile_a": ia, "zeile_b": ib,
+                                    "text_a": za[:110], "text_b": zb[:110], "grund": grund})
+    beste = {}
+    for b in befunde:
+        s = (b["zeile_a"], b["zeile_b"])
+        if s not in beste or len(b["marke"]) > len(beste[s]["marke"]):
+            beste[s] = b
+    return sorted(beste.values(), key=lambda x: (x["zeile_a"], x["zeile_b"]))
+
+
 def fundstelle(pfad, text, marke, projekt=None, tot=False, breite=120):
     """v5.120.0 (Etappe 29 §1, Otto liess 14 ZAHLENDRIFT-Zeilen liegen — „nicht entscheidbar",
     weil nur die Marke und die Zahlen dastanden): `<datei>:<zeile> „<satz>"`. Bevorzugt die
@@ -528,6 +619,11 @@ def einordnen(marke, a_pfad, a_text, b_pfad, b_text):
     """Fuenf Kategorien. Gibt (kategorie, begruendung) zurueck."""
     a_zeilen = _zeilen_mit(a_text, marke)
     b_zeilen = _zeilen_mit(b_text, marke)
+    # v5.129.0 (Z421, Zustellplan 12.09.2026): eine Tabellen-KOPFZEILE (`| Name | seit | entfallen |`)
+    #    ist keine Aussage — „entfallen" als Spaltenname machte `zustand.json` zum ZAHLENDRIFT.
+    _ka, _kb = _tabellenkoepfe(a_text), _tabellenkoepfe(b_text)
+    a_zeilen = [z for z in a_zeilen if z not in _ka]
+    b_zeilen = [z for z in b_zeilen if z not in _kb]
 
     # --- Zahlendrift zuerst: er ist der einzige, der GEFAHR bedeutet ---------
     def merkmale(zeilen):
@@ -601,8 +697,18 @@ def einordnen(marke, a_pfad, a_text, b_pfad, b_text):
     b_zeigt = zeigt_auf(b_text, a_pfad)
 
     la, lb = len(a_zeilen), len(b_zeilen)
+    # ⛔ v5.129.0 (Etappe 41): DIESELBE MARKE IST NOCH KEIN DUPLIKAT. Ritas Audit 19.09.2026 fuehrte
+    #    77 „DOPPELT" — 69 davon Pfade, Befehle, Dateinamen und Flags (`tests/alle.sh`, `--dry-run`,
+    #    `/mind-all`), die zwei Dateien einfach beide NENNEN, 8 Namen/ALLCAPS-Woerter (`OPEN`, `STILL`),
+    #    0 Widersprueche; echte Inhalts-Dopplung (gemeinsamer Satz) nur bei 7. Kriterium jetzt: ein
+    #    Paar ist erst „duplikat", wenn je eine Zeile beider Seiten >= NENNUNG_AB Wort-Ueberlappung
+    #    hat; sonst „nennung" — als Zahl gemeldet, nie im Plan.
+    _s = satzaehnlichkeit(a_zeilen, b_zeilen)
     if not (a_zeigt or b_zeigt):
-        return "duplikat", "beide behaupten es, keine nennt die andere"
+        if _s < NENNUNG_AB:
+            return "nennung", ("dieselbe Marke, kein gemeinsamer Satz (Ueberlappung %.2f) — "
+                               "ein Verweis, kein Duplikat" % _s)
+        return "duplikat", "beide behaupten es (gemeinsamer Satz %.2f), keine nennt die andere" % _s
 
     # ⭐ DIE KATEGORIE, DIE GEFEHLT HAT.
     #    Kuerzere Fassung PLUS Zeiger = Zielform. Nicht anfassen.
@@ -612,8 +718,10 @@ def einordnen(marke, a_pfad, a_text, b_pfad, b_text):
                             "— das ist die Zielform" % (kurz, lang))
     if kurz <= 1:
         return "zeiger", "nennt die andere, wiederholt fast nichts"
-    return "duplikat", ("etwa gleich lang (%d gegen %d Zeilen), trotz Zeiger"
-                        % (la, lb))
+    if _s < NENNUNG_AB:
+        return "nennung", "nennt die andere, kein gemeinsamer Satz (Ueberlappung %.2f)" % _s
+    return "duplikat", ("etwa gleich lang (%d gegen %d Zeilen), trotz Zeiger, gemeinsamer Satz %.2f"
+                        % (la, lb, _s))
 
 
 
@@ -999,6 +1107,29 @@ def selbsttest():
     k, _ = einordnen("MIND_BACKUP_KEEP_COUNT", d1, _inhalt(d1), d2, _inhalt(d2))
     pruef("gleich lang, kein Zeiger -> duplikat", k, "duplikat")
 
+    # 2b) v5.129.0 (Etappe 41): dieselbe Marke OHNE gemeinsamen Satz ist eine Nennung
+    n1 = schreib("n1.md", "# A\n\nDie Pruefsammlung faehrt `tests/alle.sh` am gebauten Paket, nie am Quellbaum.\n")
+    n2 = schreib("n2.md", "# B\n\nLiegt ein Lock, aendert Nils nichts, bis Rita `tests/alle.sh` gemeldet hat.\n")
+    k, _ = einordnen("tests/alle.sh", n1, _inhalt(n1), n2, _inhalt(n2))
+    pruef("gleiche Marke, kein gemeinsamer Satz -> nennung", k, "nennung")
+    n3 = schreib("n3.md", "# C\n\nDie Pruefsammlung faehrt `tests/alle.sh` am gebauten Paket, nie am Quellbaum.\n")
+    k, _ = einordnen("tests/alle.sh", n1, _inhalt(n1), n3, _inhalt(n3))
+    pruef("   ... derselbe Satz in beiden -> duplikat", k, "duplikat")
+    # 2c) v5.129.0 (Z421): „entfallen" als Spaltenname ist kein Totsagen
+    t1 = schreib("tk1.md", "# A\n\n| Datei | seit | entfallen |\n|---|---|---|\n| `zustand.json` | v3 | nein |\n")
+    t2 = schreib("tk2.md", "# B\n\n`zustand.json` traegt den Stand mit 4 Feldern.\n")
+    k, _ = einordnen("zustand.json", t1, _inhalt(t1), t2, _inhalt(t2))
+    pruef("Tabellenkopf 'entfallen' -> KEIN zahlendrift", k == "zahlendrift", False)
+    # 2d) v5.129.0 (Z382): Zahl-Nachbarschaft derselben Marke in EINER Datei
+    zn = schreib("zn.md", "# Z\n\nDer Dauerkontext von `CLAUDE.md` misst 11434 B.\n\nAbsatz.\n\nAbsatz.\n\n"
+                         "Seit dem Umbau misst `CLAUDE.md` 11435 B.\n\nDie Hooks `plan-pause.sh` laufen in 4/6/7.\n\nAbsatz.\n\n"
+                         "`plan-pause.sh` haengt an 4/5/6/7.\n")
+    nb = zahl_nachbarschaft(_inhalt(zn))
+    pruef("11434 gegen 11435 (±1 %) -> Nachbarschaft gemeldet", any("11434" in x["grund"] and "11435" in x["grund"] for x in nb), True)
+    pruef("4/6/7 gegen 4/5/6/7 (Teilmenge) -> gemeldet", any("4/6/7" in x["grund"] for x in nb), True)
+    zg = schreib("zg.md", "# Z\n\nDer Dauerkontext von `CLAUDE.md` misst 11434 B.\n\nAbsatz.\n\nGrenze fuer `CLAUDE.md`: 200 Zeilen.\n")
+    pruef("   Gegenprobe: 11434 gegen 200 (weit auseinander) -> still", zahl_nachbarschaft(_inhalt(zg)), [])
+
     # 3) ⭐ Zahlendrift — der Fall, den Textaehnlichkeit nie findet
     z1 = schreib("z1.md", "# A\n\n`MIND_NOTFALL_TOKENS` ist entfallen in v5.9.3.\n")
     z2 = schreib("z2.md", "# B\n\n`MIND_NOTFALL_TOKENS` steht auf 940000 und ist aktiv.\n")
@@ -1031,7 +1162,9 @@ def selbsttest():
           k3 == "zahlendrift", False)
     # ⛔ Und die Gegenprobe zur Gegenprobe: der Befund darf nicht einfach
     #    verschwinden, er soll als gewoehnliches Duplikat weiterlaufen.
-    pruef("   ... sondern duplikat", k3, "duplikat")
+    # v5.129.0: „nennung" ist die dritte zulaessige Antwort — der Befund verschwindet nicht, er wird
+    #    als Zeiger-Nennung GEZAEHLT (beide Seiten sagen tot, kein gemeinsamer Satz).
+    pruef("   ... sondern duplikat oder nennung (gezaehlt, nicht verschwunden)", k3 in ("duplikat", "nennung"), True)
 
     # 3b) ⛔ NEGATIVKONTROLLE mit ECHTEM Wortlaut (25.08.2026).
     #     Der einzige zahlendrift-Befund des ersten Laufs ueber acht Ablagen
@@ -1250,8 +1383,21 @@ def widersprueche_lauf(projekt, bereich="alles"):
                      x["abstand"]))
             print("        + %s" % x["text_erledigt"])
             print("        - %s" % x["text_offen"])
+    # v5.129.0 (Z382): Zahl-Nachbarschaft derselben Marke (11434 gegen 11435, 4/6/7 gegen 4/5/6/7)
+    nachbar = 0
+    for p in sorted(dateien):
+        nb = zahl_nachbarschaft(_inhalt(p))
+        if not nb:
+            continue
+        print("\n  %s  (Zahl-Nachbarschaft)" % p)
+        for x in nb:
+            nachbar += 1
+            print("    %-24s Z%-5d | Z%-5d  %s" % (x["marke"][:24], x["zeile_a"], x["zeile_b"], x["grund"]))
+            print("        a %s" % x["text_a"])
+            print("        b %s" % x["text_b"])
+    gesamt += nachbar
     print()
-    print("  %d Widerspruch/Widersprueche" % gesamt)
+    print("  %d Widerspruch/Widersprueche (davon %d Zahl-Nachbarschaft)" % (gesamt, nachbar))
     if gesamt == 0:
         print()
         print("  ⚠ NULL ist hier ein zulaessiges Ergebnis — aber nur, weil die")

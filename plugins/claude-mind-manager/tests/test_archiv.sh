@@ -74,7 +74,7 @@ elif was == "zurueck":
     p = os.path.join(proj, ".claude", "rules", "regel.md")
     t = open(p, encoding="utf-8").read()
     open(p, "w", encoding="utf-8", newline="\n").write(
-        t + "\nDoch wieder: `WEG_TOKENS` steht auf 940000.\n")
+        t + "\nDer Regler `WEG_TOKENS` stand auf 940000 und ist entfallen.\n")   # v5.129.0: der SATZ kehrt zurueck, nicht nur das Wort
     print("ok")
 
 elif was == "entarchiviere":
@@ -136,8 +136,8 @@ janein "und meldet (noch) keine Wiederauferstehung" "0|" "$AUS"
 #     nicht zu unterscheiden.
 h zurueck >/dev/null
 AUS=$(h pruefe)
-printf '%s' "$AUS" | grep -q "^1|WEG_TOKENS" && A=ja || A=nein
-janein "zurueckgekehrte Marke -> genau 1 Befund" ja "$A"
+printf '%s' "$AUS" | grep -q "^1|.*WEG_TOKENS" && A=ja || A=nein
+janein "zurueckgekehrter Satz -> genau 1 Befund (v5.129.0: Saetze, nicht Woerter)" ja "$A"
 
 # --- 8 · entarchivieren nimmt den Wachposten weg --------------------------
 janein "entarchivieren gelingt" ok "$(h entarchiviere 0)"
