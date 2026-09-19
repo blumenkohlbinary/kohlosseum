@@ -112,7 +112,13 @@ def main():
     if serie:
         print("  Sicherung: Serie — letzter Abzug %s traegt den Stand vor der Serie, kein neuer" % serie)
     else:
-        shutil.copy2(idx, os.path.join(sich, "index-%s.jsonl" % stempel))
+        # shutil.copy (nicht copy2): der Abzug traegt SEINE Entstehungszeit als mtime — copy2 uebernahm
+        # die mtime der index.jsonl (oft Stunden alt), und die Serien-Erkennung sah nie eine Serie.
+        n_gleich = 0
+        while os.path.exists(os.path.join(sich, "index-%s.jsonl" % stempel)):   # zwei Aufrufe in derselben Sekunde
+            n_gleich += 1
+            stempel = "%s-%d" % (stempel.split("-")[0], n_gleich)
+        shutil.copy(idx, os.path.join(sich, "index-%s.jsonl" % stempel))
 
     if "--scanner-neu" in sys.argv:
         neu_datei = sys.argv[sys.argv.index("--scanner-neu") + 1]

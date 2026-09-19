@@ -29,6 +29,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
@@ -194,6 +195,7 @@ try:
     fixture_neu()
     verl = os.path.join(tmp, "_verlauf")
     shutil.rmtree(verl, ignore_errors=True)
+    os.utime(idx, (time.time() - 7200, time.time() - 7200))   # index.jsonl zwei Stunden alt: copy2 haette die Serie nie erkannt
     r = lauf("--behoben", "1,99", "--commit", "1e6f718")
     pruef("--behoben 1,99: Zeile 1 geschlossen, 99 abgelehnt, rc 2",
           r.returncode == 2 and "Zeile 1 als BEHOBEN" in (r.stdout or "") and "1 abgelehnt" in (r.stdout or ""),
