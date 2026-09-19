@@ -244,6 +244,27 @@ janein "Roster (Ein-Commit, kein Verstoss) steht NICHT in Gruppe 4" ja "$(printf
 janein "   ... sondern in Gruppe 9 UNANTASTBAR, nur Meldung" ja "$(printf '%s\n' "$U" | grep -q 'rollen_in_9=ja' && echo ja || echo nein)"
 janein "alte Regel (46 Tage, 7 Projekt-Commits, kein Verstoss) -> Gruppe 4 wie bisher" ja "$(printf '%s\n' "$U" | grep -q 'alt_in_4=ja' && echo ja || echo nein)"
 janein "junge Regel (heute, 0 Commits danach) -> zu jung fuer ein Urteil, nicht Gruppe 4" ja "$(printf '%s\n' "$U" | grep -q 'jung_zu_jung=ja' && echo ja || echo nein)"
+# ⛔ v5.128.0 (Etappe 40 §1, Ritas Audit 19.09.2026): ein GEPFLEGTER Roster (viele Commits, kein Verstoss,
+#    Urteil NICHT ENTSCHEIDBAR) stand unter 5a „STREICHEN", CLAUDE.md unter 1 und 2, Gruppe 9 zaehlte 0 —
+#    ist_unantastbar lenkte nur bei VERALTUNGS-/SCHWACHER KANDIDAT und COMMAND/DOCS um. Gegen 5.127.0 rot.
+( cd "$P/proj" && for i in 1 2 3 4 5 6 7; do printf '| **sync** | **R%s** | `z%s` | faehrt |\n' "$i" "$i" >> .claude/rules/rollen.md; git commit -q -am "roster $i"; done )
+cat > "$P/u2.py" <<'PYEOF'
+import os, subprocess, sys, re
+r = subprocess.run([sys.executable, os.environ["LAUF"]], capture_output=True)
+t = r.stdout.decode("utf-8", "replace")
+def gruppe(nr):
+    m = re.search(r"^  %s · .*?\n(.*?)(?=^  \d\w? · |\Z)" % nr, t, re.M | re.S)
+    return m.group(1) if m else ""
+print("rollen_5a=%s" % ("ja" if "rollen.md" in gruppe("5a") else "nein"))
+print("rollen_9=%s" % ("ja" if "rollen.md" in gruppe("9") and "NICHT ENTSCHEIDBAR" in gruppe("9") else "nein"))
+print("claude_1_2=%s" % ("ja" if "CLAUDE.md" in gruppe("1") or "CLAUDE.md" in gruppe("2") else "nein"))
+print("claude_9=%s" % ("ja" if "CLAUDE.md" in gruppe("9") else "nein"))
+PYEOF
+U2=$(REF="$(w "$REF")" PROJ="$(w "$P/proj")" LAUF="$(w "$P/lauf.py")" MIND_BELEG_FRISCH_TAGE=21 $PY "$(w "$P/u2.py")" 2>&1)
+janein "gepflegter Roster (8 Commits, kein Verstoss): NICHT in 5a STREICHEN" ja "$(printf '%s\n' "$U2" | grep -q 'rollen_5a=nein' && echo ja || echo nein)"
+janein "   ... sondern in 9 mit dem Urteil NICHT ENTSCHEIDBAR als Text" ja "$(printf '%s\n' "$U2" | grep -q 'rollen_9=ja' && echo ja || echo nein)"
+janein "CLAUDE.md steht nicht in 1 oder 2" ja "$(printf '%s\n' "$U2" | grep -q 'claude_1_2=nein' && echo ja || echo nein)"
+janein "   ... sondern in 9" ja "$(printf '%s\n' "$U2" | grep -q 'claude_9=ja' && echo ja || echo nein)"
 # Plan von Hand mit ARCHIV rollen.md -> anwenden bricht: unantastbar
 PLAN="$P/plan.md"; printf '# Cleaner-Plan test — %s (--nur projekt)\n\n| # | Klasse | Datei | Ziel | Gates | Rueckweg | Status |\n|---|---|---|---|---|---|---|\n| 1 | ARCHIV | .claude/rules/rollen.md | .claude/archiv/ | Ratsche | Snapshot | offen |\n' "$(m "$P/proj")" > "$PLAN"
 $PY "$(w "$REF/cleaner_plan.py")" --anwenden "$(w "$PLAN")" --projekt "$(w "$P/proj")" >/dev/null 2>&1; RC=$?

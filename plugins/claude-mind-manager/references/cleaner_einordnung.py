@@ -826,6 +826,29 @@ def selbsttest():
     else:
         print("  OK   offener Codezaun wird gemeldet")
 
+    # v5.128.0 (Etappe 40 §2): die zwei Fehlurteile vom 24.08.2026 als synthetische Faelle — damit die
+    #    Ausgabe oben nicht nur behauptet. (a) deutsche Prosa mit ⛔-Bullets und „Regelverstoss, kein
+    #    Ermessen" ohne MUST/NEVER wird nie COMMAND/DOCS; (b) eine Haltungsregel, die nur andere
+    #    Regeldateien zitiert, wird nie HOOK-KANDIDAT.
+    p = os.path.join(d, "prosa.md")
+    with open(p, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write("# Arbeite autonom\n\n⛔ **Ein Teilergebnis ist kein Grund, den Turn zu beenden.**\n\n"
+                 "⛔ **Abweichen ist erlaubt, Verschweigen nicht.**\n\nDer Turn endet bei drei Zustaenden.\n\n"
+                 "Frage 1 nicht beantwortbar und trotzdem beenden = Regelverstoss, kein Ermessen.\n")
+    e = einordnen(p)
+    ok = e and e["vorschlag"] not in ("COMMAND", "DOCS")
+    fehler += 0 if ok else 1
+    print("  %-4s %-24s ist=%s imp=%.2f (deutsche Prosa ohne MUST/NEVER wird nie Command)" % ("OK" if ok else "FEHL", "Prosa befiehlt", e and e["vorschlag"], e["imperativ"] if e else 0))
+    p = os.path.join(d, "zitat.md")
+    with open(p, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write("# Keine Annahmen\n\n⛔ Die Ursache MUSS im eigenen Code gesucht werden, nie beim Nutzer.\n\n"
+                 "⛔ Vorher messen — siehe `messung-vor-glauben.md` §1 und `fertig-heisst-fertig.md`.\n\n"
+                 "Eine Annahme ist NIE ein Beleg; `keine-annahmen.md` gilt immer.\n")
+    e = einordnen(p)
+    ok = e and e["vorschlag"] != "HOOK-KANDIDAT"
+    fehler += 0 if ok else 1
+    print("  %-4s %-24s ist=%s kon=%.2f (Zitierung ist kein Aufruf-Anker)" % ("OK" if ok else "FEHL", "Zitat-Regel kein Hook", e and e["vorschlag"], e["konkret"] if e else 0))
+
     print("\n=== %d Abweichung(en) ===" % fehler)
     return 3 if fehler else 0
 
@@ -879,23 +902,19 @@ def main():
                 print("     auch %s: %s" % (k, g))
     print()
     print("  " + "=" * 88)
-    print("  ⛔ ZWEI GEMESSENE FEHLURTEILE DIESES WERKZEUGS (24.08.2026, eigener Bestand)")
+    print("  ⛔ ZWEI GEMESSENE FEHLURTEILE DIESES WERKZEUGS (24.08.2026) — Stand 19.09.2026 (Etappe 40 §2)")
     print("  " + "=" * 88)
-    print("  Sie stehen hier dauerhaft, weil sie NICHT wegzustellen sind — nicht durch")
-    print("  andere Schwellen, sondern nur durch ein menschliches Urteil.")
+    print("  Die Klasse bleibt: DEUTSCHE PROSA BEFIEHLT OHNE SCHLUESSELWORT, eine Zitierung ist kein")
+    print("  Aufruf-Anker. Die zwei Faelle von damals sind NACHGEMESSEN, nicht mehr nur behauptet:")
     print()
-    print("  1) `autonom-arbeiten.md`  ->  Vorschlag SKILL, imp 0.00")
-    print("     Die Datei enthaelt NULL Imperativ-Woerter (nachgezaehlt: 0 Treffer fuer")
-    print("     MUST/NEVER/nie/immer/muss/darf-nicht) und ist trotzdem eine der")
-    print("     direktivsten Regeln des Bestands: \"Regelverstoss, kein Ermessen\".")
-    print("     ⛔ DEUTSCHE PROSA BEFIEHLT OHNE SCHLUESSELWORT. Imperativdichte kann")
-    print("     eine Leitplanke deshalb GRUNDSAETZLICH verfehlen.")
+    print("  1) `autonom-arbeiten.md`  24.08.: Vorschlag SKILL bei imp 0.00 — heute imp 0.17 -> UNKLAR")
+    print("     (hier entscheidet der Mensch): die Datei wurde seither umgeschrieben, die Klasse SKILL")
+    print("     gibt es nicht mehr. Ein deutsches Signal (NICHT/SOFORT/verboten/kein Grund) wurde am")
+    print("     19.09.2026 an 54 Dateien gemessen: 12 wechseln die Klasse, keine geprueft — NICHT eingebaut.")
     print()
-    print("  2) `keine-annahmen.md`    ->  Vorschlag HOOK-KANDIDAT")
-    print("     Eine reine Haltungsregel. Sie wirkt konkret, weil sie ANDERE")
-    print("     REGELDATEIEN ZITIERT. Eine Zitierung ist kein Aufruf-Anker.")
-    print("     (Die blosse Dateiendung wurde daraufhin aus dem Signal entfernt —")
-    print("      kon fiel von 0.67 auf 0.33. Das Fehlurteil blieb trotzdem.)")
+    print("  2) `keine-annahmen.md`    24.08.: HOOK-KANDIDAT wegen zitierter Regeldateien — seit 28.08.2026")
+    print("     nicht mehr in ~/.claude/rules (Archiv); der Fall kann nicht mehr auftreten. Die Lehre")
+    print("     steckt im Signal KONKRET (keine Dateiendung) und im Selbsttest (Zitat-Regel -> kein Hook).")
     print()
     print("  ⭐ Was daraus folgt und nicht verhandelbar ist:")
     print("     Ein COMMAND-Vorschlag wird NIE ohne menschliche Bestaetigung angewendet.")

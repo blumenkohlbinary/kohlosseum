@@ -405,8 +405,13 @@ def lauf(projekt, nur="alles", doku=None):
         _st = ein.index_status(p) if _ist_memory(p) else ""
         if _st and u in ("VERALTUNGS-KANDIDAT", "SCHWACHER KANDIDAT"):
             u, grund = "BELEGT NOETIG", "Status im Index: „%s\" — aktiver Auftrag (MEMORY.md)" % _st
-        if _unant and u in ("VERALTUNGS-KANDIDAT", "SCHWACHER KANDIDAT"):
-            gruppen["9"].append((p, "%s — unantastbar (%s), nur Meldung, nie Archiv/Umzug" % (u, _unant)))
+        # ⛔ v5.128.0 (Etappe 40 §1, Ritas Audit 19.09.2026 03:11): hier stand `and u in (VERALTUNGS-,
+        #    SCHWACHER KANDIDAT)` — der AKTIVE Roster dieses Projekts (33 Commits, kein Verstoss, Urteil
+        #    NICHT ENTSCHEIDBAR) fiel durch nach 5a „STREICHEN, wenn du nicht widersprichst", CLAUDE.md
+        #    nach 1 und 2, und Gruppe 9 zaehlte 0. Unantastbar gilt fuer JEDES Urteil: die Datei landet
+        #    immer in 9, mit dem urspruenglichen Urteil als Text — nie in 5a/4/2.
+        if _unant:
+            gruppen["9"].append((p, "%s — unantastbar (%s), nur Meldung, nie Archiv/Umzug/Streichen" % (u, _unant)))
             u = "UNANTASTBAR"
         if u == "BELEGT NOETIG":
             gruppen["1"].append((p, grund))
@@ -437,7 +442,8 @@ def lauf(projekt, nur="alles", doku=None):
                                          _tr[_k][0][1][:40])))
 
         # Falsch platziert? — v5.108.0: DOCS dazu, und die ZWEITE Klasse steht mit im Bericht
-        if _unant and vorschlag in ("COMMAND", "DOCS"):
+        if _unant and (vorschlag in ("HOOK-KANDIDAT", "COMMAND", "DOCS") or "RULE-PATHS" in ((e or {}).get("vorschlaege") or [])):
+            # v5.128.0: auch HOOK-KANDIDAT und RULE-PATHS bleiben Meldung in 9 — nie Gruppe 2
             gruppen["9"].append((p, "%s — unantastbar (%s), nur Meldung, nie Umzug" % (vorschlag, _unant)))
         elif vorschlag in ("HOOK-KANDIDAT", "COMMAND", "DOCS") and e:
             _txt = "%s — %s" % (vorschlag, e.get("grund_zusammen") or e.get("grund", ""))

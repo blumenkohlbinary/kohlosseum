@@ -53,7 +53,7 @@ MIND_SKILL_VERSION="5.124.0"
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.127.0"
+MIND_SKILL_VERSION="5.128.0"
 mind_schritt_start "$PROJ" mind-cleaner bestandsaufnahme cleaner_audit cleaner_einordnung cleaner_grenzen cleaner_leitplanke cleaner_ratsche cleaner_rebuild cleaner_umzug ladeprotokoll_auswertung mind_debug_write mind_snapshot
 ```
 
@@ -165,7 +165,9 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_audit.py" --bereich "$PROJ"   # P
   --snapshot <sicherung>` nach (Aufhaenger aus dem Snapshot).
 - ⛔ **UNANTASTBAR (v5.117.0, Veras Audit setzte den AKTIVEN Roster als Plan-Zeile 1 ARCHIV):**
   der Roster (`rollen.md` mit Rollentabelle), `CLAUDE.md`/`CLAUDE.local.md` und `MEMORY.md`
-  bekommen nie ARCHIV/UMZUG/DOCS — im Audit Gruppe 9 „nur Meldung", im Plan MELDUNG, und
+  bekommen nie ARCHIV/UMZUG/DOCS — im Audit Gruppe 9 „nur Meldung" **bei JEDEM Urteil** (v5.128.0,
+  Etappe 40 §1: Ritas Audit 19.09. führte den gepflegten Roster unter 5a „STREICHEN" und CLAUDE.md
+  unter 1/2, weil die Umlenkung nur bei VERALTUNGS-/SCHWACHER KANDIDAT griff), im Plan MELDUNG, und
   `--anwenden` bricht an einer von Hand geschriebenen Zeile dazu. Und **„nie ueberarbeitet" ist
   erst ein Fossil**, wenn die Datei aelter als `MIND_BELEG_FRISCH_TAGE` (21) ist UND das Projekt
   seit ihrer Anlage mindestens 5 Commits hat — sonst „zu jung fuer ein Urteil" (Gruppe 5a).
@@ -406,14 +408,17 @@ auf das vierte Urteil wartete, wartete auf eines, das es nicht gibt.
 Vorsicht, sondern Herstelleraussage — die Skills-Doku sagt bei nachlassender Wirkung
 *„…or use hooks to enforce behavior deterministically"*.
 
-⛔ **Das Werkzeug nennt seine eigenen Fehlurteile.** Zwei sind gemessen und stehen dauerhaft
-in seiner Ausgabe:
+⛔ **Das Werkzeug nennt seine eigenen Fehlurteile** (24.08.2026) — und seit v5.128.0 (Etappe 40 §2)
+mit dem NACHGEMESSENEN Stand statt dem alten Satz in jedem Bericht:
 
-- `autonom-arbeiten.md` → Vorschlag **COMMAND**, Imperativdichte **0,00** — die Datei enthält
-  **null** Imperativ-Wörter und ist trotzdem eine der direktivsten des Bestands.
-  **Deutsche Prosa befiehlt ohne Schlüsselwort.**
-- `keine-annahmen.md` → Vorschlag **HOOK-KANDIDAT**, weil sie **andere Regeldateien
-  zitiert**. Eine Zitierung ist kein Aufruf-Anker.
+- `autonom-arbeiten.md` → damals **SKILL** bei Imperativdichte **0,00**; heute imp 0,17 → **UNKLAR**
+  (die Datei wurde umgeschrieben, die Klasse SKILL gibt es nicht mehr). Die Klasse bleibt:
+  **Deutsche Prosa befiehlt ohne Schlüsselwort.** Ein deutsches Signal (NICHT/SOFORT/verboten/
+  kein Grund) wurde am 19.09.2026 an 54 Dateien gemessen — 12 wechseln die Klasse, keine geprüft —
+  und deshalb **nicht** eingebaut; ein synthetischer Fall im Selbsttest hält die Klasse fest.
+- `keine-annahmen.md` → damals **HOOK-KANDIDAT**, weil sie **andere Regeldateien zitiert**; seit
+  28.08.2026 im Archiv, der Fall kann nicht mehr auftreten. Eine Zitierung ist kein Aufruf-Anker
+  (Selbsttest „Zitat-Regel kein Hook").
 
 **Daraus folgt und ist nicht verhandelbar:** ein COMMAND-Vorschlag wird **nie ohne menschliche
 Bestätigung** angewendet.
