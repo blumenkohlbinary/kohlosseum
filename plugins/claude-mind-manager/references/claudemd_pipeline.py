@@ -308,6 +308,55 @@ def classify_path(p):
 
 
 # ---------------------------------------------------------------------------
+# Pfad-Bild — die EINE Regel gegen die Fehlalarm-Klassen von Check 13 (v5.127.0, Etappe 38 §6)
+# ---------------------------------------------------------------------------
+# ⛔ GEMESSEN 19.09.2026 ueber CLAUDE.md + Rules von vier Projekten (40 Dateien): 152 DEAD,
+#    davon 6 echt (Zustellplan: zwei geloeschte ~/.claude/plans, zwei fehlende memory/*.md,
+#    ein geloeschter Test auf einer Zeile, die ihn noch als lebend fuehrt). 146 Fehlalarme in
+#    sechs Klassen: Bezeichner-Alternativen mit Unterstrich/Punkt (`baustelle_leicht/schwer`,
+#    `torchaudio.load/save`, 90x), Formeln und Code (`pad=max(0,(w-d)//2)`, `|/-` + Backslash),
+#    Befehlszeilen (`grep -rn x src/`), Geraete-/Umgebungspfade (`\\.\DISPLAY13`, `%SystemRoot%`),
+#    blosse Verzeichnisnamen ohne Endung (`sidon\`, `_internal/`, 19x — Workstation, Build),
+#    Ordnerlisten in EINEM Span. Kein neunter Einzelfix: ein Span wird nur DEAD, wenn er wie EIN
+#    Dateipfad AUSSIEHT — kein Code-Zeichen in einem Segment, kein Schalter, kein Geraet, und
+#    eine Dateiendung ODER eine bekannte Wurzel (Projektordner, .claude, ~, /, C:). Eine blosse
+#    Verzeichnis-Form (`x/`, `x\`) ohne Endung ist UNSURE (Hinweis), nie Befund.
+#    Ergebnis am selben Bestand: 152 -> 12 DEAD-Fehlalarme (0,3 je Datei), alle 6 echten bleiben.
+_PB_ENDUNG = re.compile(r"\.[A-Za-z][A-Za-z0-9]{0,5}$")
+_PB_CODE = re.compile(r"[()=|&,;<>!?*+^#\[\]{}%]")
+_PB_SCHALTER = re.compile(r"(^|\s)--?[A-Za-z]")
+
+
+def pfadbild(s, wurzelnamen):
+    """KANDIDAT | UNSURE | SKIP — sieht der Span wie EIN Dateipfad aus?"""
+    q = s.strip()
+    toks = q.split()
+    if len(toks) > 1 and sum(1 for x in toks if x.endswith('/') or x.endswith(chr(92))) >= 2:
+        return 'SKIP'                       # Ordnerliste in einem Span (`a/ b/ c/`)
+    if _PB_SCHALTER.search(q) and ' ' in q:
+        return 'SKIP'                       # Befehlszeile mit Schalter (`grep -rn x src/`)
+    if q.startswith(chr(92) + chr(92) + '.' + chr(92)) or q.startswith(chr(92) + '.' + chr(92)):
+        return 'SKIP'                       # Geraetepfad `\\.\DISPLAY13`
+    teile = [x for x in re.split(r'[/' + chr(92) + chr(92) + ']', q) if x]   # Muster [/\]: der Backslash muss im Zeichensatz maskiert sein
+    if not teile:
+        return 'SKIP'
+    if any(_PB_CODE.search(x) for x in teile):
+        return 'SKIP'                       # Code-Zeichen im Segment: Formel, Aufzaehlung, %VAR%
+    if any(':' in x for x in teile[1:]) or (':' in teile[0] and not re.fullmatch(r'[A-Za-z]:', teile[0])):
+        return 'SKIP'                       # Doppelpunkt ausserhalb des Laufwerks
+    letzt, erst = teile[-1], teile[0]
+    if _PB_ENDUNG.search(letzt) and not re.fullmatch(r'\d+(\.\d+)+', letzt):
+        return 'KANDIDAT'                   # Dateiendung
+    if re.fullmatch(r'[A-Za-z]:', erst) or q.startswith('/') or q.startswith('~') or erst in ('.claude', '.claude-mind', '.', '..'):
+        return 'KANDIDAT'                   # absolut oder bekannte Wurzel
+    if erst in wurzelnamen and not (q.endswith('/') or q.endswith(chr(92))):
+        return 'KANDIDAT'                   # bekannter Projektordner als Praefix
+    if q.endswith('/') or q.endswith(chr(92)):
+        return 'UNSURE'                     # blosse Verzeichnis-Form ohne Endung
+    return 'UNSURE'                         # kein Pfadbild: Bezeichner, Wort/Wort
+
+
+# ---------------------------------------------------------------------------
 # Schritt 0 — Vorverarbeitung (PFLICHT vor jedem Check)
 # ---------------------------------------------------------------------------
 def vorverarbeiten(text):
@@ -334,7 +383,10 @@ def vorverarbeiten(text):
             if akt is not None:
                 einheiten.append((nr, akt))
             akt, nr = z, i
-        elif akt is not None and z.startswith("  ") and z.strip():
+        elif akt is not None and z.strip() and (z.startswith("  ") or not re.match(r"^\s*(#|\||>|---|\*\*\*)", z)):
+            # v5.127.0 (Z307, Creator 03.09.2026): eine Fortsetzungszeile OHNE Einrueckung gehoert
+            #    nach Markdown (lazy continuation) zum Bullet — die Alternative „Ersatz:" stand auf
+            #    Zeile 3 und Check 7 sah nur Zeile 1.
             akt += " " + z.strip()
         else:
             if akt is not None:
@@ -394,9 +446,22 @@ def wurzeln_finden(ohne_text, projekt):
     else:
         wurzeln_extra = []
     wurzeln = [projekt, eltern] + wurzeln_extra
-    for s in set(re.findall(r'`([^`\n]+)`', ohne_text)):
+    # v5.127.0 (Etappe 38 §6): die Wurzeln, die die CLAUDE.md des Projekts nennt, gelten fuer
+    #    JEDE geprueften Datei — sechs von neun DEAD im Mind Manager waren Plugin-Pfade aus Rules,
+    #    deren Wurzel (`hackj-plugins/plugins/claude-mind-manager/`) nur in der CLAUDE.md steht.
+    _cm = os.path.join(projekt, 'CLAUDE.md')
+    _text = ohne_text
+    if os.path.isfile(_cm):
+        try:
+            _text = ohne_text + '\n' + open(_cm, encoding='utf-8', errors='replace').read()
+        except OSError:
+            pass
+    for s in set(re.findall(r'`([^`\n]+)`', _text)):
         s = s.strip().replace(chr(92), '/').rstrip('/')
-        if not s or '/' not in s or classify_path(s) != 'CHECK':
+        # v5.127.0: auch UNSURE zulassen — `nachbar/paket/` (nur Buchstaben) war fuer 3w UNSURE und wurde
+        #    deshalb NIE Wurzel; der Selbsttest dazu war seit v5.13.0 gruen, weil `gut` nie neu gesetzt wurde.
+        #    Ob es eine Wurzel ist, entscheidet ohnehin os.path.isdir, nicht die Klasse.
+        if not s or '/' not in s or classify_path(s) not in ('CHECK', 'UNSURE'):
             continue
         for basis in (projekt, eltern):
             kandidat = os.path.join(basis, s)
@@ -469,7 +534,7 @@ def pruefe(pfad, projekt):
         low = e.lower()
         if "never" in low and not any(w in low for w in
                                       ("stattdessen", "instead", "->", "→", "sondern",
-                                       "always", "nutze", "nimm", "use ")):
+                                       "always", "nutze", "nimm", "use ", "ersatz", "alternativ")):
             befund(7, nr, "NEVER ohne Alternative: %s" % e.strip()[:70])
 
     # --- 11 · Zeilenzahl, ZWEI Skalen ---------------------------------------
@@ -491,6 +556,12 @@ def pruefe(pfad, projekt):
     # --- 13/14 · Pfade und Befehle ------------------------------------------
     dead, extern, skip, unsure, befehle = [], [], 0, 0, 0
     wurzeln = wurzeln_finden(ohne_text, projekt)
+    _wurzelnamen = set()
+    for _w in wurzeln:
+        try:
+            _wurzelnamen |= {n for n in os.listdir(_w) if os.path.isdir(os.path.join(_w, n))}
+        except OSError:
+            pass
     for s in spans(ohne_text):
         # Befehl? Auch mit Interpreter-PFAD davor und Argumenten dahinter.
         # `.venv/Scripts/python -m pytest tests/ -v` ist ein Befehl, kein Pfad —
@@ -541,12 +612,25 @@ def pruefe(pfad, projekt):
         varianten = [rel] + ([rel + e for e in ('.exe', '.bat', '.cmd')]
                              if os.name == 'nt' and '.' not in os.path.basename(rel)
                              else [])
-        if any(os.path.exists(os.path.join(wurzeln[0], v)) or os.path.exists(v)
+        # v5.127.0: ein RELATIVER Pfad wird nur gegen die Wurzeln gehalten, nie gegen das cwd —
+        #    `os.path.exists('hooks/lib.sh')` war wahr, wenn man das Skript aus dem Plugin-Ordner rief,
+        #    und falsch aus dem Workspace: dieselbe Datei, zwei Urteile (Selbsttest 19.09.2026).
+        if any(os.path.exists(os.path.join(wurzeln[0], v)) or (os.path.isabs(v) and os.path.exists(v))
                for v in varianten):
             continue
         # EXTERN: existiert unter einer der erkannten Wurzeln. Nur Hinweis, nie Befund.
         if any(os.path.exists(os.path.join(w, rel)) for w in wurzeln[1:]):
             extern.append(s)
+            continue
+        # v5.127.0 — die EINE Regel (pfadbild): nicht gefunden heisst erst dann DEAD, wenn der
+        #    Span wie EIN Dateipfad aussieht. Verzeichnis-Form und Bezeichner sind UNSURE (Hinweis).
+        _pb = pfadbild(s, _wurzelnamen)
+        if _pb == 'SKIP':
+            skip += 1
+            continue
+        if _pb == 'UNSURE':
+            unsure += 1
+            hinweis(13, 0, 'nicht gefunden, kein Pfadbild (Verzeichnis-Form oder Bezeichner): %s' % s)
             continue
         dead.append(s)
     # v5.21.2 (N1): absichtlich tote Pfade fallen hier heraus, nicht schon beim
@@ -763,8 +847,55 @@ def selbsttest():
                                  'voellig/erfunden.json' in p['dead'], True),
                                 ('und steht NICHT in DEAD',
                                  'hooks/ziel.json' in p['dead'], False)):
+            gut = (ist == soll)        # v5.127.0: hier fehlte die Zuweisung — `gut` war der Rest der Schleife davor
             rot += 0 if gut else 1
             print('  %s %-46s %s' % ('[ok ]' if gut else '[ROT]', name, ist))
+    finally:
+        shutil.rmtree(t, ignore_errors=True)
+
+    # --- v5.127.0 (Etappe 38 §6): das Pfad-Bild — die sechs Fehlalarm-Klassen und die echten Toten ---
+    print()
+    print("=== Pfad-Bild: Fehlalarm-Klassen vom 19.09.2026 (vier Projekte) ===")
+    t = tempfile.mkdtemp(prefix='pipeline_pfadbild_')
+    try:
+        proj = os.path.join(t, 'projekt'); os.makedirs(os.path.join(proj, 'dist'))
+        os.makedirs(os.path.join(proj, '.claude', 'rules'))
+        open(os.path.join(proj, 'CLAUDE.md'), 'w', encoding='utf-8').write(
+            '# P\n\nDer Code liegt in `pakete/paket/`.\n')
+        os.makedirs(os.path.join(t, 'pakete', 'paket', 'hooks')); open(os.path.join(t, 'pakete', 'paket', 'hooks', 'lib.sh'), 'w').close()
+        md = os.path.join(proj, '.claude', 'rules', 'r.md')
+        with open(md, 'w', encoding='utf-8') as f:
+            f.write('# R\n\n- `baustelle_leicht/schwer` und `torchaudio.load/save` sind Bezeichner.\n'
+                    '- Formel `pad=max(0,(w-d)//2)`, Befehl `grep -rn fit src/`, Geraet `' + chr(92) + chr(92) + '.' + chr(92) + 'DISPLAY13`, Variable `%SystemRoot%' + chr(92) + 'System32' + chr(92) + 'timeout.exe`.\n'
+                    '- Ordner `sidon' + chr(92) + '` und `_internal/` (nur Workstation), Liste `claude-md/ memory/ rules/`.\n'
+                    '- Plugin-Pfad aus der CLAUDE.md-Wurzel: `hooks/lib.sh`.\n'
+                    '- Echt tot: `~/.claude/plans/gibt-es-nicht.md`, `memory/fehlt.md`, `dist/unstable/weg.log`, `tests/test_weg.py`.\n'
+                    '- NEVER ohne Alternative auf Zeile 1\n'
+                    'zweite Zeile\n'
+                    'Ersatz: nimm das andere.\n')
+        r = pruefe(md, proj)
+        p = r['pfade']; d = set(p['dead'])
+        b7 = [b for b in r['befunde'] if b['check'] == 7]
+        faelle2 = (
+            ('Bezeichner-Alternative ist nicht DEAD', 'baustelle_leicht/schwer' in d, False),
+            ('API-Name ist nicht DEAD', 'torchaudio.load/save' in d, False),
+            ('Formel ist nicht DEAD', any('pad=max' in x for x in d), False),
+            ('Befehlszeile mit Schalter ist nicht DEAD', any('grep -rn' in x for x in d), False),
+            ('Geraetepfad ist nicht DEAD', any('DISPLAY13' in x for x in d), False),
+            ('%VAR%-Pfad ist nicht DEAD', any('SystemRoot' in x for x in d), False),
+            ('Verzeichnis-Form ohne Endung ist UNSURE, nicht DEAD', 'sidon' + chr(92) in d or '_internal/' in d, False),
+            ('   ... und steht als Hinweis da', any('_internal/' in h['text'] for h in r['hinweise']), True),
+            ('Ordnerliste in einem Span ist nicht DEAD', any('claude-md/ memory/' in x for x in d), False),
+            ('Plugin-Pfad ueber die CLAUDE.md-Wurzel ist EXTERN, nicht DEAD', 'hooks/lib.sh' in p['extern'] and 'hooks/lib.sh' not in d, True),
+            ('ECHT tot: ~/.claude/plans/…md bleibt DEAD', '~/.claude/plans/gibt-es-nicht.md' in d, True),
+            ('ECHT tot: memory/fehlt.md bleibt DEAD', 'memory/fehlt.md' in d, True),
+            ('ECHT tot: dist/unstable/weg.log bleibt DEAD', 'dist/unstable/weg.log' in d, True),
+            ('ECHT tot: tests/test_weg.py bleibt DEAD', 'tests/test_weg.py' in d, True),
+            ('Check 7: „Ersatz:" auf der dritten, unmarkierten Zeile zaehlt als Alternative', len(b7), 0),
+        )
+        for name, ist, soll in faelle2:
+            gut = (ist == soll); rot += 0 if gut else 1
+            print('  %s %-66s %s' % ('[ok ]' if gut else '[ROT]', name, ist))
     finally:
         shutil.rmtree(t, ignore_errors=True)
 
