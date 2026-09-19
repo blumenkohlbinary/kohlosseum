@@ -124,6 +124,27 @@ if [ "$R" = "1" ]; then
 else
   echo "  [ok ] Negativkontrolle: blinder Stub faellt an Fall 5 durch"; OK=$((OK+1))
 fi
+echo
+echo "=== mind_ordner_hinweise (v5.127.0, Etappe 38 §7): Hinweis je Ordner, kein Befund ==="
+# Gemessen 19.09.2026: Learnings/ (Mind Manager) ist in CLAUDE.md genannt -> still; forschung/ (Palvedo, 67
+# Messskripte) -> EINE Zeile; ein Vendor-Ordner mit 40 Dateien -> EINE Zeile statt 40. Gegen 5.126.0: Funktion fehlt.
+H="$T/hinweis proj"; mkdir -p "$H/.claude/rules" "$H/Learnings" "$H/forschung" "$H/vendor/tief" "$H/klein" "$H/tests"
+printf '# P\n\nIn `Learnings/` liegen Einmal-Messungen.\n' > "$H/CLAUDE.md"
+for i in 1 2 3 4 5 6; do printf 'x\n' > "$H/Learnings/m$i.py"; printf 'x\n' > "$H/forschung/befund$i.py"; printf 'x\n' > "$H/tests/test_$i.py"; done
+i=1; while [ $i -le 40 ]; do printf 'x\n' > "$H/vendor/tief/v$i.py"; i=$((i+1)); done
+printf 'x\n' > "$H/klein/a.py"; printf 'x\n' > "$H/klein/b.sh"
+_O=$(mind_ordner_hinweise "$H" 2>&1); _RC=$?
+pruef "rc 0 (Hinweis, kein Befund)" 0 "ok" "$_RC" "ok"
+pruef "Learnings/ genannt (Satz in CLAUDE.md) -> still" 0 "ok" "$(printf '%s\n' "$_O" | grep -c 'Ordner Learnings/')" "ok"
+pruef "forschung/: 6 Skripte, nirgends genannt -> EINE Zeile" 1 "ok" "$(printf '%s\n' "$_O" | grep -c 'Ordner forschung/: 6 Skripte')" "ok"
+pruef "vendor/ (40 Dateien in Unterordnern) -> EINE Zeile, nicht 40" 1 "ok" "$(printf '%s\n' "$_O" | grep -c 'Ordner vendor/: 40 Skripte')" "ok"
+pruef "klein/ (2 < 5) -> still" 0 "ok" "$(printf '%s\n' "$_O" | grep -c 'Ordner klein/')" "ok"
+pruef "tests/ ausgenommen -> still" 0 "ok" "$(printf '%s\n' "$_O" | grep -c 'Ordner tests/')" "ok"
+pruef "Regler MIND_ORDNER_HINWEIS_AB=50: auch vendor/ still" 0 "ok" "$(MIND_ORDNER_HINWEIS_AB=50 mind_ordner_hinweise "$H" 2>&1 | grep -c 'Ordner ')" "ok"
+printf '\nDazu `forschung/` mit Messskripten.\n' >> "$H/CLAUDE.md"
+pruef "ein Satz in CLAUDE.md (\`forschung/\`) macht den Hinweis still" 0 "ok" "$(mind_ordner_hinweise "$H" 2>&1 | grep -c 'Ordner forschung/')" "ok"
+pruef "mind-files Step 6 ruft mind_ordner_hinweise" 1 "ok" "$(grep -c '^mind_ordner_hinweise "\$PROJ"' "$CLAUDE_PLUGIN_ROOT/skills/mind-files/SKILL.md")" "ok"
+
 rm -rf "$T"
 
 echo

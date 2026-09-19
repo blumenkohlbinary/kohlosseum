@@ -263,6 +263,46 @@ _mind_rotate() {
   done
 }
 
+# --- mind_ordner_hinweise: Ordner voller Skripte, die nirgends genannt sind (v5.127.0, Etappe 38 §7) ---
+# ⛔ GEMESSEN 19.09.2026 (docs/plugin/tools-have-rules-messung-20260919.md): 2 783 .py/.sh in vier
+#    Projekten ausserhalb von tools/ und Wurzel, die keine Context-Datei nennt — und KEINE davon ist
+#    ein totes Werkzeug (vendored Repos, Einmal-Messungen, Modulquellen). Ein breiter Scan haette
+#    ~2 780 Fehlalarme und 0 Treffer. Deshalb bleibt mind_check_tools_have_rules bei der Nennungs-Regel,
+#    und hier gibt es nur einen HINWEIS je Top-Level-Ordner: >= MIND_ORDNER_HINWEIS_AB (5) Skripte,
+#    von denen keines genannt ist, UND der Ordnername selbst kommt in CLAUDE.md/Rules nicht vor.
+#    Kein Befund, keine Debug-Zeile, kein FAIL — ein Satz in CLAUDE.md entscheidet.
+# Ausgabe: je Ordner eine Zeile; rc immer 0. Ausgenommen: tests, Beispiele, dist, build, node_modules,
+# __pycache__, .git, .claude-mind, .venv/venv und alles, was git ignoriert (git ls-files --exclude-standard).
+mind_ordner_hinweise() {
+  local proj="${1:-}" ab="${MIND_ORDNER_HINWEIS_AB:-5}" kontext liste f top n
+  [ -d "$proj" ] || return 0
+  case "$ab" in ''|*[!0-9]*) ab=5 ;; esac
+  kontext="${TMPDIR:-/tmp}/.mind_ordner_ktx_$$"; liste="${TMPDIR:-/tmp}/.mind_ordner_liste_$$"
+  cat "$proj/CLAUDE.md" "$proj"/.claude/rules/*.md > "$kontext" 2>/dev/null
+  if git -C "$proj" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    git -C "$proj" ls-files --cached --others --exclude-standard 2>/dev/null | grep -E '\.(py|sh)$' > "$liste"
+  else
+    ( cd "$proj" && find . -type f \( -name '*.py' -o -name '*.sh' \) 2>/dev/null | sed 's|^\./||' ) > "$liste"
+  fi
+  # nur Unterordner, Ausnahmen raus, dann je Top-Level-Ordner die UNGENANNTEN zaehlen
+  local _z="${TMPDIR:-/tmp}/.mind_ordner_z_$$"; : > "$_z"
+  while IFS= read -r f; do
+    case "$f" in */*) ;; *) continue ;; esac
+    top="${f%%/*}"
+    case "/$f/" in */tests/*|*/Beispiele/*|*/dist/*|*/build/*|*/node_modules/*|*/__pycache__/*|*/.git/*|*/.claude-mind/*|*/.venv/*|*/venv/*) continue ;; esac
+    grep -qF -- "$(basename "$f")" "$kontext" 2>/dev/null && continue
+    printf '%s\n' "$top" >> "$_z"
+  done < "$liste"
+  sort "$_z" | uniq -c | while read -r n top; do
+    [ "$n" -ge "$ab" ] 2>/dev/null || continue
+    grep -qF -- "$top/" "$kontext" 2>/dev/null && continue        # der Ordner selbst ist genannt
+    grep -qF -- "\`$top\`" "$kontext" 2>/dev/null && continue
+    echo "  ⚠ Ordner $top/: $n Skripte, nirgends genannt — Werkzeug oder Material? Ein Satz in CLAUDE.md entscheidet (Hinweis, kein Befund)"
+  done
+  rm -f "$kontext" "$liste" "$_z"
+  return 0
+}
+
 # --- mind_check_tools_have_rules: die "No Dead Tools"-Invariante MESSEN (NEU v5.2.1) ---
 # Bis v5.2.0 stand die Invariante als Prosa im Self-Check-Block von mind-files ("1:1
 # Tool->Rule-Nachweis") — und Prosa kann sich nicht selbst pruefen. Gemeldet 2026-08-16 als

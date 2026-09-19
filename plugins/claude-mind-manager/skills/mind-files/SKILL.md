@@ -1085,7 +1085,12 @@ User darf zurueckweisen mit "Self-Check-Block fehlt — bitte Step 1 ausfuehren"
 ```bash
 source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 mind_check_tools_have_rules "$PROJ"; TOOLCHECK_RC=$?
+mind_ordner_hinweise "$PROJ"      # v5.127.0: HINWEIS je Top-Level-Ordner mit >= 5 ungenannten Skripten, kein Befund
 ```
+⚠ **`mind_ordner_hinweise` ist ein Hinweis, kein Befund** (Etappe 38 §7, gemessen 19.09.2026:
+2 783 ungenannte Skripte in vier Projekten, 0 tote Werkzeuge — `docs/plugin/tools-have-rules-messung-20260919.md`).
+Die Invariante bleibt bei der Nennungs-Regel; der Hinweis nennt nur Ordner, die kein Satz in
+`CLAUDE.md`/Rules erwaehnt (`MIND_ORDNER_HINWEIS_AB`, Vorgabe 5). Er erzeugt keine Debug-Zeile und kein FAIL.
 Die **woertliche Ausgabe** kommt in den Block — nicht paraphrasiert, nicht gekuerzt. Bei
 `TOOLCHECK_RC=1` MUSS der Report das als **verletzte Invariante** ausweisen und die fehlende
 Rule nachtragen.
