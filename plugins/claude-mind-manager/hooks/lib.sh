@@ -1335,6 +1335,29 @@ mind_sync_voll() {
   [ "$teil" -eq 0 ]
 }
 
+# _mind_fehlt_liste <bilanz-text>
+# ⛔ v5.130.0 (Etappe 42, Noras Fund Palvedo 20.09.2026, Lauf 20260920-165055): die Bilanz
+#    meldete `FEHLT: mind-rules/cleaner_duplikate` (Pflichtschritt nie quittiert) — und
+#    mind_umfang_bilden las nur GELAUFEN/TEIL, mind_ungepruef_bilden nur TEILABDECKUNG/FORMAL:
+#    mind_sync_voll sagte rc 0 bei einem UEBERSPRUNGENEN Schritt (Nutzer 16.09.: „nix
+#    uebersprungen oder verschoben"). Die Erkennung war da, die Buchfuehrung schwieg.
+#    Hier: die FEHLT-Zeile, ein Eintrag je Zeile als <skill>:<schritt>. Namen ohne `/`
+#    stammen aus dem ERSTEN Block — mit --alle der Kopf-Block (mind-all); fehlt der Kopf
+#    (FORMAL: mind-all), steht `unbekannt`. Leer oder unparsbar (zwei `/`, leere Seite):
+#    nichts — fail-safe in derselben Richtung wie umfang=.
+_mind_fehlt_liste() {
+  local bil="${1:-}" z erst="mind-all" t
+  printf '%s\n' "$bil" | grep -q 'FORMAL: mind-all (kein Kopf-Block' && erst="unbekannt"
+  z=$(printf '%s\n' "$bil" | sed -n 's/^.*FEHLT (= noch nicht quittiert, NICHT tot)://p' | head -1)
+  for t in $z; do
+    case "$t" in
+      */*/*|/*|*/) continue ;;
+      */*) printf '%s:%s\n' "${t%%/*}" "${t#*/}" ;;
+      *)   printf '%s:%s\n' "$erst" "$t" ;;
+    esac
+  done
+}
+
 # mind_umfang_bilden <projekt> [laufkennung] [agent-soll]
 # ⛔ v5.105.0 (Etappe 13 a): der Wert von `umfang=` wird HIER gebildet — aus
 #    mind_agent_bilanz, mind_schritt_bilanz --alle und der Laufspur analyzed-scopes.
@@ -1343,9 +1366,12 @@ mind_sync_voll() {
 #    `0/N abdeckung` — kein Wert kam aus einer Datei. Dieselbe Regel wie v5.97.0 fuer
 #    die Agent-Quittung: was die Bilanz sagt, steht im Merker; was jemand meint, nicht.
 #    Ausgabe: `<a>/<b> skills <c>/<d> agents <e>/5 bestand <f>/<g> abdeckung <h>/5 echt`
+# ⛔ v5.130.0 (Etappe 42): `abdeckung` zaehlt einen nie quittierten Pflichtschritt (FEHLT) im
+#    NENNER mit — `<gel-teil>/<gel+fehlt>`; ein Block mit FEHLT ist damit TEIL, nicht voll.
+#    Ohne FEHLT-Zeile ist der Wert byteweise der von v5.129.0.
 mind_umfang_bilden() {
   local proj="${1:-}" lauf="${2:-}" soll="${3:-4}" sc bil abd
-  local skill_ist best dis ueb gel teil formal
+  local skill_ist best dis ueb gel teil formal fehlt
   sc="$proj/.claude-mind/analyzed-scopes"; [ -f "$sc" ] || sc="$proj/.claude-mind/analyzed-scopes.done"
   if [ -n "$lauf" ]; then skill_ist=$(grep -c "^skill=.*|$lauf\$" "$sc" 2>/dev/null)
   else skill_ist=$(grep -c '^skill=' "$sc" 2>/dev/null); fi
@@ -1365,8 +1391,9 @@ mind_umfang_bilden() {
   formal=$(printf '%s\n' "$abd" | grep -c '^ *FORMAL: mind-\(files\|claudemd\|memory\|rules\|update\) ')
   case "${formal:-}" in ''|*[!0-9]*) formal=0 ;; esac
   [ "$formal" -gt 5 ] && formal=5
+  fehlt=$(_mind_fehlt_liste "$abd" | grep -c .); case "${fehlt:-}" in ''|*[!0-9]*) fehlt=0 ;; esac
   printf '%s/5 skills %s/%s agents %s/5 bestand %s/%s abdeckung %s/5 echt\n' \
-    "$skill_ist" "$dis" "$soll" "$best" "$((gel - teil))" "$gel" "$((5 - formal))"
+    "$skill_ist" "$dis" "$soll" "$best" "$((gel - teil))" "$((gel + fehlt))" "$((5 - formal))"
 }
 
 # mind_ungepruef_bilden <projekt> [laufkennung]
@@ -1376,7 +1403,8 @@ mind_umfang_bilden() {
 #    `letzter-sync` geschrieben, zu Unrecht. Quellen: mind_agent_bilanz (UNGEPRUEFT je
 #    Bereich, nie dispatchte Bereiche aus dem Ausschnitt des letzten Laufs), analyzed-scopes
 #    (`bestand=` je Skill), mind_schritt_bilanz --alle (TEILABDECKUNG, FORMAL inkl.
-#    mind-all). Handzusaetze haengt der Aufrufer als `hand:<text>` AN, er ersetzt nichts.
+#    mind-all, seit v5.130.0 auch FEHLT als `fehlt-<skill>:<schritt>` — Etappe 42, Noras
+#    Fund). Handzusaetze haengt der Aufrufer als `hand:<text>` AN, er ersetzt nichts.
 mind_ungepruef_bilden() {
   local proj="${1:-}" q ab tmp bil abd sc out="" _b _s _n
   q="$proj/.claude-mind/agent-quittung.jsonl"
@@ -1402,6 +1430,9 @@ mind_ungepruef_bilden() {
   done
   for _n in $(printf '%s\n' "$abd" | sed -n 's/^ *FORMAL: \([^ ]*\) .*/\1/p' | sort -u); do
     out="${out}formal-${_n},"
+  done
+  for _n in $(_mind_fehlt_liste "$abd" | sort -u); do
+    out="${out}fehlt-${_n},"
   done
   printf '%s\n' "${out%,}"
 }
@@ -2872,13 +2903,18 @@ mind_schritt_bilanz() {
     # FEHLT je Block: Start-Zeile i bis vor Start-Zeile i+1
     _bn=$(grep -c '"ereignis":"start"' "$_bl" 2>/dev/null); case "$_bn" in ''|*[!0-9]*) _bn=0 ;; esac
     if [ "$_bn" -gt 1 ]; then
-      local _starts _i=1 _von _bis _blk="${TMPDIR:-/tmp}/.mind_schritt_c$$"
+      local _starts _i=1 _von _bis _letzt _blk="${TMPDIR:-/tmp}/.mind_schritt_c$$"
       _starts=$(grep -n '"ereignis":"start"' "$_bl" | cut -d: -f1 | tr '\n' ' ')
       for _von in $_starts; do
         _bis=$(printf '%s\n' $_starts | sed -n "$((_i + 1))p"); _i=$((_i + 1))
         if [ -n "$_bis" ]; then sed -n "${_von},$((_bis - 1))p" "$_bl" > "$_blk"; else sed -n "${_von},\$p" "$_bl" > "$_blk"; fi
         _skill=$(head -1 "$_blk" | sed -n 's/.*"skill":"\([^"]*\)".*/\1/p')
         [ "$_i" -eq 2 ] && continue   # der erste Block ist oben schon gegen $erwartet gefahren
+        # ⛔ v5.130.0 (Etappe 42): nur der LETZTE Block je Skill — ein spaeter VOLLSTAENDIG neu
+        #    gefahrener Block heilt das FEHLT des frueheren (Reparatur 2.96a-R), wie v5.122.0 fuer
+        #    FORMAL. Sonst bliebe der Lauf nach der Reparatur fuer immer teil.
+        _letzt=$(grep -n '"ereignis":"start"' "$_bl" | grep "\"skill\":\"$_skill\"" | tail -1 | cut -d: -f1)
+        [ "$_letzt" = "$_von" ] || continue
         for _bname in $(head -1 "$_blk" | sed 's/.*"erwartet":"\([^"]*\)".*/\1/'); do
           grep -q "\"name\":\"$_bname\"" "$_blk" 2>/dev/null || fehlt="$fehlt $_skill/$_bname"
         done

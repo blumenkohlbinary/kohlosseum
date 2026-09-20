@@ -215,6 +215,46 @@ rm -rf "$P"
 janein "mind-all: der Satz steht oben (Teilsync ist kein Ergebnis)" ja "$(grep -q 'Ein Teilsync ist kein Ergebnis' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && echo ja || echo nein)"
 janein "mind-all: Reparatur ohne Pass-Limit, Meldung nach dem zweiten Pass, sync-stand nur bei ja" ja "$(grep -q 'while \[ "$(mind_lauf_voll "$PROJ" "${LAUF:-}" "${AGENT_SOLL:-4}")" = "teil" \]; do' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && grep -q '_PASS" -eq 2 \] && mind_teilsync_meldung' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && grep -q '\[ "$SYNC_LIEF" = "ja" \]; then' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && ! grep -q '"$SYNC_LIEF" = "teil" \] && \' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && echo ja || echo nein)"
 
+# --- 6f · v5.130.0 (Etappe 42, Noras Fund Palvedo 20.09.2026): FEHLT ist Teilsync ------
+#     Lauf 20260920-165055: `cleaner_duplikate` im mind-rules-Block nie quittiert, die Bilanz
+#     sagte FEHLT — mind_umfang_bilden las nur GELAUFEN/TEIL, mind_ungepruef_bilden nur
+#     TEILABDECKUNG/FORMAL: mind_lauf_voll sagte voll. Gegen 5.129.0: die vier FEHLT-Faelle rot.
+P=$(neu_projekt); Q="$P/.claude-mind/agent-quittung.jsonl"; SQ="$P/.claude-mind/schritt-quittung.jsonl"
+_ALT=$(date -u -d '-120 seconds' +%Y-%m-%dT%H:%M:%SZ); _NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+printf 'run_started=1\nskill=mind-files|L1\nskill=mind-claudemd|L1\nskill=mind-memory|L1\nskill=mind-rules|L1\nskill=mind-update|L1\nbestand=mind-files:3/3\nbestand=mind-claudemd:3/3\nbestand=mind-memory:3/3\nbestand=mind-rules:3/3\nbestand=mind-update:3/3\n' > "$P/.claude-mind/analyzed-scopes"
+mind_agent_quittung_start "$P" 4
+for b in claude-md memory rules; do
+  printf '{"ereignis":"dispatch","bereich":"%s","ts":"%s"}\n' "$b" "$_ALT" >> "$Q"
+  printf 'x%.0s' $(seq 1 300) > "$P/.claude-mind/agent-$b.md"
+  mind_agent_ergebnis "$b" --datei "$P/.claude-mind/agent-$b.md" "$P" >/dev/null 2>&1
+done
+mind_agent_uebersprungen custom-context 0 "$P" >/dev/null 2>&1
+printf '{"ereignis":"start","skill":"mind-all","erwartet":"mind_snapshot","ts":"%s","code":"5.130.0","text":"5.130.0","versionsbruch":false}\n{"ereignis":"schritt","name":"mind_snapshot","status":"gelaufen","bytes":10,"ts":"%s"}\n' "$_ALT" "$_ALT" > "$SQ"
+i=0; for s in mind-files mind-claudemd mind-memory mind-rules mind-update; do i=$((i+1))
+  _E="verdichten"; [ "$s" = mind-rules ] && _E="cleaner_duplikate verdichten"   # Noras Block: zwei erwartet, einer quittiert
+  printf '{"ereignis":"start","skill":"%s","erwartet":"%s","ts":"%s","code":"5.130.0","text":"5.130.0","versionsbruch":false}\n{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"%s"}\n' "$s" "$_E" "$(date -u -d "-$((3600 - i * 600)) seconds" +%Y-%m-%dT%H:%M:%SZ)" "$_NOW" >> "$SQ"
+done
+janein "Bilanz sagt FEHLT fuer mind-rules/cleaner_duplikate (unveraendert seit v5.97.0)" ja "$(mind_schritt_bilanz "$P" --alle 2>/dev/null | grep -q 'FEHLT.*mind-rules/cleaner_duplikate' && echo ja || echo nein)"
+janein "⛔ ungepruef nennt fehlt-mind-rules:cleaner_duplikate" ja "$(mind_ungepruef_bilden "$P" L1 | tr ',' '\n' | grep -qx 'fehlt-mind-rules:cleaner_duplikate' && echo ja || echo nein)"
+janein "⛔ umfang: abdeckung zaehlt den fehlenden Schritt im Nenner (1/2, nicht 1/1)" ja "$(mind_umfang_bilden "$P" L1 4 | grep -q ' 1/2 abdeckung ' && echo ja || echo nein)"
+janein "⛔ mind_lauf_voll: ein uebersprungener Pflichtschritt -> teil" teil "$(mind_lauf_voll "$P" L1 4 2>/dev/null)"
+printf 'ts=x\numfang=%s\nungepruef=%s\n' "$(mind_umfang_bilden "$P" L1 4)" "$(mind_ungepruef_bilden "$P" L1)" > "$P/.claude-mind/rescued/sync-stand"
+janein "⛔ mind_sync_voll auf dem Merker: rc 1" 1 "$(mind_sync_voll "$P/.claude-mind/rescued/sync-stand" >/dev/null 2>&1; echo $?)"
+# Reparatur = Block vollstaendig erneut fahren: neuer mind-rules-Block mit BEIDEN Schritten -> voll
+# (der fruehere, unvollstaendige Block bleibt in der Datei — nur der LETZTE Block je Skill zaehlt)
+printf '{"ereignis":"start","skill":"mind-rules","erwartet":"cleaner_duplikate verdichten","ts":"%s","code":"5.130.0","text":"5.130.0","versionsbruch":false}\n{"ereignis":"schritt","name":"cleaner_duplikate","status":"gelaufen","bytes":40,"ts":"%s"}\n{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"%s"}\n' "$_NOW" "$_NOW" "$_NOW" >> "$SQ"
+janein "   Reparatur: mind-rules-Block vollstaendig neu gefahren -> voll" voll "$(mind_lauf_voll "$P" L1 4 2>/dev/null)"
+janein "   ... und ungepruef ist leer" "" "$(mind_ungepruef_bilden "$P" L1)"
+# Kopf-Block: ein Skill fehlt in der Erwartung von mind-all -> fehlt-mind-all:<skill>
+printf '{"ereignis":"start","skill":"mind-all","erwartet":"mind_snapshot mind-files","ts":"%s","code":"5.130.0","text":"5.130.0","versionsbruch":false}\n{"ereignis":"schritt","name":"mind_snapshot","status":"gelaufen","bytes":10,"ts":"%s"}\n' "$_NOW" "$_NOW" > "$SQ"
+janein "   Kopf-Block ohne Skill-Quittung: fehlt-mind-all:mind-files (Name ohne / = erster Block)" ja "$(mind_ungepruef_bilden "$P" L1 | tr ',' '\n' | grep -qx 'fehlt-mind-all:mind-files' && echo ja || echo nein)"
+# Fail-safe: unparsbare Namen (zwei /, leere Seite) werden nicht zu Eintraegen
+janein "   Fail-safe: 'a/b/c' und '/x' ergeben keinen Eintrag, 'mind-rules/x' einen" "mind-rules:x" "$(_mind_fehlt_liste '  ⛔ FEHLT (= noch nicht quittiert, NICHT tot): a/b/c /x mind-rules/x')"
+janein "   Fail-safe: Bilanz ohne FEHLT-Zeile -> nichts" "" "$(_mind_fehlt_liste 'ERWARTET=1 GELAUFEN=1 UEBERSPRUNGEN=0 FEHLER=0 LEER=0 TEIL=0')"
+rm -rf "$P"
+# Text-Gate: 2.96a-R kennt den Eintrag und verlangt den ganzen Block
+janein "mind-all 2.96a-R: fehlt-<skill>:<schritt> -> Skill-Block VOLLSTAENDIG erneut fahren" ja "$(grep -q 'fehlt-<skill>:<schritt> -> der Pflichtschritt wurde NIE quittiert' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && grep -q 'Skill-Block VOLLSTAENDIG erneut fahren' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && echo ja || echo nein)"
+
 # --- 7 · gar kein Merker ist nicht unsere Frage ---------------------------
 P=$(neu_projekt)
 janein "kein sync-stand -> vollstaendig" voll "$(voll_p "$P/.claude-mind/rescued/sync-stand")"

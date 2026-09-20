@@ -57,7 +57,7 @@ MIND_SKILL_VERSION="5.124.0"
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.129.0"
+MIND_SKILL_VERSION="5.130.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 # ⛔ v5.98.0: die fuenf Skills sind KEINE Schritte von mind-all — jeder hat seinen EIGENEN
 #    Start-Block (Step 2, Punkt 1). Bis v5.97.0 standen sie hier, Ritas Kalibrierlauf hakte
@@ -832,7 +832,9 @@ UMFANG=$(mind_umfang_bilden "$PROJ" "${LAUF:-}" "${AGENT_SOLL:-4}")
 # ⛔ v5.106.0 (Etappe 14 §2): `ungepruef=` kommt aus `mind_ungepruef_bilden` — nie
 #    dispatchte und UNGEPRUEFT-Bereiche aus der Agent-Bilanz, `bestand-<skill>` ohne
 #    Quittung, `abdeckung-<schritt>` aus TEILABDECKUNG, `formal-<skill>` inkl.
-#    `formal-mind-all`. Gemessen 14.09.2026 (Creator, Doro): Bilanz LEER=4 + FORMAL=1,
+#    `formal-mind-all`, `fehlt-<skill>:<schritt>` aus FEHLT (v5.130.0, Etappe 42 — Noras
+#    Palvedo-Lauf 20.09.2026: `cleaner_duplikate` im mind-rules-Block nie quittiert, Bilanz
+#    sagte FEHLT, der Merker sagte voll). Gemessen 14.09.2026 (Creator, Doro): Bilanz LEER=4 + FORMAL=1,
 #    Merker von Hand „voll" — OPEN getilgt, `letzter-sync` geschrieben, zu Unrecht.
 #    ⛔ NIE `UNGEPRUEFT="..."` aus Schleifen bauen. Was der Lauf SELBST weiss (z. B. ein
 #    Bereich, den kein Werkzeug sieht), haengt er in UNGEPRUEFT_HAND an — es wird als
@@ -867,6 +869,11 @@ darf nix uebersprungen werden oder verschoben."*
 #                          stirbt er, engerer Auftrag, wieder JETZT (workflow-agent-rate-limit.md)
 #   bestand-<skill>     -> den Bestands-Pass des Skills nachfahren, bestand= quittieren
 #   abdeckung-<schritt> -> den Schritt nachfahren und mit --datei quittieren
+#   fehlt-<skill>:<schritt> -> der Pflichtschritt wurde NIE quittiert (uebersprungen): den
+#                          Skill-Block VOLLSTAENDIG erneut fahren — alle Schritte seiner
+#                          Erwartung, jeden quittieren; nicht den einen Schritt nachtippen
+#                          (v5.130.0). `fehlt-mind-all:<skill>` heisst: der Skill fehlt im
+#                          Kopf-Block — nach seinem Block dort quittieren
 #   formal-mind-all     -> kann seit §1 nicht mehr entstehen; steht es doch da: Kopf-Block und
 #                          die fuenf Bloecke erneut, in dieser Reihenfolge
 _PASS=0

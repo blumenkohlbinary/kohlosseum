@@ -156,6 +156,14 @@ janein "alle weisen die Bilanz im Bericht aus" "" \
        grep -q 'mind_schritt_bilanz' "$s" || printf ' %s' "$(basename "$(dirname "$s")")"; done)"
 
 echo
+echo "== v5.130.0 (Etappe 42): die FEHLT-Zeile ist maschinenlesbar — _mind_fehlt_liste =="
+# Noras Fund 20.09.2026: FEHLT stand in der Bilanz, erreichte aber weder umfang= noch ungepruef=.
+janein "Block-Name mit / -> <skill>:<schritt>" "mind-rules:cleaner_duplikate" "$(_mind_fehlt_liste '  ⛔ FEHLT (= noch nicht quittiert, NICHT tot): mind-rules/cleaner_duplikate')"
+janein "Name ohne / (erster Block) -> mind-all:<name>" "mind-all:audit" "$(_mind_fehlt_liste 'x
+  ⛔ FEHLT (= noch nicht quittiert, NICHT tot): audit')"
+janein "ohne Kopf-Block (FORMAL: mind-all) -> unbekannt:<name>" "unbekannt:audit" "$(_mind_fehlt_liste '  FORMAL: mind-all (kein Kopf-Block — x)
+  ⛔ FEHLT (= noch nicht quittiert, NICHT tot): audit')"
+
 echo "== ⛔ Noras Befund 3: FEHLT heisst noch nicht quittiert, nicht tot =="
 # ⭐ Gemessen in Palvedo: ein LEBENDER Lauf schwieg 72 Sekunden, und die Bilanz
 #    sah dabei aus wie bei einem gestorbenen. Eine Quittung ist ein
