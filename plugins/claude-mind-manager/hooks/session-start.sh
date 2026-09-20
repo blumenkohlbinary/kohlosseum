@@ -118,6 +118,21 @@ fi
 SID=""
 command -v jq >/dev/null 2>&1 && SID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null)
 [ -z "$SID" ] && SID="nosession"
+
+# ⛔ v5.130.0 (Etappe 42 §3): DAS ROLLEN-GATE GALT HIER NICHT. v5.54.0 legte die Schuld-Mahnung
+#    fuer manager/arbeiter in `prompt-submit.sh` still — dieser Hook mahnte weiter, und nach
+#    einer Kompaktierung ist er der ERSTE, der spricht: Nils (arbeiter, Kennung im Roster) bekam
+#    am 20.09.2026 die OPEN-Mahnung samt „/mind-all ZUERST" fuer Ritas Werkzeug. Dieselbe
+#    Abfrage wie dort (rollen-gate.sh, entschieden in mind_sync_zustaendig): nur bei einem
+#    POSITIVEN Treffer still, ohne Roster/Kennung/jq wie bisher. Die UEBERGABE oben bleibt laut.
+#    Kein SEEN-Merker im stillen Fall — die Schuld ist nicht „gemeldet", sie gehoert einer anderen.
+if [ "$SID" != "nosession" ] && [ -f "$PROJ/.claude/rules/rollen.md" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] \
+   && [ -f "$CLAUDE_PLUGIN_ROOT/hooks/rollen-gate.sh" ]; then
+  if _RROLLE=$(bash "$CLAUDE_PLUGIN_ROOT/hooks/rollen-gate.sh" "$SID" "$PROJ" 2>/dev/null); then
+    _slog INFO "Rollen-Gate: still (Rolle ${_RROLLE:-?}, der Sync gehoert einer anderen Sitzung, sid=$SID)"
+    exit 0
+  fi
+fi
 SEEN="${OPEN}.seen-${SID}"
 # Bewusstes Schweigen — der WICHTIGERE der beiden Eintraege: genau dieser Zustand sah in der
 # Fehlersuche vom 17.08.2026 aus wie "der Hook hat gar nicht gefeuert".

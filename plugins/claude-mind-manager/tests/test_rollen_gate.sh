@@ -234,6 +234,37 @@ pruef "am Hook: forschung ist still" "ja" "$(still_ps "$FORSCH")"
 sauber; schuld
 pruef "⭐ POSITIVKONTROLLE: der sync redet weiter" "nein" "$(still_ps "$SYNC")"
 
+echo "=== 16) ⛔ v5.130.0 (Etappe 42 §3): session-start.sh kennt das Gate — bis 5.129.0 nicht ==="
+#    Nils, 20.09.2026, nach einer Kompaktierung: der SessionStart-Hook mahnte dem arbeiter die
+#    OPEN-Schuld samt „/mind-all ZUERST", obwohl seine Kennung im Roster stand — nur
+#    prompt-submit.sh rief rollen-gate.sh. Gegen 5.129.0: die zwei still-Faelle rot.
+SS="$R/hooks/session-start.sh"
+schuld_ss() {  # schuld_ss <sid> -> ja|nein  (steht die Schuld-Mahnung in der Ausgabe?)
+  rm -f "$P/.claude-mind/rescued/OPEN.seen-"* 2>/dev/null
+  echo '{"cwd":"'"$P"'","session_id":"'"$1"'","source":"startup"}' > "$TMP/ssin.json"
+  C=$(CLAUDE_PLUGIN_ROOT="$R" CLAUDE_PROJECT_DIR="$P" bash "$SS" < "$TMP/ssin.json" 2>/dev/null)
+  case "$C" in *'OFFENE Sync-Schuld'*) echo ja ;; *) echo nein ;; esac
+}
+roster "$SYNC"; schuld
+pruef "session-start: arbeiter -> KEINE Schuld-Mahnung" "nein" "$(schuld_ss "$ARB")"
+pruef "   ... und kein SEEN-Merker fuer ihn (die Schuld gehoert einer anderen)" "nein" "$([ -f "$P/.claude-mind/rescued/OPEN.seen-$ARB" ] && echo ja || echo nein)"
+pruef "session-start: manager -> KEINE Schuld-Mahnung" "nein" "$(schuld_ss "$MGR")"
+pruef "⭐ POSITIVKONTROLLE: der sync bekommt sie weiter" "ja" "$(schuld_ss "$SYNC")"
+pruef "⛔ FAIL-SAFE: fremde Kennung wird weiter gemahnt" "ja" "$(schuld_ss "$FREMD")"
+roster ""
+pruef "⭐ sync-Zeile ohne Kennung: arbeiter wird weiter gemahnt (niemand sonst zustaendig)" "ja" "$(schuld_ss "$ARB")"
+rm -f "$P/.claude/rules/rollen.md"
+pruef "ohne Roster: wie heute, arbeiter-Kennung wird gemahnt" "ja" "$(schuld_ss "$ARB")"
+roster "$SYNC"
+# die UEBERGABE bleibt laut — sie ist der Stand der Sitzung, die kompaktiert hat
+printf 'arbeitsstand=%s/as.json\n' "$P/.claude-mind/rescued" > "$P/.claude-mind/rescued/UEBERGABE-$ARB"
+printf '{"decisions":[{"text":"UEBERGABE-MARKE-42"}],"bugs":[],"files":[],"constraints":[],"total_events":1}\n' > "$P/.claude-mind/rescued/as.json"
+echo '{"cwd":"'"$P"'","session_id":"'"$ARB"'","source":"compact"}' > "$TMP/ssin.json"
+C=$(CLAUDE_PLUGIN_ROOT="$R" CLAUDE_PROJECT_DIR="$P" bash "$SS" < "$TMP/ssin.json" 2>/dev/null)
+hat "⭐ DIE UEBERGABE BLEIBT auch im session-start fuer den arbeiter" "UEBERGABE-MARKE-42" "$C"
+case "$C" in *'OFFENE Sync-Schuld'*) _S=ja ;; *) _S=nein ;; esac
+pruef "   ... und die Schuld-Mahnung fehlt trotzdem" "nein" "$_S"
+
 echo
 echo "  $GRUEN gruen · $ROT rot"
 [ "$ROT" -eq 0 ]
