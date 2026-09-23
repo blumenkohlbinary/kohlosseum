@@ -53,7 +53,7 @@ MIND_SKILL_VERSION="5.124.0"
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.130.0"
+MIND_SKILL_VERSION="5.131.0"
 mind_schritt_start "$PROJ" mind-cleaner bestandsaufnahme cleaner_audit cleaner_einordnung cleaner_grenzen cleaner_leitplanke cleaner_ratsche cleaner_rebuild cleaner_umzug ladeprotokoll_auswertung mind_debug_write mind_snapshot
 ```
 
@@ -157,6 +157,11 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_audit.py" --bereich "$PROJ"   # P
   der Stub, die Themenzahl sank nicht, der Memory-Deckel blieb rot. Danach
   `Learnings/memory_gates.py <snapshot>/memory --wurzel "$PROJ"` — Gate 3 liest den docs-Zeiger als
   gueltig, Gate 1/1b zaehlen den ausgelagerten Inhalt als wiedergefunden.
+  ⛔ **v5.131.0: `--wurzel` ist hier nicht mehr Komfort.** Gate 3 prueft damit auch, ob `CLAUDE.md`
+  oder `.claude/rules/*.md` noch auf eine entfernte `memory/<name>.md` zeigen (Veras Fund 23.09.2026,
+  zwei tote Zeiger eine Woche unbemerkt). Ohne `--wurzel` und ohne auffindbares Projekt steht
+  „Rules-Zeiger ungeprueft" im Bericht — das ist eine Luecke, kein gruenes Gate. **Nur melden:**
+  die Rules gehoeren dem arbeiter, das Memory der sync-Rolle; der Bericht nennt Datei:Zeile.
   ⛔ **v5.117.0 (Veras fuenf Zuege im Zustellplan):** die Zeile heisst
   `- [Titel](docs/<name>.md) — <alter Aufhaenger> (umgezogen nach docs, lies zuerst dort)` —
   Pfad PROJEKTRELATIV, der alte Aufhaenger bleibt (description nur ohne Aufhaenger, YAML-Escapes

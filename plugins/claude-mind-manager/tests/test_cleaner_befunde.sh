@@ -407,6 +407,46 @@ janein "   ... sondern als Zeiger-Nennung gezaehlt (>= 1)" ja "$(printf '%s\n' "
 janein "derselbe Satz ueber MIND_KEEP_X in beiden -> Gruppe 3 (echte Dopplung)" ja "$(printf '%s\n' "$U3" | grep -q 'keep_in_3=ja' && echo ja || echo nein)"
 rm -rf "$P"
 
+echo "== Etappe 43 (v5.131.0) §2: Migrationszeilen sind kein Selbstwiderspruch =="
+# Veras Lauf 23.09.2026 (Zustellplan): 11 von 11 Meldungen der Zahl-Nachbarschaft kamen aus der
+# Migrationstabelle von data-model.md. Gegen 5.130.0 sind die ersten beiden Faelle rot.
+P=$(mktemp -d); mkdir -p "$P/proj/.claude/rules"
+cat > "$P/proj/.claude/rules/m.md" <<'MDEOF'
+---
+description: a
+---
+# A
+
+| v26 | `_migrate_v26` | `wetter_regen_leicht` 10 -> 14 % |
+
+Text.
+
+Der Regen-Zuschlag `wetter_regen_leicht` steht bei 14 %.
+
+Text.
+
+Der Dauerkontext von `CLAUDE.md` misst 11434 B.
+
+Text.
+
+Seit dem Umbau misst `CLAUDE.md` 11435 B.
+MDEOF
+cat > "$P/w.py" <<'PYEOF'
+import os, sys
+sys.path.insert(0, os.environ["REF"])
+import cleaner_duplikate as d
+t = open(os.path.join(os.environ["PROJ"], ".claude", "rules", "m.md"), encoding="utf-8").read()
+nb = d.zahl_nachbarschaft(t)
+print("migration=%s" % ("ja" if any("wetter_regen_leicht" in x["marke"] for x in nb) else "nein"))
+print("echt=%s" % ("ja" if any("11434" in x["grund"] and "11435" in x["grund"] for x in nb) else "nein"))
+print("anzahl=%d" % len(nb))
+PYEOF
+U4=$(REF="$(w "$REF")" PROJ="$(w "$P/proj")" $PY "$(w "$P/w.py")" 2>&1)
+janein "Migrationszeile 10 nach 14 Prozent -> NICHT als Widerspruch gemeldet" ja "$(printf '%s\n' "$U4" | grep -q 'migration=nein' && echo ja || echo nein)"
+janein "   ⭐ der echte Widerspruch in DERSELBEN Datei bleibt laut" ja "$(printf '%s\n' "$U4" | grep -q 'echt=ja' && echo ja || echo nein)"
+janein "   ... und sonst nichts (genau 1 Befund)" ja "$(printf '%s\n' "$U4" | grep -q 'anzahl=1' && echo ja || echo nein)"
+rm -rf "$P"
+
 rm -rf "$P"
 
 echo

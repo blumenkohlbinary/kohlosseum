@@ -197,6 +197,25 @@ def _zahlen_in(zeile):
     return out
 
 
+_MIGRATION = re.compile(
+    r"(?:\d[\d./,%]*\s*(?:->|\u2192|=>|\u21d2)\s*\d)"       # 10 -> 14 · 12 \u2192 6 % · 10/15/25 \u2192 5/10/15
+    r"|_migrate_v\d+", re.IGNORECASE)                        # der Migrationsschritt selbst
+
+
+def ist_migrationszeile(zeile):
+    """v5.131.0 (Etappe 43 \u00a72, Veras Fund Zustellplan 23.09.2026): eine Zeile, die Alt- UND
+    Neuwert ABSICHTLICH nebeneinander nennt, ist kein Selbstwiderspruch \u2014 sie ist die Stelle,
+    an der die \u00c4nderung dokumentiert wird. Gemessen an `data-model.md`: 11 von 11 Meldungen der
+    Zahl-Nachbarschaft kamen aus der Migrationstabelle (`_migrate_v17` \u2026 `10/15/25 \u2192 5/10/15 %`),
+    keine einzige war ein Widerspruch.
+    \u26a0 Der Pfeil muss ZWISCHEN ZWEI ZAHLEN stehen \u2014 ein Prosa-Pfeil (`Hauptdatei \u2192 bei defekt`)
+    macht keine Migrationszeile, sonst faellt die halbe Datei aus der Pruefung.
+    ⛔ Und das blosse WORT „Migration" zaehlt NICHT: die erste Fassung nahm es mit auf und legte
+    damit eine `CLAUDE.md`-Zeile stumm, in der nur ein „Migrations-Workflow" erwaehnt war — gemessen
+    am selben Bestand 11 → 0 statt 11 → 1."""
+    return bool(_MIGRATION.search(zeile or ""))
+
+
 def zahl_nachbarschaft(text, min_abstand=1, toleranz=0.01):
     """v5.129.0 (Z382): dieselbe Marke, zwei Zahlen, die NAHE beieinander liegen (±1 %) — der
     Fall 11434 gegen 11435: `--widersprueche` prueft Marken-GLEICHHEIT, ein Nachbarwert ist eine
@@ -217,6 +236,10 @@ def zahl_nachbarschaft(text, min_abstand=1, toleranz=0.01):
             for y in range(x + 1, len(werte)):
                 (ia, za, na, la), (ib, zb, nb, lb) = werte[x], werte[y]
                 if abs(ia - ib) < min_abstand:
+                    continue
+                # v5.131.0 (\u00a72): eine Migrationszeile auf EINER Seite reicht \u2014 der Nachbarwert
+                #   steht dort mit Absicht. Die Dopplungs-Pruefung (einordnen) bleibt unberuehrt.
+                if ist_migrationszeile(za) or ist_migrationszeile(zb):
                     continue
                 grund = None
                 for a in na:
@@ -1129,6 +1152,29 @@ def selbsttest():
     pruef("4/6/7 gegen 4/5/6/7 (Teilmenge) -> gemeldet", any("4/6/7" in x["grund"] for x in nb), True)
     zg = schreib("zg.md", "# Z\n\nDer Dauerkontext von `CLAUDE.md` misst 11434 B.\n\nAbsatz.\n\nGrenze fuer `CLAUDE.md`: 200 Zeilen.\n")
     pruef("   Gegenprobe: 11434 gegen 200 (weit auseinander) -> still", zahl_nachbarschaft(_inhalt(zg)), [])
+
+    # 2e) v5.131.0 (Etappe 43 §2, Veras Fund Zustellplan 23.09.2026): eine Migrationstabelle nennt
+    #     Alt- und Neuwert ABSICHTLICH nebeneinander. 11 von 11 Meldungen an `data-model.md` kamen
+    #     von dort. ⛔ Der echte Widerspruch IN DERSELBEN DATEI muss trotzdem gemeldet werden —
+    #     sonst waere die Sperre ein Maulkorb statt eines Filters.
+    zm = schreib("zm.md", "# M\n\n| v26 | `_migrate_v26` | `wetter_regen_leicht` 10 -> 14 % |\n\nAbsatz.\n\n"
+                          "Der Regen-Zuschlag `wetter_regen_leicht` steht bei 14 %.\n\nAbsatz.\n\n"
+                          "| v25 | `_migrate_v25` | `wetter_hitze` 12 \u2192 6 % |\n\nAbsatz.\n\n"
+                          "Der Dauerkontext von `CLAUDE.md` misst 11434 B.\n\nAbsatz.\n\n"
+                          "Seit dem Umbau misst `CLAUDE.md` 11435 B.\n")
+    nm = zahl_nachbarschaft(_inhalt(zm))
+    pruef("Migrationszeile `10 -> 14 %` -> KEIN Widerspruch",
+          any("wetter_regen_leicht" in x["marke"] for x in nm), False)
+    pruef("   auch mit Unicode-Pfeil `12 \u2192 6 %`",
+          any("wetter_hitze" in x["marke"] for x in nm), False)
+    pruef("   ⭐ der echte Widerspruch in DERSELBEN Datei bleibt gemeldet",
+          any("11434" in x["grund"] and "11435" in x["grund"] for x in nm), True)
+    pruef("ist_migrationszeile: `10/15/25 \u2192 5/10/15 %`", ist_migrationszeile("Steigung 10/15/25 \u2192 5/10/15 %"), True)
+    pruef("   `_migrate_v17` ohne Pfeil", ist_migrationszeile("| v17 | `_migrate_v17` | Steigung |"), True)
+    pruef("   ⛔ Prosa-Pfeil ohne Zahlen ist KEINE Migrationszeile",
+          ist_migrationszeile("`load_data()`: Hauptdatei \u2192 bei defekt: `.prev`"), False)
+    pruef("   ⛔ das blosse Wort „Migrations-Workflow“ auch nicht",
+          ist_migrationszeile("Named profiles + Daten-Modell + Migrations-Workflow (v12)"), False)
 
     # 3) ⭐ Zahlendrift — der Fall, den Textaehnlichkeit nie findet
     z1 = schreib("z1.md", "# A\n\n`MIND_NOTFALL_TOKENS` ist entfallen in v5.9.3.\n")

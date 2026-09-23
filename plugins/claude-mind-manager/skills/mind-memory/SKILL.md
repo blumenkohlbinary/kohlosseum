@@ -49,7 +49,7 @@ MIND_SKILL_VERSION="5.124.0"
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.130.0"
+MIND_SKILL_VERSION="5.131.0"
 mind_schritt_start "$PROJ" mind-memory bestandszahlen_kandidaten cleaner_stichprobe mind_debug_write mind_kontext_bilanz mind_scan_poisoning mind_snapshot verdichten
 ```
 
@@ -926,7 +926,7 @@ Lies sie.** Hier nur, was für Memory gilt:
 | **Kandidat** | die **GRÖSSTE** Topic-Datei unter `$MEMORY_DIR` in Bytes — **eine je Lauf** |
 | ⛔ **nie** | `MEMORY.md` — sie ist ein Index (`- [Titel](datei.md) — Aufhänger`), kein Inhalt; Kürzen dort heißt Zeiger löschen |
 | ⛔ **unantastbar, byteweise** | das Frontmatter (`---` … `---`: `name`, `description`, `type`) — die `description` ist das EINZIGE Signal des Auswählers (Grenze 5 je Anfrage, `env-vars.md`); jeder `[[wikilink]]`; jede Index-Zeile |
-| ⛔ **welches Programm liest sie** | `Learnings/memory_gates.py` (Gate 3: kein toter `[[Verweis]]`, Gate 4: `description` 40–200) · `mind_scan_poisoning` · der Auswähler von Claude Code (Name + `description`). ⚠ Gate 1 (Inhaltszeilen gleich) gilt für ZUSAMMENFÜHREN, nicht fürs Verdichten — hier zählt Stufe 1 des Gates |
+| ⛔ **welches Programm liest sie** | `Learnings/memory_gates.py` (Gate 3: kein toter `[[Verweis]]` — **und seit v5.131.0 kein Zeiger aus `CLAUDE.md`/`.claude/rules/*.md` auf eine entfernte `memory/<name>.md`**, Veras Fund 23.09.2026: zwei solche Zeiger lagen eine Woche; das Werkzeug MELDET sie mit Datei:Zeile, es schreibt nichts um — Gate 4: `description` 40–200) · `mind_scan_poisoning` · der Auswähler von Claude Code (Name + `description`). ⚠ Gate 1 (Inhaltszeilen gleich) gilt für ZUSAMMENFÜHREN, nicht fürs Verdichten — hier zählt Stufe 1 des Gates |
 | **Überholt-Kandidaten** | aus den Step-4-Befunden `stale` und `MIND_MEMORY_STALE_DAYS` (Zitate `file:line`, Versionsnummern älter als 14 Tage, gegengeprüft) — **benannt** an den Agenten |
 | **verwerfen, wenn** | Stufe 1 < 100 % · Marker unbenannt verloren · nicht kleiner · Zeilenenden geändert · Frontmatter oder ein `[[Verweis]]` verändert · Dauerkontext nach dem Anwenden nicht kleiner — ⚠ Topic-Dateien zählen dort NICHT mit; das Erfolgsmaß ist hier die Datei selbst |
 | ⛔ **Stufe 3** | der Wort-Diff wird GANZ gelesen, bevor angewendet wird. **Ohne Leser: nicht anwenden** — Ergebnis, Bericht, Diff ablegen, Pfad melden |
