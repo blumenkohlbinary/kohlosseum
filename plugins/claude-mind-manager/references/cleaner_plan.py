@@ -388,6 +388,24 @@ def memory_docs_zug(topic_p, docs_p, plan, nr, projekt=None):
     docs_rel = _docs_rel(docs_p, projekt)
     for p_w, k in wikilinks_umschreiben(os.path.dirname(topic_p), os.path.splitext(name)[0], docs_rel):
         print("     Wikilink: %s — %d x [[%s]] -> `%s`" % (os.path.basename(p_w), k, os.path.splitext(name)[0], docs_rel))
+    # ⛔ v5.132.0 (Etappe 43 §4a): WER UMZIEHT, SUCHT DEN ALTEN NAMEN PROJEKTWEIT.
+    #    Dieselbe Wurzel wie der Wikilink-Fall oben (17.09., 7bca190) und wie Veras
+    #    Rules-Zeiger (23.09.): der alte Name bleibt irgendwo stehen. Die Suche steht in
+    #    `references/namens_suche.py` — EINE Stelle, von beiden Wegen gerufen.
+    #    ⚠ NUR MELDEN: CLAUDE.md und die Rules gehoeren nicht diesem Werkzeug.
+    try:
+        import namens_suche as _ns
+        _rest = _ns.fundstellen(projekt, [name], os.path.dirname(topic_p))
+    except Exception as _e:
+        _rest = None
+        print("     ⚠ Namens-Suche nicht gefahren (%s) — der alte Name bleibt UNGEPRUEFT" % _e)
+    if _rest:
+        print("     ⚠ `%s` wird noch an %d Stelle(n) genannt — nur gemeldet, nichts umgeschrieben:"
+              % (name, len(_rest)))
+        for _f in _rest[:6]:
+            print("        %s" % _f)
+    elif _rest is not None:
+        print("     Namens-Suche: keine weitere Nennung von `%s` in CLAUDE.md, Rules, MEMORY.md, Topics" % name)
     print("     danach: python Learnings/memory_gates.py <snapshot>/memory --wurzel <projekt>  (Gate 3 liest den docs-Zeiger, v5.117.0)")
     return True, ""
 

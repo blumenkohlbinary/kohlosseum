@@ -164,6 +164,32 @@ janein "Name ohne / (erster Block) -> mind-all:<name>" "mind-all:audit" "$(_mind
 janein "ohne Kopf-Block (FORMAL: mind-all) -> unbekannt:<name>" "unbekannt:audit" "$(_mind_fehlt_liste '  FORMAL: mind-all (kein Kopf-Block — x)
   ⛔ FEHLT (= noch nicht quittiert, NICHT tot): audit')"
 
+echo "== v5.132.0 (Etappe 43 §4c, Veras Fall 23.09.2026): ein spaeterer Eintrag korrigiert den frueheren =="
+# `debug_auswertung gelaufen 49` war der Hilfetext nach rc 2; der korrekte Lauf lieferte 51 B.
+# Die Nachquittierung faellt in den Block, der gerade offen ist (mind-rules) — bis 5.131.0
+# zaehlte die Bilanz BEIDE und zeigte die 49. ⛔ Geloescht wird nichts, der fruehere Eintrag
+# bleibt in der Quittung und wird ausgewiesen. Gegen 5.131.0 sind die ersten beiden Faelle rot.
+D4=$(mktemp -d "${TMPDIR:-/tmp}/Mind V132 XXXX"); mkdir -p "$D4/.claude-mind"
+Q4="$D4/.claude-mind/schritt-quittung.jsonl"
+_t1=$(date -u -d '-1800 seconds' +%Y-%m-%dT%H:%M:%SZ); _t2=$(date -u -d '-1200 seconds' +%Y-%m-%dT%H:%M:%SZ)
+_t3=$(date -u -d '-600 seconds' +%Y-%m-%dT%H:%M:%SZ); _t4=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+{
+  printf '{"ereignis":"start","skill":"mind-all","erwartet":"debug_auswertung mind_snapshot","ts":"%s","code":"x","text":"x","versionsbruch":false}\n' "$_t1"
+  printf '{"ereignis":"schritt","name":"mind_snapshot","status":"gelaufen","bytes":10,"ts":"%s"}\n' "$_t1"
+  printf '{"ereignis":"schritt","name":"debug_auswertung","status":"gelaufen","bytes":49,"ts":"%s"}\n' "$_t1"
+  printf '{"ereignis":"start","skill":"mind-files","erwartet":"verdichten","ts":"%s","code":"x","text":"x","versionsbruch":false}\n' "$_t2"
+  printf '{"ereignis":"schritt","name":"verdichten","status":"gelaufen","bytes":9,"quelle":"datei","ts":"%s"}\n' "$_t2"
+  printf '{"ereignis":"start","skill":"mind-rules","erwartet":"verdichten","ts":"%s","code":"x","text":"x","versionsbruch":false}\n' "$_t3"
+  printf '{"ereignis":"schritt","name":"verdichten","status":"gelaufen","bytes":7,"quelle":"datei","ts":"%s"}\n' "$_t3"
+  printf '{"ereignis":"schritt","name":"debug_auswertung","status":"gelaufen","bytes":51,"quelle":"datei","ts":"%s"}\n' "$_t4"
+} > "$Q4"
+B4=$(mind_schritt_bilanz "$D4" --alle)
+janein "spaeterer Eintrag zaehlt: GELAUFEN 4 statt 5" ja "$(printf '%s\n' "$B4" | grep -q 'GELAUFEN=4 ' && echo ja || echo nein)"
+janein "   ... und die Bilanz NENNT den ueberholten Wert (vorher 49 B)" ja "$(printf '%s\n' "$B4" | grep -q 'debug_auswertung (vorher 49 B)' && echo ja || echo nein)"
+janein "   ⭐ verdichten in zwei Skills bleibt ZWEI Schritte (sonst faellt die Abdeckung)" nein "$(printf '%s\n' "$B4" | grep -q 'verdichten (vorher' && echo ja || echo nein)"
+janein "   ⛔ die Quittung selbst bleibt vollstaendig (nichts geloescht)" 5 "$(grep -c '"ereignis":"schritt"' "$Q4")"
+rm -rf "$D4"
+
 echo "== ⛔ Noras Befund 3: FEHLT heisst noch nicht quittiert, nicht tot =="
 # ⭐ Gemessen in Palvedo: ein LEBENDER Lauf schwieg 72 Sekunden, und die Bilanz
 #    sah dabei aus wie bei einem gestorbenen. Eine Quittung ist ein

@@ -125,9 +125,19 @@ def lies(pfad):
 #   dem Nachbau fehlten `.sh` und `cleaner_*`. Das ist die Klasse
 #   `instrument-nachgebaut`, live erzeugt im Gespraech ueber ein Werkzeug, das
 #   Nachbauten zaehlt. Wer ihn aendert, misst den Bestand neu und sagt die Zahl dazu.
+# ⛔ v5.132.0 (Etappe 43, Veras Z516): EIN WERKZEUGNAME OHNE ENDUNG IST EIN WERKZEUGNAME.
+#    „Kein Gate prueft …: memory_gates nur innerhalb" nennt ein benanntes Werkzeug — der
+#    Erkenner sah `mind_*`, `*.py`, `*.sh`, `cleaner_*`, `zaehl_gate` und sonst nichts, also
+#    w=0, s=0 -> `unbestimmt`, und `debug_aufraeumen --behoben` weigerte sich zu schliessen
+#    („Zeile 516 ist 'unbestimmt', kein ZUSTAND"). Klasse `erreicht-gegenstand-nicht`.
+#    ⚠ ENG gefasst, nach Antons Bedingung: nur Namen, die im Repo als Datei existieren, plus
+#    die Gate-Familie — KEIN generisches „Wort mit Unterstrich", das jedes `foo_bar` einfinge.
+#    Gegenprobe ueber alle 522 Zeilen: 4 Wechsel `unbestimmt` -> `zustand`, 0 aus `ereignis`.
 _WERKZEUG = re.compile(
     r"\b(mind_[a-z_]+|[a-z_]+\.py|[a-z_]+\.sh|claudemd_pipeline"
-    r"|zaehl_gate|cleaner_[a-z]+|Check \d+)\b")
+    r"|[a-z_]+_gates?|cleaner_[a-z]+|session_sampler|kontext-wache|arbeitsstand_render"
+    r"|debug_auswertung|debug_aufraeumen|learnings_scan|learnings_quellen|slug_regression"
+    r"|backup_tools|mutation_guard|coverage_gate|skill_stempel|Check \d+)\b")
 
 # Selbstbericht: der Verfasser nennt sich als Verursacher. Ebenfalls Formmerkmal.
 _SELBST = re.compile(

@@ -85,6 +85,28 @@ pruef("⭐ Abwesenheit eines Namens macht KEIN ereignis",
       art(FIXTURE[2]) != "ereignis")
 
 print()
+print("=== 1b) v5.132.0 (Etappe 43, Veras Z516): ein Werkzeugname OHNE Endung ist einer ===")
+# `debug_aufraeumen --behoben` schliesst nur ZUSTAND-Zeilen. Veras Befund nannte `memory_gates`
+# ohne `.py` -> w=0, s=0 -> unbestimmt -> nicht schliessbar. Gegen 5.131.0 sind die ersten
+# beiden Faelle rot. Gemessen ueber den ganzen Bestand: 4 Wechsel, keiner aus `ereignis`.
+V_OHNE = {"ts": "2026-09-23 02:20", "projekt": "P", "klasse": "instrument-misst-nichts",
+          "kurz": "Kein Gate prueft Zeiger von Rules INS Memory: memory_gates nur innerhalb, "
+                  "Rules-Pfadpruefung nur gegen das Projekt-Dateisystem", "lauf": "x"}
+V_MIT = dict(V_OHNE, kurz="memory_gates.py Gate 3 prueft nur innerhalb des Memory")
+V_SAMPLER = dict(V_OHNE, kurz="session_sampler laesst Tool-Aufrufe bewusst weg")
+V_SELBST = dict(V_OHNE, kurz="ich habe den Ordner falsch uebergeben, meine eigene Nacharbeit")
+pruef("Veras Wortlaut OHNE .py -> zustand (war unbestimmt)",
+      art(V_OHNE) == "zustand", "(ist %s)" % art(V_OHNE))
+pruef("   derselbe Satz MIT .py -> zustand (unveraendert)",
+      art(V_MIT) == "zustand", "(ist %s)" % art(V_MIT))
+pruef("   session_sampler blank -> zustand",
+      art(V_SAMPLER) == "zustand", "(ist %s)" % art(V_SAMPLER))
+pruef("⭐ NEGATIVKONTROLLE: Selbstbericht ohne Werkzeugnamen bleibt ereignis",
+      art(V_SELBST) == "ereignis", "(ist %s)" % art(V_SELBST))
+pruef("⛔ und ein blosses Wort mit Unterstrich ist KEIN Werkzeug",
+      art(dict(V_OHNE, kurz="die zahl_der_zeilen stimmt nicht mit der Tabelle ueberein")) != "zustand")
+
+print()
 print("=== 2) status_von() — behoben NUR mit Commit-Beleg ===")
 pruef("⛔ NEGATIVKONTROLLE: status=behoben OHNE commit bleibt offen",
       status_von(FIXTURE[3]) == "offen", "(ist %s)" % status_von(FIXTURE[3]))

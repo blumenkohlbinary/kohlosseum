@@ -2838,12 +2838,42 @@ mind_schritt_bilanz() {
   # ⛔ v5.106.0 (Etappe 14 §3, Doros Fund): je Block zaehlt der LETZTE Eintrag je
   #    Schritt — wie bei mind_agent_bilanz seit v5.21.2. Bis v5.105.0 zaehlte JEDE Zeile:
   #    `mind_agent_bilanz` erst mit 0 B, dann nachquittiert mit 564 B (Creator, 13.09.
-  #    22:24:34 / 22:25:03) blieb LEER=1 und GELAUFEN um eins zu hoch. Bloecke bleiben
-  #    getrennt (derselbe Schrittname in zwei Skills sind zwei Eintraege).
-  awk '/"ereignis":"start"/ { b++ }
+  #    22:24:34 / 22:25:03) blieb LEER=1 und GELAUFEN um eins zu hoch.
+  # ⛔ v5.132.0 (Etappe 43 §4c, Veras Fall 23.09.2026): der Schluessel ist der SKILL, nicht der
+  #    BLOCK. `debug_auswertung gelaufen 49` war der Hilfetext nach einem rc 2; der korrekte Lauf
+  #    danach quittierte 51 B — in einem NEUEN Block, und die Bilanz zeigte weiter die 49.
+  #    Ein Nachtrag heilte bis hierher nur INNERHALB eines Blocks. Jetzt zaehlt je
+  #    `<skill>/<name>` der letzte Eintrag im Ausschnitt; dieselbe Richtung wie v5.122.0 (FORMAL)
+  #    und v5.130.0 (FEHLT).
+  # ⛔ WELCHE EINTRAEGE DUERFEN VERSCHMELZEN — gemessen an Veras Quittung, nicht geraten.
+  #    Ihr `debug_auswertung` steht in der Erwartung von GENAU EINEM Skill (mind-all); ein zweiter
+  #    Eintrag dieses Namens kann nur derselbe Schritt sein, egal in welchem Block er landet (eine
+  #    Nachquittierung faellt in den Block, der gerade offen ist). `verdichten` dagegen steht in der
+  #    Erwartung ALLER FUENF Context-Skills: dort sind zwei Eintraege zwei Schritte, und ein
+  #    Verschmelzen liesse die Abdeckung von 5 auf 1 fallen. Der Schluessel ist deshalb der SKILL,
+  #    ausser der Name ist im Lauf EINDEUTIG — dann der Name allein.
+  #    ⛔ Geloescht wird nichts: der ueberholte Eintrag steht in der Quittung und wird UNTEN als
+  #    `UEBERSCHRIEBEN` ausgewiesen. Rueckdatieren bleibt abgelehnt.
+  local _ueber="${TMPDIR:-/tmp}/.mind_schritt_u$$"; : > "$_ueber"
+  local _eind
+  _eind=$(awk '/"ereignis":"start"/ {
+                 if (match($0, /"skill":"[^"]*"/)) sk = substr($0, RSTART + 9, RLENGTH - 10); else sk = "?"
+                 if (match($0, /"erwartet":"[^"]*"/)) {
+                   e = substr($0, RSTART + 12, RLENGTH - 13); m = split(e, w, " ")
+                   for (i = 1; i <= m; i++) if (!((w[i] SUBSEP sk) in gesehen)) { gesehen[w[i] SUBSEP sk] = 1; z[w[i]]++ } } }
+               END { for (nm in z) if (z[nm] == 1) printf "%s ", nm }' "$ausschnitt" 2>/dev/null)
+  awk -v ueber="$_ueber" -v eind="$_eind" '
+       BEGIN { n_e = split(eind, _e, " "); for (i = 1; i <= n_e; i++) eindeutig[_e[i]] = 1 }
+       /"ereignis":"start"/ {
+         if (match($0, /"skill":"[^"]*"/)) sk = substr($0, RSTART + 9, RLENGTH - 10); else sk = "?" }
        /"ereignis":"schritt"/ {
-         if (match($0, /"name":"[^"]*"/)) k = b SUBSEP substr($0, RSTART + 8, RLENGTH - 9); else k = b SUBSEP NR
+         if (match($0, /"name":"[^"]*"/)) nm = substr($0, RSTART + 8, RLENGTH - 9); else nm = NR
+         k = ((nm in eindeutig) ? "*" : sk) SUBSEP nm
          if (!(k in zeile)) reihe[++n] = k
+         else {
+           alt = zeile[k]; b = "?"
+           if (match(alt, /"bytes":-?[0-9]+/)) b = substr(alt, RSTART + 8, RLENGTH - 8)
+           print ((nm in eindeutig) ? nm : sk "/" nm) " (vorher " b " B)" >> ueber }
          zeile[k] = $0 }
        END { for (i = 1; i <= n; i++) print zeile[reihe[i]] }' "$ausschnitt" 2>/dev/null > "$mt"
   rm -f "$ausschnitt"
@@ -3051,6 +3081,15 @@ mind_schritt_bilanz() {
       | sed -n 's/.*"skill":"\([^"]*\)".*"code":"\([^"]*\)","text":"\([^"]*\)".*/     \1: Text \3, Code \2/p'
   fi
   [ -n "$ueberliste" ] && echo "  UEBERSPRUNGEN:$ueberliste"
+  # v5.132.0: ein spaeterer Eintrag hat einen frueheren desselben Schritts korrigiert.
+  #   Das ist KEIN Fehler und kein Gate — es macht sichtbar, dass die Zahl oben die
+  #   zweite ist. Veras Satz dazu: „so ist der ehrliche Weg nicht der bequeme,
+  #   und das laedt zum Schweigen ein."
+  if [ -s "$_ueber" ] 2>/dev/null; then
+    echo "  UEBERSCHRIEBEN (spaeterer Eintrag zaehlt, der fruehere bleibt in der Quittung):"
+    sed 's/^/     /' "$_ueber"
+  fi
+  rm -f "$_ueber" 2>/dev/null
   # ⭐ Teilabdeckung ist ein EIGENER Zustand, nicht "gelaufen". 5/11 ist eine
   #    gueltige Antwort; sie als 11/11 zu berichten ist es nicht.
   [ -n "$teil" ] && echo "  TEILABDECKUNG:$teil"
