@@ -578,8 +578,29 @@ hash_project_dir() {
   #    Verloren gingen konkret: '&' (Entwicklung&Forschung -> get_memory_dir fiel in den
   #    Fallback, Warnung bei JEDEM Lauf), '_' (_claude_vm -> -claude-vm) und '.'
   #    (.claude-worktrees -> -claude-worktrees).
-  #    Gegenprobe liegt als references/slug_regression.py bei und MUSS 18/0 melden.
-  echo "$win_path" | sed 's|[^A-Za-z0-9]|-|g' | sed 's|^-*||'
+  #    Gegenprobe liegt als references/slug_regression.py bei.
+  # ⛔ v5.133.0 (Etappe 44, Udos Fund im Projekt Buerokratie): `sed` ersetzt in MSYS
+  #    BYTEWEISE. `ü` ist UTF-8 `c3 bc` — zwei Bytes, zwei Striche: berechnet
+  #    `C--CD-KOHLEKTIV-B--rokratie`, echt ist `C--CD-KOHLEKTIV-B-rokratie`. Claude Code
+  #    ersetzt ZEICHENweise. Folge: jedes Projekt mit Umlaut/ß bekam einen Phantom-Ordner,
+  #    den nie jemand liest; `get_memory_dir` liefert seit v5.70.0 rc 1 statt eines fremden
+  #    Pfades, findet also ein existierendes Verzeichnis nicht.
+  #    Drei Wege gemessen auf `C:\CD\KOHLEKTIV\Bürokratie`: sed -> `B--rokratie`,
+  #    jq -> `B-rokratie`, LC_ALL-sed -> `B-rokratie`; echt sind drei Ordner `B-rokratie*`.
+  # ⭐ `jq` STATT LOCALE: jq ist Pflichtabhaengigkeit (CLAUDE.md) und UTF-8-fest; eine
+  #    Locale-Loesung waere eine Annahme darueber, welche Locales die Maschine hat.
+  # ⛔ FAIL-OPEN: fehlt jq, bleibt der sed-Weg MIT WARN — diese Funktion laeuft auch in
+  #    session-start.sh, und ein Hook, der bricht, ist teurer als ein falscher Slug.
+  #    Fuer Pfade OHNE Mehrbyte-Zeichen sind beide Wege byteweise gleich (slug_regression).
+  if command -v jq >/dev/null 2>&1; then
+    jq -rn --arg s "$win_path" '$s | gsub("[^A-Za-z0-9]"; "-") | sub("^-+"; "")' 2>/dev/null \
+      || echo "$win_path" | sed 's|[^A-Za-z0-9]|-|g' | sed 's|^-*||'
+  else
+    case "$win_path" in
+      *[!\ -~]*) mind_log WARN "hash_project_dir: jq fehlt und der Pfad hat Zeichen ausserhalb ASCII ($win_path) — der sed-Rueckfall ersetzt BYTEWEISE, der Slug kann falsch sein (v5.133.0)" ;;
+    esac
+    echo "$win_path" | sed 's|[^A-Za-z0-9]|-|g' | sed 's|^-*||'
+  fi
 }
 
 # --- _resolve_memory_dir: die EINZIGE Stelle, die den Memory-Pfad bildet (NEU v6) ---
@@ -718,6 +739,32 @@ get_memory_dir() {
 
   mind_log WARN "Memory-Verzeichnis existiert nicht: $memory_dir"
   echo "WARN: get_memory_dir — Verzeichnis existiert nicht, Pfad ist $hash/memory" >&2
+
+  # ⛔ v5.133.0 (Etappe 44 §3, Udos Fund): DER HAEUFIGSTE GRUND FUER EIN FEHLENDES
+  #    VERZEICHNIS WAR EIN FALSCH BERECHNETER SLUG — und das war von einem echten
+  #    "gibt es noch nicht" nicht zu unterscheiden. Existiert ein Ordner, der sich nur
+  #    in WIEDERHOLTEN Trennzeichen unterscheidet (`B--rokratie` gegen `B-rokratie`),
+  #    ist das der Verdacht: Mehrbyte-Zeichen im Projektpfad.
+  # ⛔ NICHTS WIRD UMGEBOGEN. Der Pfad bleibt, wie er berechnet wurde — gemeldet werden
+  #    BEIDE, damit ein Mensch entscheidet. Ein stiller Wechsel des Ortes waere genau
+  #    die Klasse, gegen die der Fremd-Projekt-Rueckfall in v5.70.0 entfernt wurde.
+  local _zwilling _pd="$HOME/.claude/projects"
+  if [ -d "$_pd" ] && [ -n "$hash" ]; then
+    _zwilling=$(printf '%s' "$hash" | sed 's|--*|-|g')
+    for _k in "$_pd"/*; do
+      [ -d "$_k" ] || continue
+      _kb=$(basename "$_k")
+      [ "$_kb" = "$hash" ] && continue
+      if [ "$(printf '%s' "$_kb" | sed 's|--*|-|g')" = "$_zwilling" ]; then
+        mind_log WARN "get_memory_dir: Trennzeichen-Zwilling vorhanden — berechnet '$hash', es existiert '$_kb'. Verdacht: Mehrbyte-Zeichen im Projektpfad (v5.133.0). NICHT umgebogen."
+        echo "WARN: es existiert ein Ordner, der sich nur in Trennzeichen unterscheidet:" >&2
+        echo "        berechnet:  $hash" >&2
+        echo "        vorhanden:  $_kb" >&2
+        echo "      Verdacht: Mehrbyte-Zeichen (Umlaut/ss) im Projektpfad. Nichts umgebogen — pruefen." >&2
+        break
+      fi
+    done
+  fi
 
   echo "$memory_dir"
   return 1

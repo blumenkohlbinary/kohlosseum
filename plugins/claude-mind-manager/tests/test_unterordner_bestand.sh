@@ -71,7 +71,8 @@ echo "== 6  v5.109.0: jedes fork hat eigenes Memory — mind_memory_dirs / memor
 # HOME und USERPROFILE auf ein Wegwerf-Heim: Slugs wie Claude Code (cygpath -w, alles Nicht-
 # Alphanumerische -> '-'). Drei Memory-Verzeichnisse: Wurzel, Creator Idee, Skript (leer).
 H2=$(mktemp -d); export HOME="$H2" USERPROFILE="$(cygpath -w "$H2" 2>/dev/null || printf '%s' "$H2")"
-sl() { printf '%s' "$(cygpath -w "$1" 2>/dev/null || printf '%s' "$1")" | sed 's/[^A-Za-z0-9]/-/g'; }
+# ⛔ v5.133.0 (Etappe 44 §2): die FUNKTION statt einer Kopie der Regel (sed ersetzt byteweise)
+sl() { hash_project_dir "$1"; }
 for o in "$W" "$W/Creator Idee" "$W/Skript"; do mkdir -p "$H2/.claude/projects/$(sl "$o")/memory"; done
 printf -- '---\nname: w\ndescription: Wurzelwissen fuer alle, ausreichend lang beschrieben hier\n---\nW.\n' > "$H2/.claude/projects/$(sl "$W")/memory/wurzel.md"
 printf '# Index\n' > "$H2/.claude/projects/$(sl "$W")/memory/MEMORY.md"

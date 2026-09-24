@@ -12,8 +12,17 @@ DIE PRUEFUNG MUSS SCHEITERN KOENNEN. Deshalb faehrt sie am Ende die ALTE Regel g
 dieselben Faelle. Besteht die alte Regel, misst dieser Prueftand nichts und alle
 Ergebnisse sind ungueltig (Rueckgabewert 3).
 
+⛔ WAS ES BIS v5.132.0 NICHT MASS (Etappe 44, Udos Fund): dieses Skript spiegelte die
+   REGEL in Python — und Python ersetzt ZEICHENweise. Die Implementierung in `lib.sh`
+   lief ueber `sed`, das in MSYS BYTEWEISE ersetzt: `ü` = `c3 bc` = zwei Striche. Der
+   Spiegel war also gruen, waehrend die Funktion log. Ein Gate, das nur die Regel prueft
+   und nie die Implementierung, kann diese Klasse nicht finden.
+   Seit v5.133.0 faehrt `--bash` die ECHTE Funktion aus `hooks/lib.sh` gegen dieselben
+   Vektoren. ⚠ Ohne bash/lib.sh wird das AUSGEWIESEN, nicht stillschweigend uebersprungen.
+
 Aufruf:
     python slug_regression.py                 # nur die festen Pruefvektoren
+    python slug_regression.py --bash           # zusaetzlich gegen hash_project_dir in lib.sh
     python slug_regression.py --live <wurzel>  # zusaetzlich gegen ~/.claude/projects
 
 Rueckgabe: 0 = alles gruen  |  1 = Faelle rot  |  3 = Pruefstand ungueltig
@@ -65,6 +74,18 @@ VEKTOREN = [
     (r"C:\x(y)z", "C--x-y-z", "Klammern — die alte Regel konnte das schon"),
     (r"C:\a+b,c", "C--a-b-c", "Plus und Komma"),
     (r"\\server\freigabe", "server-freigabe", "UNC-Pfad: fuehrende Bindestriche fallen weg"),
+    # v5.133.0 (Etappe 44): Mehrbyte-Zeichen. ⛔ Die Erwartung stammt aus dem ECHTEN
+    # Ordnernamen unter ~/.claude/projects, nicht aus der Formel — drei Belege:
+    # C--CD-KOHLEKTIV-B-rokratie, ...-Steuer--ELSTER-, ...-Wohngeld---Sonstiges.
+    ("C:" + BS + "CD" + BS + "KOHLEKTIV" + BS + "Bürokratie", "C--CD-KOHLEKTIV-B-rokratie",
+     "Udos Fund: ü ist EIN Zeichen, aber ZWEI Bytes (c3 bc) — sed machte zwei Striche"),
+    ("C:" + BS + "CD" + BS + "KOHLEKTIV" + BS + "Bürokratie" + BS + "Steuer (ELSTER)",
+     "C--CD-KOHLEKTIV-B-rokratie-Steuer--ELSTER-",
+     "Umlaut UND Sonderzeichen in einem Pfad (echter Ordner)"),
+    ("C:" + BS + "x" + BS + "Straße", "C--x-Stra-e",
+     "ß ist ebenfalls zwei Bytes (c3 9f)"),
+    ("C:" + BS + "x" + BS + "Café", "C--x-Caf-",
+     "é (c3 a9) am Wortende — der Strich steht am Schluss"),
 ]
 
 
@@ -92,6 +113,49 @@ def main():
         return 3
     for e in alt_rot[:4]:
         print("     %s -> %s" % (e, alt(e)))
+
+    # --- v5.133.0: gegen die ECHTE bash-Funktion ----------------------------
+    # ⛔ DAS IST DER TEIL, DER DEN FEHLER FINDEN KANN. Alles oben prueft die Regel
+    #    gegen sich selbst; hier laeuft `hash_project_dir` aus `hooks/lib.sh`.
+    if "--bash" in sys.argv:
+        import subprocess
+        lib = os.path.join(os.environ.get("CLAUDE_PLUGIN_ROOT", ""), "hooks", "lib.sh")
+        if not os.path.isfile(lib):
+            lib = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                               "hooks", "lib.sh")
+        print()
+        print("=== Gegen die ECHTE Funktion (hooks/lib.sh) ===")
+        bash = None
+        for k in ("bash", "/usr/bin/bash", "C:/Program Files/Git/bin/bash.exe"):
+            try:
+                if subprocess.run([k, "-c", "exit 0"], capture_output=True).returncode == 0:
+                    bash = k
+                    break
+            except OSError:
+                continue
+        if bash is None or not os.path.isfile(lib):
+            print("  ⚠ UNGEPRUEFT: bash oder hooks/lib.sh nicht erreichbar (%s)." % lib)
+            print("     Ein uebersprungener Fall ist KEIN bestandener.")
+            rot.append(("--bash", "gefahren", "nicht erreichbar"))
+        else:
+            skript = (". '%s' >/dev/null 2>&1 || exit 9\n" % lib.replace("\\", "/")
+                      + "while IFS= read -r p; do hash_project_dir \"$p\"; done")
+            # ⛔ Abschluss-Zeilenumbruch: ohne ihn verschluckt `while read` die LETZTE Zeile.
+            #    Eigener Fehlgriff beim Bau — der Café-Vektor kam leer zurueck, waehrend die
+            #    Funktion selbst `C--x-Caf-` lieferte. Ein Pruefstand, der den letzten Fall
+            #    verschluckt, meldet einen Fehler, den es nicht gibt.
+            eingaben = "\n".join(e for e, _, _ in VEKTOREN) + "\n"
+            r = subprocess.run([bash, "-c", skript], input=eingaben.encode("utf-8"),
+                               capture_output=True)
+            aus = r.stdout.decode("utf-8", "replace").split("\n")
+            for i, (eingabe, soll, warum) in enumerate(VEKTOREN):
+                ist = aus[i].strip() if i < len(aus) else "(keine Ausgabe)"
+                gut = ist == soll
+                if not gut:
+                    rot.append((eingabe, soll, ist))
+                print("  %s %-52s -> %s" % ("[ok ]" if gut else "[ROT]", warum, ist))
+                if not gut:
+                    print("        erwartet: %s" % soll)
 
     # --- Optional: gegen die real vorhandenen Claude-Code-Ordner -------------
     if "--live" in sys.argv:
@@ -122,7 +186,8 @@ def main():
     if rot:
         print("  ERGEBNIS: %d von %d ROT" % (len(rot), len(VEKTOREN)))
         return 1
-    print("  ERGEBNIS: alle %d Faelle bestanden, Negativkontrolle greift" % len(VEKTOREN))
+    print("  ERGEBNIS: alle %d Faelle bestanden%s, Negativkontrolle greift"
+          % (len(VEKTOREN), " (Regel UND bash)" if "--bash" in sys.argv else " (nur die REGEL — --bash prueft die Implementierung)"))
     return 0
 
 

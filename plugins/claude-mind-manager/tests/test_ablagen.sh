@@ -94,7 +94,12 @@ echo "# ps" > "$P/.claude/skills/a/SKILL.md"
 HWIN=$(cygpath -w "$H"); PWIN=$(cygpath -w "$P")
 
 # Memory-Verzeichnis unter dem RICHTIGEN Slug anlegen
-SLUG=$(printf '%s' "$PWIN" | sed 's/[^A-Za-z0-9]/-/g' | sed 's/^-*//')
+# ⛔ v5.133.0 (Etappe 44 §2): NICHT nachbauen — `sed` ersetzt in MSYS BYTEWEISE, die
+#   Funktion seit v5.133.0 zeichenweise (Udos Umlaut-Fund). Eine Kopie der Regel driftet,
+#   sobald die Regel sich aendert; der Prueffall fragt deshalb die FUNKTION selbst.
+#   (lib.sh wird weiter unten gesourct — hier eine eigene Subshell, damit der Rest des
+#    Aufbaus unveraendert bleibt.)
+SLUG=$(bash -c '. "$1/hooks/lib.sh" >/dev/null 2>&1; hash_project_dir "$2"' _ "$CLAUDE_PLUGIN_ROOT" "$P")
 mkdir -p "$H/.claude/projects/$SLUG/memory"
 echo "# m" > "$H/.claude/projects/$SLUG/memory/MEMORY.md"
 
@@ -227,6 +232,30 @@ janein "⭐ GEGENPROBE: Ordner da -> Rueckgabe 0" "0" "$_RB"
 _W2=$(get_memory_dir "$_P2" 2>&1 >/dev/null)
 janein "⭐ ... und KEINE Warnung" "" "$_W2"
 rm -rf "$HOME/.claude/projects/$_S2"
+
+
+echo
+echo "  --- v5.133.0 (Etappe 44 §3): Trennzeichen-Zwilling wird GENANNT, nicht umgebogen ---"
+# Udos Fund: bei einem Mehrbyte-Zeichen im Pfad berechnete lib.sh `B--rokratie`, echt war
+# `B-rokratie` — und ein falscher Slug sah aus wie "Verzeichnis gibt es noch nicht".
+# Gegen 5.132.0 sind die ersten beiden Faelle rot.
+_P3="$D/proj drei"; mkdir -p "$_P3"
+_S3=$(hash_project_dir "$_P3")
+_Z3=$(printf '%s' "$_S3" | sed 's|-|--|')        # derselbe Slug mit verdoppeltem Trenner
+mkdir -p "$HOME/.claude/projects/$_Z3/memory"
+_W3=$(get_memory_dir "$_P3" 2>&1 >/dev/null)
+_R3=$(get_memory_dir "$_P3" 2>/dev/null)
+janein "Zwilling vorhanden -> die WARN nennt ihn" ja \
+       "$(printf '%s\n' "$_W3" | grep -q 'nur in Trennzeichen unterscheidet' && echo ja || echo nein)"
+janein "   ... und nennt BEIDE Pfade" ja \
+       "$(printf '%s\n' "$_W3" | grep -q "berechnet:  $_S3" && printf '%s\n' "$_W3" | grep -q "vorhanden:  $_Z3" && echo ja || echo nein)"
+janein "⛔ der zurueckgegebene Pfad bleibt der BERECHNETE (nichts umgebogen)" ja \
+       "$(case "$_R3" in *"/$_S3/memory") echo ja ;; *) echo nein ;; esac)"
+# ⭐ Gegenprobe: ohne Zwilling schweigt die Zusatzwarnung
+rm -rf "$HOME/.claude/projects/$_Z3"
+_W4=$(get_memory_dir "$_P3" 2>&1 >/dev/null)
+janein "⭐ GEGENPROBE: kein Zwilling -> keine Zwillings-Warnung" nein \
+       "$(printf '%s\n' "$_W4" | grep -q 'nur in Trennzeichen unterscheidet' && echo ja || echo nein)"
 
 rm -rf "$D"
 echo
