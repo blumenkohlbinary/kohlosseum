@@ -255,6 +255,65 @@ rm -rf "$P"
 # Text-Gate: 2.96a-R kennt den Eintrag und verlangt den ganzen Block
 janein "mind-all 2.96a-R: fehlt-<skill>:<schritt> -> Skill-Block VOLLSTAENDIG erneut fahren" ja "$(grep -q 'fehlt-<skill>:<schritt> -> der Pflichtschritt wurde NIE quittiert' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && grep -q 'Skill-Block VOLLSTAENDIG erneut fahren' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && echo ja || echo nein)"
 
+# --- 6g · v5.134.0 (Etappe 45, Udos Fund Buerokratie): nur /mind-all tilgt ------------
+#     Rosa (sync) fuhr `mind-update --ask` mit VOLLSTAENDIGER Buchfuehrung und stand vor
+#     teil/rc 1 ohne erklaerenden Satz. ⛔ Das ist gewollt (OPEN = „in ALLE fuenf Bereiche
+#     eingearbeitet"), der Fehler war der fehlende TEXT. Diese Faelle halten BEIDE Richtungen
+#     fest, damit §1 gemessen ist und nicht behauptet.
+bau_lauf() {   # $1 = voll | nur-update   -> setzt $P
+  P=$(neu_projekt); Q="$P/.claude-mind/agent-quittung.jsonl"; SQ="$P/.claude-mind/schritt-quittung.jsonl"
+  SC="$P/.claude-mind/analyzed-scopes"
+  _alt=$(date -u -d '-600 seconds' +%Y-%m-%dT%H:%M:%SZ); _now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  mind_agent_quittung_start "$P" 4 >/dev/null 2>&1
+  for b in claude-md memory rules; do
+    printf '{"ereignis":"dispatch","bereich":"%s","ts":"%s"}\n' "$b" "$_alt" >> "$Q"
+    printf 'x%.0s' $(seq 1 300) > "$P/.claude-mind/agent-$b.md"
+    mind_agent_ergebnis "$b" --datei "$P/.claude-mind/agent-$b.md" "$P" >/dev/null 2>&1
+  done
+  mind_agent_uebersprungen custom-context 0 "$P" >/dev/null 2>&1
+  if [ "$1" = "voll" ]; then
+    printf 'run_started=1\n' > "$SC"
+    for s in mind-files mind-claudemd mind-memory mind-rules mind-update; do
+      printf 'skill=%s|L1\nbestand=%s:3/3\n' "$s" "$s" >> "$SC"
+    done
+    printf '{"ereignis":"start","skill":"mind-all","erwartet":"mind_snapshot","ts":"%s","code":"x","text":"x","versionsbruch":false}\n{"ereignis":"schritt","name":"mind_snapshot","status":"gelaufen","bytes":10,"quelle":"datei","ts":"%s"}\n' "$(date -u -d '-3600 seconds' +%Y-%m-%dT%H:%M:%SZ)" "$(date -u -d '-3600 seconds' +%Y-%m-%dT%H:%M:%SZ)" > "$SQ"
+    i=0
+    for s in mind-files mind-claudemd mind-memory mind-rules mind-update; do i=$((i+1))
+      printf '{"ereignis":"start","skill":"%s","erwartet":"verdichten","ts":"%s","code":"x","text":"x","versionsbruch":false}\n{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"%s"}\n' \
+        "$s" "$(date -u -d "-$((3000 - i * 400)) seconds" +%Y-%m-%dT%H:%M:%SZ)" "$_now" >> "$SQ"
+    done
+  else
+    printf 'run_started=1\nskill=mind-update|L1\nbestand=mind-update:3/3\n' > "$SC"
+    printf '{"ereignis":"start","skill":"mind-update","erwartet":"verdichten","ts":"%s","code":"x","text":"x","versionsbruch":false}\n{"ereignis":"schritt","name":"verdichten","status":"uebersprungen:kein-kandidat","bytes":0,"ts":"%s"}\n' "$_alt" "$_now" > "$SQ"
+  fi
+}
+bau_lauf voll
+janein "⭐ voller Kettenlauf mit Quittung -> voll (rc 0)" voll "$(mind_lauf_voll "$P" L1 4 2>/dev/null)"
+janein "   ... ungepruef leer" "" "$(mind_ungepruef_bilden "$P" L1)"
+rm -rf "$P"
+bau_lauf nur-update
+janein "⛔ mind-update ALLEIN, volle Quittung -> teil (rc 1)" teil "$(mind_lauf_voll "$P" L1 4 2>/dev/null)"
+janein "   ... Grund nennt die fehlenden Bestands-Paesse" ja "$(mind_ungepruef_bilden "$P" L1 | grep -q 'bestand-mind-' && echo ja || echo nein)"
+janein "   ... und den fehlenden Kopf-Block (formal-mind-all)" ja "$(mind_ungepruef_bilden "$P" L1 | grep -q 'formal-mind-all' && echo ja || echo nein)"
+janein "   ... umfang zeigt 1/5 skills (nicht 5/5)" ja "$(mind_umfang_bilden "$P" L1 4 | grep -q '^1/5 skills ' && echo ja || echo nein)"
+rm -rf "$P"
+
+# --- 6h · v5.134.0 §2: der Einzellauf SAGT es — und schweigt, wo er soll ------------
+P=$(neu_projekt)
+janein "ohne OPEN: still (rc 1, keine Ausgabe)" "1|" "$(_A=$(mind_schuld_hinweis "$P" 2>/dev/null); echo "$?|$_A")"
+printf 'path=%s/x_chat.md\npath=%s/y_chat.md\n' "$P" "$P" > "$P/.claude-mind/rescued/OPEN"
+_H=$(mind_schuld_hinweis "$P" 2>/dev/null)
+janein "mit OPEN, ausserhalb der Kette: Zeile da" ja "$(printf '%s\n' "$_H" | grep -q 'NICHT' && printf '%s\n' "$_H" | grep -q 'nur /mind-all' && echo ja || echo nein)"
+janein "   ... sie nennt die Zahl der Rettungen" ja "$(printf '%s\n' "$_H" | grep -q '2 Rettung' && echo ja || echo nein)"
+janein "   ... und den GRUND (alle fuenf Bereiche, nicht gelesen)" ja "$(printf '%s\n' "$_H" | grep -q 'ALLE fuenf Bereiche' && echo ja || echo nein)"
+: > "$P/.claude-mind/analyzed-scopes"
+janein "⭐ IN der Kette: still (die Kette tilgt ja)" "1|" "$(_A=$(mind_schuld_hinweis "$P" 2>/dev/null); echo "$?|$_A")"
+rm -rf "$P"
+# Text-Gate: der Satz steht an der gemeinsamen Stelle und die fuenf Skills zeigen darauf
+janein "bestands-pass.md traegt den Wortlaut" ja "$(grep -q 'tilgt NUR' "$CLAUDE_PLUGIN_ROOT/references/bestands-pass.md" && echo ja || echo nein)"
+janein "alle fuenf Context-Skills nennen ihn" 5 "$(grep -l 'tilgt NUR' "$CLAUDE_PLUGIN_ROOT"/skills/mind-{files,claudemd,memory,rules,update}/SKILL.md 2>/dev/null | wc -l | tr -d ' ')"
+janein "beide Hooks tragen den Halbsatz" 2 "$(grep -l 'NUR /mind-all tilgt die Schuld' "$CLAUDE_PLUGIN_ROOT"/hooks/prompt-submit.sh "$CLAUDE_PLUGIN_ROOT"/hooks/session-start.sh 2>/dev/null | wc -l | tr -d ' ')"
+
 # --- 7 · gar kein Merker ist nicht unsere Frage ---------------------------
 P=$(neu_projekt)
 janein "kein sync-stand -> vollstaendig" voll "$(voll_p "$P/.claude-mind/rescued/sync-stand")"

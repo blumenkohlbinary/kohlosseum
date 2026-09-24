@@ -49,7 +49,7 @@ MIND_SKILL_VERSION="5.124.0"
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.133.0"
+MIND_SKILL_VERSION="5.134.0"
 mind_schritt_start "$PROJ" mind-memory bestandszahlen_kandidaten cleaner_stichprobe mind_debug_write mind_kontext_bilanz mind_scan_poisoning mind_snapshot verdichten
 ```
 
@@ -996,3 +996,8 @@ Topic files: 3 (was 2, created api-patterns.md)
 - **`PRAEFIX`-Befunde werden repariert, nicht geloescht** — die Datei existiert ja.
 - **Der Bericht behauptet keine Wirkung, nur Sichtbarkeit.** Memory ist „context, not enforced
   configuration"; eine geladene Erinnerung kann ignoriert werden (Issue #37586).
+
+⛔ **Eine Sync-Schuld (`OPEN`) tilgt NUR `/mind-all`** — dieser Lauf nicht, auch nicht mit
+vollständiger Quittung (`OPEN` = „in ALLE fünf Bereiche eingearbeitet", nicht „gelesen").
+Am Ende des Berichts deshalb `mind_schuld_hinweis "$PROJ" || true` — Wortlaut, Messung und
+Begründung: [references/bestands-pass.md](../../references/bestands-pass.md).

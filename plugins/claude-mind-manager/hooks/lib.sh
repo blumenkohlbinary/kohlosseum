@@ -3416,6 +3416,37 @@ mind_uebergabe_pfad() {
   printf '%s/.claude-mind/rescued/UEBERGABE-%s' "$proj" "$sid"
 }
 
+# mind_schuld_hinweis <projekt>
+# ⛔ v5.134.0 (Etappe 45 §2, Udos Fund im Projekt Buerokratie): EIN EINZELLAUF TILGT DIE
+#    SCHULD NICHT — und das stand nirgends. Rosa (sync) fuhr `mind-update --ask` mit
+#    vollstaendiger Buchfuehrung (Schritt-Block, drei Agenten dispatch+ergebnis, Bilanz
+#    DISPATCH=3 ERGEBNIS=3, custom-context quittiert) — `mind_sync_voll` sagte trotzdem teil,
+#    rc 1, und der Hook mahnte weiter. Sie hatte alles richtig gemacht und stand vor einem
+#    roten Ergebnis ohne erklaerenden Satz.
+# ⭐ GEWOLLT, kein Umbau an `mind_umfang_bilden` (Anton 24.09.2026): `OPEN` heisst „der
+#    gerettete Stoff ist in ALLE FUENF Bereiche eingearbeitet", nicht „gelesen". Ein
+#    `mind-update` allein ist der Knowledge-Sync OHNE die vier anderen Bestands-Paesse.
+#    Wer die Schwelle senkt, macht „voll" wieder erreichbar, ohne den Gegenstand zu
+#    beruehren — die Klasse „gruen und leer" aus `werkzeuge-zuerst.md`.
+# ⛔ MELDEN, NICHT SPERREN. Und NUR ausserhalb der Kette: im `/mind-all`-Lauf liegt
+#    `analyzed-scopes`, dort waere der Satz falsch — die Kette tilgt ja.
+#    Ohne `OPEN` schweigt die Funktion (rc 1, keine Ausgabe).
+mind_schuld_hinweis() {
+  local proj="${1:-}" open sc n
+  [ -n "$proj" ] || return 1
+  open="$proj/.claude-mind/rescued/OPEN"
+  [ -f "$open" ] || return 1
+  sc="$proj/.claude-mind/analyzed-scopes"
+  [ -f "$sc" ] && return 1          # laeuft in der Kette — die tilgt, also still
+  n=$(grep -c '^path=' "$open" 2>/dev/null); case "$n" in ''|*[!0-9]*) n=0 ;; esac
+  echo "⚠ Sync-Schuld liegt weiter an (OPEN, $n Rettung(en)) — dieser Lauf hat sie NICHT"
+  echo "  beglichen, das kann nur /mind-all. Grund: OPEN heisst 'in ALLE fuenf Bereiche"
+  echo "  eingearbeitet', nicht 'gelesen' — ein einzelner Skill deckt seinen Bereich ab,"
+  echo "  nicht die Bestands-Paesse der vier anderen."
+  mind_log INFO "Schuld-Hinweis ausgegeben (Einzellauf, $n Rettung(en))"
+  return 0
+}
+
 # mind_schuld_begleichen <projekt>
 # ⛔ v5.113.0 (Etappe 20 §4b, Noras Fund): Step 2.96 nahm `grep -m1 '^resume='` — nur die
 #    AELTESTE RESUME wurde .done, zwei juengere blieben liegen. Jetzt: JEDE resume=-Zeile

@@ -50,7 +50,7 @@ MIND_SKILL_VERSION="5.124.0"
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.133.0"
+MIND_SKILL_VERSION="5.134.0"
 mind_schritt_start "$PROJ" mind-claudemd bestandszahlen_kandidaten claudemd_pipeline cleaner_duplikate cleaner_stichprobe cleaner_urteile mind_check_tools_have_rules mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -1010,3 +1010,8 @@ das Netz darunter.**
   `claudemd-audit-criteria.md` hat **keine** — dort keine Note erfinden.
 - **Zahlen kommen kanonisch aus Schritt 2** und werden dem Agent uebergeben, statt dass er
   selbst zaehlt.
+
+⛔ **Eine Sync-Schuld (`OPEN`) tilgt NUR `/mind-all`** — dieser Lauf nicht, auch nicht mit
+vollständiger Quittung (`OPEN` = „in ALLE fünf Bereiche eingearbeitet", nicht „gelesen").
+Am Ende des Berichts deshalb `mind_schuld_hinweis "$PROJ" || true` — Wortlaut, Messung und
+Begründung: [references/bestands-pass.md](../../references/bestands-pass.md).

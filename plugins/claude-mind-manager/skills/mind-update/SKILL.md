@@ -55,7 +55,7 @@ MIND_SKILL_VERSION="5.124.0"
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.133.0"
+MIND_SKILL_VERSION="5.134.0"
 mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
@@ -1796,3 +1796,9 @@ mind_sampler_aufraeumen "$PROJ"    # loescht .claude-mind/sampler/*.<sid>.*
 - ALWAYS backup files before editing (cp to .claude-mind/backups/)
 - NEVER remove content without showing what will be lost
 - If no issues found: report "All clean" and stop (no unnecessary changes)
+
+⛔ **Eine Sync-Schuld (`OPEN`) tilgt NUR `/mind-all`** — dieser Lauf nicht — auch der volle Knowledge-Sync nicht, auch nicht mit
+vollständiger Quittung (`OPEN` = „in ALLE fünf Bereiche eingearbeitet", nicht „gelesen").
+Am Ende des Berichts deshalb `mind_schuld_hinweis "$PROJ" || true` — Wortlaut, Messung und
+Begründung: [references/bestands-pass.md](../../references/bestands-pass.md).
+

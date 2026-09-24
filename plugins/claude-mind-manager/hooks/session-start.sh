@@ -211,7 +211,10 @@ Kompaktierung gesichert):
 ${RESUME_TXT:-(kein Auftrags-Merker vorhanden)}
 --- Ende Auftrags-Merker ---
 
-REIHENFOLGE: /mind-all ZUERST — ohne Ausnahme. Der Auftrag ist woertlich in
+REIHENFOLGE: /mind-all ZUERST — ohne Ausnahme. ⛔ Und NUR /mind-all tilgt die Schuld:
+ein einzelner Context-Skill loescht sie NICHT, auch nicht mit vollstaendiger Quittung
+(OPEN heisst 'in ALLE fuenf Bereiche eingearbeitet', nicht 'gelesen' — v5.134.0).
+Der Auftrag ist woertlich in
 <ts>_RESUME.md gesichert und kommt im Sync-Bericht mit der Zeile 'FORTSETZUNG' zurueck.
 Der Sync dauert Minuten; ihn zu verschieben kostet den Inhalt der Rettung, sobald die
 naechste Kompaktierung kommt. 'Ich mache zuerst den Auftrag fertig' ist ab v5.4.1

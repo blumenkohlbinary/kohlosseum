@@ -48,7 +48,7 @@ MIND_SKILL_VERSION="5.124.0"
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.133.0"
+MIND_SKILL_VERSION="5.134.0"
 mind_schritt_start "$PROJ" mind-files bestandszahlen_kandidaten cleaner_stichprobe mind_check_tools_have_rules mind_hook_health mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -1147,3 +1147,8 @@ Project readiness: Good (all critical files present)
 - **Versioning-Pack-Gating (NEU v4.0):** `version.py` + `release-build.md` NUR bei Python + Release-App (Primary `code_app`) + Build/Version-Signal anbieten. **Nie wo Python fehlt** — sonst waere version.py selbst ein totes Tool. Immer OFFER, nie erzwungen.
 - **update_changelog.py-Ownership (NEU v4.0):** gehoert ins Release-Hygiene-Bundle (Step 5b, `test -d .git`), NICHT ins Backup-Bundle. Nie ohne `release-hygiene.md`.
 - **Doku-Gate-Gating (NEU v5.3.0):** `coverage_gate.py` + `wissenstransfer-pruefen.md` NUR bei **Python vorhanden** UND (`docs/` existiert ODER ≥10 `.md` ausserhalb vendor-Ordnern). **Nie wo Python fehlt** — sonst waere das Gate selbst ein totes Tool. Zu wenig Doku-Flaeche → INFO statt Angebot, nicht stillschweigend installieren. Immer OFFER, nie erzwungen. **Und im Angebot dazusagen, was es NICHT kann:** es misst Erwaehnung statt inhaltlicher Treue, und die absolute Prozentzahl ist wertlos (gemessen: 43 % gegen einen Stand, in dem das Material nachweislich fehlte) — nur der Zuwachs traegt eine Aussage.
+
+⛔ **Eine Sync-Schuld (`OPEN`) tilgt NUR `/mind-all`** — dieser Lauf nicht, auch nicht mit
+vollständiger Quittung (`OPEN` = „in ALLE fünf Bereiche eingearbeitet", nicht „gelesen").
+Am Ende des Berichts deshalb `mind_schuld_hinweis "$PROJ" || true` — Wortlaut, Messung und
+Begründung: [references/bestands-pass.md](../../references/bestands-pass.md).

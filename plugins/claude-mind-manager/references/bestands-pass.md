@@ -463,6 +463,31 @@ Das ist bereits Regel in `mind-memory` (*„Keine Inhalte fremder Memory-Bestän
 Logs oder Commits"*) und hier **mechanisch** gehalten: `cleaner_stichprobe.py` kennt
 ausschließlich **Pfade** und hat auf Inhalte gar keinen Zugriff.
 
+## ⛔ Eine Sync-Schuld (`OPEN`) tilgt NUR `/mind-all` (v5.134.0)
+
+> ⛔ **Eine Sync-Schuld (`OPEN`) tilgt NUR `/mind-all`** — nicht ein einzelner
+> Context-Skill, auch nicht mit vollständiger Quittung. Grund: `OPEN` heißt „der gerettete
+> Stoff ist in ALLE fünf Bereiche eingearbeitet", nicht „gelesen". Ein `mind-update` allein
+> ist der Knowledge-Sync ohne die vier anderen Bestands-Pässe.
+
+**Gemessen** (Udos Fund, Projekt Bürokratie, 24.09.2026; Rosa fuhr beide Fälle):
+
+| Lauf | `umfang=` | `ungepruef=` | Urteil |
+|---|---|---|---|
+| voller Kettenlauf mit Quittung | `5/5 skills … 5/5 bestand` | leer | **voll**, rc 0 |
+| `mind-update` ALLEIN, volle Quittung | `1/5 skills … 1/5 bestand` | `bestand-…`, `formal-mind-all` | **teil**, rc 1 |
+
+⭐ **Das ist gewollt und wird nicht gesenkt** (Anton 24.09.2026): wer die Schwelle senkt,
+macht „voll" wieder erreichbar, ohne den Gegenstand zu berühren — die Klasse „grün und leer"
+aus `werkzeuge-zuerst.md`. Rosa hatte alles richtig gemacht; **der Fehler war, dass es
+nirgends stand.**
+
+**Deshalb am Ende JEDES Einzellaufs** (nicht in der Kette — dort tilgt sie ja):
+
+```bash
+mind_schuld_hinweis "$PROJ" || true   # still ohne OPEN und innerhalb von /mind-all
+```
+
 ## Was der Pass auch danach NICHT kann
 
 - ⛔ *„Braucht man das?"* bleibt ein **Urteil**. Der Pass erzwingt eine **Antwort**, nicht
