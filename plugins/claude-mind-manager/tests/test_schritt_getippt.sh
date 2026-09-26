@@ -47,11 +47,14 @@ janein "   ... erste Zeile ist der mind-all-Kopf" ja "$(head -1 "$Q" | grep -q '
 janein "   ... keine der 590 alten Schrittzeilen mehr" 0 "$(grep -c '"name":"alt' "$Q")"
 rm -rf "$(dirname "$P")"
 
+# ⚠ v5.135.0: der FORMAL-Wortlaut nennt jetzt den GRUND („kein pruefbares Artefakt") — die
+#   Muster unten sind nachgezogen, die Zusicherung ist unveraendert: ein getippter Block
+#   ohne Artefakt bleibt FORMAL. Die Fixture-Datei selbst ist NICHT angefasst.
 echo "== §2  getippte Quittung: Doros Datei -> fuenf FORMAL, Ritas -> keins =="
 P=$(mktemp -d)/p; mkdir -p "$P/.claude-mind"; cp "$FX/schritt-quittung_getippt_creator_2026-09-16.jsonl" "$P/.claude-mind/schritt-quittung.jsonl"
 _B=$(mind_schritt_bilanz "$P" --alle 2>/dev/null)
 janein "Doro 16.09.: FORMAL=5" ja "$(printf '%s\n' "$_B" | grep -q '^  FORMAL=5$' && echo ja || echo nein)"
-janein "   ... vier ueber den Start-Abstand (< 20 s, v5.122.0 — vorher 60), einer ueber 8 Schritte in 1 s" ja "$([ "$(printf '%s\n' "$_B" | grep -c 'nachgetippt; MIND_SCHRITT_MIN_S=20')" = 4 ] && printf '%s\n' "$_B" | grep -q 'mind-files (8 Schritte in 1 s — nachgetippt)' && echo ja || echo nein)"
+janein "   ... vier ueber den Start-Abstand (< 20 s, v5.122.0 — vorher 60), einer ueber 8 Schritte in 1 s" ja "$([ "$(printf '%s\n' "$_B" | grep -c 'nachgetippt; MIND_SCHRITT_MIN_S=20')" = 4 ] && printf '%s\n' "$_B" | grep -q 'mind-files (8 Schritte in 1 s — nachgetippt, kein pruefbares Artefakt)' && echo ja || echo nein)"
 janein "   ... mind_ungepruef_bilden traegt alle fuenf formal-<skill>" 5 "$(mind_ungepruef_bilden "$P" 2>/dev/null | tr ',' '\n' | grep -c '^formal-mind-')"
 janein "   ... der Lauf ist damit teil (mind_lauf_voll)" teil "$(mind_lauf_voll "$P" "" 4 2>/dev/null)"
 janein "   Regler: MIND_SCHRITT_MIN_S=1 -> der Start-Abstand greift nicht mehr, vier Bloecke bleiben ueber >= 5 Schritte in 10 s FORMAL" ja "$(MIND_SCHRITT_MIN_S=1 mind_schritt_bilanz "$P" --alle 2>/dev/null | grep -q '^  FORMAL=4$' && echo ja || echo nein)"
@@ -101,7 +104,7 @@ janein "   ... mind-update danach NEU gefahren (300 s nach mind-rules): kein FOR
 _B=$(mind_schritt_bilanz "$P" --alle 2>/dev/null)
 janein "Dichte: getippter mind-files-Block, danach echt neu gefahren: kein FORMAL (nur der letzte Block je Skill)" ja "$(printf '%s\n' "$_B" | grep -q 'nachgetippt' && echo nein || echo ja)"
 { zeile_start mind-all "$(at 0)"; zeile_start mind-files "$(at 120)"; for i in 1 2 3 4 5 6; do zeile_schritt "s$i" "$(at $((120 + i / 3)))"; done; } > "$Q"
-janein "   Gegenprobe: bleibt der getippte Block der letzte, bleibt er FORMAL (6 Schritte in 2 s)" ja "$(mind_schritt_bilanz "$P" --alle 2>/dev/null | grep -q 'mind-files (6 Schritte in 2 s — nachgetippt)' && echo ja || echo nein)"
+janein "   Gegenprobe: bleibt der getippte Block der letzte, bleibt er FORMAL (6 Schritte in 2 s)" ja "$(mind_schritt_bilanz "$P" --alle 2>/dev/null | grep -q 'mind-files (6 Schritte in 2 s — nachgetippt, kein pruefbares Artefakt)' && echo ja || echo nein)"
 # §2 Noras 59-s-Block: echt gelaufen („0/0 schon geprueft") -> mit Vorgabe 20 s kein FORMAL; mit 60 s war er einer
 { zeile_start mind-all "$(at 0)"
   zeile_start mind-rules "$(at 700)";  zeile_schritt bestand "$(at 720)"; zeile_schritt verdichten "$(at 740)"
@@ -111,6 +114,74 @@ janein "59 s zwischen mind-rules und mind-update: Vorgabe 20 s -> kein FORMAL" j
 janein "   ... MIND_SCHRITT_MIN_S=60 (die alte Vorgabe) macht ihn wieder FORMAL — der Regler traegt" ja "$(MIND_SCHRITT_MIN_S=60 mind_schritt_bilanz "$P" --alle 2>/dev/null | grep -q 'mind-update (Block in 59 s nach mind-rules — nachgetippt; MIND_SCHRITT_MIN_S=60)' && echo ja || echo nein)"
 janein "   ... 19 s bleibt auch mit 20 s FORMAL" ja "$({ zeile_start mind-all "$(at 0)"; zeile_start mind-rules "$(at 700)"; zeile_schritt bestand "$(at 720)"; zeile_start mind-update "$(at 719)"; zeile_schritt bestand "$(at 800)"; } > "$Q"; mind_schritt_bilanz "$P" --alle 2>/dev/null | grep -q 'MIND_SCHRITT_MIN_S=20)' && echo ja || echo nein)"
 rm -rf "$(dirname "$P")"
+
+echo
+echo "== v5.135.0 (Etappe 46, Udos Fund): ein PRUEFBARES Artefakt schlaegt die Zeitregel =="
+# Udos drei Bloecke (8/6/7 Schritte in 6-7 s) galten als FORMAL, obwohl die Arbeit echt war:
+# deterministische Werkzeuge laufen in Sekunden. ⛔ Die Quittung trug bis 5.134.0 KEINEN Pfad
+# (gemessen an Udos Datei: 0 von 99 Zeilen) — das Kriterium war nicht pruefbar, nicht schwer.
+# ⛔ OHNE mtime-Bedingung: Udos zweiter Durchlauf lief gegen Berichte des ersten (mtime VOR
+#    dem Blockstart). Eine mtime-Regel haette die Reparatur bestraft, die 2.96a-R verlangt.
+v135() {   # $1 = Fallname (nur Lesbarkeit)  $2 = Bauart  -> "FORMAL|HINWEIS"
+  local D S B G i A F H
+  D=$(mktemp -d "${TMPDIR:-/tmp}/V135 XXXX"); mkdir -p "$D/.claude-mind"
+  S="$D/.claude-mind/schritt-quittung.jsonl"; B="$D/.claude-mind/bericht-mind-claudemd.md"
+  printf '{"ereignis":"start","skill":"mind-all","erwartet":"x","ts":"%s","code":"v","text":"v","versionsbruch":false}\n' \
+    "$(date -u -d '-900 seconds' +%Y-%m-%dT%H:%M:%SZ)" > "$S"
+  printf '{"ereignis":"start","skill":"mind-claudemd","erwartet":"x","ts":"%s","code":"v","text":"v","versionsbruch":false}\n' \
+    "$(date -u -d '-600 seconds' +%Y-%m-%dT%H:%M:%SZ)" >> "$S"
+  case "$2" in
+    getippt)
+      for i in 1 2 3 4 5 6; do
+        printf '{"ereignis":"schritt","name":"s%d","status":"gelaufen","bytes":50,"quelle":"datei","ts":"%s"}\n' \
+          "$i" "$(date -u -d "-$((600 - i)) seconds" +%Y-%m-%dT%H:%M:%SZ)" >> "$S"
+      done ;;
+    artefakt)
+      printf 'Bericht mit Inhalt, ausreichend lang.\n' > "$B"; G=$(wc -c < "$B" | tr -d ' ')
+      for i in 1 2 3 4 5 6; do
+        printf '{"ereignis":"schritt","name":"s%d","status":"gelaufen","bytes":%s,"quelle":"datei","pfad":"%s","mtime":%s,"ts":"%s"}\n' \
+          "$i" "$G" "$B" "$(stat -c %Y "$B")" "$(date -u -d "-$((600 - i)) seconds" +%Y-%m-%dT%H:%M:%SZ)" >> "$S"
+      done ;;
+    alt)
+      printf 'Bericht aus dem ersten Durchlauf.\n' > "$B"; touch -d '2 hours ago' "$B"; G=$(wc -c < "$B" | tr -d ' ')
+      for i in 1 2 3 4 5 6; do
+        printf '{"ereignis":"schritt","name":"s%d","status":"gelaufen","bytes":%s,"quelle":"datei","pfad":"%s","mtime":%s,"ts":"%s"}\n' \
+          "$i" "$G" "$B" "$(stat -c %Y "$B")" "$(date -u -d "-$((600 - i)) seconds" +%Y-%m-%dT%H:%M:%SZ)" >> "$S"
+      done ;;
+    drift)
+      printf 'Bericht mit Inhalt.\n' > "$B"
+      for i in 1 2 3 4 5 6; do
+        printf '{"ereignis":"schritt","name":"s%d","status":"gelaufen","bytes":9999,"quelle":"datei","pfad":"%s","mtime":%s,"ts":"%s"}\n' \
+          "$i" "$B" "$(stat -c %Y "$B")" "$(date -u -d "-$((600 - i)) seconds" +%Y-%m-%dT%H:%M:%SZ)" >> "$S"
+      done ;;
+    tot)
+      for i in 1 2 3 4 5 6; do
+        printf '{"ereignis":"schritt","name":"s%d","status":"gelaufen","bytes":42,"quelle":"datei","pfad":"%s/gibt-es-nicht.md","mtime":0,"ts":"%s"}\n' \
+          "$i" "$D" "$(date -u -d "-$((600 - i)) seconds" +%Y-%m-%dT%H:%M:%SZ)" >> "$S"
+      done ;;
+  esac
+  A=$(mind_schritt_bilanz "$D" --alle)
+  F=$(printf '%s\n' "$A" | grep -c 'FORMAL: mind-claudemd (.*Schritte in')
+  H=$(printf '%s\n' "$A" | grep -c 'mind-claudemd: Block in .* Artefakt belegt')
+  rm -rf "$D"
+  printf '%s|%s\n' "$F" "$H"
+}
+janein "Doros Signatur (getippt, kein Pfad) -> weiter FORMAL" "1|0" "$(v135 Doro getippt)"
+janein "⭐ Udos schneller Block MIT Artefakt -> Hinweis statt FORMAL" "0|1" "$(v135 Udo artefakt)"
+janein "⭐ Rosas Neufahren gegen den ALTEN Bericht -> gruen (keine mtime-Bedingung)" "0|1" "$(v135 Rosa alt)"
+janein "Datei da, Byte-Zahl weicht ab -> FORMAL" "1|0" "$(v135 Drift drift)"
+janein "Pfad genannt, Datei fehlt -> FORMAL" "1|0" "$(v135 Tot tot)"
+
+echo
+echo "== v5.135.0 §3: die LESBARE Zeile nennt ihren Gegenstand, der Merker bleibt =="
+janein "10/5 bestand -> 10 Bestands-Quittungen ueber 5 Skills" ja \
+  "$(mind_umfang_lesbar '5/5 skills 3/3 agents 10/5 bestand 32/32 abdeckung 5/5 echt' \
+     | grep -q '10 Bestands-Quittungen ueber 5 Skills' && echo ja || echo nein)"
+janein "   ... die uebrigen Felder bleiben unveraendert" ja \
+  "$(mind_umfang_lesbar '5/5 skills 3/3 agents 10/5 bestand 32/32 abdeckung 5/5 echt' \
+     | grep -qE '^5/5 skills 3/3 agents .* 32/32 abdeckung 5/5 echt$' && echo ja || echo nein)"
+janein "⛔ der MERKER bleibt maschinenlesbar (mind_umfang_bilden unveraendert)" ja \
+  "$(grep -q '/5 skills %s/%s agents %s/5 bestand' "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" && echo ja || echo nein)"
 
 echo
 echo "  $OK ok, $ROT rot"

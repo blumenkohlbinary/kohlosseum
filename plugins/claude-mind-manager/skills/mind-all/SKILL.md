@@ -57,7 +57,7 @@ MIND_SKILL_VERSION="5.124.0"
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.134.0"
+MIND_SKILL_VERSION="5.135.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 # ⛔ v5.98.0: die fuenf Skills sind KEINE Schritte von mind-all — jeder hat seinen EIGENEN
 #    Start-Block (Step 2, Punkt 1). Bis v5.97.0 standen sie hier, Ritas Kalibrierlauf hakte
@@ -1040,7 +1040,10 @@ passieren darf — genau daran ist v5.2.0 gescheitert.
 ```
 === /mind-all — Durchlauf abgeschlossen ===
 Modus: autonom | --ask | --dry-run
-Ausfuehrungstiefe: <UMFANG>          ⛔ PFLICHT, v5.19.0 — aus $UMFANG, nicht aus dem Kopf
+Ausfuehrungstiefe: <$(mind_umfang_lesbar "$UMFANG")>   ⛔ PFLICHT, v5.19.0 — aus $UMFANG, nicht aus dem Kopf
+                                     ⚠ v5.135.0: `10/5 bestand` heisst „10 Bestands-Quittungen ueber 5 Skills"
+                                       (Udo 24.09.2026: korrekt gezaehlt, irrefuehrend beschriftet). Die
+                                       MERKER-Zeichenkette bleibt unveraendert — `mind_sync_voll` liest sie.
 NICHT GEFAHREN:    <was und warum>   ⛔ PFLICHT — "(nichts)" ist die Antwort bei 5/5 + 4/4
 Hook-Gesundheit: OK (Herzschlag vor <N> min, Version <v>)  |  <Warnung woertlich>
 Session-Quelle: gerettet <pfad> (<N> Beitraege)  |  live

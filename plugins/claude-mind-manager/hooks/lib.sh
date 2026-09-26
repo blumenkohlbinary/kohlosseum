@@ -1443,6 +1443,24 @@ mind_umfang_bilden() {
     "$skill_ist" "$dis" "$soll" "$best" "$((gel - teil))" "$((gel + fehlt))" "$((5 - formal))"
 }
 
+# mind_umfang_lesbar <umfang-zeichenkette>
+# ⛔ v5.135.0 (Etappe 46 §3, Udos Fund): `10/5 bestand` war KORREKT und trotzdem
+#    irrefuehrend. Gemessen an seiner `analyzed-scopes.done`: zehn `bestand=`-Zeilen,
+#    jede der fuenf Skills GENAU ZWEIMAL quittiert (zwei Durchlaeufe). Die Zahl stimmt,
+#    aber `x/5` legt „von fuenf" nahe, waehrend Quittungen gezaehlt werden, nicht Skills.
+#    Klasse aus `kontext-anlegen.md`: **eine Bestandszahl nennt ihren Gegenstand GENAU.**
+# ⛔ DIE MASCHINENLESBARE ZEICHENKETTE BLEIBT UNVERAENDERT — `mind_sync_voll` liest sie,
+#    und ein Wort darin waere ein annotierter Bruch (v5.105.0). Uebersetzt wird nur fuer
+#    den BERICHT, an genau dieser Stelle.
+mind_umfang_lesbar() {
+  local u="${1:-}" a b
+  [ -n "$u" ] || return 1
+  a=$(printf '%s' "$u" | sed -n 's|.*[^0-9]\([0-9]*\)/\([0-9]*\) bestand.*|\1|p')
+  b=$(printf '%s' "$u" | sed -n 's|.*[^0-9]\([0-9]*\)/\([0-9]*\) bestand.*|\2|p')
+  case "$a$b" in ''|*[!0-9]*) printf '%s\n' "$u"; return 0 ;; esac
+  printf '%s\n' "$u" | sed "s|$a/$b bestand|$a Bestands-Quittungen ueber $b Skills|"
+}
+
 # mind_ungepruef_bilden <projekt> [laufkennung]
 # ⛔ v5.106.0 (Etappe 14 §2): der Wert von `ungepruef=` wird HIER gebildet — dieselbe
 #    Klasse wie `umfang=` (v5.105.0). Doros Creator-Lauf 13./14.09.2026: die Bilanz sagte
@@ -2789,12 +2807,22 @@ mind_schritt_start() {
 #      GEGENSTAND nicht haben (kein Git, kein Quellbaum, --dry-run). Ein
 #      vorhandener Gegenstand plus ein Sparwunsch ist kein solcher Grund.
 mind_schritt() {
-  local name="${1:-?}" status="${2:-gelaufen}" bytes="${3:-}" q quelle="zahl" pfad="" _proj
+  local name="${1:-?}" status="${2:-gelaufen}" bytes="${3:-}" q quelle="zahl" pfad="" mtime=0 _pj="" _proj
   if [ "${3:-}" = "--datei" ]; then _proj="${5:-}"; else _proj="${4:-}"; fi
   _mind_args_pruefen mind_schritt 'mind_schritt <name> <status> <bytes>|--datei <pfad> [projekt]' "$name" "$_proj" || return 2
   if [ "${3:-}" = "--datei" ]; then
     pfad="${4:-}"; quelle="datei"; q=$(_mind_schritt_pfad "${5:-}")
-    if [ -n "$pfad" ] && [ -f "$pfad" ]; then bytes=$(wc -c < "$pfad" 2>/dev/null | tr -d ' ')
+    if [ -n "$pfad" ] && [ -f "$pfad" ]; then
+      bytes=$(wc -c < "$pfad" 2>/dev/null | tr -d ' ')
+      # ⛔ v5.135.0 (Etappe 46 §2, Udos Fund): PFAD UND MTIME WERDEN AUFGESCHRIEBEN.
+      #    Bis v5.134.0 las diese Funktion die Datei, nahm die Byte-Zahl und warf den
+      #    Pfad WEG — gemessen an Udos Quittung: 0 von 99 Zeilen trugen eine Pfadangabe.
+      #    Damit war jedes Artefakt-Kriterium hinterher UNPRUEFBAR, nicht schwer zu bauen.
+      #    ⭐ Die Lehre steht in `werkzeuge-zuerst.md`, eine Stufe davor: was nicht
+      #      aufgeschrieben wird, ist spaeter nicht messbar.
+      #    ⚠ `mtime` ist INFO, KEIN Kriterium (Antons Entscheidung 24.09.2026) — siehe
+      #      mind_schritt_bilanz: eine mtime-Bedingung haette Rosas Neufahren bestraft.
+      mtime=$(stat -c %Y "$pfad" 2>/dev/null); case "$mtime" in ''|*[!0-9]*) mtime=0 ;; esac
     else bytes=0; quelle="keine-datei"; fi
   else
     q=$(_mind_schritt_pfad "${4:-}")
@@ -2819,8 +2847,11 @@ mind_schritt() {
   esac
   mkdir -p "$(dirname "$q")" 2>/dev/null
   if [ "$quelle" = "datei" ]; then
-    printf '{"ereignis":"schritt","name":"%s","status":"%s","bytes":%s,"quelle":"datei","ts":"%s"}\n' \
-      "$name" "$status" "$bytes" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$q"
+    # ⚠ Der Pfad wird JSON-sicher gemacht: `\` und `"` wuerden die Zeile sonst zerreissen,
+    #   und `mind_debug_write` verwirft seit v5.109.0 jede Zeile, die `jq -e .` nicht liest.
+    _pj=$(printf '%s' "$pfad" | sed 's|\\|\\\\|g; s|"|\\"|g')
+    printf '{"ereignis":"schritt","name":"%s","status":"%s","bytes":%s,"quelle":"datei","pfad":"%s","mtime":%s,"ts":"%s"}\n' \
+      "$name" "$status" "$bytes" "$_pj" "$mtime" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$q"
   else
     printf '{"ereignis":"schritt","name":"%s","status":"%s","bytes":%s,"ts":"%s"}\n' \
       "$name" "$status" "$bytes" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$q"
@@ -2839,6 +2870,46 @@ mind_schritt() {
 #   --alle     -> alle Bloecke. Das liest `/mind-all` am Ende der Kette.
 # ⚠ Ohne die Trennung haette das Anhaengen aus Teil A den Selbst-Check jedes
 #   Skills veraendert: er saehe die Schritte seiner Vorgaenger als eigene.
+# _mind_artefakt_belegt <blockdatei>
+# ⛔ v5.135.0 (Etappe 46 §2, Udos Fund im Projekt Buerokratie): DER ERKENNER MASS EINEN
+#    STELLVERTRETER. Die Dichte-Signatur (>= 5 Schritte in 10 s) trennt einen schnellen
+#    ECHTEN Lauf nicht von getippten Quittungen — deterministische Werkzeuge laufen in
+#    Sekunden. Gemessen an Udos Lauf 24.09.2026: drei Bloecke (mind-claudemd 8 Schritte
+#    in 6 s, mind-memory 6 in 6 s, mind-rules 7 in 7 s) galten als FORMAL, obwohl die
+#    Arbeit echt war. Und die naheliegende Abhilfe — langsamer quittieren — sieht von
+#    aussen genauso aus wie das Faelschen, vor dem die Regel schuetzt.
+# ⭐ JETZT: ein PRUEFBARER Beleg schlaegt die Zeit. Ein Schritt belegt sich, wenn seine
+#    Quittung einen `pfad` nennt, die Datei existiert, nicht leer ist und ihre GROESSE
+#    mit der quittierten Byte-Zahl uebereinstimmt (sie stammt ja daraus).
+# ⛔ KEINE mtime-BEDINGUNG, und das ist die tragende Entscheidung (Anton 24.09.2026):
+#    `mtime >= Blockstart` haette genau die Reparatur bestraft, die 2.96a-R VERLANGT —
+#    Udos zweiter Durchlauf lief gegen Berichte des ersten (mtime 13:48-13:53 vor dem
+#    Blockstart 14:09). Eine Pruefung, die das korrekte Verhalten bestraft, erzieht zum
+#    falschen. Die `mtime` steht trotzdem in der Quittung — als INFO fuer spaetere
+#    Messungen, nicht als Urteil.
+# ⛔ RESTLUECKE, benannt statt weggeschrieben: eine Quittung, die eine EXISTIERENDE Datei
+#    mit passender Byte-Zahl nennt, ist nicht unterscheidbar von einem Neufahren, das
+#    nichts Neues erzeugt hat. Bewusst in Kauf genommen — die Alternative bestraft die
+#    Reparatur. Steht so auch in `references/bestands-pass.md`.
+# ⚠ Wirkt nur fuer NEUE Quittungen: Altbestand hat kein `pfad`-Feld und bleibt bei der
+#   Zeitregel (fail-safe-Richtung unveraendert).
+_mind_artefakt_belegt() {
+  local blk="${1:-}" z p b g n=0
+  [ -f "$blk" ] || return 1
+  while IFS= read -r z; do
+    case "$z" in *'"pfad":"'*) ;; *) continue ;; esac
+    p=$(printf '%s' "$z" | sed -n 's/.*"pfad":"\(.*\)","mtime".*/\1/p')
+    p=$(printf '%s' "$p" | sed 's|\\\\|\\|g; s|\\"|"|g')
+    b=$(printf '%s' "$z" | sed -n 's/.*"bytes":\(-\?[0-9]*\).*/\1/p')
+    [ -n "$p" ] && [ -f "$p" ] || continue
+    g=$(wc -c < "$p" 2>/dev/null | tr -d ' ')
+    [ "${g:-0}" -gt 0 ] 2>/dev/null || continue
+    [ "$g" = "$b" ] || continue
+    n=$((n + 1))
+  done < "$blk"
+  [ "$n" -gt 0 ]
+}
+
 mind_schritt_bilanz() {
   local q; q=$(_mind_schritt_pfad "${1:-}")
   local alle=0; [ "${2:-}" = "--alle" ] && alle=1
@@ -2973,7 +3044,7 @@ mind_schritt_bilanz() {
   #      (c) zwei Context-Skills in derselben Sekunde — zwei Skills laufen nicht
   #          in null Sekunden; die Zeilen wurden am Ende zusammen getippt
   #    Gemessen am Lauf 00:02 (12.09.2026): alle vier inneren Skills mit (b) und (c).
-  local formal=0 formalliste="" stempel_unbekannt=""
+  local formal=0 formalliste="" stempel_unbekannt="" hinweise=""
   if [ "$alle" -eq 1 ]; then
     local _bl="${TMPDIR:-/tmp}/.mind_schritt_b$$" _bn _bs _be _bname _skill _prev_ts _ts _sk_ts=""
     sed -n "${ab},\$p" "$q" 2>/dev/null > "$_bl"
@@ -3088,9 +3159,17 @@ mind_schritt_bilanz() {
         case "$_e1$_e5" in ''|*[!0-9]*) continue ;; esac
         _d=$((_e5 - _e1)); [ "$_d" -lt 0 ] && _d=$((0 - _d))
         if [ "$_d" -le 10 ]; then
-          case "$formalliste" in *"FORMAL: $_skill ("*) ;; *)
-            formal=$((formal + 1)); formalliste="${formalliste}  FORMAL: $_skill ($_n5 Schritte in $_d s — nachgetippt)"$'\n' ;;
-          esac
+          # v5.135.0: Beleg vor Zeit. Liegt ein pruefbares Artefakt, ist der schnelle
+          #   Block kein FORMAL mehr — nur noch eine Hinweiszeile.
+          if _mind_artefakt_belegt "$_sblk"; then
+            case "$formalliste" in *"FORMAL: $_skill ("*) ;; *)
+              hinweise="${hinweise}  ⚠ $_skill: Block in $_d s ($_n5 Schritte) — Artefakt belegt (Datei da, Byte-Zahl deckungsgleich), kein FORMAL"$'\n' ;;
+            esac
+          else
+            case "$formalliste" in *"FORMAL: $_skill ("*) ;; *)
+              formal=$((formal + 1)); formalliste="${formalliste}  FORMAL: $_skill ($_n5 Schritte in $_d s — nachgetippt, kein pruefbares Artefakt)"$'\n' ;;
+            esac
+          fi
         fi
       done
       rm -f "$_sblk"
@@ -3115,6 +3194,9 @@ mind_schritt_bilanz() {
     echo "  FORMAL=$formal"
     printf '%s' "$formalliste"
   fi
+  # v5.135.0: Hinweise sind KEIN Befund und zaehlen nirgends — sie sagen nur, dass hier
+  #   die Zeitregel angeschlagen haette und der Beleg sie entkraeftet hat.
+  [ -n "$hinweise" ] && printf '%s' "$hinweise"
   [ -n "$stempel_unbekannt" ] && \
     echo "  ⚠ STEMPEL UNGELESEN (text:unbekannt): $stempel_unbekannt— MIND_SKILL_VERSION nicht in derselben Bash wie mind_schritt_start gesetzt; VERSIONSBRUCH kann so nie feuern"
   # ⛔ v5.77.0: VERSIONSBRUCH steht in der Bilanz, nicht nur im Log. Ein Lauf,

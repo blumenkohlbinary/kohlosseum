@@ -50,7 +50,7 @@ MIND_SKILL_VERSION="5.124.0"
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
-MIND_SKILL_VERSION="5.134.0"
+MIND_SKILL_VERSION="5.135.0"
 mind_schritt_start "$PROJ" mind-claudemd bestandszahlen_kandidaten claudemd_pipeline cleaner_duplikate cleaner_stichprobe cleaner_urteile mind_check_tools_have_rules mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -65,6 +65,9 @@ mind_schritt <name> "fehler:<grund>"      -1       "$PROJ"
 #    wird `gelaufen` zu `uebersprungen:kein-artefakt`, und die Bilanz zaehlt FORMAL.
 #    Drei Laeufe (10.–12.09.2026) trugen dieselben getippten Bytes; Zahlen tippt die Hand.
 mind_schritt verdichten gelaufen --datei "$PROJ/.claude-mind/verdichten-<skill>.txt" "$PROJ"  # die 3 Zeilen von mind_verdichtung_pruefen
+  # ⛔ v5.135.0: die Datei wird GEPRUEFT, nicht nur genannt — Pfad und Byte-Zahl stehen in der
+  #    Quittung, und ein schneller Block gilt damit nicht mehr als nachgetippt
+  #    (`references/bestands-pass.md`: „Ein pruefbares Artefakt schlaegt die Zeitregel").
 mind_schritt verdichten "uebersprungen:kein-kandidat" 0 "$PROJ"   # schweigen = FEHLT
 ```
 

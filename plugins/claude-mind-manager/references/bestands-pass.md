@@ -463,6 +463,29 @@ Das ist bereits Regel in `mind-memory` (*„Keine Inhalte fremder Memory-Bestän
 Logs oder Commits"*) und hier **mechanisch** gehalten: `cleaner_stichprobe.py` kennt
 ausschließlich **Pfade** und hat auf Inhalte gar keinen Zugriff.
 
+## ⛔ Ein prüfbares Artefakt schlägt die Zeitregel (v5.135.0)
+
+Ein Schritt belegt sich, wenn seine Quittung einen **Pfad** nennt, die Datei **existiert**,
+**nicht leer** ist und ihre **Größe mit der quittierten Byte-Zahl übereinstimmt** — sie stammt
+ja daraus. Liegt dieser Beleg, ist ein schneller Block **kein FORMAL** mehr, nur noch eine
+Hinweiszeile; fehlt er, bleibt es bei der Dichte-Signatur wie bisher.
+
+**Warum es die Regel vorher nicht geben konnte** (Udos Fund, Bürokratie, 24.09.2026): `mind_schritt`
+las die Datei, nahm die Byte-Zahl und **warf den Pfad weg** — gemessen an seiner Quittung trugen
+**0 von 99 Zeilen** eine Pfadangabe. Das Kriterium war nicht schwer zu bauen, es war **unprüfbar**.
+Seit v5.135.0 stehen `pfad` und `mtime` in der Quittung.
+
+⛔ **KEINE mtime-Bedingung, und das ist die tragende Entscheidung.** `mtime ≥ Blockstart` hätte
+genau die Reparatur bestraft, die Step 2.96a-R **verlangt**: Udos zweiter Durchlauf lief gegen die
+Berichte des ersten (mtime 13:48–13:53, Blockstart 14:09). Eine Prüfung, die das korrekte
+Verhalten bestraft, erzieht zum falschen. Die `mtime` steht als **INFO** in der Quittung, damit
+spätere Messungen sie haben — sie urteilt nicht.
+
+⛔ **Die Restlücke, benannt statt weggeschrieben:** eine Quittung, die eine **existierende** Datei
+mit passender Byte-Zahl nennt, ist **nicht unterscheidbar** von einem Neufahren, das nichts Neues
+erzeugt hat. Bewusst in Kauf genommen — die Alternative bestraft die Reparatur.
+⚠ Wirkt nur für **neue** Quittungen; der Altbestand hat kein `pfad`-Feld und bleibt bei der Zeitregel.
+
 ## ⛔ Eine Sync-Schuld (`OPEN`) tilgt NUR `/mind-all` (v5.134.0)
 
 > ⛔ **Eine Sync-Schuld (`OPEN`) tilgt NUR `/mind-all`** — nicht ein einzelner
