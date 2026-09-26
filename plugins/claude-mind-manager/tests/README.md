@@ -85,6 +85,49 @@ Fehler vorbei — siehe `~/.claude/rules/messung-vor-glauben.md` §1. Konkret hi
   ohne diesen Fall wäre die Wiederholungserkennung nicht von „meldet immer WIEDERHOLT" zu
   unterscheiden.
 
+## ⛔ Ein Prüffall greppt die MARKE, nie den Satz
+
+**Gemessen 26.09.2026 am Paket 5.135.0:** von **81** Prüfsammlungen greppen **33** mindestens
+einmal einen deutschen Wortlaut statt einer maschinenlesbaren Marke — **132 von 945**
+Suchmustern, also **14 %**. In Etappe 46 sind daran **zwei** Fälle rot geworden, weil der
+FORMAL-Satz um seinen Grund erweitert wurde (`… — nachgetippt, kein prüfbares Artefakt`).
+Die Zusicherung war unverändert richtig; nur ihr Suchmuster hing am Satz.
+
+**Also beim Schreiben eines neuen Falls:**
+
+| ✅ greppen | ⛔ nicht greppen |
+|---|---|
+| `^  FORMAL=4$` · `FORMAL_SKILLS=` · `FEHLT=` · `UNGEPRUEFT=` · `TEILABDECKUNG:` | `(kein prüfbares Artefakt)` · `(= noch nicht quittiert, NICHT tot)` · `(kein Kopf-Block — Bilanz über die ganze Datei…)` |
+| JSON-Schlüssel, Zahlen, Rückgabewerte, Pfade | ganze Sätze, Gedankenstriche, Klammer-Begründungen |
+
+⭐ **Die Trennlinie in einem Satz:** ein **Satz** ist für Menschen da und **darf sich ändern** —
+eine **Marke** ist für Leser da und **darf es nicht**. Wer den Satz greppt, macht jede
+Präzisierung der Meldung zu einem Fehlalarm — und ein Fehlalarm, der oft genug kommt, wird
+irgendwann durch Anpassen des Musters statt durch Nachdenken beantwortet.
+
+⛔ **Die 132 vorhandenen Muster werden NICHT auf Verdacht umgebaut.** Ein Massenumbau über 33
+Sammlungen wäre ein Schnitt quer durch alle Zusicherungen, ohne dass ein einziger davon
+gemessen falsch ist — und er würde genau die Fälle anfassen, die heute halten.
+⭐ **Es gilt eine RATSCHE:** umgestellt wird ein Muster **dann, wenn es rot wird**, weil sich
+der Satz geändert hat. Wer es dann anpasst, stellt es auf die Marke um statt auf den neuen
+Satz. So wandert der Bestand über die Zeit, ohne dass ihn jemand in einem Zug zerschneidet.
+
+⚠ **Grenze der Messung, die dazugehört:** unterschieden wird die **Form** des Suchmusters
+(drei zusammenhängende Wörter Prosa oder ein typografisches Zeichen der Meldungssprache),
+nicht seine **Absicht**. Ein Muster kann formal Prosa sein und trotzdem genau richtig — etwa
+ein wörtlich vorgeschriebener Nutzer-Satz. Die 132 sind eine **Obergrenze**, kein Urteil.
+
+⭐ **Die Marken selbst sind ADDITIV eingeführt** (v5.136.0): kein vorhandener Satz hat sich um
+ein Byte geändert, deshalb blieben alle 79 Fundstellen grün, ohne angefasst zu werden.
+`test_marken.sh` §5 hält den Rückfall fest (ein Text ohne Marke bleibt lesbar), §6 hält
+fest, dass die alten Sätze noch wörtlich dastehen — wer eine Marke einbaut, ist versucht, die
+Prosa danach „aufzuräumen", und genau das wäre der Bruch.
+
+⚠ **`test_marken.sh` erhöht die Messung selbst** — mit ihr sind es **34 von 82**
+Sammlungen und **133 von 961** Mustern. Die eine neue Wortlaut-Stelle ist §6, die die
+alten Sätze ABSICHTLICH greppt. Wer die Zahl nachmisst, sieht sonst einen Zuwachs und
+hält ihn für einen Rückfall.
+
 ## ⛔ Was hier NICHT hineingehört
 
 **Nichts, was `~/.claude/settings.json` oder Umgebungsvariablen schreibt.** Ein Plugin, das

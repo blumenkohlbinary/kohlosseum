@@ -1394,8 +1394,15 @@ mind_sync_voll() {
 #    nichts — fail-safe in derselben Richtung wie umfang=.
 _mind_fehlt_liste() {
   local bil="${1:-}" z erst="mind-all" t
-  printf '%s\n' "$bil" | grep -q 'FORMAL: mind-all (kein Kopf-Block' && erst="unbekannt"
-  z=$(printf '%s\n' "$bil" | sed -n 's/^.*FEHLT (= noch nicht quittiert, NICHT tot)://p' | head -1)
+  # v5.136.0: MARKE zuerst, Prosa als Rueckfall — ein gespeicherter Bilanz-Text aus
+  #   einer aelteren Version traegt noch keine Marke und muss weiter lesbar bleiben.
+  if printf '%s\n' "$bil" | grep -q '^ *FORMAL_KOPFBLOCK=1'; then
+    erst="unbekannt"
+  elif printf '%s\n' "$bil" | grep -q 'FORMAL: mind-all (kein Kopf-Block'; then
+    erst="unbekannt"
+  fi
+  z=$(printf '%s\n' "$bil" | sed -n 's/^ *FEHLT=//p' | head -1)
+  [ -n "$z" ] || z=$(printf '%s\n' "$bil" | sed -n 's/^.*FEHLT (= noch nicht quittiert, NICHT tot)://p' | head -1)
   for t in $z; do
     case "$t" in
       */*/*|/*|*/) continue ;;
@@ -1435,7 +1442,12 @@ mind_umfang_bilden() {
   teil=$(printf '%s\n' "$abd" | sed -n 's/.*TEIL=\([0-9]*\).*/\1/p' | head -1)
   case "${gel:-}" in ''|*[!0-9]*) gel=0 ;; esac
   case "${teil:-}" in ''|*[!0-9]*) teil=0 ;; esac
-  formal=$(printf '%s\n' "$abd" | grep -c '^ *FORMAL: mind-\(files\|claudemd\|memory\|rules\|update\) ')
+  # v5.136.0: ueber FORMAL_SKILLS=, Prosa als Rueckfall. Gezaehlt werden weiterhin
+  #   nur die fuenf Context-Skills — mind-all zaehlt hier nicht mit.
+  formal=$(printf '%s\n' "$abd" | sed -n 's/^ *FORMAL_SKILLS=//p' | head -1 \
+           | tr ' ' '\n' | grep -c '^mind-\(files\|claudemd\|memory\|rules\|update\)$')
+  case "${formal:-}" in ''|*[!0-9]*) formal=0 ;; esac
+  [ "$formal" -eq 0 ] && formal=$(printf '%s\n' "$abd" | grep -c '^ *FORMAL: mind-\(files\|claudemd\|memory\|rules\|update\) ')
   case "${formal:-}" in ''|*[!0-9]*) formal=0 ;; esac
   [ "$formal" -gt 5 ] && formal=5
   fehlt=$(_mind_fehlt_liste "$abd" | grep -c .); case "${fehlt:-}" in ''|*[!0-9]*) fehlt=0 ;; esac
@@ -1471,7 +1483,7 @@ mind_umfang_lesbar() {
 #    mind-all, seit v5.130.0 auch FEHLT als `fehlt-<skill>:<schritt>` — Etappe 42, Noras
 #    Fund). Handzusaetze haengt der Aufrufer als `hand:<text>` AN, er ersetzt nichts.
 mind_ungepruef_bilden() {
-  local proj="${1:-}" q ab tmp bil abd sc out="" _b _s _n
+  local proj="${1:-}" q ab tmp bil abd sc out="" _b _s _n _fl=""
   q="$proj/.claude-mind/agent-quittung.jsonl"
   tmp="${TMPDIR:-/tmp}/.mind_ungepruef_$$"
   ab=$(grep -n '"ereignis":"start"' "$q" 2>/dev/null | tail -1 | cut -d: -f1)
@@ -1493,7 +1505,10 @@ mind_ungepruef_bilden() {
   for _n in $(printf '%s\n' "$abd" | sed -n 's/^ *TEILABDECKUNG://p' | tr ' ' '\n' | grep -v '/' | grep -v '^$' | sort -u); do
     out="${out}abdeckung-${_n},"
   done
-  for _n in $(printf '%s\n' "$abd" | sed -n 's/^ *FORMAL: \([^ ]*\) .*/\1/p' | sort -u); do
+  # v5.136.0: MARKE zuerst, Prosa als Rueckfall (siehe _mind_fehlt_liste)
+  _fl=$(printf '%s\n' "$abd" | sed -n 's/^ *FORMAL_SKILLS=//p' | head -1)
+  [ -n "$_fl" ] || _fl=$(printf '%s\n' "$abd" | sed -n 's/^ *FORMAL: \([^ ]*\) .*/\1/p' | tr '\n' ' ')
+  for _n in $(printf '%s\n' "$_fl" | tr ' ' '\n' | grep -v '^$' | sort -u); do
     out="${out}formal-${_n},"
   done
   for _n in $(_mind_fehlt_liste "$abd" | sort -u); do
@@ -2147,7 +2162,7 @@ mind_agent_ergebnis() {
 #            1 = mindestens ein Bereich UNGEPRUEFT (leer oder stumm)
 #            2 = GAR NICHT DISPATCHT — der Fan-out hat nicht stattgefunden
 mind_agent_bilanz() {
-  local q; q=$(_mind_quittung_pfad "${1:-}")
+  local q _ubl=""; q=$(_mind_quittung_pfad "${1:-}")
   local d=0 e=0 leer=0 stumm=0 zeile b bereich liste=""
 
   if [ ! -f "$q" ]; then
@@ -2314,6 +2329,12 @@ mind_agent_bilanz() {
   fi
   [ -n "$liste" ] && printf '%s' "$liste"
   [ -n "$nachtrag" ] && printf '%s' "$nachtrag"
+  # ⛔ v5.136.0 (Etappe 47 §1): MARKE neben der Prosa. Die Zeilen darueber nennen je
+  #    Bereich den GRUND und bleiben unveraendert — diese Zeile nennt nur die Bereiche,
+  #    damit `mind_ungepruef_bilden` nicht am Leerzeichen hinter dem Namen haengt.
+  _ubl=$(printf '%s%s' "$liste" "$nachtrag" \
+         | sed -n 's/^ *UNGEPRUEFT: \([^ (]*\).*/\1/p' | sort -u | tr '\n' ' ')
+  [ -n "$_ubl" ] && echo "  UNGEPRUEFT=${_ubl% }"
 
   # ⛔ v5.42.0: ERGEBNIS ohne DISPATCH ist LOGISCH UNMOEGLICH und wurde bis dahin
   #    als "der Fan-out hat nicht stattgefunden" gemeldet — waehrend im selben
@@ -3044,7 +3065,7 @@ mind_schritt_bilanz() {
   #      (c) zwei Context-Skills in derselben Sekunde — zwei Skills laufen nicht
   #          in null Sekunden; die Zeilen wurden am Ende zusammen getippt
   #    Gemessen am Lauf 00:02 (12.09.2026): alle vier inneren Skills mit (b) und (c).
-  local formal=0 formalliste="" stempel_unbekannt="" hinweise=""
+  local formal=0 formalliste="" stempel_unbekannt="" hinweise="" _fsk=""
   if [ "$alle" -eq 1 ]; then
     local _bl="${TMPDIR:-/tmp}/.mind_schritt_b$$" _bn _bs _be _bname _skill _prev_ts _ts _sk_ts=""
     sed -n "${ab},\$p" "$q" 2>/dev/null > "$_bl"
@@ -3193,6 +3214,15 @@ mind_schritt_bilanz() {
   if [ "$formal" -gt 0 ]; then
     echo "  FORMAL=$formal"
     printf '%s' "$formalliste"
+    # ⛔ v5.136.0 (Etappe 47 §1): MARKE neben der Prosa, nicht anstelle von ihr.
+    #    Die FORMAL-Saetze darueber bleiben Wort fuer Wort stehen — sie sind fuer
+    #    Menschen da und duerfen sich aendern. Diese Zeile ist fuer Leser da und
+    #    darf es nicht. Anlass: in Etappe 46 wurden zwei Prueffaelle rot, weil der
+    #    FORMAL-Satz um seinen GRUND erweitert wurde; fuenf Leser in dieser Datei
+    #    haengen bis heute am deutschen Satz.
+    _fsk=$(printf '%s' "$formalliste" | sed -n 's/^ *FORMAL: \([^ ]*\) .*/\1/p' | sort -u | tr '\n' ' ')
+    echo "  FORMAL_SKILLS=${_fsk% }"
+    [ "$alle" -eq 1 ] && [ "$mischung" -eq 1 ] && echo "  FORMAL_KOPFBLOCK=1"
   fi
   # v5.135.0: Hinweise sind KEIN Befund und zaehlen nirgends — sie sagen nur, dass hier
   #   die Zeitregel angeschlagen haette und der Beleg sie entkraeftet hat.
@@ -3246,6 +3276,9 @@ mind_schritt_bilanz() {
     else
       echo "  ⛔ FEHLT (= noch nicht quittiert, NICHT tot):$fehlt"
     fi
+    # v5.136.0: die Marke. Der Satz oben nennt den Grund und bleibt unveraendert;
+    #   `_mind_fehlt_liste` liest kuenftig diese Zeile statt des Klammerzusatzes.
+    echo "  FEHLT=${fehlt# }"
   fi
 
   # ⛔ v5.67.0: EINE TEILABDECKUNG IST KEIN ERFOLG.
