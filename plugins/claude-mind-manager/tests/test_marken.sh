@@ -20,6 +20,8 @@
 # §4 UNGEPRUEFT= in mind_agent_bilanz; mind_ungepruef_bilden trifft ueber die Marke
 # §5 ⭐ RUECKFALL — ein Bilanz-Text OHNE Marken (alter Wortlaut) bleibt lesbar
 # §6 ⭐ RATSCHE — die alten Saetze stehen woertlich noch da
+# §7 ⭐ die Marke wird nicht LEER, waehrend die Prosa etwas nennt (v5.137.0) — NICHT
+#    Gleichheit, die waere eine Tautologie: beide kommen aus derselben Variablen
 #
 # Gegen 5.135.0 GEMESSEN: 10 rot, 12 gruen — §1-§4 rot.
 #   §5 und §6 sind dort gruen, und das ist richtig: §5 prueft den Rueckfall, der
@@ -125,6 +127,40 @@ janein "   ... claude-md NICHT in der Marke" nein \
   "$(printf '%s\n' "$A" | grep -q '^  UNGEPRUEFT=.*claude-md' && echo ja || echo nein)"
 janein "   ... custom-context NICHT in der Marke" nein \
   "$(printf '%s\n' "$A" | grep -q '^  UNGEPRUEFT=.*custom-context' && echo ja || echo nein)"
+rm -rf "$T"
+
+echo "== §7  ⭐ die Marke wird nicht LEER, waehrend die Prosa etwas nennt =="
+# ⛔ NICHT „Marke gleich Satz" — das kaeme aus derselben Variablen und waere eine
+#    Tautologie. Geprueft wird der Ausfall, der wirklich droht: die Prosa nennt etwas,
+#    das `sed` trifft ihr Format nicht mehr, die Marke ist leer, und der Leser sieht
+#    nichts. Ein Satz darf sich aendern; eine Marke, die dabei verschwindet, ist der Bruch.
+T=$(mktemp -d); P="$T/p"; mkdir -p "$P/.claude-mind"; Q="$P/.claude-mind/schritt-quittung.jsonl"
+{ zeile_start mind-rules "$NOW" "$VER" "cleaner_duplikate audit"
+  zeile_schritt audit "$NOW"; } > "$Q"
+B=$(mind_schritt_bilanz "$P" 2>/dev/null)
+# Prosa nennt einen fehlenden Schritt -> dann MUSS die Marke ihn auch nennen
+_PROSA=$(printf '%s\n' "$B" | grep -c 'FEHLT (= noch nicht quittiert')
+_MARKE=$(printf '%s\n' "$B" | sed -n 's/^  FEHLT=//p' | grep -c .)
+janein "FEHLT: Prosa nennt etwas -> Marke ist NICHT leer" "ja" \
+  "$([ "$_PROSA" -gt 0 ] && [ "$_MARKE" -gt 0 ] && echo ja || echo nein)"
+janein "   ... und beide nennen denselben Schritt" "ja" \
+  "$(printf '%s\n' "$B" | grep -q '^  FEHLT=.*cleaner_duplikate' && echo ja || echo nein)"
+rm -rf "$T"
+
+T=$(mktemp -d); P="$T/p"; mkdir -p "$P/.claude-mind"
+_d2() { printf '{"ereignis":"dispatch","bereich":"%s","ts":"%s"}\n' "$1" \
+        "$(date -u -d '-120 seconds' +%Y-%m-%dT%H:%M:%SZ)" >> "$P/.claude-mind/agent-quittung.jsonl"; }
+mind_agent_quittung_start "$P" 4 >/dev/null 2>&1
+_d2 memory        # dispatcht, nie zurueck -> stumm
+A=$(mind_agent_bilanz "$P" 2>/dev/null)
+_PROSA2=$(printf '%s\n' "$A" | grep -c '^  UNGEPRUEFT: ')
+_MARKE2=$(printf '%s\n' "$A" | sed -n 's/^  UNGEPRUEFT=//p' | grep -c .)
+janein "UNGEPRUEFT: Prosa nennt Bereiche -> Marke ist NICHT leer" "ja" \
+  "$([ "$_PROSA2" -gt 0 ] && [ "$_MARKE2" -gt 0 ] && echo ja || echo nein)"
+# ⛔ Und die Zahl muss zusammenpassen, sonst waere „schreib irgendwas hin" gruen.
+janein "   ... Marke nennt genau so viele Bereiche wie die Prosa Zeilen hat" \
+  "$_PROSA2" \
+  "$(printf '%s\n' "$A" | sed -n 's/^  UNGEPRUEFT=//p' | head -1 | tr ' ' '\n' | grep -c .)"
 rm -rf "$T"
 
 echo "== §5  ⭐ RUECKFALL: ein Bilanz-Text OHNE Marken bleibt lesbar =="

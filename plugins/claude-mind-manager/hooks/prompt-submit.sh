@@ -328,6 +328,14 @@ if [ -f "$_KWM" ] && [ "$_PLAN_STILL" != "ja" ]; then
   # ⭐ v5.47.0: die STEHENDE Deckel-Schuld, unabhaengig vom Einzelschritt.
   _KS=$(grep -m1 '^schuld_bytes='  "$_KWM" 2>/dev/null | cut -d= -f2)
   _KA=$(grep -m1 '^anker_ts='      "$_KWM" 2>/dev/null | cut -d= -f2-)
+  # ⛔ v5.137.0 (Etappe 48): die Wache hat einen Anker-Rueckgang ABGELEHNT. Das gehoert
+  #    gemeldet — ein stiller Verwurf waere derselbe Fehler in der anderen Richtung.
+  _KAB=$(grep -m1 '^anker_abgelehnt=' "$_KWM" 2>/dev/null | cut -d= -f2-)
+  # ⛔ v5.137.0: nur an die ZUSTAENDIGE Sitzung. Der Wachstums-Block hier ist nicht
+  #    rollen-gegatet (er prueft nur `_PLAN_STILL`); ohne diese Zeile spraeche eine
+  #    stillgelegte Rolle — `test_rollen_gate.sh` hat genau das gefunden. Die Ablehnung
+  #    steht unabhaengig davon im Merker, verloren geht sie also nicht.
+  [ "$_ROLLE_STILL" = "ja" ] && _KAB=""
   case "${_KS:-}" in ''|*[!0-9]*) _KS=0 ;; esac
   # ⛔ VERBRAUCHEN, bevor ausgegeben wird. Bleibt der Merker liegen, meldet es
   #    bei JEDEM Prompt dieselbe Zahl — und ein Melder, der sich wiederholt,
@@ -338,7 +346,8 @@ if [ -f "$_KWM" ] && [ "$_PLAN_STILL" != "ja" ]; then
   #    wenn der Merker wegen der SCHULD entsteht. Wer hier nur das Delta prueft,
   #    baut den Anker und schaltet ihn im selben Zug stumm.
   case "${_KD:-}" in ''|*[!0-9]*) _KD="" ;; esac
-  if [ -n "$_KD" ] || [ "$_KS" -gt 0 ] 2>/dev/null; then
+  # v5.137.0: auch eine Ablehnung ohne Wachstum und ohne Schuld muss durch dieses Tor.
+  if [ -n "$_KD" ] || [ "$_KS" -gt 0 ] 2>/dev/null || [ -n "${_KAB:-}" ]; then
     if [ -n "$_KD" ]; then
       _KOPF="Der IMMER geladene Kontext ist um $_KD Zeilen gewachsen ($_KV -> $_KJ)."
     else
@@ -354,6 +363,10 @@ Die acht Fragen, kurz:
   A1 selbsterklaerend?   A2 noch wahr?      A3 Regel oder Historie?
   B1 steht es schon woanders?   B2 im Code?   B3 wirkt es an DIESEM Ort?
   C1 hart formuliert?    C2 befolgbar?
+${_KAB:+
+⛔ DECKEL-ANKER ABGELEHNT: ${_KAB}
+   Fail-safe: ein zu hoher Anker meldet zu viel Schuld, ein zu niedriger verschweigt sie.
+   Ursache pruefen, nicht den Anker von Hand setzen.}
 
 ⛔ OFFENE DECKEL-SCHULD: $_KS B, seit $_KA.
 Die Deckelregel sagt: wer im Dauerkontext anlegt, zahlt aus dem Bestand.

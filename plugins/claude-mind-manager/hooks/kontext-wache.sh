@@ -86,14 +86,34 @@ case "$JETZT" in ''|*[!0-9]*) exit 1 ;; esac
 JETZT_B=$(printf '%s\n' "$AUSGABE" | grep -m1 -oE 'BYTES=[0-9]+' | cut -d= -f2)
 case "${JETZT_B:-}" in ''|*[!0-9]*) JETZT_B=0 ;; esac
 [ "$JETZT" -gt 0 ] 2>/dev/null || exit 1
+# ⛔ v5.137.0 (Etappe 48b): die Marke `UNGUELTIG=` sagt, dass mindestens eine gezaehlte
+#    Datei nicht lesbar war — dann ist BYTES zu NIEDRIG, und ein Anker darauf waere die
+#    Tilgung einer Schuld, die niemand beglichen hat. Gelesen wird die MARKE, nicht der
+#    deutsche Satz darunter (Etappe 47 §1).
+UNGUELTIG=$(printf '%s\n' "$AUSGABE" | grep -m1 -oE 'UNGUELTIG=[0-9]+' | cut -d= -f2)
+case "${UNGUELTIG:-}" in ''|*[!0-9]*) UNGUELTIG=0 ;; esac
+JETZT_D=$(printf '%s\n' "$AUSGABE" | grep -m1 -oE 'DATEIEN=[0-9]+' | cut -d= -f2)
+case "${JETZT_D:-}" in ''|*[!0-9]*) JETZT_D=0 ;; esac
 
 VORHER=""
 [ -f "$STAND" ] && VORHER=$(grep -m1 -oE '^ZEILEN=[0-9]+' "$STAND" 2>/dev/null | cut -d= -f2)
 case "${VORHER:-}" in ''|*[!0-9]*) VORHER="" ;; esac
+# v5.137.0: der Vorstand traegt jetzt auch DATEIEN und den Verdacht des letzten Laufs.
+#   Fehlt eins (Altbestand), verhaelt sich alles wie bisher.
+VORHER_D=""
+[ -f "$STAND" ] && VORHER_D=$(grep -m1 -oE '^DATEIEN=[0-9]+' "$STAND" 2>/dev/null | cut -d= -f2)
+case "${VORHER_D:-}" in ''|*[!0-9]*) VORHER_D="" ;; esac
+VERDACHT=""
+[ -f "$STAND" ] && VERDACHT=$(grep -m1 -oE '^verdacht=[0-9]+' "$STAND" 2>/dev/null | cut -d= -f2)
+case "${VERDACHT:-}" in ''|*[!0-9]*) VERDACHT="" ;; esac
 
+_MERK_VERDACHT=""
 _merken() {
   mkdir -p "$(dirname "$STAND")" 2>/dev/null
-  printf 'ZEILEN=%s\nts=%s\n' "$JETZT" "$(date +%s)" > "$STAND" 2>/dev/null
+  printf 'ZEILEN=%s\nDATEIEN=%s\nts=%s\n' "$JETZT" "$JETZT_D" "$(date +%s)" \
+    > "$STAND" 2>/dev/null
+  [ -n "$_MERK_VERDACHT" ] && printf 'verdacht=%s\n' "$_MERK_VERDACHT" >> "$STAND" 2>/dev/null
+  return 0
 }
 
 # ⚠ Erster Lauf: nur merken, nie melden. Ohne Vorstand ist jeder Wert ein
@@ -104,12 +124,27 @@ _merken() {
 #    jedem kleinen Zuwachs uebersprungen — also in genau dem Fall, fuer
 #    den er gebaut ist.
 SCHULD=0; ANKER=""; ANKER_TS=""
-if [ "$JETZT_B" -gt 0 ] 2>/dev/null; then
+_ABLEHN=""   # v5.137.0: Ablehnungsgrund, wandert in den Merker (NICHT auf stdout)
+# ⛔ v5.137.0: die Ungueltigkeit wird VOR dem `JETZT_B > 0`-Tor geprueft. Sind ALLE
+#    Groessen unlesbar, ist BYTES genau 0 — und dann uebersprang das Tor die Pruefung,
+#    also im schlimmsten Fall. Gefunden vom Prueffall, nicht im Betrieb: am 24.09. war
+#    nur EINE Datei betroffen, BYTES blieb > 0.
+if [ "$UNGUELTIG" -gt 0 ] 2>/dev/null; then
+  _ABLEHN="kein Anker angefasst — Bilanz UNGUELTIG ($UNGUELTIG Datei(en) nicht lesbar); BYTES ist zu niedrig, nicht getilgt"
   [ -f "$DECKEL" ] && {
     ANKER=$(grep -m1 -oE '^BYTES=[0-9]+' "$DECKEL" 2>/dev/null | cut -d= -f2)
     ANKER_TS=$(grep -m1 '^TS=' "$DECKEL" 2>/dev/null | cut -d= -f2-)
   }
   case "${ANKER:-}" in ''|*[!0-9]*) ANKER="" ;; esac
+elif [ "$JETZT_B" -gt 0 ] 2>/dev/null; then
+  [ -f "$DECKEL" ] && {
+    ANKER=$(grep -m1 -oE '^BYTES=[0-9]+' "$DECKEL" 2>/dev/null | cut -d= -f2)
+    ANKER_TS=$(grep -m1 '^TS=' "$DECKEL" 2>/dev/null | cut -d= -f2-)
+  }
+  case "${ANKER:-}" in ''|*[!0-9]*) ANKER="" ;; esac
+  # ⚠ Ein UNGUELTIG-Zweig stand hier bis zum Bau von Fall 6 — er ist jetzt unerreichbar,
+  #   weil die Ungueltigkeit oben am aeusseren Tor abgefangen wird. Toten Code stehen zu
+  #   lassen waere die Bauform, die dieses Projekt „sieht repariert aus" nennt.
   if [ -z "$ANKER" ]; then
     # Erster Lauf: Anker setzen, keine Schuld behaupten.
     mkdir -p "$(dirname "$DECKEL")" 2>/dev/null
@@ -120,27 +155,59 @@ if [ "$JETZT_B" -gt 0 ] 2>/dev/null; then
     # ⛔ RATSCHE NACH UNTEN: getilgt ist getilgt, aber es gibt kein
     #    Guthaben. Ohne das liesse sich erst kuerzen und danach unbemerkt
     #    wieder auffuellen.
-    mkdir -p "$(dirname "$DECKEL")" 2>/dev/null
-    printf 'BYTES=%s\nTS=%s\n' "$JETZT_B" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-      > "$DECKEL" 2>/dev/null
-    ANKER="$JETZT_B"
+    # ⛔ v5.137.0 (Etappe 48b): ein Rueckgang wird nur noch uebernommen, wenn er
+    #    PLAUSIBEL ist. Hier wurde bis 5.136.0 JEDER niedrigere Wert dauerhaft
+    #    festgeschrieben — am 24.09.2026 ein Aussetzer von einem Turn, 8 067 B.
+    _ABLEHNUNG=""
+    if [ -n "$VORHER_D" ] && [ "$JETZT_D" -lt "$VORHER_D" ] 2>/dev/null; then
+      # ⭐ Transient gegen dauerhaft, entschieden durch WIEDERHOLUNG statt durch eine
+      #   geratene Schwelle: erst wenn derselbe niedrigere Stand zweimal in Folge kommt,
+      #   ist es eine echte Loeschung und keine Datei, die im Messmoment fehlte.
+      if [ "$VERDACHT" = "$JETZT_D" ]; then
+        :   # zweites Mal derselbe Stand -> echte Loeschung, Ratsche darf greifen
+      else
+        _ABLEHNUNG="DATEIEN $VORHER_D -> $JETZT_D beim ersten Mal — eine im Messmoment fehlende Datei sieht genauso aus wie eine geloeschte"
+        _MERK_VERDACHT="$JETZT_D"
+      fi
+    fi
+    if [ -n "$_ABLEHNUNG" ]; then
+      # ⛔ Abgelehnt heisst GEMELDET, nicht verschwiegen — ein stiller Verwurf waere
+      #    derselbe Fehler in der anderen Richtung.
+      _ABLEHN="Anker NICHT gesenkt ($ANKER -> $JETZT_B abgelehnt): $_ABLEHNUNG"
+    else
+      mkdir -p "$(dirname "$DECKEL")" 2>/dev/null
+      printf 'BYTES=%s\nTS=%s\n' "$JETZT_B" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        > "$DECKEL" 2>/dev/null
+      ANKER="$JETZT_B"
+    fi
   fi
   SCHULD=$(( JETZT_B - ANKER ))
   [ "$SCHULD" -lt 0 ] 2>/dev/null && SCHULD=0
 fi
 
+# ⛔ v5.137.0: der fruehe Abbruch gilt nur, wenn NICHTS abgelehnt wurde. „Erster Lauf,
+#    nur merken" ist fuer Wachstum richtig (ein Zuwachs von 0 auf N waere eine Meldung
+#    ueber das Anlegen der Merkdatei) — fuer eine Ablehnung ist er falsch: dass kein Anker
+#    gesetzt wurde, ist genau dann zu melden, wenn noch keiner existiert.
 if [ -z "$VORHER" ]; then
-  _merken
-  exit 1
+  if [ -z "$_ABLEHN" ]; then
+    _merken
+    exit 1
+  fi
+  DELTA=""   # ohne Vorstand ist kein Vergleich moeglich — die Ablehnung traegt die Meldung
+else
+  DELTA=$(( JETZT - VORHER ))
 fi
-
-DELTA=$(( JETZT - VORHER ))
 # ⭐ ODER-Bedingung: gemeldet wird bei einem grossen EINZELSCHRITT ODER
 #   bei einer grossen STEHENDEN Schuld. Nur die erste zu pruefen war der
 #   Defekt — 90 Zeilen in Schritten von je unter 20 sind so nie gemeldet
 #   worden, obwohl jede einzelne Messung stimmte.
-if [ "$DELTA" -lt "$SCHWELLE" ] 2>/dev/null \
-   && [ "$SCHULD" -lt "$DECKEL_SCHWELLE" ] 2>/dev/null; then
+# ⛔ v5.137.0: eine ABLEHNUNG muss den Merker erzwingen. Ohne die dritte Bedingung
+#    faellt sie still aus, sobald Delta und Schuld unter ihren Schwellen liegen — und
+#    eine still ausgefallene Meldung ueber einen stillen Ausfall ist der Fehler selbst.
+if [ -n "$DELTA" ] && [ "$DELTA" -lt "$SCHWELLE" ] 2>/dev/null \
+   && [ "$SCHULD" -lt "$DECKEL_SCHWELLE" ] 2>/dev/null \
+   && [ -z "$_ABLEHN" ]; then
   # ⚠ Auch bei SCHRUMPFEN fortschreiben — sonst meldet der naechste Zuwachs
   #   gegen einen veralteten Hochstand und faellt zu klein aus.
   _merken
@@ -149,9 +216,9 @@ fi
 
 mkdir -p "$(dirname "$MERKER")" 2>/dev/null
 {
-  printf 'vorher=%s\n' "$VORHER"
+  [ -n "$VORHER" ] && printf 'vorher=%s\n' "$VORHER"
   printf 'jetzt=%s\n'  "$JETZT"
-  printf 'delta=%s\n'  "$DELTA"
+  [ -n "$DELTA" ] && printf 'delta=%s\n' "$DELTA"
   printf 'schuld_bytes=%s\n' "$SCHULD"
   # ⛔ v5.65.0: HIER STAND `schuld_tokens=`, die Umrechnung mit dem Faktor
   #    1,917 B/Token. Sie ist weg, die BYTE-Messung bleibt. Grund: eine
@@ -160,6 +227,7 @@ mkdir -p "$(dirname "$MERKER")" 2>/dev/null
   #    ⚠ Der Eich-Faktor selbst steht weiter in `werkzeuge-zuerst.md`, als
   #      Umrechnung fuer einen Menschen. ⛔ NIE mit 4 rechnen.
   printf 'anker_ts=%s\n' "${ANKER_TS:-unbekannt}"
+  [ -n "$_ABLEHN" ] && printf 'anker_abgelehnt=%s\n' "$_ABLEHN"
   printf 'ts=%s\n'     "$(date +%s)"
 } > "$MERKER" 2>/dev/null || exit 1
 _merken

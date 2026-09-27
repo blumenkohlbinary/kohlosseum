@@ -2455,6 +2455,7 @@ mind_commits_seit() {
 mind_kontext_bilanz() {
   local projekt="${1:-}" modus="${2:-}"
   local liste zeilen=0 anw=0 bytes=0 dateien=0 f n a b
+  local unlesbar=0 unlesbar_liste=""   # v5.137.0 (Etappe 48a)
   local crlf_n=0 crlf_b=0 crlf_liste="" ze cr
   # ⛔ v5.115.0 (Etappe 23 §6, Otto/Vera, Zustellplan): 874 kB Rules auf der PLATTE, aber seit
   #    dem paths:-Tausch laden beim Start nur CLAUDE.md 38 kB + rollen.md 8,7 kB — und der
@@ -2516,7 +2517,18 @@ mind_kontext_bilanz() {
     # ⛔ Kein `grep -F` auf UTF-8: das ist auf Git-Bash/MSYS schon einmal mit
     #    einem core dump ausgestiegen und hat 24 Scheinbefunde erzeugt (v4.1.0).
     a=$(grep -cE '(MUST|NEVER|ALWAYS|⛔)' "$f" 2>/dev/null); case "$a" in ''|*[!0-9]*) a=0 ;; esac
-    b=$(wc -c < "$f" 2>/dev/null); case "$b" in ''|*[!0-9]*) b=0 ;; esac
+    # ⛔ v5.137.0 (Etappe 48a): ein unlesbares `wc -c` ist KEIN 0 Byte. Hier stand
+    #    `case "$b" in ''|*[!0-9]*) b=0`, und genau das hat am 24.09.2026 einen Anker um
+    #    8 067 B zu niedrig gesetzt — die Groesse einer Datei, die es gab und die sich
+    #    nicht geaendert hat. Die Ratsche in `kontext-wache.sh` machte den Aussetzer
+    #    EINES Turns dauerhaft. 0 sieht hier aus wie eine Tilgung.
+    b=$(wc -c < "$f" 2>/dev/null)
+    case "$b" in
+      ''|*[!0-9]*)
+        unlesbar=$((unlesbar + 1))
+        unlesbar_liste="$unlesbar_liste $(basename "$f")"
+        b=0 ;;
+    esac
     # paths: im Frontmatter (nur bei Rules) -> laedt bei Beruehrung, nicht beim Start (v5.115.0 §6)
     kopf=""
     case "$f" in */rules/*.md)
@@ -2541,7 +2553,16 @@ mind_kontext_bilanz() {
   done < "$liste"
   rm -f "$liste"
 
-  echo "ZEILEN=$zeilen ANWEISUNGEN=$anw DATEIEN=$dateien BYTES=$bytes"
+  # ⭐ Die MARKE gehoert in die Kopfzeile, nicht nur in einen Satz darunter: `kontext-wache.sh`
+  #    soll die Ungueltigkeit greifen koennen, ohne deutschen Wortlaut zu parsen (Etappe 47 §1).
+  #    Ohne Aussetzer bleibt die Zeile byteweise wie bisher — jeder vorhandene Leser trifft weiter.
+  if [ "$unlesbar" -gt 0 ] 2>/dev/null; then
+    echo "ZEILEN=$zeilen ANWEISUNGEN=$anw DATEIEN=$dateien BYTES=$bytes UNGUELTIG=$unlesbar"
+    echo "  ⛔ $unlesbar Datei(en) nicht lesbar, Bilanz UNGUELTIG:$unlesbar_liste"
+    echo "     BYTES ist damit zu NIEDRIG, nicht zu hoch — kein Anker, keine Tilgung."
+  else
+    echo "ZEILEN=$zeilen ANWEISUNGEN=$anw DATEIEN=$dateien BYTES=$bytes"
+  fi
   echo "CRLF=$crlf_n CRLF_B=$crlf_b"
   echo "BERUEHRUNG=$ber_n BERUEHRUNG_B=$ber_b"
   [ "$dateien" -eq 0 ] && return 1
@@ -2600,6 +2621,9 @@ mind_kontext_bilanz() {
       echo "ANWEISUNGEN=$anw"
       echo "DATEIEN=$dateien"
       echo "BYTES=$bytes"
+      # v5.137.0: eine ungueltige Bilanz wird auch im STAND als solche vermerkt — sonst
+      #   vergleicht der naechste Lauf gegen eine Zahl, die einen Aussetzer enthaelt.
+      [ "$unlesbar" -gt 0 ] 2>/dev/null && echo "UNGUELTIG=$unlesbar"
       echo "TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     } > "$stand" 2>/dev/null
   fi
@@ -3066,6 +3090,7 @@ mind_schritt_bilanz() {
   #          in null Sekunden; die Zeilen wurden am Ende zusammen getippt
   #    Gemessen am Lauf 00:02 (12.09.2026): alle vier inneren Skills mit (b) und (c).
   local formal=0 formalliste="" stempel_unbekannt="" hinweise="" _fsk=""
+  local _kopf_fehlt=0   # v5.137.0: EINE Auswertung fuer Warnung, Satz und Marke
   if [ "$alle" -eq 1 ]; then
     local _bl="${TMPDIR:-/tmp}/.mind_schritt_b$$" _bn _bs _be _bname _skill _prev_ts _ts _sk_ts=""
     sed -n "${ab},\$p" "$q" 2>/dev/null > "$_bl"
@@ -3201,14 +3226,20 @@ mind_schritt_bilanz() {
   # ⛔ `TEIL=` ist MASCHINENLESBAR und dafuer da: `/mind-all` soll die Zahl
   #    lesen koennen, ohne die Prosa darunter zu parsen.
   echo "ERWARTET=$n_erw GELAUFEN=$gel UEBERSPRUNGEN=$ueb FEHLER=$feh LEER=$leer TEIL=$n_teil"
-  [ "$alle" -eq 1 ] && [ "$mischung" -eq 1 ] && \
+  # ⛔ v5.137.0 (Etappe 48): hier wird die Bedingung EINMAL ausgewertet. Bis 5.136.0 stand
+  #    `[ "$alle" -eq 1 ] && [ "$mischung" -eq 1 ]` DREIMAL in dieser Funktion — zweimal fuer
+  #    Prosa, einmal fuer die Marke `FORMAL_KOPFBLOCK`. Drei Kopien einer Bedingung sind die
+  #    `lib.sh`-Aufrufer-Klasse in neuer Gestalt: wer eine aendert, laesst Marke und Satz
+  #    still auseinanderlaufen. Ein Merker entfernt das Risiko, statt es zu ueberwachen.
+  [ "$alle" -eq 1 ] && [ "$mischung" -eq 1 ] && _kopf_fehlt=1
+  [ "$_kopf_fehlt" -eq 1 ] && \
     echo "  ⚠ --alle ohne mind-all-Startzeile: ganze Datei gelesen — Laeufe koennen vermischt sein."
   # ⛔ v5.104.0 (Etappe 12 §3): die Warnung allein hat nichts bewirkt — Noras Laeufe
   #    12.09. und 13.09. (Palvedo) hatten je fuenf Startzeilen und keine fuer mind-all;
   #    `--alle` las die ganze Datei (GELAUFEN=97 ueber drei Laeufe), und der Lauf galt
   #    als voll. Ohne Kopf-Block ist die Bilanz keine Bilanz DIESES Laufs: FORMAL,
   #    und Step 2.96a traegt `formal-mind-all` in `ungepruef=`.
-  if [ "$alle" -eq 1 ] && [ "$mischung" -eq 1 ]; then
+  if [ "$_kopf_fehlt" -eq 1 ]; then
     formal=$((formal + 1)); formalliste="${formalliste}  FORMAL: mind-all (kein Kopf-Block — Bilanz ueber die ganze Datei, nicht ueber diesen Lauf)"$'\n'
   fi
   if [ "$formal" -gt 0 ]; then
@@ -3222,7 +3253,7 @@ mind_schritt_bilanz() {
     #    haengen bis heute am deutschen Satz.
     _fsk=$(printf '%s' "$formalliste" | sed -n 's/^ *FORMAL: \([^ ]*\) .*/\1/p' | sort -u | tr '\n' ' ')
     echo "  FORMAL_SKILLS=${_fsk% }"
-    [ "$alle" -eq 1 ] && [ "$mischung" -eq 1 ] && echo "  FORMAL_KOPFBLOCK=1"
+    [ "$_kopf_fehlt" -eq 1 ] && echo "  FORMAL_KOPFBLOCK=1"
   fi
   # v5.135.0: Hinweise sind KEIN Befund und zaehlen nirgends — sie sagen nur, dass hier
   #   die Zeitregel angeschlagen haette und der Beleg sie entkraeftet hat.
