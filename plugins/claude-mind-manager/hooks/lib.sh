@@ -2835,7 +2835,7 @@ mind_schritt_start() {
 # NACH jedem Schritt. status = gelaufen | gelaufen:<a>/<b> | uebersprungen:<grund>
 #                              | fehler:<grund>
 # ⚠ `uebersprungen` ist ein GUELTIGER Status und braucht einen Grund. Ein Schritt,
-#   der legitim entfaellt (--dry-run, kein Git, kein Quellbaum), ist kein Fehler —
+#   der legitim entfaellt (kein Git, kein Quellbaum), ist kein Fehler —
 #   aber sein Entfallen gehoert in den Bericht statt zu verschwinden.
 # ⭐ `gelaufen:5/11` ist die TEILABDECKUNG und der eigentliche Anlass dieses Baus:
 #   der Fehler war nicht ein fehlender Aufruf, sondern ein gelaufener, der weniger
@@ -2849,7 +2849,7 @@ mind_schritt_start() {
 #    Ein gestarteter Agent, der stirbt, ist ein BEFUND. Ein nie gestarteter ist
 #    eine LUECKE, die wie ein Ergebnis aussieht (mind-all, seit v5.7.1).
 #    ⚠ `uebersprungen:<grund>` bleibt gueltig fuer Schritte, die ihren
-#      GEGENSTAND nicht haben (kein Git, kein Quellbaum, --dry-run). Ein
+#      GEGENSTAND nicht haben (kein Git, kein Quellbaum). Ein
 #      vorhandener Gegenstand plus ein Sparwunsch ist kein solcher Grund.
 mind_schritt() {
   local name="${1:-?}" status="${2:-gelaufen}" bytes="${3:-}" q quelle="zahl" pfad="" mtime=0 _pj="" _proj
@@ -3817,11 +3817,16 @@ mind_sync_zustaendig() {
 mind_lauf_kennung() {
   # Die Laufkennung: basename des Snapshots. Je Lauf eindeutig (Zeitstempel im
   # Namen), und unabhaengig von jeder Umgebungsvariablen.
-  # ⚠ Ohne Snapshot (Probelauf) gibt es keine Kennung — dann `probelauf`,
-  #   damit die Marken trotzdem zaehlbar bleiben und nicht mit einem echten
-  #   Lauf verwechselt werden.
+  # ⛔ Ohne Snapshot gibt es keine Kennung — dann `ohne-snapshot`, damit die Marken
+  #   zaehlbar bleiben und nicht mit einem echten Lauf verwechselt werden.
+  # ⚠ v5.139.0: hier stand `probelauf`, und „kein Snapshot" hiess: Probelauf. Mit dem
+  #   Entfall des Probelaufs heisst es etwas anderes und Schlimmeres — der Snapshot ist
+  #   GESCHEITERT oder wurde nicht mitgegeben. Die Kennung sagt jetzt das. Sie ganz
+  #   wegzulassen waere falsch: eine leere Marke ist von „nie gelaufen" nicht zu
+  #   unterscheiden, und das ist die Klasse, die v5.3.1 und die Agent-Quittung
+  #   gekostet hat.
   local snap="${1:-}"
-  if [ -z "$snap" ]; then printf 'probelauf'; return 0; fi
+  if [ -z "$snap" ]; then printf 'ohne-snapshot'; return 0; fi
   printf '%s' "$(basename "$snap")"
 }
 
@@ -3902,6 +3907,140 @@ mind_stufe3_zeilen() {
     z="${z%\"}"; z="${z%“}"; z="${z%”}"
     [ -n "$z" ] && printf '%s\n' "$z"
   done < "$f"
+}
+
+# =============================================================================
+# mind_verdicht_kandidat — die groesste, die in den letzten N Laeufen NICHT dran war
+# =============================================================================
+# ⛔ WOZU (v5.138.0, Etappe 49 §2, Veras Fund Zustellplan 26.09.2026). Vier Traeger
+#    waehlen ihre Verdichtungs-Kandidatin mit `ls -S | head -1` — die GROESSTE, jeden
+#    Lauf neu. Zusammen mit „eine je Lauf" heisst das: nur die groesste wird je
+#    verdichtet. Gemessen von Vera: `lessons.md` DREIMAL in Folge (16./23./26.09.2026),
+#    `gruende-gruppen-stufen.md` (27 312 B) und `routen-auftrag-laufend.md` (26 619 B)
+#    NIE. ⭐ Und es fiel STILL aus: jeder Lauf meldete eine richtige Kandidatin.
+#
+# ⛔ GEMESSEN, warum der Merker Teil des Baus ist (Antons Auftrag: „messen, ob es eine
+#    Historie gibt; wenn nicht, ist der Merker Teil des Baus"). Drei Ablagen geprueft,
+#    29.09.2026, im eigenen Bestand:
+#      · `.claude-mind/verdichten-<skill>.txt` — EINE je Skill, jeder Lauf ueberschreibt
+#      · `analyzed-scopes` mit `verdichtet=` (mind-update, v5.118.0) — gilt fuer EINEN
+#        Kettenlauf und wandert am Laufende nach `.done`
+#      · `listeverbesserungen.md` — Prosa; ueber 2 900 Zeilen ergibt sie GENAU VIER
+#        Zeilen der Form „VERDICHTEN <datei> (<skill>", eine je Traeger
+#    Eine Historie gibt es also nicht. Sie entsteht hier, ANGEHAENGT und mit `skill=`
+#    je Zeile — der dritte Ausweg aus `hooks.md` („anhaengen statt ueberschreiben, mit
+#    einem Kennzeichen je Gruppe"), weil vier Traeger sich eine Datei teilen.
+#    ⚠ `analyzed-scopes` bleibt und misst etwas ANDERES: nicht zweimal im SELBEN
+#      Kettenlauf. Das hier ist die Sperre ueber LAEUFE.
+#
+# ⭐ N IST GERECHNET, NICHT GERATEN. Vorgabe ist `Dateizahl - 1`. Das ist der einzige
+#    Wert, der Antons Kriterium („Vorgabe so, dass der Bestand rotiert") fuer JEDEN
+#    gemessenen Bestand erfuellt — 3 bis 32 Topic-Dateien ueber 12 Projekte
+#    (`ls ~/.claude/projects/*/memory`, 29.09.2026). Eine feste Zahl kann das nicht:
+#    N=2 laesst in einem 13-Datei-Bestand nur die drei groessten rotieren, N=3 laesst
+#    einen 3-Datei-Bestand verhungern. Bei `Dateizahl - 1` bleibt per Konstruktion
+#    genau eine frei, und der Bestand rotiert VOLLSTAENDIG.
+#    ⚠ Der Preis, benannt statt verschwiegen: die groesste Datei kommt erst nach
+#      `Dateizahl` Laeufen wieder dran. Wer das nicht will, setzt
+#      `MIND_VERDICHTEN_HISTORIE` auf eine Zahl (1 = nur nicht zweimal hintereinander).
+#
+# ⛔ GEZAEHLT WIRD „WAR KANDIDATIN", NICHT „WURDE ANGEWENDET". Ein Versuch, den Stufe 3
+#    verwirft, sperrt die Datei ebenso — sonst waehlt der naechste Lauf genau die Datei
+#    wieder, deren Verdichtung eben als aussichtslos verworfen wurde. Gemessen am
+#    eigenen Deponat vom 20.09.2026: „ein dritter Versuch haette nach diesem Muster
+#    voraussichtlich denselben marginalen Ertrag" — diese Rotation von Hand ist genau
+#    das, was hier mechanisch wird.
+#
+# ⛔ FAIL-SAFE IN RICHTUNG HEUTE: ist die Historie unlesbar, unbeschreibbar oder der
+#    Projektpfad leer, kommt die GROESSTE zurueck — das bisherige Verhalten — und die
+#    Begruendung auf stderr. Eine Rotation, die einen Lauf toetet, waere teurer als
+#    eine, die einmal dieselbe Datei waehlt.
+#
+# mind_verdicht_kandidat <projekt> <skill> <merken|probe>
+#   Dateiliste auf STDIN, eine je Zeile, GROESSTE ZUERST (der Aufrufer sortiert — er
+#   kennt seinen Bestand und seine Ausschluesse: `rollen.md`, `MEMORY.md`, `paths:`).
+#   ⛔ stdin, nicht argv: die Pfade hier tragen Leerzeichen (`Plugin - Entwicklung`),
+#   und genau daran ist eine Rotation in dieser Datei schon zerlegt worden
+#   (`env-vars.md`, „Rotation nie mit xargs").
+#   -> Pfad der Kandidatin auf stdout, rc 0. Leere Liste: keine Ausgabe, rc 1.
+mind_verdicht_kandidat() {
+  local proj="${1:-}" skill="${2:-}" modus="${3:-probe}"
+  local hist liste="" f n=0 grenze g gesperrt kand="" zn ts
+  while IFS= read -r f; do
+    [ -n "$f" ] && [ -f "$f" ] || continue
+    liste="$liste$f
+"
+    n=$((n + 1))
+  done
+  [ "$n" -gt 0 ] || return 1
+  # Die groesste ist ab hier der Rueckfall in JEDEM Fehlerfall.
+  kand="${liste%%
+*}"
+  case "$proj" in
+    '') echo "⚠ VERDICHTEN-Rotation: kein Projektpfad — groesste Datei wie bisher." >&2
+        printf '%s\n' "$kand"; return 0 ;;
+  esac
+  case "$skill" in
+    ''|*[!a-z0-9-]*) echo "⚠ VERDICHTEN-Rotation: Skillname '$skill' unbrauchbar — groesste Datei wie bisher." >&2
+        printf '%s\n' "$kand"; return 0 ;;
+  esac
+  hist="$proj/.claude-mind/verdichten-historie"
+  case "${MIND_VERDICHTEN_HISTORIE:-}" in
+    ''|*[!0-9]*) grenze=$((n - 1)) ;;
+    *)           grenze="${MIND_VERDICHTEN_HISTORIE}" ;;
+  esac
+  [ "$grenze" -ge 0 ] 2>/dev/null || grenze=0
+  # Die Sperre um je einen Eintrag lockern, bis eine frei ist. ⛔ Verhungern ist kein
+  # Zustand: bei g=0 ist niemand gesperrt und die groesste gewinnt. Jeder Schritt gibt
+  # den AELTESTEN Eintrag frei — das ist „die letzten N", um eins gemildert, nicht
+  # eine zweite Regel daneben.
+  g="$grenze"
+  while :; do
+    gesperrt=""
+    if [ "$g" -gt 0 ] && [ -f "$hist" ]; then
+      gesperrt=$(grep "^skill=$skill ts=" "$hist" 2>/dev/null | tail -"$g" \
+                 | sed 's/^skill=[^ ]* ts=[^ ]* datei=//')
+    fi
+    kand=""
+    while IFS= read -r f; do
+      [ -n "$f" ] || continue
+      case "
+$gesperrt
+" in *"
+$f
+"*) continue ;; esac
+      kand="$f"; break
+    done <<KANDIDATEN
+$liste
+KANDIDATEN
+    [ -n "$kand" ] && break
+    [ "$g" -gt 0 ] || break
+    g=$((g - 1))
+  done
+  [ -n "$kand" ] || kand="${liste%%
+*}"
+  if [ "$g" -lt "$grenze" ]; then
+    # ⛔ MARKE zuerst, Satz danach (tests/README.md): ein Leser greppt `HISTORIE_VOLL`,
+    #    nicht den deutschen Wortlaut — sonst macht jede Praezisierung der Meldung einen
+    #    Prueffall rot, ohne dass sich Verhalten geaendert hat.
+    echo "⚠ VERDICHTEN-Rotation HISTORIE_VOLL: $n Datei(en), N=$grenze — $((grenze - g)) aeltester Eintrag freigegeben, sonst gaebe es keine Kandidatin." >&2
+  fi
+  if [ "$modus" = "merken" ]; then
+    mkdir -p "$(dirname "$hist")" 2>/dev/null
+    ts=$(date -u +%Y%m%dT%H%M%SZ 2>/dev/null)
+    [ -n "$ts" ] || ts="unbekannt"
+    if printf 'skill=%s ts=%s datei=%s\n' "$skill" "$ts" "$kand" >> "$hist" 2>/dev/null; then
+      zn=$(grep -c . "$hist" 2>/dev/null)
+      case "$zn" in ''|*[!0-9]*) zn=0 ;; esac
+      if [ "$zn" -gt 500 ]; then
+        tail -200 "$hist" > "$hist.neu" 2>/dev/null && mv -f "$hist.neu" "$hist" 2>/dev/null
+      fi
+    else
+      echo "⚠ VERDICHTEN-Rotation: Historie '$hist' nicht beschreibbar — dieser Lauf zaehlt nicht mit, der naechste waehlt moeglicherweise dieselbe Datei." >&2
+    fi
+  fi
+  printf '%s\n' "$kand"
+  return 0
 }
 
 mind_verdichtung_pruefen() {

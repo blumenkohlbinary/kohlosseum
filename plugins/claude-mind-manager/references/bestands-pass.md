@@ -269,7 +269,21 @@ Gesamtverlust.** Eine Zahl ohne den Zusatz zitiert jemand.
 
 ⛔ **Kosten, gemessen:** 274 063 Token, 43 Werkzeugaufrufe, 930 s — für 14 KB. Die Zählpflicht
 ist Arbeit. **Deshalb: die GRÖSSTE Datei zuerst, eine je Lauf** — dort ist das Verhältnis
-Ertrag zu Token am besten. Nicht die kleinen, „weil sie billig sind".
+Ertrag zu Token am besten. Nicht die kleinen, „weil sie billig sind“.
+
+⛔ **„Die größte“ allein heißt: immer dieselbe (v5.138.0, Veras Fund Zustellplan 26.09.2026).**
+`ls -S | head -1` plus „eine je Lauf“ ergibt, dass **nur** die größte Datei je verdichtet
+wird — gemessen `lessons.md` dreimal in Folge (16./23./26.09.), zwei 27-KB-Dateien nie.
+⭐ Deshalb wählt seit v5.138.0 **`mind_verdicht_kandidat <projekt> <skill> merken`** (Liste
+auf stdin, größte zuerst): die größte, die in den **letzten N Läufen** nicht Kandidatin
+war. Historie `.claude-mind/verdichten-historie`, angehängt, mit `skill=` je Zeile — alle
+vier Träger teilen die Datei. **N = `Dateizahl − 1`** (Regler `MIND_VERDICHTEN_HISTORIE`):
+der einzige Wert, der jeden gemessenen Bestand rotieren lässt, 3 bis 32 Dateien über 12
+Projekte. ⚠ Gezählt wird **„war Kandidatin“, nicht „wurde angewendet“** — sonst wählt der
+nächste Lauf genau die Datei wieder, deren Verdichtung eben verworfen wurde.
+⚠ Der Preis, benannt: die größte Datei kommt erst nach `Dateizahl` Läufen wieder dran.
+⛔ **Fail-safe in Richtung heute:** unlesbare oder unbeschreibbare Historie → die größte,
+wie bisher, mit Begründung auf stderr. Eine Rotation darf keinen Lauf töten.
 
 ⛔ **Die Ertragsschwelle steht VOR dem Lauf, nie hinter dem Urteil (v5.99.0).** Die Frage
 „lohnt diese Datei?" wird beantwortet, BEVOR ein Agent startet — an Größe und benannten

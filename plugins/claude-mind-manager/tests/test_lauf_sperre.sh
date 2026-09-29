@@ -110,7 +110,10 @@ janein "⛔ auch die Kennung nicht" "0" \
        "$(sed -n '/^mind_lauf_kennung/,/^}/p' "$LIB" | grep -c 'CLAUDE_SESSION_ID')"
 janein "Kennung kommt aus dem Snapshot-Basename" "$L1" \
        "$(mind_lauf_kennung "/pfad/zu/.claude-mind/snapshots/$L1")"
-janein "ohne Snapshot -> 'probelauf', nicht leer" "probelauf" \
+# ⚠ v5.139.0: der Erwartungswert war `probelauf`. Die ZUSICHERUNG ist unveraendert
+#   („ohne Snapshot kommt eine Kennung, nicht leer") — nur ihr Wert wechselt, weil
+#   „kein Snapshot" nicht mehr Probelauf heisst, sondern gescheiterter Snapshot.
+janein "ohne Snapshot -> 'ohne-snapshot', nicht leer" "ohne-snapshot" \
        "$(mind_lauf_kennung "")"
 
 echo "== 6/6  Verwaiste Sperre + Verdrahtung =="

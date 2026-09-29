@@ -6,7 +6,7 @@
 #   Zusicherungen:
 #     (1) Sammlung rot  -> rc 1, KEIN Sync (die Attrappe schreibt keinen Merker), suite.log liegt
 #         ungekuerzt in der Sicherung, Meldung nennt (c2) und "KEIN Sync"
-#     (2) --dry-run faehrt die Sammlung ebenfalls
+#     (2) --dry-run BRICHT AB (rc 2) vor dem Bauen — keine Sicherung, kein Bau, kein Sync
 #     (3) Sammlung gruen -> Sync laeuft, und zwar NACH der Sammlung (die Attrappe merkt sich, ob
 #         der Sync-Merker beim Lauf schon da war)
 #     (4) Positivkontrolle: dasselbe Skript OHNE den (c2)-Block synct trotz roter Sammlung —
@@ -65,13 +65,20 @@ janein "   ... CLAUDE_PROJECT_DIR ist der Workspace" ja "$(grep -q "PROJECT_DIR=
 janein "Meldung nennt (c2) und KEIN Sync" ja "$(grep -q '(c2) Pruefsammlung rc=1 — KEIN Sync' "$T/out.txt" && echo ja || echo nein)"
 janein "gebaut wurde vorher (cache/<ver> liegt)" ja "$([ -f "$T/cache/$V/.claude-plugin/plugin.json" ] && echo ja || echo nein)"
 
-echo "== (2) --dry-run faehrt die Sammlung ebenfalls =="
+echo "== (2) --dry-run BRICHT AB, vor dem Bauen (v5.139.0) =="
+# ⭐ Hier stand „--dry-run faehrt die Sammlung ebenfalls". Diese Zusicherung — das
+#   (c2)-Gate ist nicht umgehbar — steht ANDERSWO: (1) faehrt die Sammlung rot, (3)
+#   gruen, beide im Echtlauf. Weggefallen ist nur das Verhalten des Probelaufs selbst.
+#   Der Abschnitt wird deshalb ERSETZT, nicht geloescht, und er ist jetzt STRENGER:
+#   der Abbruch kommt VOR (a), es entsteht nicht einmal eine Sicherung.
+rm -rf "$T/sich" "$T/cache" 2>/dev/null; mkdir -p "$T/sich" "$T/cache"
 RC=$(lauf "$REL" --dry-run)
-janein "dry-run mit roter Sammlung: rc 1" 1 "$RC"
-janein "   ... suite.log liegt auch im dry-run" ja "$([ -n "$(ls "$T/sich"/*/suite.log 2>/dev/null)" ] && echo ja || echo nein)"
+janein "--dry-run: rc 2 (Aufruffehler)" 2 "$RC"
+janein "   ... Meldung nennt den Entfall" ja "$(grep -q 'entfallen' "$T/out.txt" && echo ja || echo nein)"
+janein "   ... KEINE Sicherung angelegt (Abbruch vor (a))" ja "$([ -z "$(ls "$T/sich" 2>/dev/null)" ] && echo ja || echo nein)"
+janein "   ... NICHT gebaut (kein cache/<ver>)" ja "$([ ! -d "$T/cache/$V" ] && echo ja || echo nein)"
+janein "   ... kein Sync" nein "$([ -f "$T/SYNC-LIEF" ] && echo ja || echo nein)"
 echo 0 > "$T/suite_rc"
-RC=$(lauf "$REL" --dry-run)
-janein "dry-run mit gruener Sammlung: rc 0, kein Sync" "0 nein" "$RC $([ -f "$T/SYNC-LIEF" ] && echo ja || echo nein)"
 
 echo "== (3) Sammlung gruen -> Sync, und zwar NACH der Sammlung =="
 RC=$(lauf "$REL")

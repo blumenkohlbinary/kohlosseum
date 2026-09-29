@@ -221,6 +221,7 @@ For each suggestion: estimate token savings = (affected_lines × 10)
 
     ### Summary
     - Knowledge-Sync Findings: N total (N UPDATE, N ENRICH, N ADD, N NEW_FILE, N INFO)
+    - davon UNGEPRUEFT: N   (ohne Fundstelle geschrieben — v5.138.0)
     - Custom-Context-Files analyzed: M
     - Session events processed: K
 
@@ -230,6 +231,22 @@ For each suggestion: estimate token savings = (affected_lines × 10)
 - NEVER dispatch sub-agents
 - **Größen-Guard (v4.1.0):** NIEMALS eine Datei >~600 Zeilen / ~15k Tokens blind ganz lesen — erst `Grep` nach den Prompt-Stichwörtern, dann NUR die Treffer-Abschnitte per `Read offset/limit` (±40 Z.). Blind-Read großer Files → Overflow → 0 Output. Im Finding "gezielt geprüft, nicht voll gelesen" vermerken; keine falsche Voll-Prüfungs-Behauptung.
 - ALWAYS include file:line for every finding (außer ADD/NEW_FILE wo file:line nicht existiert — dann `(none)`)
+- ⛔ **Der Auftragssatz aus v5.138.0 — wörtlich, beide Sätze:** „Nenne zu JEDEM Zitat die Datei und die Zeilennummer, aus der du es gelesen hast. Was du ohne Fundstelle schreibst, kennzeichne als UNGEPRUEFT.“
+  ⭐ **Zitiere nur, was du wörtlich gelesen hast.** Ein Zitat, das du nicht in der Datei
+  gesehen hast, ist ein erfundenes Zitat, auch wenn es richtig klingt — und eine
+  Zeilenangabe daneben macht es nicht wahr.
+  ⚠ **Gemessen (Vera, Zustellplan 26.09.2026): DREI von vier Wissens-Sync-Agenten**
+  meldeten je etwas, das bei der Gegenprobe fiel — ein erfundenes Zitat („Last sync:
+  v1.0.23", 0 Grep-Treffer), zwei Pfade, die ab der richtigen Wurzel existieren, und ein
+  „kommt nirgends vor" nach halbem Bestand. **Keiner der drei trug einen Vorbehalt.**
+  ⛔ Und die Zeile darüber („ALWAYS include file:line") stand dabei schon da, seit
+  v4.1.0. Gefangen hat Vera die drei Befunde durch das **Nachlesen jeder Zeilenangabe** —
+  Angaben waren also vorhanden, und die Forderung allein hat nichts verhindert. Neu ist
+  deshalb die **Kennzeichnung**, nicht die Forderung.
+  ⚠ Ob JEDER der drei eine Zeilenangabe trug, steht in ihrem Bericht nicht — hier stand
+  es zuerst als Behauptung und ist zurückgenommen.
+  ⚠ **Das ist eine BITTE, kein Gate.** Nichts prüft es nachträglich (Stand v5.138.0);
+  gefangen hat Veras Befunde allein das Nachlesen jeder Zeilenangabe von Hand.
 - ALWAYS estimate token savings (lines × 10) for optimization suggestions (default-mode only)
 - **Knowledge-Sync-Mode:** Konkreten Action-Vorschlag pro Finding (Diff bei UPDATE, Append bei ENRICH, Filename + Inhalts-Preview bei NEW_FILE) — der Skill leitet daraus die Edit-Anweisung ab
 - **Mode-Erkennung:** `mode: knowledge-sync` Header im Prompt aktiviert den Sync-Block. Ohne Header → default-mode (Backward-Compat).

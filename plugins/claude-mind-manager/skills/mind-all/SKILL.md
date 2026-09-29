@@ -9,8 +9,8 @@ description: |
 
   Use when the user says "mind all", "alles pruefen", "kompletter context-sweep",
   "fuehre alle mind commands aus", "context komplett aktualisieren",
-  or "/mind-all [--ask|--dry-run]".
-argument-hint: "[--ask|--dry-run]"
+  or "/mind-all [--ask]".
+argument-hint: "[--ask]"
 context: inherit
 allowed-tools: Read Glob Grep Edit Write Bash Agent
 ---
@@ -74,7 +74,7 @@ mind_schritt <name> "fehler:<grund>"      -1       "$PROJ"
 ```
 
 ⛔ **`uebersprungen` ist ein gueltiger Status und braucht einen GRUND.** Ein Schritt,
-der legitim entfaellt (`--dry-run`, kein Git, kein Quellbaum), ist kein Fehler — aber
+der legitim entfaellt (kein Git, kein Quellbaum), ist kein Fehler — aber
 sein Entfallen gehoert in den Bericht statt zu verschwinden.
 
 ⛔ **v5.67.0: EINEN PFLICHTSCHRITT AUSZULASSEN, WEIL ER TEUER AUSSIEHT, IST VERBOTEN.**
@@ -143,9 +143,21 @@ Die Ausgabe ist kein Befund und blockt nichts — sie ist eine Erinnerung an dre
 ## Step 0: Modus + EIN Snapshot fuer den ganzen Durchlauf (PFLICHT)
 
 ```bash
-ARGS="${ARGUMENTS:-}"; AUTO_MODE="yes"; DRY_RUN="no"
+ARGS="${ARGUMENTS:-}"; AUTO_MODE="yes"
 echo "$ARGS" | grep -qE '(^|[[:space:]])--(ask|interactive)([[:space:]]|$)' && AUTO_MODE="no"
-echo "$ARGS" | grep -qE '(^|[[:space:]])--dry-run([[:space:]]|$)' && { DRY_RUN="yes"; AUTO_MODE="no"; }
+# ⛔ v5.139.0: der PROBELAUF ist ERSATZLOS entfallen (Nutzer 29.09.2026: „wieso kein
+#    richtiger lauf kostet geld", „allgemein keine Probelaeufe mehr … ich will Ergebnisse
+#    sehen"). Wer die Flagge noch mitgibt, bekommt einen ABBRUCH und keinen stillen
+#    Echtlauf: wer die Flagge tippt, erwartet, dass nichts geschrieben wird.
+# ⛔ KEINE Backticks in den Meldungen: in doppelten Anfuehrungszeichen fuehrt bash aus, was
+#    zwischen ihnen steht (shell-windows.md) — beim ersten Bau stand hier "`--ask`", und das
+#    haette bei jedem Abbruch ein "--ask: command not found" erzeugt.
+if echo "$ARGS" | grep -qE '(^|[[:space:]])--dry-run([[:space:]]|$)'; then
+  echo "ABBRUCH: --dry-run ist entfallen (seit 5.139.0) — es gibt keinen Probelauf mehr." >&2
+  echo "         Bitte OHNE die Flagge aufrufen. Der Lauf ist dann ein echter Lauf," >&2
+  echo "         mit Snapshot vorher (Rueckweg). --ask fragt weiterhin vor dem Anwenden." >&2
+  exit 2
+fi
 
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
 [ -z "$CLAUDE_PLUGIN_ROOT" ] && { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
@@ -182,66 +194,64 @@ fi
 # ⚠ DIE KENNUNG KANN DESHALB NICHT MEHR DER SNAPSHOT-NAME SEIN. Sie kommt
 #   jetzt aus Zeitstempel und Transkriptnamen; `mind_lauf_kennung` bleibt
 #   unveraendert fuer alle, die sie mit einem Snapshot rufen.
-if [ "$DRY_RUN" = "no" ]; then
-  # ⭐ v5.66.0: DIE KENNUNG KOMMT AUS DER UMGEBUNG, nicht aus einem Dateinamen.
-  #    `CLAUDE_CODE_SESSION_ID` ist in Skill-Bash gesetzt und traegt genau die
-  #    Kennung, die die Hooks aus stdin bekommen (gemessen 10.09.2026 in zwei
-  #    Sitzungen). ⛔ Bis v5.65.0 kam sie aus `$MIND_TP` — und der stammte aus
-  #    einem Merker je PROJEKT. Bei mehreren Rollen im Ordner schrieb der
-  #    Sperrenhalter damit womoeglich eine FREMDE Kennung ins Lock, und die
-  #    Abweisung nannte die falsche Sitzung. Das ist schlimmer als gar keine.
-  # ⚠ FAIL-SAFE: leere Variable -> Rueckfall auf den Dateinamen, wie bisher.
-  MIND_SID="${CLAUDE_CODE_SESSION_ID:-$(basename "${MIND_TP:-nosession}" .jsonl)}"
-  LAUF="$(date +%Y%m%d-%H%M%S)-$(printf '%s' "$MIND_SID" | tail -c 9)"
-  if ! _SPERRE=$(mind_lauf_sperre "$PROJ" "$LAUF" "$MIND_SID"); then
-    echo "$_SPERRE" >&2
-    exit 0    # ⛔ 0, NICHT 1 — kein Fehler, sondern die richtige Antwort.
-              #   Ein Rueckgabewert 1 saehe im Log wie ein kaputter Lauf aus.
-  fi
-  trap 'mind_lauf_frei "$PROJ" "$LAUF"' EXIT
+# ⛔ v5.139.0: hier stand `if [ "$DRY_RUN" = "no" ]`. Der Probelauf ist entfallen, also laeuft der Block IMMER — die Bedingung ist nicht wahr-gesetzt, sondern WEG.
+# ⭐ v5.66.0: DIE KENNUNG KOMMT AUS DER UMGEBUNG, nicht aus einem Dateinamen.
+#    `CLAUDE_CODE_SESSION_ID` ist in Skill-Bash gesetzt und traegt genau die
+#    Kennung, die die Hooks aus stdin bekommen (gemessen 10.09.2026 in zwei
+#    Sitzungen). ⛔ Bis v5.65.0 kam sie aus `$MIND_TP` — und der stammte aus
+#    einem Merker je PROJEKT. Bei mehreren Rollen im Ordner schrieb der
+#    Sperrenhalter damit womoeglich eine FREMDE Kennung ins Lock, und die
+#    Abweisung nannte die falsche Sitzung. Das ist schlimmer als gar keine.
+# ⚠ FAIL-SAFE: leere Variable -> Rueckfall auf den Dateinamen, wie bisher.
+MIND_SID="${CLAUDE_CODE_SESSION_ID:-$(basename "${MIND_TP:-nosession}" .jsonl)}"
+LAUF="$(date +%Y%m%d-%H%M%S)-$(printf '%s' "$MIND_SID" | tail -c 9)"
+if ! _SPERRE=$(mind_lauf_sperre "$PROJ" "$LAUF" "$MIND_SID"); then
+  echo "$_SPERRE" >&2
+  exit 0    # ⛔ 0, NICHT 1 — kein Fehler, sondern die richtige Antwort.
+            #   Ein Rueckgabewert 1 saehe im Log wie ein kaputter Lauf aus.
 fi
+trap 'mind_lauf_frei "$PROJ" "$LAUF"' EXIT
 
-if [ "$DRY_RUN" = "no" ]; then
-  SNAPSHOT=$(mind_snapshot "$PROJ" "pre-mind-all") || {
-    echo "ABBRUCH: Snapshot fehlgeschlagen — KEIN Skill wird gestartet." >&2; exit 1; }
-  echo "Snapshot fuer den gesamten Durchlauf: $SNAPSHOT"
+# ⛔ v5.139.0: hier stand `if [ "$DRY_RUN" = "no" ]`. Der Probelauf ist entfallen, also laeuft der Block IMMER — die Bedingung ist nicht wahr-gesetzt, sondern WEG.
+SNAPSHOT=$(mind_snapshot "$PROJ" "pre-mind-all") || {
+  echo "ABBRUCH: Snapshot fehlgeschlagen — KEIN Skill wird gestartet." >&2; exit 1; }
+echo "Snapshot fuer den gesamten Durchlauf: $SNAPSHOT"
 
-  # ⛔ v5.21.3 — SAGEN, WAS NICHT DRIN IST.
-  #    Befund aus `Pc Forschung` (26.08.2026): `INDEX.md`, die zentrale
-  #    Projektdatei, lag nicht im Snapshot. Alle Aenderungen daran liefen ohne
-  #    Netz, und die Restore-Liste im Bericht war fuer sie schlicht falsch.
-  #
-  #    Ihr Vorschlag war, `INDEX.md` fest einzubauen. Das waere ein
-  #    projektspezifisches Pflaster in einem allgemeinen Werkzeug —
-  #    `MIND_SNAPSHOT_EXTRA` loest den Fall seit v5.2.1 allgemein.
-  #
-  #    ⭐ GEMESSEN, warum sie das nicht wissen konnten: die Variable kommt in
-  #       `hooks/lib.sh` vor und in KEINEM Skill, KEINEM Bericht, KEINER
-  #       Referenz. Wer den Schlussbericht liest, sieht eine Restore-Liste und
-  #       hat keinen Weg zu erfahren, dass sie erweiterbar ist. Genau dasselbe
-  #       ist hier zweimal mit `knowledge/` passiert (env-vars.md).
-  #
-  #    ⚠ Gemeldet wird nur — welche Datei wichtig ist, weiss der Nutzer.
-  #    ⚠ NUR die zuletzt GEAENDERTEN, hoechstens fuenf. Eine vollstaendige Liste
-  #      waere hier 15 Namen lang (gemessen in diesem Projekt) und damit genau
-  #      die Ausgabe, die man gewohnheitsmaessig ueberliest — wovor `Pc Forschung`
-  #      im selben Bericht warnt. Die juengsten sind die, an denen gearbeitet wird.
-  #    ⛔ Der GLOB laeuft, NICHT `$(ls -t ...)`. Eine unquotierte
-  #      Befehlssubstitution zerlegt am Leerzeichen — und dieses Projekt heisst
-  #      `Plugin - Entwicklung/Claude Mind Manager`. Erste Fassung meldete
-  #      dadurch "79 Dateien" statt 15, mit Namen wie "Plugin - Claude Mind".
-  #      Klasse `windows-pfad`, in diesem Projekt seit v5.2.1 dokumentiert
-  #      ("Rotation nie mit xargs") und trotzdem wieder entstanden.
-  #    ⛔ Und KEINE Pipe in die Schleife: die liefe in einer Subshell, und `_N`
-  #      waere danach wieder 0 — derselbe Fehler steckt schon einmal in dieser
-  #      Datei (mind_check_tools_have_rules, dort mit einer Merkdatei geloest).
-  _LK=$(mind_snapshot_luecken "$PROJ" "$SNAPSHOT")
-  _N="${_LK%%|*}"; _UNGEDECKT="${_LK#*|}"
-  if [ "${_N:-0}" -gt 0 ] 2>/dev/null; then
-    echo "  ⚠ NICHT im Snapshot ($_N Datei(en), die zuletzt geaenderten): $_UNGEDECKT"
-    echo "    Ist eine davon fuer diesen Lauf tragend, VOR dem naechsten Mal setzen:"
-    echo "      export MIND_SNAPSHOT_EXTRA=\"\$PWD/<pfad>\"   # ⛔ ABSOLUT, relativ wird still verworfen"
-  fi
+# ⛔ v5.21.3 — SAGEN, WAS NICHT DRIN IST.
+#    Befund aus `Pc Forschung` (26.08.2026): `INDEX.md`, die zentrale
+#    Projektdatei, lag nicht im Snapshot. Alle Aenderungen daran liefen ohne
+#    Netz, und die Restore-Liste im Bericht war fuer sie schlicht falsch.
+#
+#    Ihr Vorschlag war, `INDEX.md` fest einzubauen. Das waere ein
+#    projektspezifisches Pflaster in einem allgemeinen Werkzeug —
+#    `MIND_SNAPSHOT_EXTRA` loest den Fall seit v5.2.1 allgemein.
+#
+#    ⭐ GEMESSEN, warum sie das nicht wissen konnten: die Variable kommt in
+#       `hooks/lib.sh` vor und in KEINEM Skill, KEINEM Bericht, KEINER
+#       Referenz. Wer den Schlussbericht liest, sieht eine Restore-Liste und
+#       hat keinen Weg zu erfahren, dass sie erweiterbar ist. Genau dasselbe
+#       ist hier zweimal mit `knowledge/` passiert (env-vars.md).
+#
+#    ⚠ Gemeldet wird nur — welche Datei wichtig ist, weiss der Nutzer.
+#    ⚠ NUR die zuletzt GEAENDERTEN, hoechstens fuenf. Eine vollstaendige Liste
+#      waere hier 15 Namen lang (gemessen in diesem Projekt) und damit genau
+#      die Ausgabe, die man gewohnheitsmaessig ueberliest — wovor `Pc Forschung`
+#      im selben Bericht warnt. Die juengsten sind die, an denen gearbeitet wird.
+#    ⛔ Der GLOB laeuft, NICHT `$(ls -t ...)`. Eine unquotierte
+#      Befehlssubstitution zerlegt am Leerzeichen — und dieses Projekt heisst
+#      `Plugin - Entwicklung/Claude Mind Manager`. Erste Fassung meldete
+#      dadurch "79 Dateien" statt 15, mit Namen wie "Plugin - Claude Mind".
+#      Klasse `windows-pfad`, in diesem Projekt seit v5.2.1 dokumentiert
+#      ("Rotation nie mit xargs") und trotzdem wieder entstanden.
+#    ⛔ Und KEINE Pipe in die Schleife: die liefe in einer Subshell, und `_N`
+#      waere danach wieder 0 — derselbe Fehler steckt schon einmal in dieser
+#      Datei (mind_check_tools_have_rules, dort mit einer Merkdatei geloest).
+_LK=$(mind_snapshot_luecken "$PROJ" "$SNAPSHOT")
+_N="${_LK%%|*}"; _UNGEDECKT="${_LK#*|}"
+if [ "${_N:-0}" -gt 0 ] 2>/dev/null; then
+  echo "  ⚠ NICHT im Snapshot ($_N Datei(en), die zuletzt geaenderten): $_UNGEDECKT"
+  echo "    Ist eine davon fuer diesen Lauf tragend, VOR dem naechsten Mal setzen:"
+  echo "      export MIND_SNAPSHOT_EXTRA=\"\$PWD/<pfad>\"   # ⛔ ABSOLUT, relativ wird still verworfen"
 fi
 
 # ⛔ v5.30.0: SPERRE GEGEN PARALLELE LAEUFE — direkt nach dem Snapshot, weil
@@ -258,20 +268,20 @@ fi
 #   bis v5.58.0 — also NACH einer Sicherung, die ein abgewiesener Lauf gar
 #   nicht braucht. Der Block ist umgezogen, nicht entfallen.
 
-# Kettenmarke — NUR wenn ein Snapshot existiert (C2-Fix: im Probelauf keine Marke,
-# sonst behauptet sie ein Netz, das es nicht gibt). Enthaelt den Snapshot-PFAD, damit die
-# Einzel-Skills pruefen koennen ob er wirklich da ist.
+# Kettenmarke — enthaelt den Snapshot-PFAD, damit die Einzel-Skills pruefen koennen,
+# ob er wirklich da ist.
+# ⚠ v5.139.0: hier stand „NUR wenn ein Snapshot existiert (C2-Fix: im Probelauf keine
+#   Marke, sonst behauptet sie ein Netz, das es nicht gibt)". Der C2-Fix bleibt in der
+#   SACHE gueltig; nur sein Traeger wechselt — ohne Probelauf gibt es keinen Lauf OHNE
+#   Snapshot mehr, weil Step 0 bei gescheitertem Snapshot abbricht.
 SCOPES_FILE="$PROJ/.claude-mind/analyzed-scopes"
-if [ "$DRY_RUN" = "no" ]; then
-  mkdir -p "$(dirname "$SCOPES_FILE")"; : > "$SCOPES_FILE"
-  # ⛔ v5.118.0 (Etappe 26 §1): run_started ist die Sekunde des KOPF-BLOCKS, nicht „jetzt" — der
-  #    Snapshot dazwischen kostete im Zustellplan 12 s, und mind_schritt_start hielt den Kopf
-  #    fuer einen aus dem vorigen Lauf. mind_kopf_epoch liest sie aus der Schritt-Quittung.
-  echo "run_started=$(mind_kopf_epoch "$PROJ")"   >> "$SCOPES_FILE"
-  echo "snapshot=$SNAPSHOT"        >> "$SCOPES_FILE"
-else
-  rm -f "$SCOPES_FILE"   # Probelauf hinterlaesst KEINE Marke
-fi
+# ⛔ v5.139.0: hier stand `if [ "$DRY_RUN" = "no" ]`. Der Probelauf ist entfallen, also laeuft der Block IMMER — die Bedingung ist nicht wahr-gesetzt, sondern WEG.
+mkdir -p "$(dirname "$SCOPES_FILE")"; : > "$SCOPES_FILE"
+# ⛔ v5.118.0 (Etappe 26 §1): run_started ist die Sekunde des KOPF-BLOCKS, nicht „jetzt" — der
+#    Snapshot dazwischen kostete im Zustellplan 12 s, und mind_schritt_start hielt den Kopf
+#    fuer einen aus dem vorigen Lauf. mind_kopf_epoch liest sie aus der Schritt-Quittung.
+echo "run_started=$(mind_kopf_epoch "$PROJ")"   >> "$SCOPES_FILE"
+echo "snapshot=$SNAPSHOT"        >> "$SCOPES_FILE"
 
 # ⛔ v5.19.0: Die Agent-Quittung wird HIER angelegt, nicht in mind-update.
 #    Bis v5.18.0 rief `mind_agent_quittung_start` ausschliesslich mind-update
@@ -295,7 +305,7 @@ fi
 #       die Bilanz zieht es von ERWARTET ab, Step 2.96a vom Soll (`3/3 agents`).
 #       Ohne das war ein Projekt ohne Custom-Context-Dateien NIE voll (Palvedo,
 #       10.–13.09.2026, drei Laeufe, zehn Rettungen ungetilgt).
-[ "$DRY_RUN" = "no" ] && mind_agent_quittung_start "$PROJ" 4
+mind_agent_quittung_start "$PROJ" 4
 
 # ⛔ v5.38.0: DEN TRANSKRIPT-PFAD JETZT HOLEN, NICHT SPAETER.
 #    Der Merker `.claude-mind/transkript-pfad` ist EINE Datei je PROJEKT, soll
@@ -425,7 +435,7 @@ Fuer jeden der 5 in der Reihenfolge oben:
 1. **ZUERST die SKILL.md des Skills lesen** — `$CLAUDE_PLUGIN_ROOT/skills/<name>/SKILL.md` —
    und sie dann **vollstaendig** ausfuehren (inkl. Self-Check-Bloecken und Pflicht-Schritten).
    Nicht aus der Beschreibung improvisieren. **Skill-Logik ausfuehren** wie dort beschrieben — mit den durchgereichten
-   Flags (`AUTO_MODE`/`DRY_RUN`). Kein erneuter Snapshot (Step 0 hat ihn).
+   Flagge `AUTO_MODE`. Kein erneuter Snapshot (Step 0 hat ihn).
    ⛔ **v5.98.0 — „vollstaendig" heisst: mit seinem EIGENEN Start-Block.** Die erste Bash
    des Skills ist dessen Kopf aus seiner SKILL.md — `MIND_SKILL_VERSION=…` und
    `mind_schritt_start "$PROJ" <skill> <seine Pflichtschritte>` **in derselben Bash** —,
@@ -557,7 +567,7 @@ nicht killen — sonst bleibt der Context halb aktualisiert zurueck.
 #    Kennung; ein abbrechender Zweitlauf raeumt dem Erstlauf nichts weg.
 #    ⚠ Der `trap` aus Step 0 faengt den Abbruchfall; dieser Aufruf ist der
 #      Normalweg und macht die Freigabe im Bericht sichtbar.
-[ "$DRY_RUN" = "no" ] && mind_lauf_frei "$PROJ" "${LAUF:-}" \
+mind_lauf_frei "$PROJ" "${LAUF:-}" \
   && echo "Sperre freigegeben (Lauf ${LAUF:-?})."
 ```
 
@@ -584,7 +594,7 @@ LISTE="$PROJ/listeverbesserungen.md"
 #    mind_append statt '>>' — es erhaelt die Zeilenenden der Zieldatei.
 ABSCHNITT="$PROJ/.claude-mind/lauf-abschnitt.md"
 # ... Abschnitt nach "$ABSCHNITT" schreiben ...
-[ "$DRY_RUN" = "no" ] && mind_append "$LISTE" < "$ABSCHNITT"
+mind_append "$LISTE" < "$ABSCHNITT"
 
 # 2) Befunde MASCHINENLESBAR danebenlegen — eine Zeile je Befund.
 #    Ohne die feste Klassenliste heisst derselbe Fehler dreimal anders und wird nie als
@@ -596,7 +606,7 @@ BEFUNDE="$PROJ/.claude-mind/lauf-befunde.jsonl"
 #    "kurz":"Pipeline statt claudemd_pipeline.py nachgebaut","lauf":"<ts>"}
 
 # 3) zentral melden (still, wenn MIND_DEBUG_DIR nicht gesetzt ist)
-[ "$DRY_RUN" = "no" ] && mind_debug_write "$PROJ" "$AUSLOESER" "$ABSCHNITT" "$BEFUNDE"
+mind_debug_write "$PROJ" "$AUSLOESER" "$ABSCHNITT" "$BEFUNDE"
 rm -f "$ABSCHNITT" "$BEFUNDE" 2>/dev/null
 ```
 
@@ -656,7 +666,7 @@ beschaedigen, Umschreiben schon):
 - <konkret, mit Datei und Stelle — kein "koennte man mal">
 
 ### Nicht angewendet (und warum)
-- <DESIGN-Befunde / >5 tote Pfade / --dry-run / Overwrite-Guard / fehlende Freigabe>
+- <DESIGN-Befunde / >5 tote Pfade / Overwrite-Guard / fehlende Freigabe>
 ```
 
 **Regeln, ohne die die Liste Dekoration waere:**
@@ -667,7 +677,6 @@ beschaedigen, Umschreiben schon):
   Wer hier „(keine)" schreibt, obwohl ein Agent starb, macht den ganzen Mechanismus wertlos.
 - Auch **eigene** Fehlgriffe gehoeren hinein (falsche Annahme, verworfener Zwischenstand) —
   die Liste ist ein Arbeitsprotokoll, keine Erfolgsmeldung.
-- Im **`--dry-run`** wird die Datei **nicht** geschrieben; der Bericht sagt das ausdruecklich.
 
 ## Step 2.95: Zeilenenden-Waechter (PFLICHT, NEU v5.11.0)
 
@@ -906,7 +915,7 @@ kommt als Nachricht; bis dahin laeuft die Reparatur.
 ```bash
 # ⛔ v5.113.0: NUR bei `ja`. Ein Merker fuer teil entsteht nicht mehr — teil ist kein Zustand,
 #    in dem dieser Block erreicht wird (2.96a-R laeuft, bis voll).
-if [ "$DRY_RUN" = "no" ] && [ "$SYNC_LIEF" = "ja" ]; then
+if [ "$SYNC_LIEF" = "ja" ]; then
   mkdir -p "$PROJ/.claude-mind/rescued"
   # ⛔ v5.65.0: HIER STAND `tokens=` UND DIE ERZEUGUNG VON `COMPACT-FAELLIG`.
   #    Beides ist weg. Nutzer-Entscheidung 10.09.2026: "die sollen garnicht
@@ -986,7 +995,7 @@ stand es bis v5.7.4, und genau das war der Fehler.
 
 ## Step 2.96: Schuld begleichen (PFLICHT, NEU v5.2.1)
 
-Erst **nach** einem tatsaechlich gelaufenen Sync (nicht im Probelauf, nicht nach Abbruch von
+Erst **nach** einem tatsaechlich gelaufenen Sync (nicht nach Abbruch von
 mind-update) wird die offene Schuld entfernt — sonst blockt der Stop-Hook zu Recht weiter:
 
 ⛔ **Hier steht `= "ja"` und bleibt dabei.** Bis v5.112.0 stand in Step 2.96a `!= "nein"`:
@@ -1001,7 +1010,7 @@ nur hier.
 #    mit rc 0 bestaetigt — und ALLE resume=-Zeilen werden .done (mind_schuld_begleichen).
 #    Bis v5.112.0 stand hier `grep -m1 '^resume='`: nur die aelteste RESUME wurde .done,
 #    zwei juengere blieben liegen (Noras Fund, 16.09.2026).
-if [ "$DRY_RUN" = "no" ] && [ "$SYNC_LIEF" = "ja" ] \
+if [ "$SYNC_LIEF" = "ja" ] \
    && mind_sync_voll "$PROJ/.claude-mind/rescued/sync-stand"; then
   _BEGL=$(mind_schuld_begleichen "$PROJ") && echo "Sync-Schuld beglichen: OPEN entfernt, $_BEGL."
 fi
@@ -1013,8 +1022,8 @@ fi
 #    still. Ein Merker, der einen erledigten Zustand behauptet, ist genau
 #    der `PENDING`-Fehler aus v5.2.1 — eine Quittung fuers Reden statt einer
 #    fuer die Arbeit.
-#    ⚠ Auch im Probelauf: `--dry-run` aendert keine Context-Datei, aber der
-#      Merker ist Ablaufzustand, kein Inhalt.
+#    ⚠ Der Merker ist Ablaufzustand, kein Inhalt — deshalb haengt er nicht daran,
+#      ob eine Context-Datei geaendert wurde.
 if command -v mind_plan_frei >/dev/null 2>&1 \
    && [ -f "$PROJ/.claude-mind/PLAN-AKTIV" ]; then
   mind_plan_frei "$PROJ" && echo "Plan-Pause aufgehoben (PLAN-AKTIV entfernt)."
@@ -1030,7 +1039,7 @@ Rettungen eingespeist wurden. Bricht der Lauf nach der ersten ab, bleiben die ue
 begleicht, wiederholt genau den Fehler, an dem v5.2.0 gescheitert ist — nur eine Ebene
 tiefer.
 
-**Wenn der Sync NICHT lief** (Abbruch, Probelauf, mind-update gescheitert): `OPEN` bleibt, und
+**Wenn der Sync NICHT lief** (Abbruch, mind-update gescheitert): `OPEN` bleibt, und
 der Schlussbericht sagt **ausdruecklich**, dass die Schuld offen bleibt und der Stop-Hook
 weiter nachhaken wird. Stillschweigendes Liegenlassen ist die eine Sache, die hier nicht
 passieren darf — genau daran ist v5.2.0 gescheitert.
@@ -1039,7 +1048,7 @@ passieren darf — genau daran ist v5.2.0 gescheitert.
 
 ```
 === /mind-all — Durchlauf abgeschlossen ===
-Modus: autonom | --ask | --dry-run
+Modus: autonom | --ask
 Ausfuehrungstiefe: <$(mind_umfang_lesbar "$UMFANG")>   ⛔ PFLICHT, v5.19.0 — aus $UMFANG, nicht aus dem Kopf
                                      ⚠ v5.135.0: `10/5 bestand` heisst „10 Bestands-Quittungen ueber 5 Skills"
                                        (Udo 24.09.2026: korrekt gezaehlt, irrefuehrend beschriftet). Die

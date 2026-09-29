@@ -70,7 +70,7 @@ mind_schritt verdichten "uebersprungen:kein-kandidat" 0 "$PROJ"   # schweigen = 
 ```
 
 ⛔ **`uebersprungen` ist ein gueltiger Status und braucht einen GRUND.** Ein Schritt,
-der legitim entfaellt (`--dry-run`, kein Git, kein Quellbaum), ist kein Fehler — aber
+der legitim entfaellt (kein Git, kein Quellbaum), ist kein Fehler — aber
 sein Entfallen gehoert in den Bericht statt zu verschwinden.
 
 ⛔ **v5.67.0: EINEN PFLICHTSCHRITT AUSZULASSEN, WEIL ER TEUER AUSSIEHT, IST VERBOTEN.**
@@ -127,9 +127,21 @@ Projekttyp erkennen -> Soll-Zustand definieren -> Ist pruefen -> User-OK -> Erst
 **Autonom ist der Standard.** Fehlende Dateien werden erstellt, verbesserbare verbessert.
 
 ```bash
-ARGS="${ARGUMENTS:-}"; AUTO_MODE="yes"; DRY_RUN="no"
+ARGS="${ARGUMENTS:-}"; AUTO_MODE="yes"
 echo "$ARGS" | grep -qE '(^|[[:space:]])--(ask|interactive)([[:space:]]|$)' && AUTO_MODE="no"
-echo "$ARGS" | grep -qE '(^|[[:space:]])--dry-run([[:space:]]|$)' && { DRY_RUN="yes"; AUTO_MODE="no"; }
+# ⛔ v5.139.0: der PROBELAUF ist ERSATZLOS entfallen (Nutzer 29.09.2026: „wieso kein
+#    richtiger lauf kostet geld", „allgemein keine Probelaeufe mehr … ich will Ergebnisse
+#    sehen"). Wer die Flagge noch mitgibt, bekommt einen ABBRUCH und keinen stillen
+#    Echtlauf: wer `--dry-run` tippt, erwartet, dass nichts geschrieben wird.
+if echo "$ARGS" | grep -qE '(^|[[:space:]])--dry-run([[:space:]]|$)'; then
+  echo "ABBRUCH: --dry-run ist entfallen (seit 5.139.0) — es gibt keinen Probelauf mehr." >&2
+  echo "         Bitte OHNE die Flagge aufrufen. Der Lauf ist dann ein echter Lauf," >&2
+  # ⛔ KEINE Backticks in diesem Text: in doppelten Anfuehrungszeichen FUEHRT BASH AUS, was
+  #    zwischen ihnen steht (shell-windows.md). Hier stand "`--ask`" — das haette bei jedem
+  #    Abbruch ein "--ask: command not found" erzeugt und das Wort aus der Meldung getilgt.
+  echo "         mit Snapshot vorher (Rueckweg). --ask fragt weiterhin vor dem Anwenden." >&2
+  exit 2
+fi
 
 # Laeuft dieser Skill innerhalb eines AKTIVEN /mind-all? (C1-Fix: drei Bedingungen, nicht nur
 # "Datei existiert" — sonst gilt nach dem ersten /mind-all JEDER spaetere Einzellauf als Kette
@@ -143,7 +155,7 @@ if [ -f "$_SC" ]; then
   [ -n "$_SNAP" ] && [ -d "$_SNAP" ] && [ "$_AGE" -lt 7200 ] && CHAIN="yes"
 fi
 
-# Hook-Gesundheit (NEU v5.2.1) — laeuft in JEDEM Modus, auch im Probelauf und in der Kette.
+# Hook-Gesundheit (NEU v5.2.1) — laeuft in JEDEM Modus, auch in der Kette.
 # Kein Abbruchgrund; aber ein toter Hook MUSS im Bericht stehen, sonst haelt der naechste
 # Befundlauf ein totes Netz fuer ein gespanntes (genau so entstand die Befundliste 2026-08-16).
 if [ -n "$CLAUDE_PLUGIN_ROOT" ] && [ -f "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" ]; then
@@ -151,7 +163,7 @@ if [ -n "$CLAUDE_PLUGIN_ROOT" ] && [ -f "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" ]; th
   mind_hook_health "$PROJ" || HOOK_WARN="ja"
 fi
 
-if [ "$DRY_RUN" = "no" ] && [ "$CHAIN" = "no" ]; then
+if [ "$CHAIN" = "no" ]; then
   [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
   [ -z "$CLAUDE_PLUGIN_ROOT" ] && { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
   source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
@@ -161,7 +173,7 @@ if [ "$DRY_RUN" = "no" ] && [ "$CHAIN" = "no" ]; then
 fi
 ```
 
-`--ask` = Report + Freigabe (Verhalten vor v5.0.0) · `--dry-run` = nichts aendern.
+`--ask` = Report + Freigabe (Verhalten vor v5.0.0).
 
 **DESIGN-Befunde werden NIE automatisch angewendet** — vor einem Edit pruefen, ob eine Rule
 die Stelle als "niemals anfassen"/"NIEMALS <datei>"/"by design" markiert; dann nur listen.
@@ -183,6 +195,9 @@ im Desktop-Reiter erst `ToolSearch select:SendMessage` — v5.96.0, gemessen 12.
 ```
 "Scan this project for tech stack, project type, build/test/lint commands, key
 directories, frameworks, and package manager. Report structured findings.
+
+Nenne zu JEDEM Zitat die Datei und die Zeilennummer, aus der du es gelesen hast. Was du ohne Fundstelle schreibst, kennzeichne als UNGEPRUEFT.
+(v5.138.0 — gilt fuer jeden Befehl, jede Version, jeden Pfad. Eine Bitte, kein Gate.)
 
 Zusaetzlich (PFLICHT, via `test -e`/Glob konkret pruefen — Exist/Missing pro Punkt):
 - BUILD:   Build-System vorhanden (package.json/pyproject.toml/*.csproj/CMakeLists...)?
@@ -367,7 +382,6 @@ Proceed? [Yes / Select / Skip]
 **Bei `AUTO_MODE=yes` (Default): NICHT stoppen** — fehlende Dateien erstellen, verbesserbare
 verbessern, danach Step 6 mit Angewendet-Block. **Ausgenommen bleiben** (Step 0): Ueberschreiben
 existierender Dateien + Tool-Bundle-Installation → als offene Punkte listen.
-Bei `DRY_RUN=yes`: nur zeigen.
 
 ## Step 5: Dateien erstellen/verbessern (nach User-OK)
 
@@ -1028,15 +1042,28 @@ Lies sie.** Hier nur, was für diesen Skill gilt:
 
 | | |
 |---|---|
-| **Kandidat** | die **GRÖSSTE** der installierten Companion-Rules in Bytes — **eine je Lauf** |
+| **Kandidat** | die **GRÖSSTE** der installierten Companion-Rules in Bytes, **die in den letzten N Läufen nicht Kandidatin war** — **eine je Lauf** (v5.138.0, `mind_verdicht_kandidat`; N = `Dateizahl − 1`, Regler `MIND_VERDICHTEN_HISTORIE`) |
 | ⛔ **welche Zeilen liest ein Programm** | `mind_check_tools_have_rules` verlangt je Werkzeug die **Aufrufform** `tools/<name>` in einer glob-getriggerten Rule (Kern-Invariante v4.0) — jede Zeile mit `tools/<name>.py` und das `globs:`-Frontmatter bleiben byteweise. **Nach dem Lauf `mind_check_tools_have_rules "$PROJ"` — rc 0 oder VERWERFEN**, sonst liegt ein Werkzeug tot |
 | **Überholt-Kandidaten** | aus dem Vergleich mit der Vorlage in `references/backup-system-templates/` (was die Vorlage nicht mehr sagt) und aus dem Deckel-Ausweis der Datei — **benannt** |
 | **verwerfen, wenn** | Stufe 1 < 100 % · Marker unbenannt verloren · nicht kleiner · Zeilenenden geändert · `mind_check_tools_have_rules` neu rot · Dauerkontext nach dem Anwenden nicht kleiner |
 | ⛔ **Stufe 3** | der Wort-Diff wird GANZ gelesen, bevor angewendet wird. **Ohne Leser: nicht anwenden** — Ergebnis, Bericht, Diff ablegen, Pfad melden |
 
 ```bash
-# Kandidatin: die groesste Companion-Rule, die es im Projekt gibt
-DATEI=$(ls -S "$PROJ"/.claude/rules/{backup-usage,wissenstransfer-pruefen,zaehlwerte-pruefen,release-hygiene,release-build}.md 2>/dev/null | head -1)
+# Kandidatin: die groesste Companion-Rule, die es im Projekt gibt — v5.138.0: nicht die,
+# die in den letzten N Laeufen schon dran war (kein `head -1`, die Funktion waehlt).
+# ⛔ v5.138.0: was in DIESEM Kettenlauf schon verdichtet wurde, ist kein Kandidat.
+#    Die Zeile stand bis dahin NUR in mind-update, obwohl alle vier Traeger
+#    `verdichtet=` SCHREIBEN — ein Schreiber ohne Leser. Kosten eines doppelten
+#    Durchgangs: 274 063 Token (bestands-pass.md).
+_SCHON=$(grep '^verdichtet=' "$PROJ/.claude-mind/analyzed-scopes" 2>/dev/null | cut -d= -f2-)
+DATEI=$(ls -S "$PROJ"/.claude/rules/{backup-usage,wissenstransfer-pruefen,zaehlwerte-pruefen,release-hygiene,release-build}.md 2>/dev/null \
+        | while IFS= read -r f; do
+            case "
+$_SCHON
+" in *"
+$f
+"*) ;; *) echo "$f" ;; esac; done \
+        | mind_verdicht_kandidat "$PROJ" mind-files merken)
 [ -n "$DATEI" ] || { echo "VERDICHTEN: keine Kandidatin (keine Companion-Rule installiert)"; }
 # ... dann exakt der Lauf aus bestands-pass.md: Snapshot -> Agent (Kasten + Aufrufformen und
 #     ⛔ v5.100.0: der Agent schreibt $PROJ/.claude-mind/verdichten-mind-files.nachher.md (Zeilenenden

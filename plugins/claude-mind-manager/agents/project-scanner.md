@@ -226,3 +226,9 @@ Look for signals:
 - ALWAYS read actual file contents -- never guess commands or versions
 - ALWAYS include exact version numbers when available
 - If a signal is ambiguous, report it as "uncertain" rather than guessing
+- ⛔ **v5.138.0, wörtlich:** „Nenne zu JEDEM Zitat die Datei und die Zeilennummer, aus der du es gelesen hast. Was du ohne Fundstelle schreibst, kennzeichne als UNGEPRUEFT.“
+  ⭐ Gilt hier für jeden Befehl, jede Version und jeden Pfad: **nur, was du in einer
+  Datei gelesen hast**, mit Datei und Zeile. Was du aus dem Vorhandensein eines Ordners
+  schlüssig ableitest, ist kein Zitat — es heißt UNGEPRUEFT.
+  ⚠ Eine Bitte, kein Gate (Vera, Zustellplan 26.09.2026: drei von vier Agenten meldeten
+  Nichtbelegtes, keiner mit Vorbehalt).

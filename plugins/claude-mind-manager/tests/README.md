@@ -128,6 +128,28 @@ Sammlungen und **133 von 961** Mustern. Die eine neue Wortlaut-Stelle ist §6, d
 alten Sätze ABSICHTLICH greppt. Wer die Zahl nachmisst, sieht sonst einen Zuwachs und
 hält ihn für einen Rückfall.
 
+⛔ **v5.139.0, und das ist die wichtigere Lehre der 84. Sammlung (`test_kein_probelauf.sh`): EIN PRUEFFALL KANN DURCH ABWESENHEIT BESTEHEN.**
+Die Sammlung faehrt den Abbruch-Block wörtlich aus jeder `SKILL.md` und sah gegen den
+Vorstand **12 grüne** Fälle. Erklärbar waren nur fünf. Die anderen sieben bestanden,
+**weil es den Block dort nicht gibt**: kein Block → keine Ausgabedatei → `grep -q`
+darauf ist falsch → „nein" → grün. Dieselbe Klasse, gegen die die Sammlung gebaut ist,
+im Prueftext selbst.
+⭐ **Die Abhilfe ist eine Zeile und gehört in jeden Fall, der eine Datei greppt:** erst
+prüfen, dass die Datei **existiert**, dann ihren Inhalt beurteilen (`"ja|nein"` statt
+`"nein"`). Danach: 39 grün im neuen Stand, **34 rot** im alten, und die fünf
+verbleibenden Grünen sind einzeln erklärt — zwei Skills haben die Flagge nie
+angeboten, drei sind die absichtlich BLEIBENDEN Löschschutz-Zusicherungen.
+⚠ **Ein Grün, das niemand erklären kann, ist ein Messverdacht** — nicht ein Erfolg.
+
+⭐ **v5.138.0: `test_verdicht_rotation.sh` ist die 83. Sammlung und greppt keinen Satz.**
+Ihre fünf Muster sind Code-Zeilen (`echo "verdichtet=$DATEI"`, `_SCHON=$(grep …`,
+`DATEI="$ZIEL_MD"`) und eine Marke (`HISTORIE_VOLL`). ⛔ **Die Marke gibt es nur, weil
+der Fall zuerst `Historie voll` greppte** — also genau den Fehler, den diese Datei
+beschreibt, im ersten Anlauf des Autors dieser Zeilen. Zwei Wörter liegen unter der
+Messschwelle (drei zusammenhängende), aber die Regel ist keine Schwelle: eine
+präzisierte Meldung hätte den Fall rot gemacht, ohne Verhaltensänderung. Die Meldung
+trägt jetzt die Marke, der Satz daneben bleibt für Menschen.
+
 ## ⛔ Was hier NICHT hineingehört
 
 **Nichts, was `~/.claude/settings.json` oder Umgebungsvariablen schreibt.** Ein Plugin, das

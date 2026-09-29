@@ -288,7 +288,14 @@ janein "mind-rules: Hard Constraint sagt paths:, nicht globs:" ja "$(grep -q 'AL
 janein "mind-rules check: globs: ist INFO (laedt immer), paths: keine WARNING mehr" ja "$(grep -q 'Uses `globs:` (laedt IMMER, filtert nicht' "$MR" && ! grep -q 'Uses `paths:` instead of `globs:` | WARNING' "$MR" && echo ja || echo nein)"
 janein "mind-rules migrate: Richtung globs -> paths ueber die Sonde" ja "$(grep -q 'die Richtung ist `globs:` → `paths:`' "$MR" && echo ja || echo nein)"
 janein "mind-update Step 5: paths:-Rules sind kein Verdichten-Kandidat" ja "$(grep -q "head -12 \"\$f\" | grep -qi '^paths:' && continue" "$MU" && echo ja || echo nein)"
-janein "mind-rules 9b: dito im Code, nicht nur in der Tabelle" ja "$(grep -q "grep -qi '^paths:' || { echo \"\$f\"; break; }" "$MR" && echo ja || echo nein)"
+# ⚠ DRITTES Aussehen derselben Zusicherung an einem Abend, und zweimal war ICH der
+#   Grund: v5.138.0 nahm das `; break; }` weg (Rotation braucht die ganze Liste),
+#   v5.139.0 machte aus `|| echo "$f"` ein `&& continue` (der `_SCHON`-Leser kam
+#   dazu). Beide Male war das Muster an der FORM festgemacht statt an der Zusicherung.
+#   Die lautet: `paths:`-Rules sind im CODE kein Kandidat, nicht nur in der Tabelle.
+#   Deshalb laesst das Muster jetzt BEIDE Ausschluss-Formen zu und bleibt trotzdem
+#   streng: wer den Ausschluss ENTFERNT, wird rot (nachgemessen, nicht behauptet).
+janein "mind-rules 9b: dito im Code, nicht nur in der Tabelle" ja "$(grep -qE "grep -qi '\^paths:' (&& continue|\|\| echo)" "$MR" && echo ja || echo nein)"
 
 echo "== v5.119.0 (Etappe 27 §1): „laedt immer“ heisst KEIN Feld — Vorlage, Geruest, check/migrate =="
 RT="$CLAUDE_PLUGIN_ROOT/references/rule-templates"

@@ -20,7 +20,6 @@ CLI:
         Restore (default: alle Files aus Snapshot zurueck ins Projekt-Root)
         Mit <target_path>: nur diese Datei/dieses Verzeichnis restoren
 
-    python tools/rollback.py restore <snapshot> --dry-run
         Zeigt was passieren wuerde, ohne zu schreiben
 
 Defaults:
@@ -247,9 +246,15 @@ def snapshot_info(snapshot_name: str) -> int:
     return 0
 
 
-def restore(snapshot_name: str, target_path: str | None = None,
-            dry_run: bool = False) -> int:
-    """Restore aus Snapshot. Sichert vorher aktuellen Stand."""
+def restore(snapshot_name: str, target_path: str | None = None) -> int:
+    """Restore aus Snapshot. Sichert vorher aktuellen Stand.
+
+    ⛔ v5.139.0: der Parameter `dry_run` ist ERSATZLOS entfallen (Nutzer 29.09.2026:
+       „allgemein keine Probelaeufe mehr … ich will Ergebnisse sehen"). Er schuetzte
+       auch nichts: vor JEDEM restore entsteht ein Pre-Rollback-Snapshot (siehe oben),
+       jeder restore ist also umkehrbar. ⭐ Anders als beim `gfs`-Cleanup in
+       `backup_tools.py`, wo `--apply` OHNE Netz loescht — dort bleibt der Blick vorher.
+    """
     snap, root = finde_snapshot(snapshot_name)
     if snap is None:
         print(f"Snapshot nicht gefunden: {snapshot_name}", file=sys.stderr)
@@ -284,8 +289,7 @@ def restore(snapshot_name: str, target_path: str | None = None,
         return 0
 
     # Pre-Rollback-Sicherung
-    if not dry_run:
-        pre_dir.mkdir(parents=True, exist_ok=True)
+    pre_dir.mkdir(parents=True, exist_ok=True)
     saved_count = 0
     for rel in files_to_restore:
         # ⛔ NICHT PROJECT_ROOT / rel — siehe ziel_fuer(). Wer hier den falschen
@@ -293,16 +297,13 @@ def restore(snapshot_name: str, target_path: str | None = None,
         #    und laesst die echte ungesichert.
         current, _grund = ziel_fuer(rel)
         if current is not None and current.exists() and current.is_file():
-            if not dry_run:
-                pre_target = pre_dir / rel
-                pre_target.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(current, pre_target)
+            pre_target = pre_dir / rel
+            pre_target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(current, pre_target)
             saved_count += 1
 
-    if not dry_run and saved_count > 0:
+    if saved_count > 0:
         print(f"Pre-Rollback gesichert: {saved_count} files -> {pre_dir.name}")
-    elif dry_run:
-        print(f"[DRY-RUN] Wuerde {saved_count} aktuelle files sichern -> {pre_dir.name}")
 
     # Restore aus Snapshot
     restored = 0
@@ -320,10 +321,6 @@ def restore(snapshot_name: str, target_path: str | None = None,
                   f"({dst})", file=sys.stderr)
             uebersprungen += 1
             continue
-        if dry_run:
-            print(f"  [DRY-RUN] {src} -> {dst}")
-            restored += 1
-            continue
         try:
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, dst)
@@ -335,16 +332,15 @@ def restore(snapshot_name: str, target_path: str | None = None,
 
     # Resilience-Fix: exit-code reflektiert partial failure (war: immer 0)
     failed_count = len(files_to_restore) - restored
-    print(f"\n{'[DRY-RUN] ' if dry_run else ''}Restore: {restored}/{len(files_to_restore)} files")
+    print(f"\nRestore: {restored}/{len(files_to_restore)} files")
 
-    if not dry_run:
-        if failed_count > 0:
-            print(f"[PARTIAL] Restore unvollstaendig: {failed_count} Files failed", file=sys.stderr)
-            print(f"          Pre-Rollback verfuegbar: {pre_dir.name}")
-            return 4  # partial-failure exit code
-        print(f"\n[OK] Restore abgeschlossen aus Snapshot: {snapshot_name}")
-        print(f"     Pre-Rollback verfuegbar: {pre_dir.name}")
-        print(f"     Re-Rollback moeglich via: python tools/rollback.py restore {pre_dir.name}")
+    if failed_count > 0:
+        print(f"[PARTIAL] Restore unvollstaendig: {failed_count} Files failed", file=sys.stderr)
+        print(f"          Pre-Rollback verfuegbar: {pre_dir.name}")
+        return 4  # partial-failure exit code
+    print(f"\n[OK] Restore abgeschlossen aus Snapshot: {snapshot_name}")
+    print(f"     Pre-Rollback verfuegbar: {pre_dir.name}")
+    print(f"     Re-Rollback moeglich via: python tools/rollback.py restore {pre_dir.name}")
 
     return 0
 
@@ -365,11 +361,21 @@ def main(argv: list[str]) -> int:
     if cmd == "restore" and len(argv) >= 3:
         snapshot = argv[2]
         target = None
-        dry_run = "--dry-run" in argv
-        # Optional: target_path als 3. Arg (vor --dry-run)
+        # ⛔ v5.139.0: die Flagge ist entfallen und wird NICHT still ignoriert. Wer sie
+        #    gibt, erwartet, dass nichts geschrieben wird — ein stiller Echt-restore
+        #    waere genau die Verhaltensaenderung, die niemand bemerkt.
+        if "--dry-run" in argv:
+            print("ABBRUCH: --dry-run ist entfallen (seit 5.139.0) - es gibt keinen "
+                  "Probelauf mehr.", file=sys.stderr)
+            print("         Bitte OHNE die Flagge aufrufen. Vor jedem restore entsteht "
+                  "ein Pre-Rollback-Snapshot,", file=sys.stderr)
+            print("         der Lauf ist also umkehrbar - 'list' zeigt vorher, was da "
+                  "ist.", file=sys.stderr)
+            return 2
+        # Optional: target_path als 3. Arg
         if len(argv) >= 4 and not argv[3].startswith("--"):
             target = argv[3]
-        return restore(snapshot, target, dry_run)
+        return restore(snapshot, target)
 
     print(__doc__)
     return 1

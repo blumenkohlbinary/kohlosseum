@@ -55,7 +55,7 @@ mind_schritt <name> "fehler:<grund>"      -1       "$PROJ"
 ```
 
 ⛔ **`uebersprungen` ist ein gueltiger Status und braucht einen GRUND.** Ein Schritt,
-der legitim entfaellt (`--dry-run`, kein Git, kein Quellbaum), ist kein Fehler — aber
+der legitim entfaellt (kein Git, kein Quellbaum), ist kein Fehler — aber
 sein Entfallen gehoert in den Bericht statt zu verschwinden.
 
 ⛔ **v5.67.0: EINEN PFLICHTSCHRITT AUSZULASSEN, WEIL ER TEUER AUSSIEHT, IST VERBOTEN.**

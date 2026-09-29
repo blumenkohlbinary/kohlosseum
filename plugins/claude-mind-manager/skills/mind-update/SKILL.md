@@ -8,7 +8,7 @@ description: |
   Tool-Call (Anthropic Server-Rate-Limit). Alle 4 gleichen Session-Inhalte mit den
   Context-Files ab und klassifizieren in 5 Klassen (UPDATE/ENRICH/ADD/NEW_FILE/INFO).
   v5.0.0: Befunde werden AUTONOM angewendet (ausser DESIGN); '--ask' fragt wie
-  frueher, '--dry-run' aendert nichts.
+  frueher.
 
   Der Knowledge-Sync ist KEINE optionale Beschleunigungs-Stufe — er ist Teil der
   Identitaet dieses Skills. Nur `--quick` schaltet ihn explizit ab.
@@ -77,7 +77,7 @@ mind_schritt verdichten "uebersprungen:kein-kandidat" 0 "$PROJ"   # schweigen = 
 ```
 
 ⛔ **`uebersprungen` ist ein gueltiger Status und braucht einen GRUND.** Ein Schritt,
-der legitim entfaellt (`--dry-run`, kein Git, kein Quellbaum), ist kein Fehler — aber
+der legitim entfaellt (kein Git, kein Quellbaum), ist kein Fehler — aber
 sein Entfallen gehoert in den Bericht statt zu verschwinden.
 
 ⛔ **v5.67.0: EINEN PFLICHTSCHRITT AUSZULASSEN, WEIL ER TEUER AUSSIEHT, IST VERBOTEN.**
@@ -142,9 +142,21 @@ ihn zu ueberspringen — siehe Step 3c Commit-Coverage, die Gaps objektiv belegt
 angewendet (frueher: alles ASK-Default).
 
 ```bash
-ARGS="${ARGUMENTS:-}"; AUTO_MODE="yes"; DRY_RUN="no"
+ARGS="${ARGUMENTS:-}"; AUTO_MODE="yes"
 echo "$ARGS" | grep -qE '(^|[[:space:]])--(ask|interactive)([[:space:]]|$)' && AUTO_MODE="no"
-echo "$ARGS" | grep -qE '(^|[[:space:]])--dry-run([[:space:]]|$)' && { DRY_RUN="yes"; AUTO_MODE="no"; }
+# ⛔ v5.139.0: der PROBELAUF ist ERSATZLOS entfallen (Nutzer 29.09.2026: „wieso kein
+#    richtiger lauf kostet geld", „allgemein keine Probelaeufe mehr … ich will Ergebnisse
+#    sehen"). Wer die Flagge noch mitgibt, bekommt einen ABBRUCH und keinen stillen
+#    Echtlauf: wer `--dry-run` tippt, erwartet, dass nichts geschrieben wird.
+if echo "$ARGS" | grep -qE '(^|[[:space:]])--dry-run([[:space:]]|$)'; then
+  echo "ABBRUCH: --dry-run ist entfallen (seit 5.139.0) — es gibt keinen Probelauf mehr." >&2
+  echo "         Bitte OHNE die Flagge aufrufen. Der Lauf ist dann ein echter Lauf," >&2
+  # ⛔ KEINE Backticks in diesem Text: in doppelten Anfuehrungszeichen FUEHRT BASH AUS, was
+  #    zwischen ihnen steht (shell-windows.md). Hier stand "`--ask`" — das haette bei jedem
+  #    Abbruch ein "--ask: command not found" erzeugt und das Wort aus der Meldung getilgt.
+  echo "         mit Snapshot vorher (Rueckweg). --ask fragt weiterhin vor dem Anwenden." >&2
+  exit 2
+fi
 
 # Laeuft dieser Skill innerhalb eines AKTIVEN /mind-all? (C1-Fix: drei Bedingungen, nicht nur
 # "Datei existiert" — sonst gilt nach dem ersten /mind-all JEDER spaetere Einzellauf als Kette
@@ -158,7 +170,7 @@ if [ -f "$_SC" ]; then
   [ -n "$_SNAP" ] && [ -d "$_SNAP" ] && [ "$_AGE" -lt 7200 ] && CHAIN="yes"
 fi
 
-if [ "$DRY_RUN" = "no" ] && [ "$CHAIN" = "no" ]; then
+if [ "$CHAIN" = "no" ]; then
   [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
   [ -z "$CLAUDE_PLUGIN_ROOT" ] && { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
   source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
@@ -172,7 +184,6 @@ fi
 |---|---|---|
 | **autonom (Default)** | `/mind-update` | AUTO/DEAD/UPDATE/ENRICH/ADD/NEW_FILE werden angewendet |
 | **interaktiv** | `/mind-update --ask` | Report → Freigabe (Verhalten vor v5.0.0) |
-| **Probelauf** | `/mind-update --dry-run` | zeigt alles, aendert nichts |
 | **nur Drift** | `/mind-update --quick` | ohne Knowledge-Sync (unveraendert) |
 
 **Nie automatisch:** DESIGN-Befunde · **>5 DEAD-Pfade** (Massenloesch-Sicherung, Step 3b).
@@ -1108,7 +1119,8 @@ gleichzeitig, getrennte Nachrichten = nacheinander.
 
 ```
 Agent(subagent_type: "claude-mind-manager:context-analyzer", run_in_background: false,
-      description: "Knowledge-sync <scope>", prompt: <Auftrag aus der Tabelle>)
+      description: "Knowledge-sync <scope>", prompt: <Auftrag aus der Tabelle>
+      + "Nenne zu JEDEM Zitat die Datei und die Zeilennummer, aus der du es gelesen hast. Was du ohne Fundstelle schreibst, kennzeichne als UNGEPRUEFT.")
 ```
 
 | Agent | scope | mode | Input |
@@ -1117,6 +1129,25 @@ Agent(subagent_type: "claude-mind-manager:context-analyzer", run_in_background: 
 | 2 | `memory` | `knowledge-sync` | MEMORY.md + Topic-Files aus Step 1 + Session-Auszug — **v5.109.0: im Rollen-Aufbau ALLE Verzeichnisse aus `mind_memory_dirs "$PROJ"`, je Verzeichnis benannt, und die Tabelle `RETTUNGS_MEMORY`; ⛔ der Agent schreibt in das Verzeichnis der Rettung, nie ueber Slugs hinweg** |
 | 3 | `rules` | `knowledge-sync` | **`SEM_RULES` (Step 3c.1, je `TARGET_MODE`)** + Global-Rules (immer, je einzeln größen-geguardet) **+ die Rules der Roster-Unterordner (v5.106.0, je Datei mit Ordner)** + Session-Auszug — bei großem Satz NICHT alle Project-Rules; jede Datei >600 Z. **ODER >60 KB** mit Größen-Guard (grep-gezielt, nicht ganz lesen) |
 | 4 | `custom-context` | `knowledge-sync` | `CUSTOM_CONTEXT_FILES` aus Step 1.5 + Session-Auszug |
+
+⛔ **In JEDEN der vier Aufträge gehört dieser Satz wörtlich (v5.138.0, beide Sätze):**
+> „Nenne zu JEDEM Zitat die Datei und die Zeilennummer, aus der du es gelesen hast. Was du ohne Fundstelle schreibst, kennzeichne als UNGEPRUEFT.“
+
+⭐ **Warum er wirkt — gemessen (Vera, Zustellplan 26.09.2026):** drei von vier
+Wissens-Sync-Agenten meldeten je einen Befund, der bei der Gegenprobe fiel (ein
+erfundenes Zitat mit 0 Grep-Treffern, zwei Pfade ab falscher Wurzel geglobt, ein
+„kommt nirgends vor" nach halbem Bestand) — **keiner mit Vorbehalt.** Der Agent, der
+den Satz bekam, stellte als einziger seine unsicheren Stellen selbst unter
+NICHT GEPRÜFT.
+⛔ **Er ist eine BITTE, kein Gate.** Nichts prüft die Fundstelle nachträglich (Stand
+v5.138.0) — und die halbe Forderung („nenne file:line") stand in
+`agents/context-analyzer.md` schon seit v4.1.0; gefangen hat Vera die drei Befunde durch
+das **Nachlesen jeder Zeilenangabe**, die Angaben waren also da.
+**Eine Regel stellt das Wissen bereit, sie verhindert den Fehler
+nicht** (Anton, 29.09.2026). Wirksam war erst die Aufforderung, das Ungedeckte selbst
+zu KENNZEICHNEN.
+⚠ **Deckel: 0 B** — Skill- und Agent-Texte laden nicht im Startkontext, sie kommen mit
+dem Aufruf. Ausgewiesen wird es trotzdem, weil „kostet nichts" sonst niemand nachprüft.
 
 **Skip-Logik pro Agent:**
 - Agent 4 (`custom-context`) skippen wenn `${#CUSTOM_CONTEXT_FILES[@]} == 0` (Plan EC4) — das ist die EINZIGE erlaubte Auslassung; die anderen 3 sind unbedingt Pflicht.
@@ -1314,7 +1345,6 @@ Jedes Finding bekommt eine Klasse aus 9 Optionen (4 Drift + 5 Knowledge-Sync):
 - `AUTO_MODE=yes` (Default): UPDATE/ENRICH/ADD/NEW_FILE werden **angewendet**, nicht gefragt.
   Die "ASK Default"-Angaben in den Klassen-Tabellen oben gelten NUR fuer `--ask`.
 - `AUTO_MODE=no` (`--ask`): Klassen-Tabelle wie beschrieben (ASK Default).
-- `DRY_RUN=yes`: nichts anwenden, nur listen.
 - **DESIGN bleibt in JEDEM Modus ausgenommen.**
 
 **KRITISCHE REGEL (weiterhin):** Sagt der User "behebe alle"/"fix all"/"ja mach", ist das
@@ -1428,7 +1458,7 @@ Lies sie.** Hier nur, was für diesen Skill gilt:
 
 | | |
 |---|---|
-| **Kandidat** | die **GRÖSSTE** Datei in Bytes unter `$PROJ/CLAUDE.md` und `$PROJ/.claude/rules/*.md` — **eine je Lauf**. ⛔ Nie `rollen.md`, nie Memory (das macht `mind-memory` Step 6e) |
+| **Kandidat** | die **GRÖSSTE** Datei in Bytes unter `$PROJ/CLAUDE.md` und `$PROJ/.claude/rules/*.md` — **eine je Lauf**, und **nicht die, die in den letzten N Läufen schon Kandidatin war** (v5.138.0, `mind_verdicht_kandidat`; N = `Dateizahl − 1`, Regler `MIND_VERDICHTEN_HISTORIE`). ⛔ Nie `rollen.md`, nie Memory (das macht `mind-memory` Step 6e) |
 | ⛔ **welche Zeilen liest ein Programm** | ist der Kandidat `CLAUDE.md`: die Unantastbaren aus `mind-claudemd` Step 5e (Codeblöcke byteweise, Versionszeilen, Adress-Zeiger) **und** `claudemd_pipeline.py` vor/nach dem Lauf — kein Check neu rot. Ist es eine Rule: jede gegatete Tabelle (`**<n>** \|`, das Format von `zaehl_gate.py`) byteweise, jedes Quittungs- oder Merker-Format, das ein Hook parst |
 | **Überholt-Kandidaten** | aus den Step-3-Drift-Befunden dieses Laufs (stale Versionen, tote Pfade, alte Counts) — **benannt** an den Agenten. ⭐ Der Ertrag hängt am Aufrufer |
 | **verwerfen, wenn** | Stufe 1 < 100 % · Marker unbenannt verloren · nicht kleiner · Zeilenenden geändert · Pipeline-Check neu rot · Dauerkontext nach dem Anwenden nicht kleiner |
@@ -1449,7 +1479,8 @@ DATEI=$(ls -S "$PROJ/CLAUDE.md" "$PROJ"/.claude/rules/*.md 2>/dev/null | grep -v
 $_SCHON
 " in *"
 $f
-"*) ;; *) echo "$f"; break ;; esac; done)
+"*) ;; *) echo "$f" ;; esac; done \
+        | mind_verdicht_kandidat "$PROJ" mind-update merken)   # v5.138.0: kein `break` — die Rotation waehlt aus der ganzen Liste
 [ -n "$DATEI" ] || { echo "VERDICHTEN: keine Kandidatin"; }
 # ... dann exakt der Lauf aus bestands-pass.md: Snapshot -> Agent (Kasten + Unantastbare
 #     ⛔ v5.100.0: der Agent schreibt $PROJ/.claude-mind/verdichten-mind-update.nachher.md (Zeilenenden

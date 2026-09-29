@@ -18,7 +18,6 @@ python tools/backup_tools.py verify .claude-mind/backups/<timestamp>_pre-edit/
 # 4. Restore (mit automatischem Pre-Rollback-Snapshot)
 python tools/rollback.py list                          # alle Snapshots
 python tools/rollback.py restore <snapshot-name>       # restore all files
-python tools/rollback.py restore <snapshot-name> CLAUDE.md --dry-run  # nur ein File, trocken
 ```
 
 ## Tool-Uebersicht
@@ -45,7 +44,6 @@ Verzeichnis-Namen mit Prefix `YYYYMMDD_HHMMSS_*` werden erkannt.
 | `info <snapshot>` | Inhalt eines Snapshots |
 | `restore <snapshot>` | Alle Files aus Snapshot zurueckspielen (mit Pre-Rollback-Backup) |
 | `restore <snapshot> <path>` | Nur 1 File/Dir restoren |
-| `restore <snapshot> --dry-run` | Zeigt was passieren wuerde |
 
 **Pre-Rollback-Pattern:** Vor jedem Restore wird der **aktuelle** Stand der zu
 restorenden Files als neuer Snapshot gesichert (Pattern aus Zustellplan-App).

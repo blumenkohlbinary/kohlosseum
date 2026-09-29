@@ -112,8 +112,11 @@ janein "die beiden Faelle liefern VERSCHIEDENES" "nein" \
   "$([ "$(sichere global)" = "$(sichere '')" ] && echo ja || echo nein)"
 
 echo "== 3/4  Zielaufloesung in den Randfaellen =="
+# ⚠ v5.139.0: hier stand `--dry-run global`. Die Flagge war nur ein PLATZHALTER, damit
+#   `global` nicht das erste Wort ist — die Zusicherung ist „irgendwo in den Argumenten".
+#   Mit dem Entfall des Probelaufs uebernimmt `--ask` diese Rolle; der Fall bleibt.
 janein "'global' irgendwo in den Argumenten wird erkannt" "global" \
-  "$(ziel '--dry-run global' "$P" "$H" | cut -d'|' -f1)"
+  "$(ziel '--ask global' "$P" "$H" | cut -d'|' -f1)"
 janein "'globale' ist NICHT 'global' (Wortgrenze)" "projekt" \
   "$(ziel 'globale' "$P" "$H" | cut -d'|' -f1)"
 janein "Projekt ohne ./CLAUDE.md faellt auf .claude/CLAUDE.md" \

@@ -5,7 +5,7 @@ description: |
   Wenn keine CLAUDE.md existiert: Projekt scannen und nach Best Practices erstellen.
   Wenn vorhanden: Qualitäts-Score (0-100, A-F), veraltete/fehlende Infos erkennen,
   Duplikate mit MEMORY.md/Rules finden, Widersprüche aufdecken, dann AUTONOM fixen (v5.0.0;
-  Snapshot vorher, '--ask' fragt wie frueher, '--dry-run' aendert nichts).
+  Snapshot vorher, '--ask' fragt wie frueher).
 
   Use when the user says "check claude.md", "create claude.md", "optimize claude.md",
   "improve claude.md", "mind claudemd", "audit claude.md", "fix claude.md",
@@ -72,7 +72,7 @@ mind_schritt verdichten "uebersprungen:kein-kandidat" 0 "$PROJ"   # schweigen = 
 ```
 
 ⛔ **`uebersprungen` ist ein gueltiger Status und braucht einen GRUND.** Ein Schritt,
-der legitim entfaellt (`--dry-run`, kein Git, kein Quellbaum), ist kein Fehler — aber
+der legitim entfaellt (kein Git, kein Quellbaum), ist kein Fehler — aber
 sein Entfallen gehoert in den Bericht statt zu verschwinden.
 
 ⛔ **v5.67.0: EINEN PFLICHTSCHRITT AUSZULASSEN, WEIL ER TEUER AUSSIEHT, IST VERBOTEN.**
@@ -129,9 +129,21 @@ Erkennen → Erstellen oder Auditieren → **autonom anwenden** (bzw. Freigabe b
 **Autonom ist der Standard.** Dieser Skill wendet gefundene Befunde selbstaendig an.
 
 ```bash
-ARGS="${ARGUMENTS:-}"; AUTO_MODE="yes"; DRY_RUN="no"
+ARGS="${ARGUMENTS:-}"; AUTO_MODE="yes"
 echo "$ARGS" | grep -qE '(^|[[:space:]])--(ask|interactive)([[:space:]]|$)' && AUTO_MODE="no"
-echo "$ARGS" | grep -qE '(^|[[:space:]])--dry-run([[:space:]]|$)' && { DRY_RUN="yes"; AUTO_MODE="no"; }
+# ⛔ v5.139.0: der PROBELAUF ist ERSATZLOS entfallen (Nutzer 29.09.2026: „wieso kein
+#    richtiger lauf kostet geld", „allgemein keine Probelaeufe mehr … ich will Ergebnisse
+#    sehen"). Wer die Flagge noch mitgibt, bekommt einen ABBRUCH und keinen stillen
+#    Echtlauf: wer `--dry-run` tippt, erwartet, dass nichts geschrieben wird.
+if echo "$ARGS" | grep -qE '(^|[[:space:]])--dry-run([[:space:]]|$)'; then
+  echo "ABBRUCH: --dry-run ist entfallen (seit 5.139.0) — es gibt keinen Probelauf mehr." >&2
+  echo "         Bitte OHNE die Flagge aufrufen. Der Lauf ist dann ein echter Lauf," >&2
+  # ⛔ KEINE Backticks in diesem Text: in doppelten Anfuehrungszeichen FUEHRT BASH AUS, was
+  #    zwischen ihnen steht (shell-windows.md). Hier stand "`--ask`" — das haette bei jedem
+  #    Abbruch ein "--ask: command not found" erzeugt und das Wort aus der Meldung getilgt.
+  echo "         mit Snapshot vorher (Rueckweg). --ask fragt weiterhin vor dem Anwenden." >&2
+  exit 2
+fi
 
 # Snapshot VOR dem ersten Edit — ausgefuehrter Aufruf, kein Prosa-Versprechen.
 # Laeuft dieser Skill innerhalb eines AKTIVEN /mind-all? (C1-Fix: drei Bedingungen, nicht nur
@@ -146,7 +158,7 @@ if [ -f "$_SC" ]; then
   [ -n "$_SNAP" ] && [ -d "$_SNAP" ] && [ "$_AGE" -lt 7200 ] && CHAIN="yes"
 fi
 
-if [ "$DRY_RUN" = "no" ] && [ "$CHAIN" = "no" ]; then
+if [ "$CHAIN" = "no" ]; then
   [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
   [ -z "$CLAUDE_PLUGIN_ROOT" ] && { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
   source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
@@ -160,7 +172,6 @@ fi
 |---|---|---|
 | **autonom (Default)** | `/mind-claudemd` | Befunde werden angewendet, danach Bericht |
 | **interaktiv** | `/mind-claudemd --ask` | Report → Freigabe → anwenden (Verhalten vor v5.0.0) |
-| **Probelauf** | `/mind-claudemd --dry-run` | zeigt alles, aendert nichts |
 
 **Bei Snapshot-Fehlschlag wird NICHT editiert** — lieber kein Lauf als ein Lauf ohne Netz.
 **DESIGN-Befunde werden NIE automatisch angewendet** (Stellen, die eine Regel als
@@ -296,7 +307,9 @@ es **keinen Inline-Ersatz** — die deterministischen Inline-Checks (Step 4c) de
 Version/Pfad/Budget ab, NICHT die semantische Bewertung. Der Agent ist der einzige Weg dorthin.
 
 Launch **context-analyzer** with scope=claude-md — **`run_in_background: false`**:
-"Analyze all CLAUDE.md files in this project. Scope: claude-md. Report quality score, contradictions, staleness, and optimization suggestions."
+"Analyze all CLAUDE.md files in this project. Scope: claude-md. Report quality score, contradictions, staleness, and optimization suggestions. Nenne zu JEDEM Zitat die Datei und die Zeilennummer, aus der du es gelesen hast. Was du ohne Fundstelle schreibst, kennzeichne als UNGEPRUEFT."
+⛔ **Der zweite Satz ist Pflicht, nicht Zierde** (v5.138.0, Veras Fund 26.09.2026: drei
+von vier Agenten meldeten Nichtbelegtes, keiner mit Vorbehalt). ⚠ Eine Bitte, kein Gate.
 ⛔ **`run_in_background: false` in JEDEM Agent-Aufruf (v5.94.0, Nutzer-/Anton-Entscheidung 11.09.2026).** Die Vorgabe des Agent-Werkzeugs ist HINTERGRUND: der `tool_result` ist dann nur das Ack „Async agent launched“ (1 151 B, nach 1–2 s), das Ergebnis kommt — wenn überhaupt — später als `<task-notification>`. Gemessen 10.09.2026 (`docs/plugin/rueckkanal-messung.md`): getrennte Tool-Calls serialisieren im Hintergrund NICHTS (vier Agenten gleichzeitig bei „sequenziellen“ Aufrufen), und **5 von 8** Ergebnissen kamen nie an. Mit `false` blockt der Aufruf bis zur Rückgabe, `RUECKGABE` IST der `tool_result`, und ein Nachliefern mitten im Fan-out ist mechanisch unmöglich. ⚠ Preis: die Sitzung wartet je Agent 60–130 s und ist solange nicht ansprechbar — Nachrichten kommen ohnehin erst am Turn-Ende an.
 
 ⭐ **Trifft der Agent sein 20-Turn-Limit VOR dem Bericht** (der `tool_result` endet ohne Ergebnis, der Agent lebt), ist die Fortsetzung `SendMessage {to: <agentId>, message: „Bericht jetzt liefern“}` — ⛔ **KEIN neuer `Agent`-Aufruf**, das wäre ein zweiter Agent gegen dieselbe Grenze (v5.96.0). Gemessen 12.09.2026 (Rita): zwei Agenten am Limit, beide lieferten nach der Nachricht vollständig. ⚠ Im Desktop-Reiter „Code“ ist `SendMessage` verzögert: erst `ToolSearch select:SendMessage`, dann ist es da.
@@ -571,7 +584,7 @@ Apply (diese Auswahl gilt NUR bei `--ask`):
 
 **Nur bei `AUTO_MODE=no` (`--ask`): STOP HERE, warte auf User-Bestätigung.**
 **Bei `AUTO_MODE=yes` (Default): NICHT stoppen** — Findings anwenden (außer DESIGN),
-danach Step 6 mit Angewendet-Block. Bei `DRY_RUN=yes`: Liste zeigen, nichts ändern.
+danach Step 6 mit Angewendet-Block.
 
 ⛔ **`AUTO_MODE=yes` entspricht `[all]` — EINSCHLIESSLICH Modularize**, nicht `[safe]`
 (Nutzer-Entscheidung 21.08.2026). Die `safe`/`all`-Trennung gilt **ausschliesslich fuer
@@ -984,7 +997,7 @@ das Netz darunter.**
 - **NEVER apply without a successful `mind_snapshot` (Step 0)** — Snapshot fehlgeschlagen = keine Edits, Abbruch. (Ersetzt v5.0.0 die alte Regel "NEVER apply without User-Bestätigung": Sicherheit kommt jetzt vom Netz, nicht von der Rückfrage.)
 - **NEVER auto-apply DESIGN findings** — das sind Stellen, die eine Regel als "niemals anfassen" markiert; sie zu überschreiben bricht die Sperre des Users. Nur listen.
 - **ALWAYS report every applied change** mit `file:line` + before→after + Snapshot-Pfad + Restore-Einzeiler.
-- Bei `--ask`: Step 4d stoppt und wartet (altes Verhalten). Bei `--dry-run`: nichts ändern.
+- Bei `--ask`: Step 4d stoppt und wartet (altes Verhalten).
 - **NEVER Modularize ohne die vier Gates aus Step 4e** — Erhaltung, Erreichbarkeit
   (kein `globs:`), Zeiger, hoechstens 3 je Lauf. Autonom seit v5.10.0; bricht ein Gate,
   wird die Sektion **gelistet statt ausgelagert**.
