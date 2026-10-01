@@ -1431,6 +1431,15 @@ mind_umfang_bilden() {
   else skill_ist=$(grep -c '^skill=' "$sc" 2>/dev/null); fi
   case "${skill_ist:-}" in ''|*[!0-9]*) skill_ist=0 ;; esac
   best=$(grep -c '^bestand=' "$sc" 2>/dev/null); case "${best:-}" in ''|*[!0-9]*) best=0 ;; esac
+  # ⛔ v5.140.0 (Etappe 51 §3, Ritas Befund): DIE ZEILE ZAEHLT, DER INHALT NICHT —
+  #    `bestand=mind-files:0/0` zaehlte genau wie `12/12`. Gemessen: `umfang=` meldete
+  #    `5/5 bestand`, auch wenn kein einziger Bestand angesehen wurde (Budget leer).
+  # ⚠ AUSGEWIESEN, NICHT GEWERTET: die Zahl bleibt, denn 0/0 ist ein GELAUFENER Pass
+  #    mit leerer Stichprobe. Daraus einen Teilsync zu machen waere eine neue Regel
+  #    (Antons Entscheidung, nicht meine). Wer die Zahl liest, soll die Null SEHEN.
+  local nullen
+  nullen=$(grep '^bestand=' "$sc" 2>/dev/null \
+           | sed -n 's/^bestand=\([^:]*\):0\/0$/\1/p' | tr '\n' ',' | sed 's/,$//')
   bil=$(mind_agent_bilanz "$proj" 2>/dev/null)
   dis=$(printf '%s\n' "$bil" | sed -n 's/^DISPATCH=\([0-9]*\).*/\1/p' | head -1)
   case "${dis:-}" in ''|*[!0-9]*) dis=0 ;; esac
@@ -1451,8 +1460,12 @@ mind_umfang_bilden() {
   case "${formal:-}" in ''|*[!0-9]*) formal=0 ;; esac
   [ "$formal" -gt 5 ] && formal=5
   fehlt=$(_mind_fehlt_liste "$abd" | grep -c .); case "${fehlt:-}" in ''|*[!0-9]*) fehlt=0 ;; esac
-  printf '%s/5 skills %s/%s agents %s/5 bestand %s/%s abdeckung %s/5 echt\n' \
-    "$skill_ist" "$dis" "$soll" "$best" "$((gel - teil))" "$((gel + fehlt))" "$((5 - formal))"
+  # ⚠ Der Zusatz steht HINTER der Zahl und veraendert sie nicht — wer `%s/5 bestand`
+  #    greppt, liest weiter dasselbe (tests/README.md: die Marke, nicht der Satz).
+  local nullteil=""
+  [ -n "$nullen" ] && nullteil=" bestand-null=$nullen"
+  printf '%s/5 skills %s/%s agents %s/5 bestand %s/%s abdeckung %s/5 echt%s\n' \
+    "$skill_ist" "$dis" "$soll" "$best" "$((gel - teil))" "$((gel + fehlt))" "$((5 - formal))" "$nullteil"
 }
 
 # mind_umfang_lesbar <umfang-zeichenkette>
@@ -1517,17 +1530,172 @@ mind_ungepruef_bilden() {
   printf '%s\n' "${out%,}"
 }
 
-# mind_kopf_epoch <projekt>
-# ⛔ v5.118.0 (Etappe 26 §1): die Sekunde der letzten mind-all-Startzeile in der Schritt-Quittung —
-#    mind-all Step 0 schreibt sie als run_started= in analyzed-scopes, damit der Kopf-Block nie
-#    „vor dem Lauf" liegt, egal wie lange der Snapshot dazwischen dauert. Ohne Kopf: jetzt.
-mind_kopf_epoch() {
-  local q ts ep
+# mind_lauf_verbraucht <projekt> <lauf>   -> vermerkt eine Lauf-ID als VERBRAUCHT
+# ⛔ v5.140.0 (Etappe 51 §1, Antons Befund an meinem ersten Bau): eine Lauf-ID darf
+#    GENAU EINMAL benutzt werden. Ohne diesen Merker konnte der Lock-Block die ID eines
+#    ALTEN Kopfes uebernehmen (wenn der eigene Kopf-Block nie lief) — und dann verglich
+#    `mind_kopf_epoch` alt gegen alt, war zufrieden, und Ritas Fall fiel wieder durch.
+#    **Die Pruefung bezog ihren Bezugswert erneut aus dem Gegenstand.**
+mind_lauf_verbraucht() {
+  local proj="${1:-}" lauf="${2:-}" d zn
+  [ -n "$proj" ] && [ -n "$lauf" ] || return 1
+  d="$proj/.claude-mind/lauf-verbraucht"
+  mkdir -p "$(dirname "$d")" 2>/dev/null
+  printf '%s\n' "$lauf" >> "$d" 2>/dev/null || return 1
+  zn=$(grep -c . "$d" 2>/dev/null); case "$zn" in ''|*[!0-9]*) zn=0 ;; esac
+  if [ "$zn" -gt 400 ]; then
+    tail -200 "$d" > "$d.neu" 2>/dev/null && mv -f "$d.neu" "$d" 2>/dev/null
+  fi
+  return 0
+}
+
+# mind_kopf_lauf_frisch <projekt>  -> die Kopf-ID, aber NUR wenn sie zu keinem
+#   frueheren Lauf gehoert; sonst rc 1 mit Meldung. Nimmt sie beim Erfolg sofort in
+#   den Verbraucht-Merker (ein zweites Annehmen scheitert).
+# ⛔ DAS IST DIE STELLE, AN DER RITAS FALL HAENGT: sie fuhr den Kopf-Block nicht, die
+#    letzte Startzeile war die vom 20.09. Wer die ID blind uebernimmt, macht den alten
+#    Kopf zum eigenen. Hier wird sie deshalb gegen zwei UNABHAENGIGE Quellen geprueft:
+#      · `lauf-verbraucht` — jede ID, die ein Lauf je freigegeben hat
+#      · `analyzed-scopes.done` — die `skill=…|<id>`-Spur des VORIGEN Laufs
+#        (deckt den Uebergang, ohne neuen Zustand zu brauchen)
+# ⚠ RESTLUECKE, benannt: ein Kopf aus einem Lauf, dessen `.done` seither ueberschrieben
+#   wurde UND der vor diesem Merker lief, faellt durch beide. Sie schliesst sich selbst —
+#   ab dem ersten Lauf unter 5.140.0 vermerkt jeder seine ID. Eine mtime-Bedingung waere
+#   hier der Fehlalarm der Sorte, die in Etappe 49 §4 ausdruecklich ausgeschlossen ist.
+mind_kopf_lauf_frisch() {
+  local proj="${1:-}" l v done_f
+  l=$(mind_kopf_lauf "$proj" 2>/dev/null)
+  if [ -z "$l" ]; then
+    echo "⛔ KOPF-BLOCK FUER DIESEN LAUF FEHLT: in der Schritt-Quittung steht keine" >&2
+    echo "   mind-all-Startzeile mit Lauf-ID. mind-all Step 0 zuerst fahren." >&2
+    mind_log WARN "mind_kopf_lauf_frisch: keine Kopf-ID in $proj"
+    return 1
+  fi
+  # ⛔ ZUERST: hat der Kopf-Block DIESES Laufs gelaufen? Der Merker `lauf-offen` ist die
+  #    einzige Quelle, die das beantwortet, ohne etwas zu wissen oder zu schaetzen.
+  #    Fehlt er, war der letzte Kopf nicht von diesem Lauf (Ritas Lage) — und zwar
+  #    UNABHAENGIG davon, ob irgendwo noch eine Spur des alten Laufs liegt. Mein
+  #    zweiter Bau fragte nur nach Spuren und sagte ohne `.done` rc 0 (gemessen).
+  local offen="$proj/.claude-mind/lauf-offen" o
+  o=$(cat "$offen" 2>/dev/null)
+  if [ -z "$o" ] || [ "$o" != "$l" ]; then
+    echo "⛔ KOPF-BLOCK FUER DIESEN LAUF FEHLT: die letzte mind-all-Startzeile gehoert zu" >&2
+    echo "   Lauf '$l', aber dieser Lauf hat keinen eigenen Kopf-Block geschrieben" >&2
+    echo "   (kein offener Lauf-Merker). Das ist Ritas Fall vom 29.09.2026: Step 0 nicht" >&2
+    echo "   gefahren, und die letzte Zeile war neun Tage alt. mind-all Step 0 zuerst —" >&2
+    echo "   hier wird nichts neu gerechnet und nichts angenommen." >&2
+    mind_log WARN "mind_kopf_lauf_frisch: kein offener Lauf-Merker (Kopf $l, offen '$o')"
+    return 1
+  fi
+  # ⛔ UND NICHT AUS EINER FREMDEN SITZUNG (Antons Ergaenzung 01.10.2026): ein
+  #    liegengebliebener `lauf-offen` darf nicht geerbt werden. Die ID endet bereits auf
+  #    die letzten neun Zeichen der Sitzungskennung — es braucht also kein zweites Feld,
+  #    nur diesen Vergleich.
+  # ⚠ Ohne Kennung heisst beides `unbekannt` und passt zusammen: heutiges Verhalten,
+  #    niemand wird ueber Nacht rot (rollen.md).
+  local _msid _eig
+  _msid="${CLAUDE_CODE_SESSION_ID:-}"; [ -n "$_msid" ] || _msid="unbekannt"
+  _eig=$(printf '%s' "$_msid" | tail -c 9)
+  case "$l" in
+    *-"$_eig")  ;;
+    *)
+      echo "⛔ FREMDE SITZUNG: der offene Kopf gehoert zu Lauf '$l', dessen Kennung nicht" >&2
+      echo "   zu dieser Sitzung passt ('$_eig'). Ein liegengebliebener Kopf einer anderen" >&2
+      echo "   Sitzung wird nicht geerbt. mind-all Step 0 in DIESER Sitzung fahren." >&2
+      mind_log WARN "mind_kopf_lauf_frisch: fremde Sitzung (Lauf $l, eigene $_eig)"
+      return 1 ;;
+  esac
+  v="$proj/.claude-mind/lauf-verbraucht"
+  if [ -f "$v" ] && grep -qxF "$l" "$v" 2>/dev/null; then
+    echo "⛔ KOPF-BLOCK FUER DIESEN LAUF FEHLT: die Startzeile gehoert zu Lauf '$l'," >&2
+    echo "   und der ist bereits verbraucht. Das ist der Kopf eines FRUEHEREN Laufs" >&2
+    echo "   (Ritas Fall, 29.09.2026: Kopf-Block nicht gefahren, letzte Zeile neun Tage alt)." >&2
+    echo "   mind-all Step 0 in DIESEM Lauf fahren — hier wird nichts neu gerechnet." >&2
+    mind_log WARN "mind_kopf_lauf_frisch: Lauf-ID $l schon verbraucht"
+    return 1
+  fi
+  done_f="$proj/.claude-mind/analyzed-scopes.done"
+  if [ -f "$done_f" ] && grep -qF "|$l" "$done_f" 2>/dev/null; then
+    echo "⛔ KOPF-BLOCK FUER DIESEN LAUF FEHLT: die Startzeile gehoert zu Lauf '$l'," >&2
+    echo "   dessen Laufspur in analyzed-scopes.done steht — also zu einem ABGESCHLOSSENEN" >&2
+    echo "   Lauf. mind-all Step 0 in DIESEM Lauf fahren." >&2
+    mind_log WARN "mind_kopf_lauf_frisch: Lauf-ID $l steht in .done"
+    return 1
+  fi
+  # ⛔ Der Merker wird VERBRAUCHT — eine ID gilt genau einmal. Ohne das koennte ein
+  #    zweiter Lauf denselben offenen Merker noch einmal annehmen.
+  rm -f "$offen" 2>/dev/null
+  mind_lauf_verbraucht "$proj" "$l" || true
+  printf '%s\n' "$l"
+  return 0
+}
+
+# mind_kopf_lauf <projekt>   -> die Lauf-ID der LETZTEN mind-all-Startzeile (leer + rc 1)
+# ⭐ v5.140.0 (Etappe 51 §1): der Lock-Block von mind-all holt sich die ID hier, statt sie
+#    selbst zu rechnen — so tragen Kopf und Lock dieselbe, obwohl sie in getrennten
+#    bash-Fences stehen.
+mind_kopf_lauf() {
+  local q l
   q=$(_mind_schritt_pfad "${1:-}")
+  l=$(grep '"ereignis":"start","skill":"mind-all"' "$q" 2>/dev/null | tail -1 \
+      | sed -n 's/.*"lauf":"\([^"]*\)".*/\1/p')
+  [ -n "$l" ] || return 1
+  printf '%s\n' "$l"
+}
+
+# mind_lock_lauf <projekt>   -> die Lauf-ID aus dem Lock (leer + rc 1)
+mind_lock_lauf() {
+  local l
+  l=$(cat "${1:-}/.claude-mind/mind-all.lock/lauf" 2>/dev/null)
+  [ -n "$l" ] || return 1
+  printf '%s\n' "$l"
+}
+
+# mind_kopf_epoch <projekt>
+# ⛔ v5.140.0 (Etappe 51 §1, Ritas Befund 29.09.2026) — DIESE FUNKTION WAR DER FEHLER.
+#    Sie nahm `tail -1` ueber alle mind-all-Startzeilen und gab die Sekunde zurueck, die
+#    sie fand: bei Ritas Lauf den Epoch eines NEUN TAGE alten Laufs, ohne rc, ohne
+#    Meldung. Und fand sie keine Zeile, nahm sie `date +%s` — also JETZT. Zwei stille
+#    Rueckfaelle, beide mit plausibler Zahl.
+# ⭐ Schlimmer war die Folge: mind-all schrieb den Rueckgabewert als `run_started=`, und
+#    `mind_schritt_start` verglich damit die ts DES KOPFES. **Die Pruefung verglich den
+#    Kopf mit sich selbst** (`Kopf < Kopf - 900`) und konnte nicht fehlschlagen.
+# ⛔ Jetzt: IDENTITAET statt Zeitnaehe. Weicht die Lauf-ID des Kopfes von der im Lock ab
+#    oder fehlt jede Startzeile, kommt rc 1 und eine Meldung — kein Rueckfall, keine Zahl.
+# ⚠ Ohne Lock (Einzellauf, Altbestand ohne `lauf`-Feld) bleibt es beim Epoch des Kopfes:
+#    dort gibt es keine zweite Quelle, gegen die man pruefen koennte, und ein Abbruch
+#    waere eine Pruefung, die ihren Gegenstand nicht bilden kann. Das wird GESAGT (rc 0,
+#    Hinweis im Log), nicht verschwiegen.
+mind_kopf_epoch() {
+  local proj="${1:-}" q ts ep kl ll
+  q=$(_mind_schritt_pfad "$proj")
   ts=$(grep '"ereignis":"start","skill":"mind-all"' "$q" 2>/dev/null | tail -1 | sed -n 's/.*"ts":"\([^"]*\)".*/\1/p')
-  ep=""
-  [ -n "$ts" ] && ep=$(date -u -d "$ts" +%s 2>/dev/null)
-  case "$ep" in ''|*[!0-9]*) ep=$(date +%s) ;; esac
+  if [ -z "$ts" ]; then
+    echo "⛔ KEIN mind-all-KOPF: in der Schritt-Quittung steht keine Startzeile fuer mind-all." >&2
+    echo "   mind-all Step 0 zuerst. Hier wird NICHTS geraten — bis v5.139.0 kam an dieser" >&2
+    echo "   Stelle die jetzige Sekunde zurueck, als waere sie der Laufbeginn." >&2
+    mind_log WARN "mind_kopf_epoch: keine mind-all-Startzeile in $q"
+    return 1
+  fi
+  kl=$(mind_kopf_lauf "$proj" 2>/dev/null)
+  ll=$(mind_lock_lauf "$proj" 2>/dev/null)
+  if [ -n "$kl" ] && [ -n "$ll" ] && [ "$kl" != "$ll" ]; then
+    echo "⛔ FREMDER KOPF: die mind-all-Startzeile gehoert zu Lauf '$kl', der Lock haelt '$ll'." >&2
+    echo "   Das ist der Kopf eines ANDEREN Laufs (Ritas Fall: neun Tage alt). mind-all Step 0" >&2
+    echo "   in DIESEM Lauf fahren; ein Nachtrag heilt nichts." >&2
+    mind_log WARN "mind_kopf_epoch: Kopf-Lauf $kl != Lock-Lauf $ll"
+    return 1
+  fi
+  if [ -z "$kl" ] || [ -z "$ll" ]; then
+    mind_log INFO "mind_kopf_epoch: Identitaet nicht pruefbar (Kopf-Lauf '$kl', Lock-Lauf '$ll')"
+  fi
+  ep=$(date -u -d "$ts" +%s 2>/dev/null)
+  case "$ep" in
+    ''|*[!0-9]*)
+      echo "⛔ KOPF-ZEITSTEMPEL unlesbar ('$ts') — keine Sekunde, und es wird keine geraten." >&2
+      mind_log WARN "mind_kopf_epoch: ts '$ts' nicht in Epoch wandelbar"
+      return 1 ;;
+  esac
   printf '%s\n' "$ep"
 }
 
@@ -2790,6 +2958,24 @@ mind_schritt_start() {
         #    vorausgehen (Snapshot-Dauer) — ein Kopf aus einem FRUEHEREN Lauf liegt Stunden davor.
         local _rstol=""
         case "$_rs" in ''|*[!0-9]*) ;; *) _rstol=$(date -u -d "@$((_rs - 900))" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null) ;; esac
+        # ⛔ v5.140.0 (Etappe 51 §1): ZUERST die IDENTITAET. Tragen Kopf und Lock
+        #    verschiedene Lauf-IDs, ist es der Kopf eines ANDEREN Laufs — ohne jede
+        #    Sekunde, ohne Schwelle. Ritas Fall (Kopf neun Tage alt) lief vorher glatt
+        #    durch, weil die Zeitbedingung ihren Bezugswert AUS DEM KOPF bezog.
+        local _kl _ll
+        _kl=$(mind_kopf_lauf "$proj" 2>/dev/null)
+        _ll=$(mind_lock_lauf "$proj" 2>/dev/null)
+        if [ -n "$_kl" ] && [ -n "$_ll" ] && [ "$_kl" != "$_ll" ]; then
+          echo "⛔ FREMDER KOPF: $skill laeuft in der Kette, aber die mind-all-Startzeile gehoert zu Lauf '$_kl' — der Lock haelt '$_ll'." >&2
+          echo "   Das ist der Kopf eines ANDEREN Laufs. mind-all Step 0 in DIESEM Lauf fahren;" >&2
+          echo "   ein Nachtrag heilt nichts (die Bilanz liest ab der letzten mind-all-Zeile)." >&2
+          mind_log WARN "mind_schritt_start $skill: Kopf-Lauf $_kl != Lock-Lauf $_ll — abgebrochen"
+          return 1
+        fi
+        # ⭐ Danach die Zeitbedingung — sie ist seit v5.140.0 wieder aussagekraeftig, weil
+        #    `run_started` aus `lock/ts` kommt und nicht mehr aus dem Kopf selbst. Sie
+        #    bleibt als ZWEITES Netz: einen Kopf OHNE `lauf`-Feld (Altbestand) faengt die
+        #    Identitaet nicht, die Zeit schon.
         if [ -z "$_kopf" ] || { [ -n "$_rstol" ] && [ -n "$_kts" ] && [ "$_kts" \< "$_rstol" ]; }; then
           echo "⛔ KOPF-BLOCK FEHLT: $skill laeuft in der Kette, aber die mind-all-Startzeile steht nicht vor ihm." >&2
           echo "   mind-all Step 0 zuerst (mind_schritt_start \"\$PROJ\" mind-all …). Ein Nachtrag heilt nichts —" >&2
@@ -2828,8 +3014,34 @@ mind_schritt_start() {
     echo "⛔ VERSIONSBRUCH: der Text von $skill ist $v_text, der Code (lib.sh, references) ist $v_code." >&2
     echo "   Dieser Lauf folgt einer anderen Anleitung, als das Plugin ausliefert. Neustart." >&2
   fi
-  printf '{"ereignis":"start","skill":"%s","erwartet":"%s","ts":"%s","code":"%s","text":"%s","versionsbruch":%s}\n' \
-    "$skill" "$*" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$v_code" "$v_text" "$bruch" >> "$q"
+  # ⛔ v5.140.0 (Etappe 51 §1, Ritas Befund): DIE MIND-ALL-STARTZEILE TRAEGT EINE
+  #    LAUF-ID. Vorher gab es in der ganzen Kette keinen Begriff von „diesem Lauf",
+  #    nur „die letzte Zeile" — und damit konnte ein neun Tage alter Kopf als der
+  #    eigene gelten (gemessen 01.10.2026).
+  # ⛔ SIE ENTSTEHT HIER UND NICHT IM LOCK, obwohl der Lock sie traegt: dieser Aufruf
+  #    steht in mind-all Zeile 56, `mind_lauf_sperre` in Zeile 203, und dazwischen
+  #    liegen vier bash-Fences. Getrennte Fences sind getrennte Bash-Aufrufe — zum
+  #    Zeitpunkt der Kopfzeile gibt es den Lock noch nicht. Der Lock LIEST sie
+  #    hinterher (`mind_kopf_lauf`), statt sie zu liefern.
+  # ⭐ Der Nebeneffekt ist die eigentliche Zusicherung: ein Kopf aus einem FRUEHEREN
+  #    Lauf kann die ID des heutigen nie tragen. Das ist Bauform, nicht Pruefung.
+  # ⚠ FAIL-SAFE: nur fuer mind-all, und ohne Sitzungskennung `unbekannt` — eine
+  #    fehlende Kennung macht den Lauf nicht ungueltig, sie macht ihn benennbar.
+  local _lid="" _laufteil=""
+  if [ "$skill" = "mind-all" ]; then
+    local _sid="${CLAUDE_CODE_SESSION_ID:-}"
+    [ -n "$_sid" ] || _sid="unbekannt"
+    _lid="$(date +%Y%m%d-%H%M%S)-$(printf '%s' "$_sid" | tail -c 9)"
+    _laufteil=",\"lauf\":\"$_lid\""
+    # ⛔ v5.140.0 (dritter Anlauf): DER KOPF HINTERLAESST EINEN OFFENEN MERKER.
+    #    Die Frage, an der Ritas Fall haengt, ist nicht „ist diese ID alt?" (das weiss
+    #    niemand, wenn sie nirgends aufgeschrieben steht — gemessen: rc 0 ohne `.done`),
+    #    sondern **„hat der Kopf-Block DIESES Laufs gelaufen?"**. Das kann nur der Kopf
+    #    selbst beantworten, und er tut es hier — ohne Schwelle, ohne mtime.
+    printf '%s' "$_lid" > "$proj/.claude-mind/lauf-offen" 2>/dev/null || true
+  fi
+  printf '{"ereignis":"start","skill":"%s","erwartet":"%s","ts":"%s","code":"%s","text":"%s","versionsbruch":%s%s}\n' \
+    "$skill" "$*" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$v_code" "$v_text" "$bruch" "$_laufteil" >> "$q"
 }
 
 # NACH jedem Schritt. status = gelaufen | gelaufen:<a>/<b> | uebersprungen:<grund>
@@ -3520,6 +3732,11 @@ mind_lauf_frei() {
     mind_log WARN "mind-all.lock gehoert Lauf $alt, nicht $lauf — NICHT freigegeben" 2>/dev/null
     return 1
   fi
+  # ⛔ v5.140.0: die ID gilt ab jetzt als VERBRAUCHT — vor dem Entfernen, damit sie auch
+  #    dann vermerkt ist, wenn das `rm` scheitert. Ohne das koennte ein spaeterer Lauf
+  #    den Kopf dieses Laufs fuer seinen eigenen nehmen (Antons Befund 01.10.2026).
+  [ -n "$alt" ] && mind_lauf_verbraucht "$proj" "$alt" >/dev/null 2>&1
+  rm -f "$proj/.claude-mind/lauf-offen" 2>/dev/null
   rm -rf "$lock" 2>/dev/null
   return 0
 }
@@ -4040,6 +4257,44 @@ KANDIDATEN
     fi
   fi
   printf '%s\n' "$kand"
+  return 0
+}
+
+# mind_verdichtet_merken <projekt> <datei>   -> haengt `verdichtet=<datei>` an die
+#   Kettenmarke, NACHDEM der Pfad geprueft ist (v5.140.0, Etappe 51 §2, Ritas Befund).
+# ⛔ WOZU. Die vier Traeger schrieben `echo "verdichtet=$DATEI" >> analyzed-scopes`, und
+#    nichts pruefte den Pfad. Rita hat zweimal das DEPONAT (`$ERGEBNIS`) gebucht statt
+#    der Quelldatei (`$DATEI`) — ein Pfad unter `.claude-mind/`. Folge: der Merker sperrt
+#    eine Datei, die niemand verdichten wollte, und die echte Kandidatin bleibt frei.
+# ⭐ Der Merker meint „diese Datei war in diesem Lauf dran". Alles unter `.claude-mind/`
+#    kann das per Konstruktion nicht sein: dort liegen Deponate, Berichte und Merker.
+# ⚠ Ein abgewiesener Merker toetet den Lauf NICHT — rc 2 und eine Meldung, der Schritt
+#    selbst bleibt gelaufen. Ein Lauf, der an einer Buchung stirbt, waere teurer als eine
+#    fehlende Zeile.
+mind_verdichtet_merken() {
+  local proj="${1:-}" datei="${2:-}" marke
+  if [ -z "$proj" ] || [ -z "$datei" ]; then
+    echo "⛔ verdichtet=: Aufruf braucht <projekt> <datei> — nicht gebucht." >&2
+    return 2
+  fi
+  case "$datei" in
+    */.claude-mind/*)
+      echo "⛔ verdichtet=: '$datei' liegt unter .claude-mind/ — das ist ein Deponat, keine" >&2
+      echo "   Kandidatin. Gebucht wird die QUELLDATEI (\$DATEI), nicht das Ergebnis" >&2
+      echo "   (\$ERGEBNIS). Nicht gebucht. (v5.140.0, Ritas Befund 29.09.2026)" >&2
+      mind_log WARN "mind_verdichtet_merken: Deponat-Pfad abgewiesen ($datei)"
+      return 2 ;;
+  esac
+  if [ ! -f "$datei" ]; then
+    echo "⛔ verdichtet=: '$datei' ist keine Datei — nicht gebucht." >&2
+    mind_log WARN "mind_verdichtet_merken: Datei fehlt ($datei)"
+    return 2
+  fi
+  marke="$proj/.claude-mind/analyzed-scopes"
+  printf 'verdichtet=%s\n' "$datei" >> "$marke" 2>/dev/null || {
+    echo "⚠ verdichtet=: '$marke' nicht beschreibbar — nicht gebucht." >&2
+    return 2
+  }
   return 0
 }
 

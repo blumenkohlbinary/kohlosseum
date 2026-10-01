@@ -463,6 +463,20 @@ def main():
     if not gewaehlt:
         print("  (nichts) — %s" % ("Laufbudget erschoepft" if rest <= 0
                                    else "kein ungepruefter Eintrag uebrig"))
+        # ⛔ v5.140.0 (Etappe 51 §3, Ritas Befund): DIE QUITTUNG SCHREIBT SICH HIER
+        #    SELBST. Vorher endete der Lauf mit „(nichts)", der Folgeaufruf
+        #    `--quittung` blieb aus, und `bestand=<skill>` fehlte GANZ — der Bestand
+        #    verschwand, nicht weil er sauber war, sondern weil niemand quittierte.
+        #    Genau die Ununterscheidbarkeit, gegen die dieser Pass gebaut ist.
+        # ⚠ 0/0 ist ein GELAUFENER Pass mit leerer Stichprobe, kein ausgefallener.
+        #    Die Bilanz weist die Null seit v5.140.0 aus (`bestand-null=`), wertet
+        #    sie aber nicht — das waere eine neue Regel und nicht unsere.
+        # ⚠ `skill` ist hier garantiert gesetzt: Zeile 424–427 bricht ohne `--skill`
+        #    mit rc 2 ab, lange vor der Stichprobe. Mein erster Anlauf hatte hier einen
+        #    else-Zweig fuer „kein Skill" — UNERREICHBAR, und der Prueffall hat es
+        #    gezeigt. Toter Code, der eine Pruefung vorgibt, liest sich wie ein Netz,
+        #    das niemand gespannt hat.
+        quittung(projekt, skill, 0, 0)
         return 0
 
     print()

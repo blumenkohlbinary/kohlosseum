@@ -43,7 +43,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.139.0"
+MIND_SKILL_VERSION="5.140.0"
 mind_schritt_start "$PROJ" mind-files bestandszahlen_kandidaten cleaner_stichprobe mind_check_tools_have_rules mind_hook_health mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -1072,7 +1072,10 @@ $f
 #        vergleicht die Live-Datei mit dem md5 der Vorher-Fassung aus dem Deponat — seitdem geaendert = rc 1,
 #        kein cp, neu verdichten; Ritas CLAUDE.md-Deponat 22:51 hinter Live 23:41 am 18.09.2026)
 #     -> mind_kontext_bilanz gegen vorher -> sonst rollback.py restore
-echo "verdichtet=$DATEI" >> "$PROJ/.claude-mind/analyzed-scopes" 2>/dev/null
+# ⛔ v5.140.0 (Etappe 51 §2): ueber die pruefende Funktion, nicht per `echo >>`. Sie
+#    weist ein Deponat unter `.claude-mind/` ab — Rita hat zweimal `$ERGEBNIS` gebucht
+#    statt `$DATEI`, und nichts hat den Pfad geprueft. rc 2 ist KEIN Laufabbruch.
+mind_verdichtet_merken "$PROJ" "$DATEI" || true
 ```
 
 ⛔ **Der Bericht dieses Schritts sind die drei Zeilen aus `mind_verdichtung_pruefen`** plus

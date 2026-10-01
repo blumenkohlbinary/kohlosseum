@@ -52,7 +52,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle zehn.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.139.0"
+MIND_SKILL_VERSION="5.140.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 # ⛔ v5.98.0: die fuenf Skills sind KEINE Schritte von mind-all — jeder hat seinen EIGENEN
 #    Start-Block (Step 2, Punkt 1). Bis v5.97.0 standen sie hier, Ritas Kalibrierlauf hakte
@@ -199,7 +199,23 @@ fi
 #    Abweisung nannte die falsche Sitzung. Das ist schlimmer als gar keine.
 # ⚠ FAIL-SAFE: leere Variable -> Rueckfall auf den Dateinamen, wie bisher.
 MIND_SID="${CLAUDE_CODE_SESSION_ID:-$(basename "${MIND_TP:-nosession}" .jsonl)}"
-LAUF="$(date +%Y%m%d-%H%M%S)-$(printf '%s' "$MIND_SID" | tail -c 9)"
+# ⛔ v5.140.0 (Etappe 51 §1): DIE LAUF-ID KOMMT AUS DEM KOPF, nicht aus `date` hier.
+#    Der Kopf-Block (oben, eigener bash-Fence) hat sie erzeugt und in seine Startzeile
+#    geschrieben; eine Variable von dort erreicht diesen Block NICHT. Holt man sie
+#    stattdessen hier neu, tragen Kopf und Lock VERSCHIEDENE IDs — und die Pruefung,
+#    die beide vergleicht, waere von Anfang an rot.
+# ⚠ FAIL-SAFE: kein `lauf`-Feld im Kopf (Altbestand, Einzellauf) -> wie bisher rechnen.
+# ⛔ v5.140.0, Nachtrag (Antons Befund): `mind_kopf_lauf_frisch`, NICHT `mind_kopf_lauf`.
+#    Der Unterschied ist der ganze Fall: die blosse Kopf-ID kann die eines FRUEHEREN
+#    Laufs sein (Rita fuhr den Kopf-Block nicht, die letzte Startzeile war neun Tage
+#    alt). Uebernimmt der Lock sie, vergleicht `mind_kopf_epoch` alt gegen alt und ist
+#    zufrieden — dieselbe Zirkularitaet eine Ebene hoeher.
+# ⛔ UND KEIN FAIL-SAFE-NEURECHNEN: ein `|| LAUF=$(date …)` wuerde genau den Fall
+#    wieder verdecken, um den es geht. Fehlt der eigene Kopf, bricht der Lauf AB.
+if ! LAUF=$(mind_kopf_lauf_frisch "$PROJ"); then
+  echo "ABBRUCH: ohne eigenen Kopf-Block laeuft hier nichts weiter." >&2
+  exit 1
+fi
 if ! _SPERRE=$(mind_lauf_sperre "$PROJ" "$LAUF" "$MIND_SID"); then
   echo "$_SPERRE" >&2
   exit 0    # ⛔ 0, NICHT 1 — kein Fehler, sondern die richtige Antwort.
@@ -272,10 +288,22 @@ fi
 SCOPES_FILE="$PROJ/.claude-mind/analyzed-scopes"
 # ⛔ v5.139.0: hier stand `if [ "$DRY_RUN" = "no" ]`. Der Probelauf ist entfallen, also laeuft der Block IMMER — die Bedingung ist nicht wahr-gesetzt, sondern WEG.
 mkdir -p "$(dirname "$SCOPES_FILE")"; : > "$SCOPES_FILE"
-# ⛔ v5.118.0 (Etappe 26 §1): run_started ist die Sekunde des KOPF-BLOCKS, nicht „jetzt" — der
-#    Snapshot dazwischen kostete im Zustellplan 12 s, und mind_schritt_start hielt den Kopf
-#    fuer einen aus dem vorigen Lauf. mind_kopf_epoch liest sie aus der Schritt-Quittung.
-echo "run_started=$(mind_kopf_epoch "$PROJ")"   >> "$SCOPES_FILE"
+# ⛔ v5.140.0 (Etappe 51 §1, Ritas Befund): run_started kommt aus `lock/ts`, NICHT mehr aus
+#    dem Kopf. Vorher stand hier `mind_kopf_epoch` — und `mind_schritt_start` verglich
+#    damit die ts DES KOPFES: **die Pruefung verglich den Kopf mit sich selbst**
+#    (`Kopf < Kopf - 900`) und konnte nicht fehlschlagen. Gemessen 01.10.2026: ein neun
+#    Tage alter Kopf lief glatt durch, derselbe Kopf mit unabhaengigem Bezug -> rc 1.
+# ⭐ `lock/ts` ist der richtige Bezug: er entsteht unabhaengig vom Kopf und VOR dem
+#    Snapshot (v5.59.0 zog die Sperre genau deshalb nach oben) — damit bleibt auch die
+#    v5.118.0-Falle weg (run_started nach dem Snapshot, 12 s spaeter, erster Skill brach
+#    faelschlich ab).
+# ⚠ Fehlt `lock/ts`, wird KEINE Sekunde geraten: die Zeile entfaellt. mind_schritt_start
+#    kommt damit zurecht, und eine fehlende Zeile ist ehrlicher als eine erfundene.
+_RS=$(cat "$PROJ/.claude-mind/mind-all.lock/ts" 2>/dev/null)
+case "$_RS" in
+  ''|*[!0-9]*) echo "WARN: lock/ts unlesbar — run_started wird NICHT geschrieben (keine geratene Sekunde)." >&2 ;;
+  *) echo "run_started=$_RS"   >> "$SCOPES_FILE" ;;
+esac
 echo "snapshot=$SNAPSHOT"        >> "$SCOPES_FILE"
 
 # ⛔ v5.19.0: Die Agent-Quittung wird HIER angelegt, nicht in mind-update.

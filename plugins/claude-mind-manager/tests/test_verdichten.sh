@@ -205,7 +205,7 @@ janein "mind-update: Step 5 ist VERDICHTEN, nicht mehr Lossless Compression" "ja
 janein "mind-update: Stufe 3 vor dem Anwenden" "ja" "$(grep -q 'STUFE 3 (Wort-Diff lesen' "$WURZEL/skills/mind-update/SKILL.md" && echo ja || echo nein)"
 janein "mind-update: verdichten als PFLICHTSCHRITT und in mind_schritt_start" "2" "$(grep -cE '^verdichten$|^mind_schritt_start .* verdichten' "$WURZEL/skills/mind-update/SKILL.md")"
 janein "⭐ alle Datei-Traeger merken 'verdichtet=' in analyzed-scopes (nie dieselbe Datei zweimal je Kette)" "4" \
-  "$(grep -l 'echo "verdichtet=$DATEI" >> "$PROJ/.claude-mind/analyzed-scopes"' "$WURZEL"/skills/mind-rules/SKILL.md "$WURZEL"/skills/mind-claudemd/SKILL.md "$WURZEL"/skills/mind-update/SKILL.md "$WURZEL"/skills/mind-files/SKILL.md | wc -l | tr -d ' ')"
+  "$(grep -l 'mind_verdichtet_merken "$PROJ" "$DATEI"' "$WURZEL"/skills/mind-rules/SKILL.md "$WURZEL"/skills/mind-claudemd/SKILL.md "$WURZEL"/skills/mind-update/SKILL.md "$WURZEL"/skills/mind-files/SKILL.md | wc -l | tr -d ' ')"
 # v5.91.0: fuenfter Traeger mind-files — nur die eigenen Companion-Rules, Tool->Rule-Nachweis als Gate
 janein "mind-files: Step 5g VERDICHTEN vorhanden" "ja" "$(grep -q '^## Step 5g: .*VERDICHTEN' "$WURZEL/skills/mind-files/SKILL.md" && echo ja || echo nein)"
 janein "mind-files: mind_check_tools_have_rules als Gate nach dem Lauf" "ja" "$(grep -q 'mind_check_tools_have_rules "$PROJ" auf das ERGEBNIS' "$WURZEL/skills/mind-files/SKILL.md" && echo ja || echo nein)"

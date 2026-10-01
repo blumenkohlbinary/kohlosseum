@@ -126,8 +126,10 @@ echo "  Fall 9: ⛔ wer den Merker verdichtet= SCHREIBT, muss ihn auch LESEN (Ko
 #   Companion-Rule): ALT waehlten mind-files und mind-rules DIESELBE Datei.
 for _s in mind-files mind-rules mind-update; do
   _md="$R/skills/$_s/SKILL.md"
-  pruef "$_s schreibt verdichtet= ..." "ja" \
-    "$(grep -q 'echo \"verdichtet=\$DATEI\"' "$_md" && echo ja || echo nein)"
+  # ⚠ v5.140.0: die Form ist jetzt die pruefende Funktion (Etappe 51 §2) — die
+  #    Zusicherung („der Traeger merkt die Datei") ist unveraendert.
+  pruef "$_s merkt verdichtet= (ueber die pruefende Funktion)" "ja" \
+    "$(grep -q 'mind_verdichtet_merken "\$PROJ" "\$DATEI"' "$_md" && echo ja || echo nein)"
   pruef "   ... und LIEST es auch" "ja" \
     "$(grep -q "_SCHON=\$(grep '\^verdichtet='" "$_md" && echo ja || echo nein)"
 done
