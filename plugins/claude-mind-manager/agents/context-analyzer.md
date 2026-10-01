@@ -10,6 +10,7 @@ description: |
   Dispatched by mind-claudemd, mind-memory, mind-rules, mind-files, mind-update.
   Accepts scope + mode parameter to focus analysis.
 model: sonnet
+effort: high
 tools:
   - Read
   - Glob

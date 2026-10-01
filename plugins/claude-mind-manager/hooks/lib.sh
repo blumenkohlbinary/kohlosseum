@@ -209,6 +209,39 @@ mind_modell() {
   printf '%s' "$m"
 }
 
+# --- mind_stufe: auf WELCHER Denkstufe laeuft diese Sitzung? (NEU v5.141.0) ---
+#
+# Aufruf:  mind_stufe [<transkript>]   -> low|medium|high|xhigh|max oder eine Zahl; sonst rc 1
+#
+# ⛔ ZWEI QUELLEN, in dieser Reihenfolge — beide am 01.10.2026 GEMESSEN, keine angenommen:
+#    1) `CLAUDE_EFFORT` ist in der Skill-Bash gesetzt (gemessen: `high`). Kostet keinen
+#       Dateizugriff und ist deshalb zuerst dran.
+#    2) das Transkript: `.effort` steht auf jeder assistant-Zeile.
+#
+# ⛔ `CLAUDE_CODE_EFFORT_LEVEL` IST KEINE QUELLE. Sie ist leer (gemessen) und nur eine
+#    Ueberschreibung — woertlich im Programm: "CLAUDE_CODE_EFFORT_LEVEL overrides effort for
+#    this session". Wer sie abfragt, bekommt dauerhaft `unbekannt` und haelt das fuer einen
+#    Befund.
+#
+# ⭐ WARUM HIER KEIN `grep -v '^<'` STEHT, anders als in `mind_modell` eine Funktion weiter
+#    oben: dort ist der Filter noetig, weil `<synthetic>` als MODELL auftritt (04.09.2026,
+#    13 Zeilen, in einem Transkript die letzte ueberhaupt). Fuer die STUFE gibt es das nicht:
+#    gemessen an 22 092 Transkriptzeilen steht `.effort` ausschliesslich auf assistant-Zeilen
+#    (6 252 von 6 252), auf keiner synthetischen. Der Filter waere hier ohne Gegenstand —
+#    er fehlt mit Absicht, nicht aus Versehen.
+#
+# ⚠ `tail -1` NACH dem Filtern: wechselt die Stufe mitten in der Sitzung (es gibt ein
+#   Feld `perTurnEffort`), gilt die letzte — nicht die erste.
+mind_stufe() {
+  local t="${1:-}" s
+  if [ -n "${CLAUDE_EFFORT:-}" ]; then printf '%s' "$CLAUDE_EFFORT"; return 0; fi
+  [ -n "$t" ] && [ -f "$t" ] || return 1
+  command -v jq >/dev/null 2>&1 || return 1
+  s=$(jq -r 'select(.effort != null) | .effort' "$t" 2>/dev/null | tail -1)
+  [ -n "$s" ] || return 1
+  printf '%s' "$s"
+}
+
 mind_sync_modell_aus() {
   local t="${1:-}" m aus wort
   # NICHT ":-" sondern "-": ein AUSDRUECKLICH leer gesetzter Regler soll das Tor
@@ -1184,13 +1217,34 @@ mind_debug_write() {
   #    den die Auswertung ueberspringt).
   if [ -f "$befunde" ] && [ -s "$befunde" ]; then
     local _gut _z _n_ok=0 _n_rot=0
+    local _tp _md _st
+    # ⛔ v5.141.0 (Etappe 52 §0b): MODELL UND STUFE JE BEFUNDZEILE.
+    #    Vorher trug keine der Zeilen im gemeinsamen Index beides — damit war kein Befund
+    #    je nach Stufe auswertbar, und die Frage "faellt das auf low haeufiger auf?" liess
+    #    sich nicht einmal stellen.
+    # ⛔ FAIL-SAFE WIE BEI DEN SITZUNGSKENNUNGEN: nicht bestimmbar heisst `unbekannt`,
+    #    NIE leer und NIE weggelassen. Ein fehlendes Feld und ein unbekannter Wert sehen
+    #    in der Auswertung sonst gleich aus — und das ist genau die Verwechslung, an der
+    #    hier schon mehrere Messungen gescheitert sind.
+    # ⚠ Der Weg ueber das Transkript braucht `jq`; ohne `jq` laeuft der Zweig unten
+    #   unveraendert durch (Zeilen ungeprueft UND unangereichert). Das ist benannt, nicht
+    #   zugedeckt: `jq` ist Pflicht (hooks.md), der Zweig ist nur das Netz darunter.
+    _tp=$(mind_transkript_pfad "$proj" 2>/dev/null) || _tp=""
+    _st=$(mind_stufe "$_tp" 2>/dev/null); [ -n "$_st" ] || _st="unbekannt"
+    _md=$(mind_modell "$_tp" 2>/dev/null); [ -n "$_md" ] || _md="unbekannt"
     _gut="${TMPDIR:-/tmp}/.mind_debug_gut_$$"; : > "$_gut"
     if command -v jq >/dev/null 2>&1; then
       while IFS= read -r _z || [ -n "$_z" ]; do
         _z="${_z%$'\r'}"
         [ -n "$_z" ] || continue
         if printf '%s\n' "$_z" | jq -e . >/dev/null 2>&1; then
-          printf '%s\n' "$_z" >> "$_gut"; _n_ok=$((_n_ok + 1))
+          # ⭐ `//` statt blindem Setzen: eine Zeile, die Modell oder Stufe SELBST nennt,
+          #    behaelt ihren Wert. Sonst wuerde eine nachtraeglich eingespeiste Zeile mit
+          #    der Stufe von HEUTE ueberschrieben — ein Messwert, den niemand gemessen hat.
+          if printf '%s\n' "$_z" | jq -c --arg m "$_md" --arg s "$_st" \
+               '. + {modell: (.modell // $m), stufe: (.stufe // $s)}' >> "$_gut" 2>/dev/null
+          then :; else printf '%s\n' "$_z" >> "$_gut"; fi
+          _n_ok=$((_n_ok + 1))
         else
           _n_rot=$((_n_rot + 1))
           mind_log WARN "mind_debug_write: Befundzeile ist kein JSON, verworfen: ${_z:0:120}"

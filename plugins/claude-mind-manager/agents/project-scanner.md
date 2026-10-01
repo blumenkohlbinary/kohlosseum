@@ -23,6 +23,7 @@ description: |
   </commentary>
   </example>
 model: sonnet
+effort: high
 tools:
   - Read
   - Glob
