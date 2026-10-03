@@ -115,7 +115,7 @@ _N=0; for sk in "$WURZEL"/skills/*/SKILL.md; do sk=$(basename "$(dirname "$sk")"
 janein "alle Skills des Plugins ohne Stempel: jeder rc != 0" "$(ls -1 "$WURZEL"/skills/*/SKILL.md | wc -l | tr -d ' ')" "$_N"
 janein "mind-all MIT Stempel (dieselbe Bash): rc 0, Startzeile text=<stempel>" 1 "$( (export MIND_SKILL_VERSION="$(basename "$WURZEL")"; mind_schritt_start "$P" mind-all a >/dev/null 2>&1); grep -c "\"skill\":\"mind-all\".*\"text\":\"$(basename "$WURZEL")\"" "$S")"
 janein "freier Name ohne Stempel (kein skills/<name>/SKILL.md): rc 0 wie bisher" 0 "$( (unset MIND_SKILL_VERSION; mind_schritt_start "$P" fremd a >/dev/null 2>&1; echo $?) )"
-janein "alle zehn Skill-Texte: MIND_SKILL_VERSION und mind_schritt_start im SELBEN Codeblock" 10 \
+janein "alle elf Skill-Texte: MIND_SKILL_VERSION und mind_schritt_start im SELBEN Codeblock" 11 \
   "$(for sk in "$WURZEL"/skills/*/SKILL.md; do awk '/^```bash/{b=1;v=0;s=0;next} /^```/{if(b&&v&&s){print "ja";exit} b=0;next} b&&/^MIND_SKILL_VERSION=/{v=1} b&&/^mind_schritt_start /{s=1}' "$sk"; done | grep -c ja)"
 
 cd / && rm -rf "$T"

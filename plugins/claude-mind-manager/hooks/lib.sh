@@ -3056,7 +3056,7 @@ mind_schritt_start() {
   #    ⚠ Fehlt der Stempel (aelterer Skill-Text): `unbekannt`, KEIN Bruch gemeldet.
   #      Ein alter Text ohne Stempel ist genau der Fall, den man sehen will —
   #      aber "unbekannt gegen 5.77.0" ist ein Befund, keine Luege.
-  #    ⛔ v5.125.0: fuer die zehn Skills dieses Plugins kommt es nicht mehr so weit —
+  #    ⛔ v5.125.0: fuer die elf Skills dieses Plugins kommt es nicht mehr so weit —
   #      ohne Stempel bricht der Aufruf oben mit rc 1 ab (Etappe 37 §3).
   local v_code v_text bruch
   v_code=$(basename "${CLAUDE_PLUGIN_ROOT:-}" 2>/dev/null); [ -n "$v_code" ] || v_code="unbekannt"

@@ -168,12 +168,12 @@ janein "   Stand-Merker ebenso mit Kennung" "ja" "$([ -f "$R/.claude-mind/kontex
 
 echo
 echo "=============================================================================="
-echo "  6) Eingebaut: alle Hooks und alle zehn Skills beziehen PROJ daraus"
+echo "  6) Eingebaut: alle Hooks und alle elf Skills beziehen PROJ daraus"
 echo "=============================================================================="
 for h in prompt-submit session-start stop plan-modus pre-compact; do
   janein "hooks/$h.sh ruft mind_projekt_wurzel" "ja" "$(grep -q 'mind_projekt_wurzel' "$H/$h.sh" && echo ja || echo nein)"
 done
-janein "alle 10 SKILL.md setzen PROJ=\$(mind_projekt_wurzel)" "10" \
+janein "alle 11 SKILL.md setzen PROJ=\$(mind_projekt_wurzel)" "11" \
   "$(grep -l 'PROJ=$(mind_projekt_wurzel)' "$WURZEL"/skills/*/SKILL.md | wc -l | tr -d ' ')"
 janein "⛔ kein Skill setzt PROJ mehr aus CLAUDE_PROJECT_DIR allein (nur als Rueckfall)" "0" \
   "$(grep -c '^PROJ="${CLAUDE_PROJECT_DIR' "$WURZEL"/skills/*/SKILL.md | grep -vc ':0$')"
