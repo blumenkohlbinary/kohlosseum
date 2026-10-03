@@ -7,6 +7,7 @@ Aufrufe
     denkstufe_ablage.py --lesen                  Kennzahlen + Aussagen ausgeben
     denkstufe_ablage.py --alter                  rc 0 = frisch, rc 1 = abgelaufen
     denkstufe_ablage.py --aufgabe "<text>"       gespeicherte Antwort lesen (rc 1 = keine)
+    printf '%s' "<text>" | denkstufe_ablage.py --aufgabe -    ← SO, wenn der Name mit / beginnt
     denkstufe_ablage.py --schreiben "<text>" --json <datei>    Antwort speichern
     denkstufe_ablage.py --selbsttest             7 Abschnitte, rc 1 bei rot
 
@@ -86,6 +87,24 @@ def slug(text):
     s = (text or u"").strip().lower()
     s = re.sub(r"[^a-z0-9]+", u"-", s).strip(u"-")
     return (s or u"ohne-namen")[:80]
+
+
+def aufgabe_aus(wert):
+    u"""Ein einzelnes `-` heisst: den Aufgabennamen von stdin lesen.
+
+    ⛔ WARUM DAS NOETIG IST, gemessen 03.10.2026 am echten Gebrauch: Git Bash
+       schreibt ein Argument, das wie ein absoluter Pfad aussieht, in einen
+       Windows-Pfad um. `/mind-all` kam als `C:/Program Files/Git/mind-all` an,
+       und die erste gespeicherte Antwort lag unter diesem Namen.
+    ⚠ Die Umgebungsvariable hilft NICHT - sie wird beim Start eines nativen
+      Programms mitkonvertiert (nachgemessen, beide Formen). Nur stdin und
+      MSYS_NO_PATHCONV ueberleben; stdin ist gewaehlt, weil es im Projekt ein
+      Vorbild hat (mind_verdicht_kandidat) und keine echten Pfade mitabschaltet.
+    """
+    if wert != "-":
+        return wert
+    roh = sys.stdin.buffer.read().decode("utf-8", "replace")
+    return roh.strip().split("\n")[0].strip()
 
 
 def _lesen_json(p):
@@ -527,9 +546,9 @@ def main():
         if not a.json:
             sys.stderr.write("--schreiben braucht --json <datei>\n")
             return 2
-        return tu_schreiben(a.schreiben, a.json)
+        return tu_schreiben(aufgabe_aus(a.schreiben), a.json)
     if a.aufgabe:
-        return tu_aufgabe(a.aufgabe)
+        return tu_aufgabe(aufgabe_aus(a.aufgabe))
     p.print_help()
     return 2
 

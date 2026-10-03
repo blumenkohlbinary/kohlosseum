@@ -103,6 +103,23 @@ PYEOF
 )
 pruef "   ... und das Muster TRIFFT eine echte Kennzahl (Gegenkontrolle)" "$KONTROLL" "1"
 
+# --- 5b · der Skill gibt den Aufgabennamen ueber stdin, nicht als Argument ---
+# ⛔ Ratsche gegen das Vereinfachen: `--aufgabe "$AUFGABE"` sieht harmloser aus und
+#    ist der Defekt, der am 03.10.2026 die erste Antwort unter einem Windows-Pfad
+#    abgelegt hat.
+# ⚠ Die AUFRUFFORM pruefen, nicht das Vorkommen: `--aufgabe -` steht zweimal im
+#   Text, einmal als Code und einmal in der Regel daneben. Meine erste Erwartung (1)
+#   war falsch kalibriert, nicht der Skill — dieselbe Form wie in Etappe 51: nach dem
+#   NAMEN fragen statt nach der AUFRUFFORM.
+pruef "Skill liest die Antwort ueber stdin (die Aufrufzeile)" \
+  "$(grep -cF 'printf '"'"'%s'"'"' "$AUFGABE" | "$PY" "$ABLAGE" --aufgabe -' "$S")" "1"
+pruef "Skill schreibt die Antwort ueber stdin" \
+  "$(grep -c -- '--schreiben - --json' "$S")" "1"
+pruef "nirgends mehr der Aufgabenname als Argument" \
+  "$(grep -cE -- '--(aufgabe|schreiben) "\$AUFGABE"' "$S")" "0"
+pruef "und es steht als Regel da, nicht nur als Kommentar" \
+  "$(grep -c 'NEVER` den Aufgabennamen als ARGUMENT' "$S")" "1"
+
 # --- 6 · die gesetzte Schwelle ist als gesetzt ausgewiesen -------------------
 pruef "die 30 ist als GESETZT benannt" \
   "$(grep -c 'GESETZT, nicht gemessen' "$S" | awk '$1>0{print 1;exit}$1==0{print 0}')" "1"

@@ -113,6 +113,23 @@ pruef "fremde Aufgabe -> rc 1 (nicht 0)" "$?" "1"
 pruef "--lesen bleibt ASCII (byteweise)" \
   "$("$PY" -c "import sys; b=open(sys.argv[1],chr(114)+chr(98)).read(); print(sum(1 for x in b if x>127))" "$T/ausgabe.txt")" "0"
 
+# --- 8 · ⛔ DER AUFGABENNAME MUSS UEBER stdin GEHEN -----------------------------
+# Gefunden durch echten Gebrauch, nicht durch Nachdenken: die erste gespeicherte
+# Antwort lag unter `c-program-files-git-mind-all`. Git Bash schreibt ein Argument,
+# das wie ein absoluter Pfad aussieht, in einen Windows-Pfad um - und Befehlsnamen
+# beginnen mit `/`, das ist also der Normalfall, nicht der Sonderfall.
+# ⭐ Dieser Fall MISST die Falle, statt sie zu kommentieren.
+printf '{"empfehlung":{"modell":"opus","stufe":"high"},"aussagen":[{"text":"x","art":"HERGELEITET"}]}\n' > "$A"
+printf '%s' "/mind-rules" | "$PY" "$W" --schreiben - --json "$A" >/dev/null 2>&1
+pruef "ueber stdin entsteht der RICHTIGE Name" \
+  "$([ -f "$MIND_DENKSTUFE_DIR/aufgaben/mind-rules.json" ] && echo ja || echo nein)" "ja"
+# GEGENKONTROLLE: als Argument entsteht der verstuemmelte Name. Trifft das eines Tages
+# nicht mehr zu (andere Shell, anderes Windows), wird DIESE Zeile rot - und dann ist
+# die Begruendung oben zu pruefen, statt sie weiterzuschleppen.
+"$PY" "$W" --schreiben /mind-files --json "$A" >/dev/null 2>&1
+pruef "als Argument entsteht NICHT der Name mind-files (die Falle ist echt)" \
+  "$([ -f "$MIND_DENKSTUFE_DIR/aufgaben/mind-files.json" ] && echo ja || echo nein)" "nein"
+
 rm -rf "$T"
 echo ""
 echo "  $ok gruen · $rot rot"

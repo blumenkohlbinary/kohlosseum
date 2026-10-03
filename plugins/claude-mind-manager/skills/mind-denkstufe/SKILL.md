@@ -103,7 +103,14 @@ Gruendlichkeitsbeweis.
 ## Step 1 · `antwort_zuerst` — die gespeicherte Antwort (PFLICHT, zuerst)
 
 ```bash
-if [ "$NEU" = "no" ] && "$PY" "$ABLAGE" --aufgabe "$AUFGABE" 2>/dev/null; then
+# ⛔ DER AUFGABENNAME GEHT UEBER stdin, NICHT ALS ARGUMENT. Gemessen 03.10.2026
+#    am echten Gebrauch: Git Bash schreibt ein Argument, das wie ein absoluter Pfad
+#    aussieht, in einen Windows-Pfad um — `/mind-all` kam als
+#    `C:/Program Files/Git/mind-all` an, und die erste gespeicherte Antwort lag
+#    unter diesem Namen. Befehlsnamen beginnen mit `/`, also ist das der Normalfall.
+#    ⚠ Eine Umgebungsvariable hilft NICHT (nachgemessen, beide Formen) — MSYS
+#      konvertiert beim Start eines nativen Programms auch die Umgebung.
+if [ "$NEU" = "no" ] && printf '%s' "$AUFGABE" | "$PY" "$ABLAGE" --aufgabe - 2>/dev/null; then
   echo ""
   echo "⭐ Gespeicherte Antwort — KEIN Agent, KEINE Websuche, nichts neu gerechnet."
   echo "   Neu rechnen: /mind-denkstufe $AUFGABE --neu"
@@ -243,7 +250,7 @@ derselben Sekunde, in der man es versucht.
 
 ```bash
 # Antwort als JSON schreiben, dann speichern (das Werkzeug prueft die Gates):
-"$PY" "$ABLAGE" --schreiben "$AUFGABE" --json "$TMP/antwort.json"
+printf '%s' "$AUFGABE" | "$PY" "$ABLAGE" --schreiben - --json "$TMP/antwort.json"
 ```
 
 ---
@@ -277,5 +284,6 @@ damit niemand das eine fuer das andere haelt und es wieder herausnimmt.
 - `NEVER` eine Websuche bei frischem Zwischenspeicher — **stattdessen** die Ablage lesen
 - `NEVER` eine feste Kennzahl in diesen Text schreiben — **stattdessen** in die Ablage, mit `quelle`/`datum`/`vorbehalt`
 - `NEVER` `--messen` ohne ausdrueckliche Ansage, und `NEVER` bei Aussenwirkung — **stattdessen** als nicht messbar melden
+- `NEVER` den Aufgabennamen als ARGUMENT an das Werkzeug geben — **stattdessen** ueber stdin (`printf '%s' "$AUFGABE" | … --aufgabe -`). Ein Name, der mit `/` beginnt, wird sonst zu einem Windows-Pfad (gemessen 03.10.2026)
 - `NEVER` die eigene Sitzungsstufe als Empfehlung ausgeben — sie ist der Zufall der Umgebung, kein Befund
 - ⚠ `MIND_DENKSTUFE_DIR` liegt unter `~/.claude/` und damit **ausserhalb** des Sicherungs-Hooks. Jedes Schreiben legt eine Kopie nach `_claude_backups/`; die Kennzahlen sind ohnehin neu holbar, die **Antworten je Aufgabe nicht** — sie haben Agenten gekostet
