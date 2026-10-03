@@ -255,6 +255,30 @@ printf '%s' "$AUFGABE" | "$PY" "$ABLAGE" --schreiben - --json "$TMP/antwort.json
 
 ---
 
+---
+
+## Step 7 · Die Schritt-Bilanz — erste Zeile des Self-Checks (PFLICHT)
+
+```bash
+mind_schritt_bilanz "$PROJ"
+```
+
+⛔ **Fehlt diese Zeile oder nennt sie `FEHLT`, ist der Bericht unvollstaendig** und
+darf zurueckgewiesen werden. Rueckgabe **2 heisst: gar keine Quittung** — dann hat
+der Lauf seine eigenen Schritte nicht gebucht und ist von aussen nicht pruefbar.
+
+⚠ **Auch ein Lauf, der bei Step 1 endet, weist sie aus.** Dort sind fuenf Schritte
+`uebersprungen:gespeicherte Antwort lag vor` — das ist ein VOLLSTAENDIGER Lauf, und
+die Bilanz zeigt genau das. Ein Lauf, der die Bilanz weglaesst, weil „ja nichts
+passiert ist“, ist von einem abgebrochenen nicht zu unterscheiden.
+
+⛔ **Diese Zeile fehlte in der ersten Fassung dieses Skills**, und gefunden hat es
+`test_schritt_quittung.sh` am **gebauten Paket** — nicht ich. Zehn von elf Skills
+riefen die Bilanz, dieser nicht. ⭐ Die Lehre ist allgemeiner als der Fehler: meine
+Allbetroffenheits-Suche lief nach der ZAHL „zehn“. Die zweite Allbetroffenheit war
+ein **Vertrag** — wer eine Quittung fuehrt, weist ihre Bilanz aus —, und nach
+Vertraegen hatte ich nicht gesucht.
+
 ## `--messen` — nur auf ausdrueckliche Ansage
 
 Die Aufgabe auf einer **Kopie** mit zwei Stufen fahren und die Ergebnisse vergleichen.
@@ -284,6 +308,9 @@ damit niemand das eine fuer das andere haelt und es wieder herausnimmt.
 - `NEVER` eine Websuche bei frischem Zwischenspeicher — **stattdessen** die Ablage lesen
 - `NEVER` eine feste Kennzahl in diesen Text schreiben — **stattdessen** in die Ablage, mit `quelle`/`datum`/`vorbehalt`
 - `NEVER` `--messen` ohne ausdrueckliche Ansage, und `NEVER` bei Aussenwirkung — **stattdessen** als nicht messbar melden
+- `MUST` `mind_schritt_bilanz "$PROJ"` als erste Zeile des Self-Checks — auch bei
+  einem Lauf, der bei Step 1 endet. Ein Lauf ohne Bilanz ist von einem abgebrochenen
+  nicht zu unterscheiden
 - `NEVER` den Aufgabennamen als ARGUMENT an das Werkzeug geben — **stattdessen** ueber stdin (`printf '%s' "$AUFGABE" | … --aufgabe -`). Ein Name, der mit `/` beginnt, wird sonst zu einem Windows-Pfad (gemessen 03.10.2026)
 - `NEVER` die eigene Sitzungsstufe als Empfehlung ausgeben — sie ist der Zufall der Umgebung, kein Befund
 - ⚠ `MIND_DENKSTUFE_DIR` liegt unter `~/.claude/` und damit **ausserhalb** des Sicherungs-Hooks. Jedes Schreiben legt eine Kopie nach `_claude_backups/`; die Kennzahlen sind ohnehin neu holbar, die **Antworten je Aufgabe nicht** — sie haben Agenten gekostet
