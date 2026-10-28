@@ -52,7 +52,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.150.0"
+MIND_SKILL_VERSION="5.151.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 # ⛔ v5.98.0: die fuenf Skills sind KEINE Schritte von mind-all — jeder hat seinen EIGENEN
 #    Start-Block (Step 2, Punkt 1). Bis v5.97.0 standen sie hier, Ritas Kalibrierlauf hakte
@@ -373,6 +373,21 @@ mind_agent_quittung_start "$PROJ" 4
 #   zweiter Griff auf einen Merker, der sich zwischendurch geaendert haben kann.
 if [ -n "$MIND_TP" ]; then
   echo "Transkript dieser Sitzung: $(basename "$MIND_TP")"
+  # ⛔ v5.151.0 (Etappe 58 §1, ZIEL 5): DER EIGENE VERLAUF IST DER GROESSTE KOSTENPOSTEN. Jeder Schritt
+  #    dieses Laufs liest ihn neu (Cache-Lesen). Gemessen am Transkript (`references/lauf_tokens.py`):
+  #    Ritas Lauf 29.09. 132,9 Mio Tokens, davon 85 % die steuernde Sitzung bei einem Verlauf bis
+  #    964 634; Veras Lauf 12.10. 91,3 Mio, davon 93 % bei Verlauf bis 770 099. Was der Lauf braucht,
+  #    liegt in Dateien (Rettungen, Quittungen, Context-Dateien) — der alte Verlauf der Sitzung nicht.
+  # ⛔ HINWEIS, KEIN ZWANG (Nutzer 10.09.2026: keine Token-Messung als Zwang). Geleert wird von aussen:
+  #    im Rollen-Aufbau leert der manager die Sync-Sitzung VOR dem Auftrag; allein: `/clear`.
+  _VL=$(grep -o '"cache_read_input_tokens":[0-9]*' "$MIND_TP" 2>/dev/null | tail -1 | cut -d: -f2)
+  case "$_VL" in ''|*[!0-9]*) _VL=0 ;; esac
+  if [ "$_VL" -gt "${MIND_VERLAUF_HINWEIS:-150000}" ] 2>/dev/null; then
+    echo "⚠ VERLAUF: diese Sitzung traegt rund $_VL Tokens Verlauf — jeder Schritt dieses Laufs liest ihn neu."
+    echo "  Gemessen: 85-93 % eines Laufs kostet die steuernde Sitzung. Guenstiger: den Lauf in einer FRISCH"
+    echo "  geleerten Sitzung fahren (Rollen-Aufbau: der manager leert die Sync-Sitzung vorher). Der Lauf geht weiter."
+    echo "  Diese Zeile gehoert in den Schlussbericht (Step 3) — gemessen wird hinterher: references/lauf_tokens.py --lauf <ID>."
+  fi
 else
   echo "⚠ Transkript NICHT bestimmbar — Tokenzahlen dieses Laufs bleiben LEER."
   echo "  (Eine fehlende Zahl ist keine Null. Der Lauf geht weiter.)"
