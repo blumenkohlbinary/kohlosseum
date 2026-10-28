@@ -36,13 +36,16 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.145.0"
+MIND_SKILL_VERSION="5.146.0"
 mind_schritt_start "$PROJ" mind-learnings learnings_quellen learnings_scan mind_debug_write
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt <name> gelaufen              "$(wc -c < "$AUSGABE")" "$PROJ"
 mind_schritt <name> "gelaufen:5/11"       "$BYTES" "$PROJ"   # TEILABDECKUNG
 mind_schritt <name> "uebersprungen:<grund>" 0      "$PROJ"
@@ -89,6 +92,9 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt_bilanz "$PROJ"
 ```
 
@@ -148,6 +154,9 @@ nimmt dem Menschen die Kontrolle ueber etwas, das er nicht mehr sieht.
 ## Step 2: Pruefen (nur lesen)
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 TS=$(date '+%Y-%m-%dT%H:%M:%S')
 TMP=$(mktemp -d)
 PY=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)
@@ -160,6 +169,11 @@ mkdir -p "$(dirname "$BESTAND")" 2>/dev/null
       --bericht "$TMP/bericht.md" \
       --bestand "$BESTAND" \
       --ts      "$TS"
+# ⛔ v5.146.0 (Etappe 56 §3): quittieren, SOLANGE $TMP LEBT — der naechste Block kennt ihn nicht.
+#    `learnings_quellen` ist kein eigener Aufruf: `learnings_scan.py` importiert es (AUS, lehren,
+#    lies). Bis v5.145.0 stand es erwartet in der Startzeile und wurde nirgends quittiert.
+mind_schritt learnings_scan gelaufen --datei "$TMP/bericht.md" "$PROJ"
+mind_schritt learnings_quellen gelaufen --datei "$TMP/bericht.md" "$PROJ"   # im Scan gelaufen (Import)
 ```
 
 ⛔ **Der Pruefer AENDERT NICHTS.** Er liest, er meldet. Wer einen Befund behebt,
@@ -191,6 +205,9 @@ Ausgeschlossen: `.claude-mind` · `_claude_backups` · `Beispiele` · `cache` ·
 ## Step 3: Nach Debug melden (PFLICHT, wenn `MIND_DEBUG_DIR` gesetzt ist)
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 if [ -n "${MIND_DEBUG_DIR:-}" ] && [ -s "$TMP/befunde.jsonl" ]; then
   mind_debug_write "$WURZEL" "mind-learnings" "$TMP/bericht.md" "$TMP/befunde.jsonl"
   echo "Zentral gemeldet: $MIND_DEBUG_DIR/laeufe/ + index.jsonl"

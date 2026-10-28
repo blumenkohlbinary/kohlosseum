@@ -44,7 +44,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.145.0"
+MIND_SKILL_VERSION="5.146.0"
 mind_schritt_start "$PROJ" mind-denkstufe antwort_zuerst aufgabe_verstehen ablage_lesen eigene_erfahrung gegenprobe antwort_speichern
 
 ARGS="${ARGUMENTS:-}"
@@ -61,6 +61,9 @@ PY=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt <name> gelaufen                "$BYTES" "$PROJ"
 mind_schritt <name> "uebersprungen:<grund>" 0        "$PROJ"
 mind_schritt <name> "fehler:<grund>"        -1       "$PROJ"
@@ -103,6 +106,9 @@ Gruendlichkeitsbeweis.
 ## Step 1 · `antwort_zuerst` — die gespeicherte Antwort (PFLICHT, zuerst)
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 # ⛔ DER AUFGABENNAME GEHT UEBER stdin, NICHT ALS ARGUMENT. Gemessen 03.10.2026
 #    am echten Gebrauch: Git Bash schreibt ein Argument, das wie ein absoluter Pfad
 #    aussieht, in einen Windows-Pfad um — `/mind-all` kam als
@@ -260,6 +266,9 @@ printf '%s' "$AUFGABE" | "$PY" "$ABLAGE" --schreiben - --json "$TMP/antwort.json
 ## Step 7 · Die Schritt-Bilanz — erste Zeile des Self-Checks (PFLICHT)
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt_bilanz "$PROJ"
 ```
 

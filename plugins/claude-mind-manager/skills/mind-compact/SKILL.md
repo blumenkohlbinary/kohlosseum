@@ -35,13 +35,16 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.145.0"
+MIND_SKILL_VERSION="5.146.0"
 mind_schritt_start "$PROJ" mind-compact session_sampler
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt <name> gelaufen              "$(wc -c < "$AUSGABE")" "$PROJ"
 mind_schritt <name> "gelaufen:5/11"       "$BYTES" "$PROJ"   # TEILABDECKUNG
 mind_schritt <name> "uebersprungen:<grund>" 0      "$PROJ"
@@ -88,6 +91,9 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt_bilanz "$PROJ"
 ```
 
@@ -216,6 +222,9 @@ echte Transkripte (287 / 9 062 / 4 587 Bytes, alle identisch).
 **Path-Setup (cygpath Hard Requirement):**
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 if ! command -v cygpath &>/dev/null; then
   echo "ERROR: cygpath nicht verfuegbar — mind-compact benoetigt cygpath" >&2
   echo "Hinweis: Git-Bash / MSYS2 / Cygwin installieren, dann erneut versuchen." >&2
@@ -259,6 +268,9 @@ fi
 ## Step 5: Vorlage rendern (Markdown-Block fuer User-Copy)
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 RENDER_BASH="/tmp/mind_compact_render.py"
 RENDER_WIN=$(cygpath -w "$RENDER_BASH")
 

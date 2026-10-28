@@ -35,13 +35,16 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.145.0"
+MIND_SKILL_VERSION="5.146.0"
 mind_schritt_start "$PROJ" mind-session-log 
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt <name> gelaufen              "$(wc -c < "$AUSGABE")" "$PROJ"
 mind_schritt <name> "gelaufen:5/11"       "$BYTES" "$PROJ"   # TEILABDECKUNG
 mind_schritt <name> "uebersprungen:<grund>" 0      "$PROJ"
@@ -88,6 +91,9 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt_bilanz "$PROJ"
 ```
 
@@ -300,6 +306,9 @@ Python-Helper extrahiert ALLE `<command-name>` Marker (robust gegen JSON-Strings
 siehe v3.2.2 Lessons — grep-Pattern matchte ueber JSON-Inhalt hinaus).
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 if [ "$SPLIT_MODE" = "per-command" ]; then
   RANGES_BASH="/tmp/extract_ranges.py"
   cat > "$RANGES_BASH" << 'PYEOF'
@@ -464,6 +473,9 @@ findet Python das Script nicht.
 pro Range im Loop. Step 4 setzt nur die Pfade + schreibt den Python-Parser einmalig.
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 # Bash-Pfade (fuer Write/Read/awk im Skill — IMMER /tmp/... egal welche Plattform)
 SLICE_BASH=$(mind_sampler_pfad "$PROJ" session-slice.jsonl)   # v5.126.0: je Sitzung im Projekt, nicht fest /tmp
 PARSE_BASH="/tmp/parse_session.py"
@@ -796,6 +808,9 @@ done
 ### Bilanz (im Chat, NICHT in Output-Datei)
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 echo ""
 echo "=== Bilanz ==="
 echo "Erzeugt:    ${#CREATED_FILES[@]} File(s)"

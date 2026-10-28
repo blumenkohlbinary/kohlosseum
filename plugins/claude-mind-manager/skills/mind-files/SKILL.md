@@ -43,13 +43,16 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.145.0"
+MIND_SKILL_VERSION="5.146.0"
 mind_schritt_start "$PROJ" mind-files bestandszahlen_kandidaten cleaner_stichprobe cleaner_tor mind_check_tools_have_rules mind_hook_health mind_kontext_bilanz mind_snapshot verdichten
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt <name> gelaufen              "$(wc -c < "$AUSGABE")" "$PROJ"
 mind_schritt <name> "gelaufen:5/11"       "$BYTES" "$PROJ"   # TEILABDECKUNG
 mind_schritt <name> "uebersprungen:<grund>" 0      "$PROJ"
@@ -104,6 +107,9 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt_bilanz "$PROJ"
 ```
 
@@ -1044,6 +1050,9 @@ Lies sie.** Hier nur, was für diesen Skill gilt:
 | ⛔ **Stufe 3** | der Wort-Diff wird GANZ gelesen, bevor angewendet wird. **Ohne Leser: nicht anwenden** — Ergebnis, Bericht, Diff ablegen, Pfad melden |
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 # Kandidatin: die groesste Companion-Rule, die es im Projekt gibt — v5.138.0: nicht die,
 # die in den letzten N Laeufen schon dran war (kein `head -1`, die Funktion waehlt).
 # ⛔ v5.138.0: was in DIESEM Kettenlauf schon verdichtet wurde, ist kein Kandidat.

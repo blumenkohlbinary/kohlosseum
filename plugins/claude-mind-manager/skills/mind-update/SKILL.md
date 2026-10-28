@@ -50,13 +50,16 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.145.0"
+MIND_SKILL_VERSION="5.146.0"
 mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe cleaner_tor mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt <name> gelaufen              "$(wc -c < "$AUSGABE")" "$PROJ"
 mind_schritt <name> "gelaufen:5/11"       "$BYTES" "$PROJ"   # TEILABDECKUNG
 mind_schritt <name> "uebersprungen:<grund>" 0      "$PROJ"
@@ -111,6 +114,9 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt_bilanz "$PROJ"
 ```
 
@@ -212,6 +218,9 @@ der Spalte `Ordner` des Rosters mit (fehlt die Spalte: jeder direkte Unterordner
 `CLAUDE.md`) — das ist der Dauerkontext der Arbeiter-Sitzungen. Gemessen 14.09.2026 (Creator,
 Doro): sieben Unterordner, fuenf CLAUDE.md und 17 Rules, in keinem Bericht genannt.
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 UNTER_KONTEXT=$(mind_unterordner_kontext "$PROJ" 2>/dev/null)   # leer ohne Rollen-Aufbau
 ```
 Der Bericht nennt je Datei den Ordner (`<Ordner>/CLAUDE.md`, `<Ordner>/.claude/rules/<name>`).
@@ -535,6 +544,9 @@ sonst als DEAD durch und werden **autonom geloescht**. Real gemessen: 5 echte Tr
 `/releases/44/`, `/releases/test/`, ein relativ geschriebener existierender Pfad).
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 # ⛔ NICHT NACHBAUEN — die Funktion liegt seit v5.11.0 in lib.sh und heisst
 # `mind_classify_path`. Sie wird hier AUFGERUFEN, nicht wiederholt.
 #
@@ -1216,6 +1228,9 @@ komplett raus“*.
 ### ⛔ Agent-Quittung — PFLICHT, vor UND nach jedem Agent (NEU v5.14.0)
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 # v5.19.0: NUR anlegen, wenn keine existiert. In der Kette hat mind-all sie
 # schon in Step 0 angelegt — ein blindes `start` wuerde sie hier LOESCHEN und
 # genau die Spur vernichten, die den Teilsync belegt. Bei einem Einzelaufruf
@@ -1465,6 +1480,9 @@ Lies sie.** Hier nur, was für diesen Skill gilt:
 | ⚠ **in der Kette** | läuft `mind-update` in `/mind-all`, haben `mind-claudemd` (Step 5e) und `mind-rules` (Step 9b) ihre Datei schon verdichtet — dann hier **die nächstgrößere**, nie dieselbe zweimal im Lauf (`analyzed-scopes` trägt `verdichtet=<datei>`) |
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 # Kandidat: die groesste Datei aus CLAUDE.md + rules, ohne rollen.md, ohne die schon
 # in DIESEM Kettenlauf verdichteten (analyzed-scopes: verdichtet=<pfad>)
 _SCHON=$(grep '^verdichtet=' "$PROJ/.claude-mind/analyzed-scopes" 2>/dev/null | cut -d= -f2-)
@@ -1655,6 +1673,18 @@ ausfiel, sehen von außen identisch aus. Dieselbe Lehre wie v5.3.1 und die Agent
 ⚠ **Fail-open:** fehlt ein Werkzeug oder stürzt es ab, wird `UNGEPRUEFT: <werkzeug>`
 gemeldet und der Skill **läuft weiter**. Ein Bestands-Pass darf nie einen Sync töten.
 
+### ⛔ Pflichtschritt `mind_agent_bilanz` — der Aufruf (NEU v5.146.0, Etappe 56 §3)
+
+Bis v5.145.0 stand dieser Schritt im Pflichtkasten und in der Startzeile, aber **nirgends als Aufruf** — erwartet, nie gelaufen. So entstand Noras `FEHLT: mind-rules/cleaner_duplikate` (Palvedo, 20.09.2026), und so wurden Schritte von Hand nachgeholt. Ihre Ausgabe ist die Zeile `Agent-Quittung:` im Self-Check-Block unten.
+
+```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
+A="$PROJ/.claude-mind/schritt-mind-update-agentbilanz.txt"
+mind_agent_bilanz "$PROJ" > "$A" 2>&1; echo "rc=$?" >> "$A"; cat "$A"
+mind_schritt mind_agent_bilanz gelaufen --datei "$A" "$PROJ"
+```
+
 ## Step 6: Report — PFLICHT-Self-Check-Block am Anfang (NEU v3.3.1)
 
 **WICHTIG:** Der Report MUSS mit dem Self-Check-Block BEGINNEN. Jeder Marker MUSS
@@ -1788,6 +1818,9 @@ Total-Context-Zeile.
 Kennung, fremde Sitzungen bleiben unberuehrt:
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_sampler_aufraeumen "$PROJ"    # loescht .claude-mind/sampler/*.<sid>.*
 ```
 

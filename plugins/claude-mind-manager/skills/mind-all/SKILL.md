@@ -52,7 +52,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.145.0"
+MIND_SKILL_VERSION="5.146.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 # ⛔ v5.98.0: die fuenf Skills sind KEINE Schritte von mind-all — jeder hat seinen EIGENEN
 #    Start-Block (Step 2, Punkt 1). Bis v5.97.0 standen sie hier, Ritas Kalibrierlauf hakte
@@ -62,6 +62,9 @@ mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_ag
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt <name> gelaufen              "$(wc -c < "$AUSGABE")" "$PROJ"
 mind_schritt <name> "gelaufen:5/11"       "$BYTES" "$PROJ"   # TEILABDECKUNG
 mind_schritt <name> "uebersprungen:<grund>" 0      "$PROJ"
@@ -108,6 +111,9 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt_bilanz "$PROJ"
 ```
 
@@ -124,6 +130,9 @@ Ein Snapshot -> 5 Skills sequenziell -> alle Befunde angewendet -> ein Bericht.
 ## Step -1: Was ist hier schon einmal schiefgegangen? (PFLICHT, NEU v5.7.1)
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_debug_top 3      # still, wenn MIND_DEBUG_DIR fehlt oder es keine Wiederholung gibt
 ```
 
@@ -649,6 +658,9 @@ schrieb jeder Lauf das Anhaengen von Hand, mit `>>` und ohne Ruecksicht auf die 
 Seit v5.7.0 ist es Code, und der Abschnitt geht **zusaetzlich zentral** hinaus.
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 LISTE="$PROJ/listeverbesserungen.md"
 [ -f "$LISTE" ] || printf '# Verbesserungsliste\n\nAngehaengt von /mind-all. Neueste Abschnitte stehen UNTEN.\n' > "$LISTE"
 
@@ -750,6 +762,9 @@ beschaedigen, Umschreiben schon):
 kippen.
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 # Der Snapshot aus Step 0 ist der Vorher-Stand — er wird hier zum Messinstrument.
 MEMDIR=$(get_memory_dir "$PROJ" 2>/dev/null) || MEMDIR=""
 mind_zeilenenden_waechter "$MIND_SNAPSHOT_DIR" "$PROJ" "$MEMDIR"
@@ -802,6 +817,9 @@ Selbsteinschaetzung — genau das, was `cleaner_belege.py` seit v5.18.0 ueberall
 untaugliche Belegquelle ersetzt.
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 # --- Was ist tatsaechlich gelaufen? Aus der Spur, nicht aus der Erinnerung. ---
 _SF="$SCOPES_FILE"; [ -f "$_SF" ] || _SF="${SCOPES_FILE}.done"   # Step 2.9 hat umbenannt
 # ⛔ v5.30.0: NUR DIE EIGENEN MARKEN ZAEHLEN. Vorher zaehlte `grep -c '^skill='`
@@ -936,6 +954,9 @@ ueberhaupt auf die idee zu kommen auch nur ein wort oder zeile vom plugin zu mis
 darf nix uebersprungen werden oder verschoben."*
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 # Vor dem Schreiben: Reparatur-Paesse, so viele wie noetig — der Lauf stoppt NICHT bei teil.
 # Je Eintrag in ungepruef=:
 #   formal-<skill>      -> den Skill-Block ERNEUT ausfuehren (Kopf-Block liegt, §1) — nicht nachtippen
@@ -979,6 +1000,9 @@ Die Meldung nach dem zweiten Pass ersetzt nicht die Arbeit — sie macht sie sic
 kommt als Nachricht; bis dahin laeuft die Reparatur.
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 # ⛔ v5.113.0: NUR bei `ja`. Ein Merker fuer teil entsteht nicht mehr — teil ist kein Zustand,
 #    in dem dieser Block erreicht wird (2.96a-R laeuft, bis voll).
 if [ "$SYNC_LIEF" = "ja" ]; then
@@ -1076,6 +1100,9 @@ repariert, bis voll); beide Bloecke haengen jetzt an `ja`, und `OPEN` verschwind
 nur hier.
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 # ⛔ v5.113.0 (Etappe 20 §4): getilgt wird NUR, wenn mind_sync_voll den frischen Merker
 #    mit rc 0 bestaetigt — und ALLE resume=-Zeilen werden .done (mind_schuld_begleichen).
 #    Bis v5.112.0 stand hier `grep -m1 '^resume='`: nur die aelteste RESUME wurde .done,
@@ -1113,6 +1140,18 @@ tiefer.
 der Schlussbericht sagt **ausdruecklich**, dass die Schuld offen bleibt und der Stop-Hook
 weiter nachhaken wird. Stillschweigendes Liegenlassen ist die eine Sache, die hier nicht
 passieren darf — genau daran ist v5.2.0 gescheitert.
+
+### ⛔ Pflichtschritt `mind_check_tools_have_rules` — der Aufruf (NEU v5.146.0, Etappe 56 §3)
+
+Bis v5.145.0 stand dieser Schritt im Pflichtkasten und in der Startzeile, aber **nirgends als Aufruf** — erwartet, nie gelaufen. So entstand Noras `FEHLT: mind-rules/cleaner_duplikate` (Palvedo, 20.09.2026), und so wurden Schritte von Hand nachgeholt. Seine Ausgabe gehoert in den Schlussbericht: ein Werkzeug ohne erreichbare Rule liegt tot im Ordner.
+
+```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
+A="$PROJ/.claude-mind/schritt-mind-all-toolcheck.txt"
+mind_check_tools_have_rules "$PROJ" > "$A" 2>&1; echo "rc=$?" >> "$A"; cat "$A"
+mind_schritt mind_check_tools_have_rules gelaufen --datei "$A" "$PROJ"
+```
 
 ## Step 3: Konsolidierter Schlussbericht (PFLICHT)
 

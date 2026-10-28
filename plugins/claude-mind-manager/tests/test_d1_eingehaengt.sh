@@ -35,7 +35,9 @@ for f in "$R"/skills/*/SKILL.md; do
   fi
 done
 pruef "kein Skill ruft das Tor ohne D1" 0 "$FEHLT"
-pruef "und es sind alle fuenf" 5 "$MIT"
+# ⚠ v5.146.0: SECHS — mind-cleaner ruft das Tor seit Etappe 56 §3 auch selbst (Step 7c), nicht
+#   mehr nur ueber --audit. Die Zusicherung (Tor nie ohne D1) ist dieselbe; die Zahl ist der Bestand.
+pruef "und es sind alle sechs" 6 "$MIT"
 
 echo
 echo "=== 2) Die Doktrin steht dabei, nicht nur der Aufruf ==="

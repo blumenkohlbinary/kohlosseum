@@ -43,13 +43,16 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.145.0"
+MIND_SKILL_VERSION="5.146.0"
 mind_schritt_start "$PROJ" mind-memory bestandszahlen_kandidaten cleaner_stichprobe cleaner_tor mind_debug_write mind_kontext_bilanz mind_scan_poisoning mind_snapshot verdichten
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt <name> gelaufen              "$(wc -c < "$AUSGABE")" "$PROJ"
 mind_schritt <name> "gelaufen:5/11"       "$BYTES" "$PROJ"   # TEILABDECKUNG
 mind_schritt <name> "uebersprungen:<grund>" 0      "$PROJ"
@@ -104,6 +107,9 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt_bilanz "$PROJ"
 ```
 
@@ -955,6 +961,9 @@ Lies sie.** Hier nur, was für Memory gilt:
 | ⛔ **Stufe 3** | der Wort-Diff wird GANZ gelesen, bevor angewendet wird. **Ohne Leser: nicht anwenden** — Ergebnis, Bericht, Diff ablegen, Pfad melden |
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 # Kandidatin: die groesste Topic-Datei, nie MEMORY.md — und v5.138.0: nicht die, die in
 # den letzten N Laeufen schon dran war. ⛔ KEIN `head -1` mehr: die Funktion braucht die
 # GANZE Liste (groesste zuerst), sonst kann sie nur die eine ablehnen, die sie bekommt.
@@ -977,6 +986,23 @@ DATEI=$(ls -S "$MEMORY_DIR"/*.md 2>/dev/null | grep -v '/MEMORY\.md$' \
 
 ⛔ **Der Bericht dieses Schritts sind die drei Zeilen aus `mind_verdichtung_pruefen`** — oder
 die Zeile `verworfen: <grund>`. **Kein Bericht = der Schritt lief nicht.**
+
+### ⛔ Pflichtschritt `mind_debug_write` — der Aufruf (NEU v5.146.0, Etappe 56 §3)
+
+Bis v5.145.0 stand dieser Schritt im Pflichtkasten und in der Startzeile, aber **nirgends als Aufruf** — erwartet, nie gelaufen. So entstand Noras `FEHLT: mind-rules/cleaner_duplikate` (Palvedo, 20.09.2026), und so wurden Schritte von Hand nachgeholt. Er meldet den Lauf an den zentralen Debug-Ordner (still ohne `MIND_DEBUG_DIR`). Abschnitt und Befundzeilen ERST schreiben (Aufbau wie `/mind-all` Step 2.95), dann diesen Block.
+
+```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
+ABSCHNITT="$PROJ/.claude-mind/lauf-abschnitt-mind-memory.md"
+BEFUNDE="$PROJ/.claude-mind/lauf-befunde-mind-memory.jsonl"
+# ⚠ Ein Abschnitt aus einem FRUEHEREN Lauf zaehlt nicht — aelter als 2 h heisst: neu anlegen.
+[ -n "$(find "$ABSCHNITT" -mmin -120 2>/dev/null)" ] || \
+  printf '## %s — /mind-memory\n\n### Probleme in diesem Lauf\n- (keine)\n' "$(date '+%Y-%m-%d %H:%M')" > "$ABSCHNITT"
+[ -f "$BEFUNDE" ] || : > "$BEFUNDE"
+mind_debug_write "$PROJ" "mind-memory" "$ABSCHNITT" "$BEFUNDE"
+mind_schritt mind_debug_write gelaufen --datei "$ABSCHNITT" "$PROJ"
+```
 
 ## Step 7: Summary
 

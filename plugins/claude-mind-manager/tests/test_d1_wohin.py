@@ -19,6 +19,7 @@ Aufruf:  python tests/test_d1_wohin.py
 Rückgabe: 0 = alle grün · 1 = mindestens ein Fall rot
 """
 import io
+import re
 import os
 import sys
 
@@ -183,7 +184,7 @@ _lebend = [os.path.join(PROJEKT, "CLAUDE.md"), os.path.join(PROJEKT, ".claude", 
 _BEKANNT = {"backup-usage": 1, "hooks": 1, "rollen": 1}
 sys.path.insert(0, os.path.join(WURZEL, "references", "doc-templates"))
 _halte = sys.stdout  # coverage_gate legt beim Import einen neuen Wrapper um .buffer; ohne Referenz schloesse der GC unseren und damit den Puffer
-from coverage_gate import checkpoints, normalize  # noqa: E402,F841 — _halte bleibt referenziert, der neue Wrapper schreibt weiter
+from coverage_gate import checkpoints, normalize, P_VERSION  # noqa: E402,F841 — _halte bleibt referenziert, der neue Wrapper schreibt weiter
 from cleaner_einordnung import absaetze  # noqa: E402
 _leb = normalize("\n".join(io.open(f, encoding="utf-8", errors="replace").read()
                             for f in _lebend if os.path.isfile(f)))
@@ -197,7 +198,13 @@ def _loecher(archiv):
     for _a in _brems:
         _tf = _tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8")
         _tf.write(_a); _tf.close()
-        _miss = [ph for ph, kw in checkpoints(_tf.name) if kw[0] not in _leb]
+        # ⛔ v5.145.0 (Etappe 55 §4): seit Versionsnummern Marken sind, zaehlten sie hier mit —
+        #    gemessen: hooks 1 -> 2 Loecher, das neue ist `v5.7.5` (die Version, in der COMPACT-FAELLIG
+        #    ENTSTAND). Der lebende Kontext traegt den Sachverhalt („entfallen v5.65.0“); die
+        #    Entstehungsversion ist Historie und gehoert ins Archiv. Diese Ratsche ist am 16.09. OHNE
+        #    Versionsmarken geeicht — sie misst weiter Bremsen, nicht Versionsgeschichte.
+        _miss = [ph for ph, kw in checkpoints(_tf.name)
+                 if kw[0] not in _leb and not re.fullmatch(P_VERSION, ph)]
         os.unlink(_tf.name)
         if _miss:
             _fehl.append((_a[:60].replace("\n", " "), _miss[:3]))

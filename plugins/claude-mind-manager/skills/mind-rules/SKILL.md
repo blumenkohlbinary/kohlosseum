@@ -43,13 +43,16 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.145.0"
+MIND_SKILL_VERSION="5.146.0"
 mind_schritt_start "$PROJ" mind-rules bestandsaufnahme bestandszahlen_kandidaten cleaner_duplikate cleaner_stichprobe cleaner_tor ladeprotokoll_auswertung mind_kontext_bilanz mind_snapshot verdichten
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt <name> gelaufen              "$(wc -c < "$AUSGABE")" "$PROJ"
 mind_schritt <name> "gelaufen:5/11"       "$BYTES" "$PROJ"   # TEILABDECKUNG
 mind_schritt <name> "uebersprungen:<grund>" 0      "$PROJ"
@@ -104,6 +107,9 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt_bilanz "$PROJ"
 ```
 
@@ -451,6 +457,19 @@ After:
    ⚠ Dazu der Satz, was daran gemessen ist und was nicht — eine blosse Zahl
    verleitet zur naechsten Umschreibung.
 
+### ⛔ Pflichtschritt `cleaner_duplikate` — der Aufruf (NEU v5.146.0, Etappe 56 §3)
+
+Bis v5.145.0 stand dieser Schritt im Pflichtkasten und in der Startzeile, aber **nirgends als Aufruf** — erwartet, nie gelaufen. So entstand Noras `FEHLT: mind-rules/cleaner_duplikate` (Palvedo, 20.09.2026), und so wurden Schritte von Hand nachgeholt. Teil von `check`: steht eine Regel schon in einer anderen Ablage (Frage B1 des Kontext-Tors)?
+
+```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
+D="$PROJ/.claude-mind/schritt-mind-rules-duplikate.txt"
+python "$CLAUDE_PLUGIN_ROOT/references/cleaner_duplikate.py" --bereich "$PROJ" --nur projekt > "$D" 2>&1
+head -40 "$D"
+mind_schritt cleaner_duplikate gelaufen --datei "$D" "$PROJ"
+```
+
 ## ⛔ SUCHEN, BEVOR DU ERGAENZT (PFLICHT, NEU v5.20.0)
 
 **Eine Ergaenzung ohne Ruecknahme der alten Aussage ist ein WIDERSPRUCH, kein Update.**
@@ -691,6 +710,9 @@ der Spalte `Ordner` des Rosters mit (fehlt die Spalte: jeder direkte Unterordner
 `CLAUDE.md`) — das ist der Dauerkontext der Arbeiter-Sitzungen. Gemessen 14.09.2026 (Creator,
 Doro): sieben Unterordner, fuenf CLAUDE.md und 17 Rules, in keinem Bericht genannt.
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 UNTER_KONTEXT=$(mind_unterordner_kontext "$PROJ" 2>/dev/null)   # leer ohne Rollen-Aufbau
 ```
 Der Bericht nennt je Datei den Ordner (`<Ordner>/CLAUDE.md`, `<Ordner>/.claude/rules/<name>`).
@@ -772,6 +794,9 @@ Lies sie.** Hier nur, was für diesen Skill gilt:
 | ⛔ **Stufe 3** (v5.83.0) | der Wort-Diff wird GANZ gelesen, bevor angewendet wird. **Ohne Leser: nicht anwenden** — Ergebnis, Bericht, Diff ablegen, Pfad melden. Zwei Verfälschungen bei 100 % Stufe 1 gemessen (11.09.2026) |
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 # Kandidat: die groesste Rule, ohne rollen.md
 # ⛔ v5.138.0: was in DIESEM Kettenlauf schon verdichtet wurde, ist kein Kandidat.
 #    Die Zeile stand bis dahin NUR in mind-update, obwohl alle vier Traeger

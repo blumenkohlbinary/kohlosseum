@@ -48,13 +48,16 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.145.0"
+MIND_SKILL_VERSION="5.146.0"
 mind_schritt_start "$PROJ" mind-cleaner bestandsaufnahme cleaner_audit cleaner_einordnung cleaner_grenzen cleaner_leitplanke cleaner_ratsche cleaner_rebuild cleaner_tor cleaner_umzug cleaner_wirkung ladeprotokoll_auswertung mind_debug_write mind_snapshot
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt <name> gelaufen              "$(wc -c < "$AUSGABE")" "$PROJ"
 mind_schritt <name> "gelaufen:5/11"       "$BYTES" "$PROJ"   # TEILABDECKUNG
 mind_schritt <name> "uebersprungen:<grund>" 0      "$PROJ"
@@ -101,6 +104,9 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt_bilanz "$PROJ"
 ```
 
@@ -468,6 +474,21 @@ darin steht. `10.10.10.1 ZUERST, sonst ist das ein BEFUND` **ist** die Bremse.
 Bedeutungsfrage; mechanisch entscheidbar sind nur Formmerkmale. Die Liste sieht ein Mensch
 durch — genau wie beim COMMAND-Vorschlag aus Step 3.
 
+### ⛔ Pflichtschritt `mind_snapshot` — der Aufruf (NEU v5.146.0, Etappe 56 §3)
+
+Bis v5.145.0 stand dieser Schritt im Pflichtkasten und in der Startzeile, aber **nirgends als Aufruf** — erwartet, nie gelaufen. So entstand Noras `FEHLT: mind-rules/cleaner_duplikate` (Palvedo, 20.09.2026), und so wurden Schritte von Hand nachgeholt. Vor dem ersten Umzug, ohne Ausnahme — der Hard Constraint unten („NIE ohne Snapshot“) hatte bis hierher keinen Befehl. Das unbekannte Label sichert `~/.claude/` mit (FAIL-SAFE, `env-vars.md`).
+
+```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
+SNAPSHOT=$(mind_snapshot "$PROJ" "pre-cleaner") || {
+  echo "ABBRUCH: Snapshot fehlgeschlagen — nichts wird umgezogen." >&2; exit 1; }
+echo "Snapshot: $SNAPSHOT"
+A="$PROJ/.claude-mind/schritt-mind-cleaner-snapshot.txt"
+find "$SNAPSHOT" -type f > "$A" 2>/dev/null
+mind_schritt mind_snapshot gelaufen --datei "$A" "$PROJ"
+```
+
 ## Step 5: Umziehen — die Gates, alle müssen halten
 
 ⛔ **Hier stand „vier Gates", während die Tabelle darunter fünf führte** — falsch seit
@@ -612,6 +633,23 @@ Context-Commands fragen **vor** dem `ADD`, `--audit` fragt über den **Bestand**
 
 ⛔ **Nur vorwärts ließe den Altbestand stehen; nur rückwärts ist der Zustand von
 heute, der nachweislich wächst.** Beide Richtungen oder keine.
+
+### ⛔ Pflichtschritt `cleaner_tor` (rueckwaerts) — der Aufruf (NEU v5.146.0, Etappe 56 §3)
+
+Bis v5.145.0 stand dieser Schritt im Pflichtkasten und in der Startzeile, aber **nirgends als Aufruf** — erwartet, nie gelaufen. So entstand Noras `FEHLT: mind-rules/cleaner_duplikate` (Palvedo, 20.09.2026), und so wurden Schritte von Hand nachgeholt. `--audit` faehrt das Tor als Gruppe 6 mit; ohne `--audit` ist das hier sein Aufruf — je Kontextdatei des Projekts.
+
+```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
+A="$PROJ/.claude-mind/schritt-mind-cleaner-tor.txt"; : > "$A"
+for f in "$PROJ/CLAUDE.md" "$PROJ"/.claude/rules/*.md; do
+  [ -f "$f" ] || continue
+  python "$CLAUDE_PLUGIN_ROOT/references/cleaner_tor.py" --datei "$f" >> "$A" 2>&1
+done
+# ⛔ Das Tor nie ohne D1 (`test_d1_eingehaengt.sh`): WOHIN gehoert jede Aussage — derselbe Bestand.
+python "$CLAUDE_PLUGIN_ROOT/references/cleaner_einordnung.py" --wohin "$PROJ/CLAUDE.md" "$PROJ"/.claude/rules/*.md >> "$A" 2>&1
+mind_schritt cleaner_tor gelaufen --datei "$A" "$PROJ"
+```
 
 ### ⭐ Step 7b: Die Ratsche — damit aufgeräumt auch aufgeräumt BLEIBT (NEU v5.17.0)
 
@@ -798,6 +836,9 @@ Aufruf — mit Prüffall, und ohne Eintrag in `hooks.json`, bis der Prüffall gr
 ### ⛔ Step 8: Protokollieren — PFLICHT (NEU v5.21.0)
 
 ```bash
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_debug_write "$PROJ" "mind-cleaner" "$ABSCHNITT" "$BEFUNDE"
 ```
 
