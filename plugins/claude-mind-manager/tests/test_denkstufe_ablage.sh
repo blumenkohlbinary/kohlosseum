@@ -48,6 +48,19 @@ pruef "Datei liegt im Ablage-Ordner" \
   "$([ -f "$MIND_DENKSTUFE_DIR/messwerte.json" ] && echo ja || echo nein)" "ja"
 "$PY" "$W" --lesen >/dev/null 2>&1
 pruef "--lesen mit Ablage -> rc 0" "$?" "0"
+# ⛔ v5.144.0: „frisch" heisst HEUTE geholt — der Startbestand traegt sein echtes Datum
+#    (02.10.2026) und ist nach 14 Tagen zu Recht abgelaufen. Bis v5.143.0 prueften die Faelle
+#    unten gegen dieses feste Datum: ab dem 16.10. rot, ohne Codeaenderung (Release 5.143.0).
+setze_alter() {  # $1 = Tage vor heute
+  "$PY" - "$MIND_DENKSTUFE_DIR/messwerte.json" "$1" <<'PYEOF'
+import datetime, io, json, sys
+p, tage = sys.argv[1], int(sys.argv[2])
+d = json.loads(io.open(p, encoding="utf-8").read())
+d["geholt_am"] = (datetime.date.today() - datetime.timedelta(days=tage)).isoformat()
+io.open(p, "w", encoding="utf-8", newline="\n").write(json.dumps(d, indent=2))
+PYEOF
+}
+setze_alter 0
 "$PY" "$W" --alter >/dev/null 2>&1
 pruef "--alter frisch -> rc 0" "$?" "0"
 
@@ -64,13 +77,7 @@ pruef "kein aufgaben/ im Projektordner" \
 
 # --- 4 · der Regler fuer das Verfallsalter traegt wirklich -------------------
 # ⛔ Ein Regler, den niemand gegen BEIDE Richtungen prueft, ist eine Zierde.
-"$PY" - "$MIND_DENKSTUFE_DIR/messwerte.json" <<'PYEOF'
-import io, json, sys
-p = sys.argv[1]
-d = json.loads(io.open(p, encoding="utf-8").read())
-d["geholt_am"] = "2026-09-25"          # 7 Tage vor dem 02.10.2026
-io.open(p, "w", encoding="utf-8", newline="\n").write(json.dumps(d, indent=2))
-PYEOF
+setze_alter 7
 MIND_DENKSTUFE_STALE_DAYS=30 "$PY" "$W" --alter >/dev/null 2>&1
 pruef "7 Tage alt, Grenze 30 -> frisch (rc 0)" "$?" "0"
 MIND_DENKSTUFE_STALE_DAYS=3 "$PY" "$W" --alter >/dev/null 2>&1

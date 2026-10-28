@@ -465,6 +465,13 @@ def tu_selbsttest():
 
         print("5/7  Alter und Ablauf")
         os.environ["MIND_DENKSTUFE_STALE_DAYS"] = "14"
+        # ⛔ v5.144.0: „frisch" heisst HEUTE geholt. Bis v5.143.0 stand hier der Startbestand
+        #    mit seinem festen Datum 2026-10-02 — eine Zeitbombe: ab dem 16.10. war der Fall rot,
+        #    ohne dass sich am Code etwas geaendert hatte (gemessen am Release 5.143.0, 28.10.).
+        #    Das Datum des Startbestands bleibt richtig: die Zahlen WURDEN am 02.10. geholt.
+        d = _lesen_json(os.path.join(t, "messwerte.json")) or {}
+        d["geholt_am"] = time.strftime("%Y-%m-%d")
+        _schreiben_json(os.path.join(t, "messwerte.json"), d)
         pruef("frisch -> rc 0", tu_alter(), 0)
         d = _lesen_json(os.path.join(t, "messwerte.json")) or {}
         d["geholt_am"] = "2020-01-01"

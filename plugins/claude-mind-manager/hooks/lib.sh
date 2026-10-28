@@ -3752,6 +3752,24 @@ mind_lauf_sperre() {
   case "$ts" in ''|*[!0-9]*) ts=0 ;; esac
   alter=$(( $(date +%s) - ts ))
 
+  # ⭐ v5.144.0 (Etappe 56 §1): ein Lock der EIGENEN Sitzung ist ein liegengebliebener —
+  #    eine Sitzung faehrt ihre Turns nacheinander, nie zwei Laeufe zugleich. Seit der Lock
+  #    ueber die Bloecke haelt (vorher verschwand er nach Block 1), wuerde sich eine Sitzung
+  #    nach einem abgebrochenen Lauf sonst zwei Stunden selbst aussperren.
+  #    ⛔ Nur bei POSITIVEM Treffer: beide Kennungen bekannt und gleich. `unbekannt` gegen
+  #    `unbekannt` ist kein Treffer — sonst nimmt jede kennungslose Sitzung jeder anderen
+  #    die Sperre weg.
+  if [ -n "$sid" ] && [ "$sid" != "unbekannt" ] && [ "${asid:-}" = "$sid" ]; then
+    rm -rf "$lock" 2>/dev/null
+    if mkdir "$lock" 2>/dev/null; then
+      printf '%s' "$lauf" > "$lock/lauf" 2>/dev/null
+      date +%s            > "$lock/ts"   2>/dev/null
+      printf '%s' "$sid"  > "$lock/sid"  2>/dev/null
+      mind_log WARN "mind-all.lock der eigenen Sitzung uebernommen (alter Lauf ${alt:-?}, Alter ${alter}s, Sitzung $sid)" 2>/dev/null
+      return 0
+    fi
+  fi
+
   if [ "$ts" -gt 0 ] 2>/dev/null && [ "$alter" -lt "$MIND_LAUF_LOCK_MAXAGE" ] 2>/dev/null; then
     printf 'ABBRUCH: /mind-all laeuft bereits in diesem Ordner (Lauf %s, Sitzung %s, seit %d min).\n' \
       "${alt:-?}" "${asid:-unbekannt}" "$(( alter / 60 ))"
@@ -3767,6 +3785,9 @@ mind_lauf_sperre() {
   if mkdir "$lock" 2>/dev/null; then
     printf '%s' "$lauf" > "$lock/lauf" 2>/dev/null
     date +%s            > "$lock/ts"   2>/dev/null
+    # ⛔ v5.144.0: die Sitzung auch hier — bis v5.143.0 fehlte sie nur in diesem Zweig, und
+    #    die Abweisung danach nannte „Sitzung unbekannt" (die v5.59.0-Luecke, ein Zweig weiter).
+    printf '%s' "${sid:-unbekannt}" > "$lock/sid" 2>/dev/null
     mind_log WARN "mind-all.lock war verwaist (Lauf ${alt:-?}, Alter ${alter}s) — uebernommen" 2>/dev/null
     return 0
   fi

@@ -52,7 +52,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.143.0"
+MIND_SKILL_VERSION="5.144.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 # ⛔ v5.98.0: die fuenf Skills sind KEINE Schritte von mind-all — jeder hat seinen EIGENEN
 #    Start-Block (Step 2, Punkt 1). Bis v5.97.0 standen sie hier, Ritas Kalibrierlauf hakte
@@ -221,7 +221,17 @@ if ! _SPERRE=$(mind_lauf_sperre "$PROJ" "$LAUF" "$MIND_SID"); then
   exit 0    # ⛔ 0, NICHT 1 — kein Fehler, sondern die richtige Antwort.
             #   Ein Rueckgabewert 1 saehe im Log wie ein kaputter Lauf aus.
 fi
-trap 'mind_lauf_frei "$PROJ" "$LAUF"' EXIT
+# ⛔ v5.144.0 (Etappe 56 §1, CK3 18.10.2026): NUR beim ABBRUCH DIESES Blocks freigeben.
+#    Jeder Code-Block ist ein EIGENER Bash-Aufruf — ein `trap … EXIT` feuert am Ende DIESES
+#    Blocks, nicht am Ende des Laufs. Bis v5.143.0 stand hier ein unbedingter trap; gemessen
+#    28.10.2026: im naechsten Aufruf war der Lock WEG. Er schuetzte nichts — weder die
+#    Abweisung eines zweiten Laufs noch „liegt der Lock, aendert der Arbeiter keine
+#    Dauerkontext-Datei" — und die Identitaetspruefung aus v5.140.0 (Kopf-Lauf gegen
+#    Lock-Lauf) lief in jedem echten Lauf in ihren Ohne-Lock-Zweig.
+#    Freigegeben wird im Schlussblock (Step 2.9). Ein Lauf, der danach abbricht, laesst
+#    den Lock liegen: dieselbe Sitzung uebernimmt ihn sofort, eine fremde nach
+#    MIND_LAUF_LOCK_MAXAGE (2 h) — `mind_lauf_sperre`.
+trap '_mind_rc=$?; [ "$_mind_rc" -ne 0 ] && mind_lauf_frei "$PROJ" "$LAUF"' EXIT
 
 # ⛔ v5.139.0: hier stand `if [ "$DRY_RUN" = "no" ]`. Der Probelauf ist entfallen, also laeuft der Block IMMER — die Bedingung ist nicht wahr-gesetzt, sondern WEG.
 SNAPSHOT=$(mind_snapshot "$PROJ" "pre-mind-all") || {
@@ -596,6 +606,16 @@ nicht killen — sonst bleibt der Context halb aktualisiert zurueck.
 **Direkt nach dem letzten Skill, VOR dem Bericht:**
 
 ```bash
+# ⛔ v5.144.0 (Etappe 56 §1): DIESER BLOCK IST SELBSTTRAGEND. Er ist ein eigener Bash-Aufruf —
+#    `$PROJ`, `$SCOPES_FILE`, `$LAUF` und `mind_lauf_frei` aus Step 0 kommen hier NICHT an.
+#    Bis v5.143.0 war das gleichgueltig, weil der trap aus Step 0 den Lock schon nach dem
+#    ersten Block entfernt hatte. Seit er haelt, ist dies die EINZIGE Freigabe im Normalweg.
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
+SCOPES_FILE="${SCOPES_FILE:-$PROJ/.claude-mind/analyzed-scopes}"
+# ⚠ Die eigene Lauf-ID aus der Kopfzeile dieses Laufs — `mind_lauf_frei` gibt nur frei, wenn
+#   der Lock DIESE ID traegt; einem fremden Lauf wird nichts weggeraeumt.
+LAUF="${LAUF:-$(mind_kopf_lauf "$PROJ" 2>/dev/null)}"
 [ -f "$SCOPES_FILE" ] && mv -f "$SCOPES_FILE" "${SCOPES_FILE}.done" 2>/dev/null
 # ⛔ v5.30.0: Sperre freigeben — NUR die eigene. `mind_lauf_frei` prueft die
 #    Kennung; ein abbrechender Zweitlauf raeumt dem Erstlauf nichts weg.

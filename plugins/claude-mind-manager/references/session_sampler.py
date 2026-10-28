@@ -491,7 +491,7 @@ def main(argv):
             if self_re.search(line):
                 exclude_from = lineno
 
-    events, total = [], 0
+    events, menschlich, total = [], [], 0
     with open(jsonl_path, encoding='utf-8', errors='replace') as f:
         for lineno, line in enumerate(f, 1):
             if exclude_from and lineno >= exclude_from:
@@ -518,6 +518,20 @@ def main(argv):
             score = sum(1 for p in RELEVANT_PATTERNS if p.search(text))
             if role == "USER":
                 score *= USER_WEIGHT
+            # ⛔ v5.144.0 (56 §4, Antons Vorgabe 28.10.2026): JEDER MENSCHLICHE BEITRAG BLEIBT.
+            #    Gemessen an den 25 groessten Transkripten aller Projekte: von 3 314 menschlichen
+            #    Beitraegen kamen 672 (20 %) im Auszug an, 74 % fielen schon hier heraus, weil
+            #    kein Relevanzmuster passte — darunter „ja bau um und teste auf der workstation"
+            #    und „123 MB ist zu groß". Eine kurze Korrektur ist genau das, was ein Sync am
+            #    wenigsten verlieren darf, und sie ist billig.
+            #    Die Relevanzauswahl gilt seither nur fuer Assistent und System.
+            # ⚠ Menschlich = Nutzertext, der nicht mit `<` beginnt (keine task-notification,
+            #   command-*, cross-session-message, system-reminder) und nicht `isMeta` ist.
+            mensch = (role == "USER" and not text.lstrip().startswith("<")
+                      and not obj.get('isMeta'))
+            if mensch:
+                menschlich.append((lineno, role, text[:500], score, obj.get('timestamp', '')))
+                continue
             if score > 0:
                 # ⛔ v5.143.0 (56 §4): mit Zeitstempel. Ohne ihn konnte ein Agent nicht sehen,
                 #    welche Beitraege NACH dem letzten Sync kamen (CK3, gemeldet als
@@ -535,10 +549,14 @@ def main(argv):
             bucket.sort(key=lambda x: -x[3])
             selected.extend(bucket[:60])
         events = selected
+    # Die menschlichen Beitraege konkurrieren NICHT um die 5 x 60 Plaetze — sie kommen dazu,
+    # in Transkript-Reihenfolge eingereiht.
+    events = sorted(events + menschlich, key=lambda x: x[0])
 
     out = {
         "total_events": total,
         "filtered_events": len(events),
+        "menschlich_behalten": len(menschlich),
         "long_session_hint": total > 1000,
         "self_exclusion_line": exclude_from,
         "user_weight": USER_WEIGHT,
