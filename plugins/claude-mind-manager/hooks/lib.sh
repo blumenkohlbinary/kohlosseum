@@ -4669,6 +4669,58 @@ mind_rettungen_ungelesen() {
   return 0
 }
 
+# --- mind_rettungen_nachtragen: was die Ratsche als ungelesen fuehrt, OPEN aber nicht nennt ---
+#
+# Aufruf:  mind_rettungen_nachtragen <projekt>
+#   -> traegt jede solche Rettung in OPEN nach (grund=nachgetragen) und MELDET sie.
+#   rc 0 immer (ein Netz bricht keinen Lauf ab), rc 2 nur bei fehlendem Argument.
+#
+# ⛔ v5.143.0 (Etappe 53 §2) — WARUM ES DAS GIBT: am 01.10.2026 entstand in Palvedo eine volle
+#    Rettung (5 090 Beitraege) ohne Eintrag in OPEN. `/mind-all` synct, was OPEN nennt — sie
+#    waere NIE eingespeist worden. Gefunden hat es nur Noras Gegenzaehlung VON HAND:
+#    `mind_rettungen` (liest OPEN) sagte 2, `mind_rettungen_ungelesen` (liest die Zeitstempel)
+#    sagte 3. Dieses Netz macht die Gegenzaehlung bei jedem Lauf selbst.
+# ⭐ UNABHAENGIG VON DER URSACHE. Die eine Ursache vom 01.10. ist behoben (fremder Sync,
+#    `pre-compact.sh`); das Netz faengt auch die, die noch niemand gefunden hat.
+#
+# ⛔ VERGLICHEN WIRD DER DATEINAME, NICHT DER PFAD. `pre-compact.sh` schreibt den Pfad, wie der
+#    Hook ihn bildete; die Ratsche bildet ihn neu aus `$proj`. Dieselbe Datei kann so zwei
+#    Schreibweisen haben (`/c/CD/...` gegen `C:/CD/...`) — ein Pfadvergleich trueg dann JEDE
+#    Rettung doppelt ein. Der Name traegt Zeit, Sub-Sekunden und Sitzungskennung und ist
+#    damit eindeutig.
+# ⛔ NUR ANHAENGEN, NIE ENTFERNEN. Idempotent: beim naechsten Lauf steht der Name in OPEN.
+# ⚠ Ohne `letzter-sync` ist die Gegenzaehlung blind — das wird GEMELDET, nicht verschwiegen.
+#   Abwesenheit von Wissen ist kein Unschuldsbeweis (Etappe 51).
+mind_rettungen_nachtragen() {
+  local proj="${1:-}" open ungelesen bekannt f base r n=0
+  [ -n "$proj" ] || return 2
+  open="$proj/.claude-mind/rescued/OPEN"
+  if ! ungelesen=$(mind_rettungen_ungelesen "$proj" 2>/dev/null); then
+    echo "⚠ Rettungs-Nachtrag NICHT PRUEFBAR: kein letzter-sync — die Gegenzaehlung braucht ihn" >&2
+    mind_log WARN "mind_rettungen_nachtragen: kein letzter-sync, Gegenzaehlung blind"
+    return 0
+  fi
+  bekannt=""
+  [ -f "$open" ] && bekannt=$(grep '^path=' "$open" 2>/dev/null | sed 's#.*/##')
+  while IFS= read -r f; do
+    [ -n "$f" ] && [ -f "$f" ] || continue
+    base="${f##*/}"
+    printf '%s\n' "$bekannt" | grep -qxF "$base" && continue
+    r="${f%_chat.md}_RESUME.md"
+    {
+      echo "path=$f"
+      [ -f "$r" ] && echo "resume=$r"
+      echo "ts=${base%_chat.md}"
+      echo "grund=nachgetragen"
+    } >> "$open"
+    n=$((n + 1))
+    echo "⚠ NACHGETRAGEN: $base stand in keiner Zeile von OPEN, die Ratsche fuehrt sie als ungelesen"
+    mind_log WARN "mind_rettungen_nachtragen: $base nachgetragen (fehlte in OPEN)"
+  done <<< "$ungelesen"
+  [ "$n" -gt 0 ] && echo "⚠ $n Rettung(en) nachgetragen — ohne dieses Netz waeren sie nie eingespeist worden"
+  return 0
+}
+
 
 # =============================================================================
 # mind_rettung_nach_sync — traegt diese Rettung Beitraege NACH dem letzten Sync? (v5.88.0)

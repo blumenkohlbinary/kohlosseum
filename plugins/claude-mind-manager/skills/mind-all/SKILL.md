@@ -52,7 +52,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.142.0"
+MIND_SKILL_VERSION="5.143.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 # ⛔ v5.98.0: die fuenf Skills sind KEINE Schritte von mind-all — jeder hat seinen EIGENEN
 #    Start-Block (Step 2, Punkt 1). Bis v5.97.0 standen sie hier, Ritas Kalibrierlauf hakte
@@ -355,6 +355,17 @@ fi
 **Geretteter Chat (v5.1.0) + offene Schuld (v5.2.1):** Existiert `.claude-mind/rescued/OPEN`,
 steht ein Sync aus. `OPEN` nennt die Rettungsdatei und den gesicherten Auftrag.
 ```bash
+# ⛔ v5.143.0 (Etappe 53 §2) — DAS NETZ, unabhaengig von der Ursache: was die
+#    Rotations-Ratsche als UNGELESEN fuehrt, `OPEN` aber nicht nennt, wird hier
+#    EINGESPEIST und GEMELDET. Gefunden hat die Luecke vom 01.10. nur Noras Gegenzaehlung
+#    von Hand — jetzt macht es der Skill selbst, damit niemand mehr flicken muss.
+# ⚠ Dieser Block ist ein EIGENER Bash-Aufruf (gemessen Etappe 51). Er laedt lib.sh
+#   deshalb selbst — sonst waeren `mind_rettungen` darunter und das Netz hier
+#   unbekannte Befehle und `$PROJ` leer. 52 von 81 Bloecken in allen Skills verlassen
+#   sich darauf, dass ein frueherer Block es tat (gemessen 28.10.2026, eigener Befund).
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel)}"
+mind_rettungen_nachtragen "$PROJ"
 OPEN="$PROJ/.claude-mind/rescued/OPEN"
 RESCUED_ALL=""; RESUME_FILE=""; COMPACTIONS=""
 if [ -f "$OPEN" ]; then
@@ -961,8 +972,12 @@ if [ "$SYNC_LIEF" = "ja" ]; then
   #    `ungepruef=` sagt WAS fehlt. Ohne beide sieht ein Teilsync im Merker aus
   #    wie ein Vollsync — und `pre-compact.sh` loescht dann die Schuld fuer
   #    Arbeit, die nie stattgefunden hat.
-  printf 'ts=%s\numfang=%s\nungepruef=%s\n' \
-    "$(date '+%Y-%m-%d %H:%M:%S')" "$UMFANG" "$UNGEPRUEFT" \
+  # ⛔ v5.143.0 (Etappe 53 §1): `sid=` sagt, WESSEN Verlauf dieser Sync gelesen hat.
+  #    Ein Sync liest seinen eigenen laufenden Verlauf und die eingetragenen Rettungen —
+  #    NICHT den laufenden Verlauf einer anderen Sitzung. Ohne diese Zeile hielt jede
+  #    Sitzung den Merker fuer ihren eigenen (Palvedo 01.10.2026, 5 090 Beitraege verloren).
+  printf 'ts=%s\numfang=%s\nungepruef=%s\nsid=%s\n' \
+    "$(date '+%Y-%m-%d %H:%M:%S')" "$UMFANG" "$UNGEPRUEFT" "${CLAUDE_CODE_SESSION_ID:-unbekannt}" \
     > "$PROJ/.claude-mind/rescued/sync-stand"
   # ⛔ v5.113.0 (Etappe 20 §4a): das Urteil IST mind_sync_voll auf dem GERADE geschriebenen
   #    Merker — nicht die Zaehler oben. Noras Lauf 10 (16.09. 17:00): `ungepruef=abdeckung-…`,

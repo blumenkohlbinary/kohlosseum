@@ -92,7 +92,16 @@ def dump_full(jsonl_path, out_path, cwd=None):
            "",
            f"- Quelle: `{jsonl_path}`",
            f"- Beitraege: {len(rows)}  ({n_user} USER / {n_asst} ASSISTANT)",
-           f"- Gerettet: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+           # ⛔ v5.143.0 (Etappe 53 §3): ZWEI UHREN, beide BENANNT. Gemessen 28.10.2026 an drei
+           #    Rettungen aus Palvedo: der Inhalt traegt UTC (`...Z`), Dateiname und diese
+           #    Zeile Ortszeit. Ein Mensch und vier Agenten haben beides verglichen und eine
+           #    „Zwei-Stunden-Luecke" gefunden, die es nicht gab — echt waren 34 s bis 2,5 min.
+           f"- Gerettet: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Ortszeit"
+           f" = {datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')} UTC",
+           "- ⚠ Zeitstempel der Beitraege unten: UTC (Endung `Z`). Dateiname und "
+           "„Gerettet\" stehen in Ortszeit — vor einem Vergleich in EINE Zeitzone umrechnen.",
+           (f"- Erster Beitrag: {rows[0][2]} UTC · letzter Beitrag: {rows[-1][2]} UTC"
+            if rows and rows[0][2] and rows[-1][2] else "- Erster/letzter Beitrag: (ohne Zeitstempel)"),
            # v5.81.0: aus welchem Ordner die Sitzung kam. Im Unterordner-Aufbau liegt
            # die Rettung in der WURZEL, das Memory gehoert aber zum cwd — ohne diese
            # Zeile wuesste der Sync-Chat nicht, in welchen Slug er schreiben soll.
@@ -510,7 +519,10 @@ def main(argv):
             if role == "USER":
                 score *= USER_WEIGHT
             if score > 0:
-                events.append((lineno, role, text[:500], score))
+                # ⛔ v5.143.0 (56 §4): mit Zeitstempel. Ohne ihn konnte ein Agent nicht sehen,
+                #    welche Beitraege NACH dem letzten Sync kamen (CK3, gemeldet als
+                #    „Auszug ohne Zeitstempel, Nutzerbeitraege seit letztem Sync nicht auffindbar").
+                events.append((lineno, role, text[:500], score, obj.get('timestamp', '')))
 
     # Stage 2: stratifiziert, damit die Mitte langer Sessions nicht verloren geht
     if len(events) > 300:
@@ -530,7 +542,8 @@ def main(argv):
         "long_session_hint": total > 1000,
         "self_exclusion_line": exclude_from,
         "user_weight": USER_WEIGHT,
-        "sample": [{"line": l, "role": r, "text": t} for (l, r, t, _) in events],
+        # `ts` in UTC wie im Transkript (Endung `Z`) — dieselbe Uhr wie `utc=` in letzter-sync.
+        "sample": [{"line": l, "role": r, "ts": ts, "text": t} for (l, r, t, _, ts) in events],
     }
     Path(out_path).write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding='utf-8')
     print(f"OK: {total} total -> {len(events)} sampled")

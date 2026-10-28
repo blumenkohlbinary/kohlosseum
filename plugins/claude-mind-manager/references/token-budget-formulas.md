@@ -79,7 +79,8 @@ Kompaktierung hinterher auf.
 
 **Die 50 000 Kopffreiheit sind knapp und bewusst so.** Kostet der Sync 60k, wird die Schwelle
 waehrend des Laufs ueberschritten — das ist kein Fehler, sondern die gewollte Reihenfolge.
-`pre-compact.sh` erzeugt dann dank `sync-stand` **keine** neue Schuld.
+`pre-compact.sh` erzeugt dann dank `sync-stand` **keine** neue Schuld — ⛔ seit v5.143.0 nur fuer die
+Sitzung, die gesynct hat (`sid=`); kompaktiert eine andere, entsteht `grund=fremder-sync`.
 
 ⛔ **Ausloesen laesst sich eine Kompaktierung nicht.** Drei unabhaengige Belege: die Hook-Doku
 (PreCompact kann nur *verhindern*), die Werkzeugliste (`/compact` ist CLI-Befehl, kein Skill)

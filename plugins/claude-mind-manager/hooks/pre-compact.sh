@@ -151,7 +151,23 @@ if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
       #    (23.08. + 24.08. hier, 24.08. im Projekt Creator, 2 von 4 Agents bei 888k);
       #    jedes Mal verschwand der ungepruefte Bereich spurlos.
       SYNC_LIEF_SCHON="nein"; TEIL_UNGEPRUEFT=""
-      if [ -f "$RESCUE_DIR/sync-stand" ]; then
+      # ⛔ v5.143.0 (Etappe 53 §1) — DER FREMDE SYNC. Gemessen 01.10.2026 in Palvedo:
+      #    Noras voller Sync schrieb `sync-stand`, Kalles Sitzung kompaktierte 12 Minuten
+      #    spaeter, fand NORAS Merker und legte KEINE Schuld an — obwohl Noras Sync
+      #    Kalles laufenden Verlauf nie gelesen hatte. 5 090 Beitraege, nie eingespeist.
+      #    Die Klasse aus hooks.md zum NEUNTEN Mal: der Merker liegt je PROJEKT und meint
+      #    EINE Sitzung.
+      # ⭐ Nur ein POSITIVER Nichttreffer aendert das Verhalten: beide Kennungen bekannt
+      #    und verschieden. Fehlt eine, bleibt es wie bis v5.142.0 (Fail-safe wie beim
+      #    Rollen-Gate). Ein fremder Merker wird NICHT verbraucht — er gehoert seinem Sync.
+      _SS_SID=""
+      [ -f "$RESCUE_DIR/sync-stand" ] && _SS_SID=$(grep -m1 '^sid=' "$RESCUE_DIR/sync-stand" 2>/dev/null \
+        | cut -d= -f2- | tr -d '[:space:]')
+      if [ -f "$RESCUE_DIR/sync-stand" ] && [ -n "$_SS_SID" ] && [ "$_SS_SID" != "unbekannt" ] \
+         && [ -n "${SESSION_ID:-}" ] && [ "$_SS_SID" != "$SESSION_ID" ]; then
+        SYNC_LIEF_SCHON="fremd"
+        mind_log WARN "sync-stand gehoert Sitzung ${_SS_SID:0:8}, kompaktiert wird ${SESSION_ID:0:8} -> Schuld entsteht (grund=fremder-sync), Merker bleibt liegen"
+      elif [ -f "$RESCUE_DIR/sync-stand" ]; then
         # ⛔ v5.113.1: rc 3 ist ein AUFRUFFEHLER (Pfad falsch), kein Teilsync — er wird
         #    gemeldet und erzeugt Schuld mit grund=aufruffehler, nie „teil" mit ungepruef=.
         mind_sync_voll "$RESCUE_DIR/sync-stand"; _SV_RC=$?
@@ -295,6 +311,10 @@ if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
             echo "grund=nach-sync"
           elif [ "$SYNC_LIEF_SCHON" = "aufruffehler" ]; then
             echo "grund=aufruffehler"
+          elif [ "$SYNC_LIEF_SCHON" = "fremd" ]; then
+            # v5.143.0: der Sync, der vorher lief, war der einer ANDEREN Sitzung.
+            echo "grund=fremder-sync"
+            echo "sync_sid=${_SS_SID:-unbekannt}"
           fi
         } >> "$RESCUE_DIR/OPEN" 2>/dev/null
         # Neue Rettung -> in JEDER Sitzung neu ankuendigen, Notausgang-Zaehler auf 0
