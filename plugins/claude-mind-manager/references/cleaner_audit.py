@@ -377,7 +377,8 @@ def lauf(projekt, nur="alles", doku=None):
 
     idx = bel.debug_pfad(projekt)
     gruppen = {"5a": [], "5b": [], "1": [], "2": [], "3": [], "4": [],
-               "6": [], "7": [], "8": [], "9": []}   # 9 = unantastbar, nur Meldung (v5.117.0)
+               "6": [], "7": [], "8": [], "9": [],    # 9 = unantastbar, nur Meldung (v5.117.0)
+               "3v": []}   # 3v = ZAHLENDRIFT-Verdacht, nur Meldung, KEIN Plan-Eintrag (v5.148.0)
     # v5.111.0: Gruppe 7 Skills-Bestand (global; Plugin-Skills nur gemeldet), Gruppe 8 tote Regler
     if nur in ("alles", "global"):
         _plugins = []
@@ -506,7 +507,11 @@ def lauf(projekt, nur="alles", doku=None):
                     _m = "`%s` — %s ↔ %s" % (m,
                                              dup.fundstelle(pa, text[pa], m, projekt, tot=_a_tot),
                                              dup.fundstelle(pb, text[pb], m, projekt, tot=not _a_tot))
-                    gruppen["3"].append((_m, "⛔ ZAHLENDRIFT: %s + %s — %s" % (na, nb, g)))
+                    # ⛔ v5.148.0 (Antons Entscheidung 28.10.2026): NICHT mehr in Gruppe 3 — von dort macht
+                    #    cleaner_plan.py einen ZEIGER-Eintrag, und ein Plan-Eintrag aus einem Instrument mit
+                    #    gemessen 0 von 14 echten Treffern ist ein Arbeitsauftrag ohne Grund. Die Fundstellen
+                    #    bleiben im BERICHT (Gruppe 3v), damit ein Mensch hinsehen kann.
+                    gruppen["3v"].append((_m, "⚠ ZAHLENDRIFT-VERDACHT: %s + %s — %s" % (na, nb, g)))
 
     # --- Bericht ----------------------------------------------------------
     print("=" * 88)
@@ -571,6 +576,15 @@ def lauf(projekt, nur="alles", doku=None):
             print("       … %d weitere NICHT gezeigt (Bericht sonst unlesbar) —"
                   % (len(gruppen[nr]) - 40))
             print("         sie sind NICHT erledigt, nur nicht abgedruckt.")
+
+    if gruppen["3v"]:
+        print()
+        print("  3v · ZAHLENDRIFT-VERDACHT — nur Meldung, KEIN Plan-Eintrag (%d)" % len(gruppen["3v"]))
+        print("       ⚠ gemessen 0 von 14 echt (28.10.2026) — meist gehoert die Zahl zu einer Nachbaraussage")
+        for a, b in gruppen["3v"][:40]:
+            print("       %s" % str(a)[:200])
+        if len(gruppen["3v"]) > 40:
+            print("       … %d weitere NICHT gezeigt" % (len(gruppen["3v"]) - 40))
 
     if gruppen["6"]:
         print()

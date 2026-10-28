@@ -48,7 +48,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.147.0"
+MIND_SKILL_VERSION="5.148.0"
 mind_schritt_start "$PROJ" mind-cleaner bestandsaufnahme cleaner_audit cleaner_einordnung cleaner_grenzen cleaner_leitplanke cleaner_ratsche cleaner_rebuild cleaner_tor cleaner_umzug cleaner_wirkung ladeprotokoll_auswertung mind_debug_write mind_snapshot
 ```
 
@@ -182,7 +182,8 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_audit.py" --bereich "$PROJ"   # P
 - ⛔ **v5.120.0 (Etappe 29, Ottos Plan-Lektuere Zustellplan 17.09.2026), fuenf Befunde:**
   **(1)** eine `ZAHLENDRIFT`-Zeile traegt BEIDE Fundstellen `<datei>:<zeile> „<satz>"` ↔ `<datei>:<zeile> „<satz>"`
   (Satz auf 120 Zeichen gekuerzt), im Plan UND in der Anlage — Otto liess 14 Zeilen liegen, weil nur Marke und
-  Zahlen dastanden. **(2)** eine Marke ohne Buchstaben oder Ziffer (`. **` aus der Backtick-Paarung ueber zwei
+  Zahlen dastanden. ⛔ **Seit v5.148.0 NICHT mehr im Plan**, nur im Bericht (Gruppe 3v, ⚠ Verdacht): gemessen
+  0 von 14 echt (Antons Entscheidung 28.10.2026). **(2)** eine Marke ohne Buchstaben oder Ziffer (`. **` aus der Backtick-Paarung ueber zwei
   Spans) zaehlt nirgends: `cleaner_duplikate.marken`, `cleaner_umzug.marken`, `coverage_gate.checkpoints`
   (Verdichten-Gate, Umzug, Duplikate — eine Regel, alle Zaehler). **(3)** Plan-Zeile 1 ist „offen" wie alle —
   Prueffall; am Plan 0034 nicht reproduzierbar (die Datei trug „offen", `lies_plan` liest es).
@@ -241,7 +242,8 @@ Er fährt **alle sechs Werkzeuge** und legt fünf Gruppen vor — **Gruppe 5 zue
 5b  GRUNDSAETZLICH NICHT LOGGBAR        ⭐ der Kern, nicht der Rest
 1   belegt noetig                       bleibt, wo es ist
 2   falsch platziert                    Ort A -> Ort B, mit Zielpfad
-3   doppelt                             eine Stelle wird Zeiger — nur echte Inhalts-Dopplung (gemeinsamer Satz) oder ZAHLENDRIFT; blosse Nennung derselben Datei/Marke zaehlt als Zahl (v5.129.0)
+3   doppelt                             eine Stelle wird Zeiger — nur echte Inhalts-Dopplung (gemeinsamer Satz); blosse Nennung derselben Datei/Marke zaehlt als Zahl (v5.129.0)
+3v  ZAHLENDRIFT-VERDACHT (v5.148.0)     ⚠ nur Meldung, KEIN Plan-Eintrag — gemessen 0 von 14 echt; beide Fundstellen stehen im Bericht
 4   belegt veraltet                     ins Archiv, mit Beleg
 7   SKILLS-BESTAND (v5.111.0)           BLEIBT · ZU LANG · ZU WEICH · OHNE ZEIGER · TOT-VERDACHT · ZURUECK IN RULE · DOPPELT
 8   TOTE REGLER (v5.111.0)              MIND_*-Variablen in settings.json ohne Leser — nur melden

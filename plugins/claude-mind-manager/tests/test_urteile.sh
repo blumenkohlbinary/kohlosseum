@@ -110,7 +110,7 @@ printf -- '---\ndescription: y\n---\n# R\n\n`MIND_SYNC_AT_TOKENS` wurde am 19.08
   > "$T/ruhig/.claude/rules/regler.md"
 AUS=$(python "$D" --bereich "$T/ruhig" --nur projekt 2>&1)
 pruefe "verschiedene DATEN sind keine Drift" \
-       "$(printf '%s' "$AUS" | grep -c '⛔ zahlendrift    0')" "1"
+       "$(printf '%s' "$AUS" | grep -c '⚠ zahlendrift    0')" "1"   # v5.148.0: ⛔ -> ⚠ (herabgestuft), Zusicherung gleich
 
 echo
 echo "=============================================================================="

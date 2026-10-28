@@ -98,6 +98,9 @@ def zeilen_aus_gruppen(gruppen, projekt):
     for a, b in gruppen.get("3", []):
         paare.setdefault(str(b), []).append(str(a))
     for k, (b, marken) in enumerate(sorted(paare.items()), 1):
+        # ⚠ v5.148.0: seit ZAHLENDRIFT nicht mehr in Gruppe 3 landet (cleaner_audit, Gruppe 3v, 0 von 14
+        #   echt), ist dieser Zweig fuer frische Audits UNERREICHBAR. Er bleibt fuer Gruppen, die ein
+        #   aelterer Audit-Lauf geliefert hat — loeschen, sobald kein Aufrufer sie mehr reicht.
         if b.startswith("⛔ ZAHLENDRIFT"):
             # v5.120.0 (Etappe 29 §1): die Drift-Zeile traegt beide Fundstellen IM PLAN —
             # <datei>:<zeile> „satz" ↔ <datei>:<zeile> „satz" (die Marke aus dem Audit)

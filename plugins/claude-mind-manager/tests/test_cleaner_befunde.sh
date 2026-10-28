@@ -342,11 +342,16 @@ printf '# P\n\n`MIND_ALT_X` ist seit v5.9.3 entfallen und wird nicht mehr gelese
 printf -- '---\ndescription: a\n---\n# A\n\n`MIND_ALT_X` gilt weiter, Vorgabe 940000 Tokens.\n' > "$P/proj/.claude/rules/a.md"
 PL="$P/proj/.claude-mind/plan.md"
 MIND_DEBUG_DIR= $PY "$(w "$REF/cleaner_plan.py")" --neu "$(w "$P/proj")" --nur projekt --plan "$(w "$PL")" >/dev/null 2>&1
-_Z=$(grep -m1 'ZAHLENDRIFT' "$PL" 2>/dev/null)
-janein "§1 Plan hat eine ZAHLENDRIFT-Zeile" ja "$([ -n "$_Z" ] && echo ja || echo nein)"
+# ⛔ v5.148.0 (Antons Entscheidung 28.10.2026): ZAHLENDRIFT macht KEINEN Plan-Eintrag mehr — gemessen
+#    0 von 14 echt. Die Zusicherung „beide Fundstellen mit Satz je Seite" zieht vom PLAN in den BERICHT
+#    um (Gruppe 3v des Audits), denn dort muss ein Mensch weiter hinsehen koennen. Bis v5.147.0 stand
+#    hier „Plan hat eine ZAHLENDRIFT-Zeile" — das ist jetzt die GEGENRICHTUNG.
+janein "§1 Plan hat KEINE ZAHLENDRIFT-Zeile mehr (v5.148.0)" nein "$(grep -q 'ZAHLENDRIFT' "$PL" 2>/dev/null && echo ja || echo nein)"
+_AU=$(MIND_DEBUG_DIR= $PY "$(w "$REF/cleaner_audit.py")" --bereich "$(w "$P/proj")" --nur projekt 2>&1)
+_Z=$(printf '%s\n' "$_AU" | grep -m1 'CLAUDE.md:3 „')
+janein "   ... der BERICHT fuehrt sie als Verdacht (Gruppe 3v)" ja "$(printf '%s' "$_AU" | grep -q '3v · ZAHLENDRIFT-VERDACHT' && echo ja || echo nein)"
 janein "   ... mit beiden Fundstellen datei:zeile (CLAUDE.md:3 und a.md:6)" ja "$(printf '%s' "$_Z" | grep -q 'CLAUDE.md:3 „' && printf '%s' "$_Z" | grep -q 'rules/a.md:6 „' && echo ja || echo nein)"
 janein "   ... und dem Satz je Seite (entfallen / gilt weiter)" ja "$(printf '%s' "$_Z" | grep -q 'entfallen' && printf '%s' "$_Z" | grep -q 'gilt weiter' && echo ja || echo nein)"
-janein "   ... Anlage-Abschnitt traegt dieselben Fundstellen" ja "$(grep -q 'CLAUDE.md:3 „' "$P/proj/.claude-mind/plan.anlage.md" 2>/dev/null && echo ja || echo nein)"
 janein "§3 Zeile 1 des Plans hat Status „offen“ (Datei und lies_plan)" ja "$(grep -qE '^\| 1 \|.*\| offen \|$' "$PL" && [ "$(REF="$RW" F="$FW" PL="$PLW" $PY -c "import sys,os;sys.path.insert(0,os.environ['REF']);import cleaner_plan as c;print(c.lies_plan(os.environ['PL'])[0]['status'])" 2>/dev/null)" = offen ] && echo ja || echo nein)"
 # §4 — Memory-Nachschlagewerk: DOCS zuerst, COMMAND hoechstens zweiter
 printf -- '---\nname: werk\ndescription: Nachschlagewerk mit vielen Aufrufen und ohne ein einziges Gebot fuer den Leser\ntype: reference\n---\n# Werk\n\nDer Aufruf `python tools/a.py --x` liefert die Tabelle.\n\nDaneben gibt es `python tools/b.py` mit `--y`.\n\nUnd `tools/c.py` schreibt `out.json`.\n\nDie Zahl steht in `tools/d.py`.\n' > "$P/mem/werk.md"
