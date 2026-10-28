@@ -52,7 +52,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.148.0"
+MIND_SKILL_VERSION="5.149.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 # ⛔ v5.98.0: die fuenf Skills sind KEINE Schritte von mind-all — jeder hat seinen EIGENEN
 #    Start-Block (Step 2, Punkt 1). Bis v5.97.0 standen sie hier, Ritas Kalibrierlauf hakte
@@ -423,6 +423,11 @@ if [ -f "$OPEN" ]; then
 fi
 # Rueckfall, falls OPEN fehlt (Rettung aus einer aelteren Version)
 [ -z "$RESCUED_ALL" ] && RESCUED_ALL=$(ls -t "$PROJ/.claude-mind/rescued"/*_chat.md 2>/dev/null | head -1)
+# ⛔ v5.149.0 (Etappe 57 §3): festhalten, WELCHE Rettungen dieser Lauf einliest — Step 2.96 tilgt
+#    nur diese (Veras Lauf: 7 eingelesen, 41 kamen waehrend des Laufs dazu und wurden mitgetilgt).
+#    Lauf-ID aus der Kopfzeile: die Sperre ist in Step 2.96 schon frei (Step 2.9).
+_GL="$PROJ/.claude-mind/rescued/OPEN.gelesen-$(mind_kopf_lauf "$PROJ" 2>/dev/null || echo ohne-lauf)"
+printf '%s\n' "$RESCUED_ALL" | sed 's#.*[/\\]##' | grep . > "$_GL" 2>/dev/null || : > "$_GL"
 RESCUED_N=$(printf '%s\n' "$RESCUED_ALL" | grep -c . 2>/dev/null)
 case "$RESCUED_N" in ''|*[!0-9]*) RESCUED_N=0 ;; esac
 
@@ -1104,12 +1109,14 @@ nur hier.
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 # ⛔ v5.113.0 (Etappe 20 §4): getilgt wird NUR, wenn mind_sync_voll den frischen Merker
-#    mit rc 0 bestaetigt — und ALLE resume=-Zeilen werden .done (mind_schuld_begleichen).
+#    mit rc 0 bestaetigt — und die resume=-Zeilen der EINGELESENEN Rettungen werden .done (mind_schuld_begleichen, seit v5.149.0 mit Liste).
 #    Bis v5.112.0 stand hier `grep -m1 '^resume='`: nur die aelteste RESUME wurde .done,
 #    zwei juengere blieben liegen (Noras Fund, 16.09.2026).
 if [ "$SYNC_LIEF" = "ja" ] \
    && mind_sync_voll "$PROJ/.claude-mind/rescued/sync-stand"; then
-  _BEGL=$(mind_schuld_begleichen "$PROJ") && echo "Sync-Schuld beglichen: OPEN entfernt, $_BEGL."
+  # ⛔ v5.149.0: nur die Rettungen, die Step 0 eingelesen hat (Liste mit der Lauf-ID der Kopfzeile).
+  _GL="$PROJ/.claude-mind/rescued/OPEN.gelesen-$(mind_kopf_lauf "$PROJ" 2>/dev/null || echo ohne-lauf)"
+  _BEGL=$(mind_schuld_begleichen "$PROJ" "$_GL") && echo "Sync-Schuld beglichen: $_BEGL."
 fi
 
 # ⛔ v5.28.0: Die PLAN-PAUSE wird IMMER aufgehoben — ausserhalb des

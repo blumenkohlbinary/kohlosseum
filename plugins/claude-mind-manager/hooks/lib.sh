@@ -3940,10 +3940,51 @@ mind_schuld_hinweis() {
 #    Ausgabe: `<n> RESUME .done`. rc 1 ohne OPEN — nichts zu begleichen.
 #    ⛔ Nur nach einem VOLLEN Sync rufen (mind_sync_voll auf dem frischen sync-stand rc 0).
 mind_schuld_begleichen() {
-  local proj="${1:-}" open r n=0
+  local proj="${1:-}" gelesen="${2:-}" open r n=0
   [ -n "$proj" ] || return 1
   open="$proj/.claude-mind/rescued/OPEN"
   [ -f "$open" ] || return 1
+  # ⛔ v5.149.0 (Etappe 57 §3, Veras Befund Zustellplan 11.10.2026): NUR TILGEN, WAS DIESER LAUF
+  #    EINGELESEN HAT. Gemessen: ein Lauf speiste 7 Rettungen ein, waehrend des Laufs kamen 41 dazu —
+  #    die Altform entfernte OPEN ganz und tilgte damit Schuld fuer 41 Rettungen, die niemand las.
+  #    Mit <gelesen> (eine Datei, ein Rettungs-DATEINAME je Zeile, von /mind-all Step 0 geschrieben)
+  #    fallen nur deren Gruppen (je `path=`) heraus; der Rest bleibt OPEN. Verglichen wird der Name,
+  #    nicht der Pfad (zwei Schreibweisen derselben Datei, wie in mind_rettungen_nachtragen).
+  # ⚠ Ohne <gelesen>: Altform (alles), mit WARN — ein Skill-Text vor 5.149.0 ruft so.
+  if [ -n "$gelesen" ]; then
+    [ -f "$gelesen" ] || { echo "⛔ mind_schuld_begleichen: Liste '$gelesen' fehlt — NICHTS getilgt" >&2; return 2; }
+    local kopf="" grp="" rest="" base="" z treff=0 bleibt=0 tmp="$open.neu.$$"
+    _msb_flush() {
+      [ -n "$grp" ] || return 0
+      if [ -n "$base" ] && grep -qxF "$base" "$gelesen" 2>/dev/null; then
+        treff=$((treff + 1))
+        r=$(printf '%s' "$grp" | sed -n 's/^resume=//p' | head -1)
+        [ -n "$r" ] && [ -f "$r" ] && mv -f "$r" "${r%.md}.done.md" 2>/dev/null && n=$((n + 1))
+      else
+        bleibt=$((bleibt + 1)); rest="${rest}${grp}"
+      fi
+      grp=""; base=""
+    }
+    while IFS= read -r z || [ -n "$z" ]; do
+      z="${z%$'\r'}"
+      case "$z" in
+        path=*) _msb_flush; base="${z#path=}"; base="${base//\\//}"; base="${base##*/}"; grp="$z"$'\n' ;;
+        *) if [ -n "$grp" ]; then grp="${grp}${z}"$'\n'; else kopf="${kopf}${z}"$'\n'; fi ;;
+      esac
+    done < "$open"
+    _msb_flush
+    unset -f _msb_flush
+    if [ "$bleibt" -eq 0 ]; then
+      rm -f "$open" "${open}.seen-"* 2>/dev/null
+    else
+      printf '%s%s' "$kopf" "$rest" > "$tmp" && mv -f "$tmp" "$open"
+    fi
+    rm -f "$gelesen" 2>/dev/null
+    mind_log "Sync-Schuld teilweise beglichen: $treff Rettung(en) getilgt, $bleibt bleiben in OPEN, $n RESUME .done"
+    printf '%s RESUME .done, %s Rettung(en) bleiben offen\n' "$n" "$bleibt"
+    return 0
+  fi
+  mind_log WARN "mind_schuld_begleichen ohne Liste: Altform, OPEN wird GANZ getilgt"
   while IFS= read -r r; do
     r="${r#resume=}"
     [ -n "$r" ] && [ -f "$r" ] || continue
@@ -4340,6 +4381,33 @@ mind_verdicht_kandidat() {
         printf '%s\n' "$kand"; return 0 ;;
   esac
   hist="$proj/.claude-mind/verdichten-historie"
+  # ⛔ v5.149.0 (Etappe 57 §1): SEIT DER LETZTEN VERDICHTUNG UNVERAENDERT -> KEINE KANDIDATIN.
+  #    Massgeblich ist die LETZTE `nach`-Zeile je Datei (geschrieben von mind_verdichtung_anwenden):
+  #    stimmt ihr md5 mit dem heutigen ueberein, wurde die Datei seither nicht angefasst, und ein
+  #    zweiter Lauf fande nur Krumen (CK3: 16 B fuer 99 000 Tokens). Aendert sie sich, ist sie wieder dabei.
+  # ⚠ Eine Ertragsgrenze VORAB ist nicht gebaut: den Ertrag kennt man erst nach dem Agentenlauf
+  #   (gemessen an 19 Deponaten: Median ~405 B, 4 unter 100 B). Die Ruhe-Regel faengt den teuren Fall.
+  if [ -f "$hist" ] && grep -q '^nach ' "$hist" 2>/dev/null; then
+    local _frei="" _ruh=0 _m _h
+    while IFS= read -r f; do
+      [ -n "$f" ] || continue
+      _h=$(grep '^nach ' "$hist" 2>/dev/null | grep -F " datei=$f md5=" | tail -1 | sed -n 's/.* md5=\([0-9a-f]*\)$/\1/p')
+      if [ -n "$_h" ] && [ "$_h" = "$(_md5 "$f")" ]; then
+        _ruh=$((_ruh + 1)); continue
+      fi
+      _frei="$_frei$f
+"
+    done <<RUHE
+$liste
+RUHE
+    if [ "$_ruh" -gt 0 ]; then
+      echo "⚠ VERDICHTEN-Rotation: $_ruh Datei(en) seit ihrer letzten Verdichtung unveraendert — keine Kandidatin." >&2
+      [ -n "$_frei" ] || return 1
+      liste="$_frei"; n=$(printf '%s' "$liste" | grep -c .)
+      kand="${liste%%
+*}"
+    fi
+  fi
   case "${MIND_VERDICHTEN_HISTORIE:-}" in
     ''|*[!0-9]*) grenze=$((n - 1)) ;;
     *)           grenze="${MIND_VERDICHTEN_HISTORIE}" ;;
@@ -4543,7 +4611,19 @@ mind_verdichtung_anwenden() {
     return 1
   fi
   cp "$erg" "$datei" || { echo "⛔ ANWENDEN: cp fehlgeschlagen." >&2; return 3; }
-  echo "angewendet: $datei (Vorher md5 $soll, jetzt $(_md5 "$datei"))"
+  local _nach; _nach=$(_md5 "$datei")
+  echo "angewendet: $datei (Vorher md5 $soll, jetzt $_nach)"
+  # ⛔ v5.149.0 (Etappe 57 §1, CK3): DEN NACHHER-FINGERABDRUCK MERKEN. Ein Verdichten-Agent kostete
+  #    99 000 Tokens fuer 16 B — auf einer Datei, die gerade erst verdichtet worden war. Die Rotation
+  #    kannte nur, WELCHE Datei gewaehlt wurde, nicht ob sie danach verdichtet WURDE. Jetzt steht nach
+  #    jedem Anwenden eine Zeile `nach ts= datei= md5=` in der Historie; `mind_verdicht_kandidat` laesst
+  #    eine Datei aus, solange sie genau so aussieht. Das Projekt kommt aus dem Deponat-Pfad.
+  case "$dep" in
+    */.claude-mind/*)
+      printf 'nach ts=%s datei=%s md5=%s\n' "$(date -u +%Y%m%dT%H%M%SZ 2>/dev/null)" "$datei" "$_nach" \
+        >> "${dep%/.claude-mind/*}/.claude-mind/verdichten-historie" 2>/dev/null \
+        || echo "⚠ ANWENDEN: Historie nicht beschreibbar — die Datei bleibt beim naechsten Mal waehlbar." >&2 ;;
+  esac
   return 0
 }
 

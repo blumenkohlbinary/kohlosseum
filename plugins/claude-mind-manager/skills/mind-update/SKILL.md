@@ -50,7 +50,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.148.0"
+MIND_SKILL_VERSION="5.149.0"
 mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe cleaner_tor mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
@@ -378,22 +378,40 @@ else
   done
 
   # 2b: Heuristik fuer nicht-referenzierte .md
+  # ⛔ v5.149.0 (Etappe 57 §2, CK3): FUENF grep UEBER ALLE DATEIEN statt fuenf grep JE Datei. Vorher
+  #    5 x N Prozesse (CK3: 245 Dateien, ueber 300 s; hier gemessen 84,4 s fuer 401 Eintraege). Dieselben
+  #    Muster, derselbe grep — die Zaehlungen sind dieselben, die Ausgabe byteweise gleich (Gegenprobe
+  #    an zwei Projekten, alter gegen neuen Block). `-H`, damit auch EINE Datei ihren Namen traegt.
+  # ⚠ `for f in $ALL_MD` zerlegt weiter an Leerzeichen, wie bisher — Absicht dieser Aenderung ist
+  #   NUR die Laufzeit; das Zerlegen steht als eigener Befund im Bericht der Etappe.
+  _KAND=()
   for f in $ALL_MD; do
     # Skip wenn bereits in Step 1 Liste (B1-Fix)
     is_in_skip_set "$f" && continue
     # Skip wenn bereits via Referenz aufgenommen
     [[ " ${CUSTOM_CONTEXT_FILES[@]} " =~ " $f " ]] && continue
-
-    # Heuristik-Counter (defensiv: || true + tr -d Newlines fuer Arithmetik, M1-Fix)
-    has_code_blocks=$(grep -c '```' "$f" 2>/dev/null | tr -d '\n' || true)
-    has_paths=$(grep -cE '`[^`]*[/\\][^`]*`' "$f" 2>/dev/null | tr -d '\n' || true)
-    has_versions=$(grep -cE 'v[0-9]+\.[0-9]+' "$f" 2>/dev/null | tr -d '\n' || true)
-    has_test_counts=$(grep -cE '\b[0-9]{2,4}\s+[Tt]ests?\b' "$f" 2>/dev/null | tr -d '\n' || true)
-    has_function_refs=$(grep -cE '`[a-z_][a-zA-Z0-9_]*\(\)`|`[A-Z][a-zA-Z0-9]+\.[a-zA-Z_]+`' "$f" 2>/dev/null | tr -d '\n' || true)
-
-    # Default 0 falls Variable leer (defensive)
-    score=$(( ${has_code_blocks:-0} + ${has_paths:-0} + ${has_versions:-0} + ${has_test_counts:-0} + ${has_function_refs:-0} ))
-    if [ "$score" -ge "$SCORE_THRESHOLD" ]; then
+    [[ " ${_KAND[@]} " =~ " $f " ]] && continue
+    _KAND+=("$f")
+  done
+  declare -A _SCORE=()
+  if [ "${#_KAND[@]}" -gt 0 ]; then
+    while IFS= read -r _z; do
+      _f="${_z%:*}"; _c="${_z##*:}"
+      case "$_c" in ''|*[!0-9]*) _c=0 ;; esac
+      _SCORE["$_f"]=$(( ${_SCORE["$_f"]:-0} + _c ))
+    done < <(
+      # ⚠ per `xargs -0` in Teilen: EINE Befehlszeile mit allen Pfaden sprengt bei grossen Projekten
+      #   das Windows-Limit (~32 000 Zeichen) — dann scheitert grep, und JEDER Wert waere still 0.
+      #   `-0` zerlegt nicht an Leerzeichen (die Falle aus „Rotation nie mit xargs" greift hier nicht).
+      printf '%s\0' "${_KAND[@]}" | xargs -0 grep -cH '```' -- 2>/dev/null
+      printf '%s\0' "${_KAND[@]}" | xargs -0 grep -cHE '`[^`]*[/\\][^`]*`' -- 2>/dev/null
+      printf '%s\0' "${_KAND[@]}" | xargs -0 grep -cHE 'v[0-9]+\.[0-9]+' -- 2>/dev/null
+      printf '%s\0' "${_KAND[@]}" | xargs -0 grep -cHE '\b[0-9]{2,4}\s+[Tt]ests?\b' -- 2>/dev/null
+      printf '%s\0' "${_KAND[@]}" | xargs -0 grep -cHE '`[a-z_][a-zA-Z0-9_]*\(\)`|`[A-Z][a-zA-Z0-9]+\.[a-zA-Z_]+`' -- 2>/dev/null
+    )
+  fi
+  for f in "${_KAND[@]}"; do
+    if [ "${_SCORE["$f"]:-0}" -ge "$SCORE_THRESHOLD" ]; then
       CUSTOM_CONTEXT_FILES+=("$f")
     fi
   done

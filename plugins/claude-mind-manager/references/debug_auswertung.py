@@ -133,11 +133,22 @@ def lies(pfad):
 #    ⚠ ENG gefasst, nach Antons Bedingung: nur Namen, die im Repo als Datei existieren, plus
 #    die Gate-Familie — KEIN generisches „Wort mit Unterstrich", das jedes `foo_bar` einfinge.
 #    Gegenprobe ueber alle 522 Zeilen: 4 Wechsel `unbestimmt` -> `zustand`, 0 aus `ereignis`.
+# ⛔ v5.149.0 (Etappe 57 §4): DREI LOECHER, alle gemessen an den 20 Zeilen, die `--behoben` nicht
+#    schliessen liess. (1) KEINE ZIFFER IM NAMEN: `mind_[a-z_]+` griff `mind_stufe3_zeilen` nicht
+#    (\b nach `mind_stufe` scheitert am `3`) — dieselbe Klasse wie der lib.sh-Zaehler im Sept.
+#    (2) SKILL-NAMEN (`mind-update`, `mind-memory` …) und (3) AGENTEN-NAMEN (`context-analyzer`)
+#    kannte der Erkenner nicht, obwohl sie die meistgenannten Bauteile sind. Alle drei sind Namen,
+#    die im Repo als Datei existieren (Antons Bedingung von v5.132.0 bleibt erfuellt).
+#    GEGENPROBE ueber alle 738 Zeilen: 53 Wechsel `unbestimmt` -> `zustand`, 2 `ereignis` ->
+#    `unbestimmt` (Selbstbericht UND Skillname — „beides" ist per Entwurf unbestimmt), 0 Wechsel
+#    `ereignis` -> `zustand`. Nichts wird damit geschlossen: `behoben` braucht weiter den Commit.
 _WERKZEUG = re.compile(
-    r"\b(mind_[a-z_]+|[a-z_]+\.py|[a-z_]+\.sh|claudemd_pipeline"
+    r"\b(mind_[a-z0-9_]+|[a-z0-9_]+\.py|[a-z0-9_]+\.sh|claudemd_pipeline"
     r"|[a-z_]+_gates?|cleaner_[a-z]+|session_sampler|kontext-wache|arbeitsstand_render"
     r"|debug_auswertung|debug_aufraeumen|learnings_scan|learnings_quellen|slug_regression"
-    r"|backup_tools|mutation_guard|coverage_gate|skill_stempel|Check \d+)\b")
+    r"|backup_tools|mutation_guard|coverage_gate|skill_stempel|Check \d+"
+    r"|mind-(?:all|claudemd|memory|rules|files|update|session-log|compact|learnings|cleaner|denkstufe)"
+    r"|context-analyzer|project-scanner)\b")
 
 # Selbstbericht: der Verfasser nennt sich als Verursacher. Ebenfalls Formmerkmal.
 _SELBST = re.compile(
