@@ -41,7 +41,7 @@ python "$CLAUDE_PLUGIN_ROOT/references/claudemd_pipeline.py" <datei.md>
 python "$CLAUDE_PLUGIN_ROOT/references/negativfall_gate.py"
 
 # Stimmen die Zahlen in der Doku noch? -> Zaehl-Gate
-python Learnings/zaehl_gate.py
+python tools/zaehl_gate.py
 
 # Zeilenenden byte-genau  ⛔ NIE `grep -c $'\r'` — das zaehlt in Git Bash JEDE Zeile
 mind_zeilenenden <datei>            # aus hooks/lib.sh

@@ -167,7 +167,7 @@ unbestätigten Quelle ist eine Behauptung.* ⛔ **Das Plugin setzt sie nie selbs
 sie ist der **einzige** Zugang des Auswählers, er sieht nie den Inhalt. Deshalb
 prüft der Deckel sie zuerst.
 
-⛔ **Vor einer Zusammenführung sichern**, danach `Learnings/memory_gates.py` —
+⛔ **Vor einer Zusammenführung sichern**, danach `$CLAUDE_PLUGIN_ROOT/references/memory_gates.py` —
 Zusammenführen **löscht eine Datei** (`backup-usage.md`).
 
 ---

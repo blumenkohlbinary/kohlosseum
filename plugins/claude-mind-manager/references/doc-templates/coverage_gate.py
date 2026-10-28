@@ -71,6 +71,9 @@ def normalize(text: str) -> str:
     return "".join(c for c in text if not unicodedata.combining(c))
 
 
+P_VERSION = r"\bv?\d+\.\d+\.\d+(?:\.\d+)?\b"
+
+
 def checkpoints(path: str):
     """Pruefpunkte einer Quelldatei — SPRACHUNABHAENGIGE Marker.
 
@@ -119,6 +122,15 @@ def checkpoints(path: str):
     # 3) Eigennamen: GrossKleinSchreibung oder Versalien, technisch/Produkt
     for m in re.findall(P_NAME, text):
         out.append((m, (normalize(m),)))
+
+    # 4) Versionsnummern — v5.145.0 (Etappe 55 §4, Veras Befund M-B, Zustellplan 11.10.2026)
+    #    ⛔ GEMESSEN, warum `v1.0.22` durchkam: P_ZAHL verlangt eine EINHEIT (%, K, tokens,
+    #       Zeilen). Eine Versionsnummer hat keine — sie war ausserhalb eines Code-Spans nie
+    #       eine Marke, und ihr Verschwinden landete still im markenfreien Ausweis (Stufe 2).
+    #       Dabei ueberlebt sie jede Uebersetzung und ist oft der einzige Beleg eines Satzes.
+    #    ⚠ Mindestens zwei Punkte (`1.0.22`, `5.143.0`): `1.5` ist eine Dezimalzahl, keine Version.
+    for m in re.findall(P_VERSION, text):
+        out.append((m, (m.lower().lstrip("v"),)))
 
     uniq = []
     for phrase, kw in out:
@@ -237,6 +249,26 @@ def main(argv):
     pct = (100 * total_ok / total) if total else 0
     print(f"\nGESAMT: {total_ok}/{total} Pruefpunkte belegt ({pct:.1f} %)")
     print("HINWEIS: gemessen wurde ERWAEHNUNG, nicht inhaltliche Treue.")
+
+    # --- STUFE 1b: die ZWEITE Zaehlrichtung — v5.145.0 (Etappe 55 §4, Veras Befund M-B) ---
+    # ⛔ Stufe 1 fragt nur, ob jede QUELL-Marke ankommt. Eine ERFUNDENE Marke sieht sie nie:
+    #    in Veras Lauf stand im Ergebnis ein Code-Span `\r\n`, den die Quelle nicht kannte
+    #    (0x -> 1x), bei 528/528 Deckung. Erst Stufe 3 (Lesen) fing es.
+    # ⛔ KEIN GATE, der Rueckgabewert bleibt unberuehrt: eine Verdichtung darf eine Marke
+    #    neu bilden (eine Zahl zusammenfassen). Es wird AUSGEWIESEN — Stufe 3 liest es zuerst.
+    # ⚠ Sie misst Marken, keine Saetze: ein erfundener Satz aus lauter Quellwoertern
+    #   bleibt unsichtbar (dieselbe Grenze wie die Erfindungsprobe in Palvedo).
+    try:
+        quelle_norm = normalize("".join(open(s, encoding="utf-8", errors="replace").read()
+                                        for s in argv[2:]))
+        neu = [p for p, k in checkpoints(argv[1]) if not all(t in quelle_norm for t in k)]
+        print(f"NEU: {len(neu)} Marke(n) im Ergebnis, die in der Quelle nicht vorkommen")
+        for p in neu[:10]:
+            print(f"    NEU    {p}")
+        if len(neu) > 10:
+            print(f"    ... {len(neu) - 10} weitere")
+    except OSError as e:
+        print(f"⚠ NEU nicht messbar ({e}) — die Stufe-1-Aussage gilt trotzdem.")
 
     # --- STUFE 2: der AUSWEIS (NEU 10.09.2026) ---------------------------
     # ⛔ WARUM DAS NOETIG WURDE. Gemessen am 10.09.2026: eine markenERHALTENDE

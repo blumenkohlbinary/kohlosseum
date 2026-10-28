@@ -56,7 +56,9 @@ echo "== 4  Text-Gate mind-cleaner: Memory ist Bestand, Gates davor =="
 MC="$CLAUDE_PLUGIN_ROOT/skills/mind-cleaner/SKILL.md"
 janein "Step 0 kennt --bereich memory" ja "$(grep -q '^| `memory` |' "$MC" && echo ja || echo nein)"
 janein "--audit nennt --nur …|memory" ja "$(grep -q 'global|projekt|alles|memory' "$MC" && echo ja || echo nein)"
-janein "Sicherung + memory_gates.py vor dem Anwenden" ja "$(grep -q '_memory"' "$MC" && grep -q 'memory_gates.py "\$B"' "$MC" && echo ja || echo nein)"
+# ⚠ v5.145.0: der Aufruf heisst jetzt python "$CLAUDE_PLUGIN_ROOT/references/memory_gates.py" "$B" (M-C) —
+#   das Anfuehrungszeichen vor "$B" ist erlaubt, die Zusicherung (Gates nach der Sicherung) ist dieselbe.
+janein "Sicherung + memory_gates.py vor dem Anwenden" ja "$(grep -q '_memory"' "$MC" && grep -qE 'memory_gates\.py"? "\$B"' "$MC" && echo ja || echo nein)"
 janein "nicht autonom bleibt stehen" ja "$(grep -q 'Unverändert nicht autonom' "$MC" && echo ja || echo nein)"
 
 echo "== 5  v5.111.0 (Etappe 17): Unterordner, CLAUDE.local.md, Skills-Bestand, tote Regler =="

@@ -2352,6 +2352,29 @@ mind_agent_ergebnis() {
         bytes=0; grund="hintergrund"
         echo "⛔ $bereich: die Datei traegt das Hintergrund-Ack (Async agent launched) — kein Ergebnis, bytes:0." >&2
       fi
+      # ⛔ v5.145.0 (Etappe 55, Veras Befund M-J, Zustellplan 12.10.2026): EIN ROHDUMP IST KEIN
+      #    BERICHT. 1 846 272 B und 771 982 B rohes Transkript-JSONL (`{"parentUuid":…`) gingen
+      #    als `agent-claude-md.md` / `agent-memory.md` durch — die Quittung zaehlte nur Bytes.
+      #    Aufgedeckt erst einen Tag spaeter, durch die Schrumpf-Sperre des Backup-Hooks.
+      #    Formmerkmal am Artefakt: beginnt die Datei mit `{"`, `[{` oder `["`, oder tragen mindestens
+      #    drei Zeilen die JSONL-Form `{"…":`, ist es ein Dump — bytes:0, grund=rohdump.
+      # ⚠ Die GROESSE allein ist nur ein VERDACHT (Vorgabe MIND_AGENT_MAX_BYTES = 300 000):
+      #   gemeldet, nicht verworfen — ein langer echter Bericht ist kein Fehler.
+      if [ "$bytes" -gt 0 ] 2>/dev/null && [ -z "$grund" ]; then
+        local _anf _jl
+        _anf=$(tr -d ' \t\r\n' < "$pfad" 2>/dev/null | head -c 2)
+        _jl=$(grep -c '^{"[A-Za-z_]*":' "$pfad" 2>/dev/null); case "$_jl" in ''|*[!0-9]*) _jl=0 ;; esac
+        case "$_anf" in
+          '{"'|'[{'|'["') bytes=0; grund="rohdump" ;;   # ⚠ nicht `[`* — ein Bericht darf mit einem Markdown-Link beginnen
+        esac
+        [ "$_jl" -ge 3 ] && { bytes=0; grund="rohdump"; }
+        if [ "$grund" = "rohdump" ]; then
+          echo "⛔ $bereich: die Datei ist ein ROHDUMP (JSON/JSONL), kein Bericht — bytes:0, ungeprueft. Den tool_result des Agenten ablegen, nicht sein Transkript." >&2
+        elif [ "$bytes" -gt "${MIND_AGENT_MAX_BYTES:-300000}" ] 2>/dev/null; then
+          echo "⚠ $bereich: $bytes B — ungewoehnlich gross fuer einen Bericht (Grenze ${MIND_AGENT_MAX_BYTES:-300000}). Nur ein Verdacht: ansehen, ob es wirklich der Bericht ist." >&2
+          mind_log WARN "mind_agent_ergebnis $bereich: $bytes B ueber MIND_AGENT_MAX_BYTES (Verdacht)"
+        fi
+      fi
     else
       bytes=0; grund="keine-datei"
     fi
@@ -3093,6 +3116,15 @@ mind_schritt_start() {
     #    sondern **„hat der Kopf-Block DIESES Laufs gelaufen?"**. Das kann nur der Kopf
     #    selbst beantworten, und er tut es hier — ohne Schwelle, ohne mtime.
     printf '%s' "$_lid" > "$proj/.claude-mind/lauf-offen" 2>/dev/null || true
+  elif [ "$kette" -eq 1 ]; then
+    # ⭐ v5.145.0 (Etappe 55 §3, Veras Befund M-E): in der Kette traegt auch die Startzeile
+    #    eines Skills die Lauf-ID — GELESEN aus dem Lock, nicht neu gebildet und NICHT ueber
+    #    `mind_kopf_lauf_frisch` (das verbraucht den offenen Merker, ein zweiter Aufruf
+    #    scheitert). Bis v5.144.0 trugen nur die mind-all-Koepfe eine ID (Vera: 6 von 20
+    #    Startzeilen), und eine Zeile ohne ID war keinem Lauf zuzuordnen.
+    #    ⚠ Moeglich erst seit v5.144.0: vorher war der Lock nach Step 0 schon weg.
+    #    ⚠ Ohne Lock (Einzellauf): kein Feld, wie bisher.
+    _lid=$(mind_lock_lauf "$proj" 2>/dev/null) && _laufteil=",\"lauf\":\"$_lid\""
   fi
   printf '{"ereignis":"start","skill":"%s","erwartet":"%s","ts":"%s","code":"%s","text":"%s","versionsbruch":%s%s}\n' \
     "$skill" "$*" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$v_code" "$v_text" "$bruch" "$_laufteil" >> "$q"
@@ -3305,6 +3337,11 @@ mind_schritt_bilanz() {
            print ((nm in eindeutig) ? nm : sk "/" nm) " (vorher " b " B)" >> ueber }
          zeile[k] = $0 }
        END { for (i = 1; i <= n; i++) print zeile[reihe[i]] }' "$ausschnitt" 2>/dev/null > "$mt"
+  # ⛔ v5.145.0 (Etappe 55 §3, Veras Befund M-E): VERSIONSBRUCH aus dem AUSSCHNITT, nicht aus der
+  #    ganzen Quittung. Bis v5.144.0 zaehlte `grep -c … "$q"` jede Zeile der Datei — EINE alte
+  #    Startzeile vom 04.10. meldete in Zustellplan fuenf Laeufe lang einen Bruch, den kein
+  #    einziger dieser Laeufe hatte. Ein Alarm, der nicht vergeht, wird ueberlesen.
+  local _vb_zeilen; _vb_zeilen=$(grep '"versionsbruch":true' "$ausschnitt" 2>/dev/null)
   rm -f "$ausschnitt"
 
   while IFS= read -r zeile; do
@@ -3530,10 +3567,10 @@ mind_schritt_bilanz() {
   #    dessen Skill-Text aus einer anderen Version stammt als sein Code, hat
   #    einer anderen Anleitung gefolgt, als das Plugin ausliefert — und das
   #    gehoert dorthin, wo der Bericht es liest.
-  local vb; vb=$(grep -c '"versionsbruch":true' "$q" 2>/dev/null); case "$vb" in ''|*[!0-9]*) vb=0 ;; esac
+  local vb; vb=$(printf '%s' "$_vb_zeilen" | grep -c .); case "$vb" in ''|*[!0-9]*) vb=0 ;; esac
   if [ "$vb" -gt 0 ]; then
     echo "  ⛔ VERSIONSBRUCH in $vb Schritt(en):"
-    grep '"versionsbruch":true' "$q" 2>/dev/null \
+    printf '%s\n' "$_vb_zeilen" \
       | sed -n 's/.*"skill":"\([^"]*\)".*"code":"\([^"]*\)","text":"\([^"]*\)".*/     \1: Text \3, Code \2/p'
   fi
   [ -n "$ueberliste" ] && echo "  UEBERSPRUNGEN:$ueberliste"
@@ -4255,6 +4292,12 @@ mind_stufe3_zeilen() {
 #   und genau daran ist eine Rotation in dieser Datei schon zerlegt worden
 #   (`env-vars.md`, „Rotation nie mit xargs").
 #   -> Pfad der Kandidatin auf stdout, rc 0. Leere Liste: keine Ausgabe, rc 1.
+# ⚠ v5.145.0 (Etappe 55 §6b, Veras Befund): ZWEI ZUSTAENDIGKEITEN, nicht eine. Diese Funktion
+#   rotiert JE SKILL (`verdicht-historie`); sie liest `verdichtet=` aus `analyzed-scopes`
+#   NICHT. Den kettenweiten Ausschluss (eine Datei, die ein frueherer Skill DIESES Laufs schon
+#   verdichtet hat) macht der Aufrufer vorher (`_SCHON`) — er gibt nur die zulaessige Liste herein.
+# ⚠ Ist die zulaessige Liste EINE Datei gross, kann nichts rotieren (N = 0): dieselbe Datei
+#   kommt jedes Mal. Das ist kein Defekt, sondern die einzige Wahl.
 mind_verdicht_kandidat() {
   local proj="${1:-}" skill="${2:-}" modus="${3:-probe}"
   local hist liste="" f n=0 grenze g gesperrt kand="" zn ts
@@ -4392,6 +4435,9 @@ mind_verdichtung_pruefen() {
   deck=$(printf '%s\n' "$out"   | sed -n 's/^GESAMT: \([0-9]*\/[0-9]*\).*(\([0-9.]* %\)).*/\1  \2/p' | head -1)
   marker=$(printf '%s\n' "$out" | sed -n 's/^MARKER: //p' | head -1)
   ausw=$(printf '%s\n' "$out"   | sed -n 's/^AUSWEIS: markenfrei entfernt: //p' | head -1)
+  # ⭐ v5.145.0 (Etappe 55 §4): die zweite Richtung — Marken im Ergebnis ohne Quelle. Steht in
+  #    der Stufe-1-Zeile, damit der Bericht seine drei Zeilen behaelt; urteilt NICHT.
+  local neu_n; neu_n=$(printf '%s\n' "$out" | sed -n 's/^NEU: \([0-9]*\) .*/\1/p' | head -1)
 
   # --- der Bericht: drei Zeilen, keine weniger ---
   # ⛔ v5.125.0 (Etappe 37 §2): der FINGERABDRUCK der Vorher-Fassung steht im Deponat. Ritas Lauf
@@ -4402,7 +4448,8 @@ mind_verdichtung_pruefen() {
   printf '%-14s Vorher-Fassung  md5 %s  %s\n' "$name" "$md5_vor" "$orig"
   printf '%-14s Dauerkontext  %s -> %s B  (%+d B, %.1f %%)\n' "$name" "$b_vor" "$b_nach" \
     "$((b_nach - b_vor))" "$(awk "BEGIN{printf \"%.1f\", ($b_nach-$b_vor)*100/$b_vor}")"
-  printf '%-14s Stufe 1       coverage %s   Marker %s\n' "" "${deck:-?}" "${marker:-?}"
+  printf '%-14s Stufe 1       coverage %s   Marker %s   neu %s\n' "" "${deck:-?}" "${marker:-?}" "${neu_n:-?}"
+  [ "${neu_n:-0}" -gt 0 ] 2>/dev/null && printf '%s\n' "$out" | grep -E '^    NEU ' | head -5 | sed 's/^/           /'
   printf '%-14s Stufe 2       markenfrei entfernt %s  ⚠ ungeprueft\n' "" "${ausw:-0 B}"
   printf '%-14s               ⚠ Stufe 2 ist bei Umformulierung nur GROESSENORDNUNG (zeilenweise gezaehlt)\n' ""
   printf '%s\n' "$out" | grep -E '^⚠ AUSWEIS: ⛔-Absaetze|^⚠ BENENNUNG LEER' | sed 's/^/               /'

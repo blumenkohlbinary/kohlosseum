@@ -43,8 +43,8 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.144.0"
-mind_schritt_start "$PROJ" mind-memory bestandszahlen_kandidaten cleaner_stichprobe mind_debug_write mind_kontext_bilanz mind_scan_poisoning mind_snapshot verdichten
+MIND_SKILL_VERSION="5.145.0"
+mind_schritt_start "$PROJ" mind-memory bestandszahlen_kandidaten cleaner_stichprobe cleaner_tor mind_debug_write mind_kontext_bilanz mind_scan_poisoning mind_snapshot verdichten
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
@@ -445,19 +445,32 @@ fremde Dinge nennt, passt auf keine Anfrage richtig.
    was die Warnung NENNT, aber nicht prueft: **`file:line`-Zitate und Versionsnummern in
    Dateien aelter als `MIND_MEMORY_STALE_DAYS` (Vorgabe 14)** — und ob sie noch stimmen.
 
-### 6. Index-Integritaet — DREI Klassen, nicht zwei (NEU v6)
+### 6. Index-Integritaet — VIER Klassen (v6: drei; `PROJEKT` seit v5.145.0)
 
 | Klasse | Bedeutung | Fix |
 |---|---|---|
-| `TOT` | Datei existiert nirgends | Zeile korrigieren oder entfernen |
+| `TOT` | Datei existiert nirgends — **weder im Memory noch im Projekt** | Zeile korrigieren oder entfernen |
+| **`PROJEKT`** | der Zeiger meint eine Datei **im Projekt** (`docs/…`), relativ zur Projektwurzel — sie existiert | **nichts** — ein gueltiger Zeiger |
 | **`PRAEFIX`** | Datei existiert, der Zeiger hat ein Verzeichnis davor (`memory/datei.md` statt `datei.md`) | **Praefix entfernen — NICHT die Zeile loeschen** |
 | `VERWAIST` | Datei ohne Zeiger im Index | Zeile ergaenzen |
 
 ```bash
+# ⛔ v5.145.0 (Etappe 55 §5, Veras Befund M-D, Zustellplan 11./12.10.2026): 7 von 40 Zeilen
+#    wurden als TOT gemeldet, und ALLE SIEBEN existierten — sie zeigen auf `docs/…` im Projekt.
+#    Der vorgeschriebene Fix („Zeile entfernen") haette sieben gueltige Zeiger geloescht.
+#    Deshalb wird vor dem Urteil TOT auch relativ zur PROJEKTWURZEL aufgeloest.
+# ⚠ Eigener Bash-Aufruf: MEMORY_DIR und PROJ kommen aus Step 1 nicht mit. Ohne MEMORY_DIR
+#   waere die Schleife leer und saehe aus wie „alles in Ordnung".
+[ -n "${MEMORY_DIR:-}" ] && [ -f "$MEMORY_DIR/MEMORY.md" ] || {
+  echo "⛔ Index-Pruefung NICHT gefahren: MEMORY_DIR fehlt oder ohne MEMORY.md ('${MEMORY_DIR:-}')"; exit 2; }
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"   # v5.80.0: die Wurzel mit Roster
 grep -o '](\([^)]*\.md\))' "$MEMORY_DIR/MEMORY.md" | sed 's/](//;s/)//' | while read -r z; do
   [ -f "$MEMORY_DIR/$z" ] && continue
   b=$(basename "$z")
-  if [ -f "$MEMORY_DIR/$b" ]; then echo "PRAEFIX: $z -> $b"; else echo "TOT: $z"; fi
+  if [ -f "$MEMORY_DIR/$b" ]; then echo "PRAEFIX: $z -> $b"
+  elif [ -f "$PROJ/$z" ]; then echo "PROJEKT: $z (gueltig, liegt im Projekt)"
+  else echo "TOT: $z"; fi
 done
 ```
 
@@ -845,7 +858,7 @@ Zusammenführung. ⛔ **Die Zahlen sind GESETZT, nicht gemessen**, deshalb Regle
 ⭐ **Der wirksamere Hebel ist die `description`, nicht die Zahl** — sie ist der
 einzige Zugang des Auswählers, er sieht nie den Inhalt.
 
-⛔ **Vor einer Zusammenführung sichern**, danach `Learnings/memory_gates.py` —
+⛔ **Vor einer Zusammenführung sichern**, danach `$CLAUDE_PLUGIN_ROOT/references/memory_gates.py` —
 Zusammenführen **löscht eine Datei**.
 
 
@@ -936,7 +949,7 @@ Lies sie.** Hier nur, was für Memory gilt:
 | **Kandidat** | die **GRÖSSTE** Topic-Datei unter `$MEMORY_DIR` in Bytes, **die in den letzten N Läufen nicht Kandidatin war** — **eine je Lauf** (v5.138.0, `mind_verdicht_kandidat`). ⚠ **N ist `Dateizahl − 1`**, Regler `MIND_VERDICHTEN_HISTORIE`; Historie `.claude-mind/verdichten-historie`. ⛔ Veras Fund 26.09.2026: mit „größte“ allein wurde `lessons.md` **dreimal in Folge** gewählt und zwei 27-KB-Dateien **nie** |
 | ⛔ **nie** | `MEMORY.md` — sie ist ein Index (`- [Titel](datei.md) — Aufhänger`), kein Inhalt; Kürzen dort heißt Zeiger löschen |
 | ⛔ **unantastbar, byteweise** | das Frontmatter (`---` … `---`: `name`, `description`, `type`) — die `description` ist das EINZIGE Signal des Auswählers (Grenze 5 je Anfrage, `env-vars.md`); jeder `[[wikilink]]`; jede Index-Zeile |
-| ⛔ **welches Programm liest sie** | `Learnings/memory_gates.py` (Gate 3: kein toter `[[Verweis]]` — **und seit v5.131.0 kein Zeiger aus `CLAUDE.md`/`.claude/rules/*.md` auf eine entfernte `memory/<name>.md`**, Veras Fund 23.09.2026: zwei solche Zeiger lagen eine Woche; das Werkzeug MELDET sie mit Datei:Zeile, es schreibt nichts um — Gate 4: `description` 40–200) · `mind_scan_poisoning` · der Auswähler von Claude Code (Name + `description`). ⚠ Gate 1 (Inhaltszeilen gleich) gilt für ZUSAMMENFÜHREN, nicht fürs Verdichten — hier zählt Stufe 1 des Gates |
+| ⛔ **welches Programm liest sie** | `$CLAUDE_PLUGIN_ROOT/references/memory_gates.py` (Gate 3: kein toter `[[Verweis]]` — **und seit v5.131.0 kein Zeiger aus `CLAUDE.md`/`.claude/rules/*.md` auf eine entfernte `memory/<name>.md`**, Veras Fund 23.09.2026: zwei solche Zeiger lagen eine Woche; das Werkzeug MELDET sie mit Datei:Zeile, es schreibt nichts um — Gate 4: `description` 40–200) · `mind_scan_poisoning` · der Auswähler von Claude Code (Name + `description`). ⚠ Gate 1 (Inhaltszeilen gleich) gilt für ZUSAMMENFÜHREN, nicht fürs Verdichten — hier zählt Stufe 1 des Gates |
 | **Überholt-Kandidaten** | aus den Step-4-Befunden `stale` und `MIND_MEMORY_STALE_DAYS` (Zitate `file:line`, Versionsnummern älter als 14 Tage, gegengeprüft) — **benannt** an den Agenten |
 | **verwerfen, wenn** | Stufe 1 < 100 % · Marker unbenannt verloren · nicht kleiner · Zeilenenden geändert · Frontmatter oder ein `[[Verweis]]` verändert · Dauerkontext nach dem Anwenden nicht kleiner — ⚠ Topic-Dateien zählen dort NICHT mit; das Erfolgsmaß ist hier die Datei selbst |
 | ⛔ **Stufe 3** | der Wort-Diff wird GANZ gelesen, bevor angewendet wird. **Ohne Leser: nicht anwenden** — Ergebnis, Bericht, Diff ablegen, Pfad melden |

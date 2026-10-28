@@ -50,8 +50,8 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.144.0"
-mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
+MIND_SKILL_VERSION="5.145.0"
+mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe cleaner_tor mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
@@ -1246,6 +1246,10 @@ mind_agent_ergebnis "<bereich>" --datei "$PROJ/.claude-mind/agent-<bereich>.md" 
 # ⛔ v5.97.0 — DREI DINGE, die die Bilanz seither SELBST prueft (Ritas Lauf 22:05, 11.09.):
 #    · die Zahlform `mind_agent_ergebnis <bereich> <n>` schreibt bytes:0 — nur --datei misst
 #    · traegt die Datei das Hintergrund-Ack („Async agent launched"), ist das bytes:0
+#    · ⛔ v5.145.0: ein ROHDUMP (Datei beginnt mit `{"`/`[` oder hat JSONL-Zeilen) ist bytes:0 —
+#      abgelegt wird der tool_result, nie das Transkript des Agenten (Veras Befund M-J)
+#    · ⚠ eine `.output`-Datei der Harness gibt es NUR bei Hintergrund-Agenten. Wer sie bei einem
+#      blockierenden Agenten quittiert, quittiert eine fehlende Datei: bytes:0 → `ungepruef=`
 #    · liegen dispatch und ergebnis unter 30 s auseinander, gilt der Bereich als
 #      UNGEPRUEFT: ein blockierender Agent braucht 60–130 s, dieselbe Sekunde heisst
 #      „beide Zeilen nachgetragen". Deshalb: mind_agent_dispatch VOR dem Aufruf, in

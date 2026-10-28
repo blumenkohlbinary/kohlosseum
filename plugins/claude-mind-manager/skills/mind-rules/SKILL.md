@@ -43,8 +43,8 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.144.0"
-mind_schritt_start "$PROJ" mind-rules bestandsaufnahme bestandszahlen_kandidaten cleaner_duplikate cleaner_stichprobe ladeprotokoll_auswertung mind_kontext_bilanz mind_snapshot verdichten
+MIND_SKILL_VERSION="5.145.0"
+mind_schritt_start "$PROJ" mind-rules bestandsaufnahme bestandszahlen_kandidaten cleaner_duplikate cleaner_stichprobe cleaner_tor ladeprotokoll_auswertung mind_kontext_bilanz mind_snapshot verdichten
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
@@ -194,6 +194,11 @@ Optional flag: `--debug` (nur mit `check`) — Ladeprotokoll auswerten
 naechsten Sitzung **13 von 13 nicht beim Start geladen**, `path_glob_match` **11x** bei
 Dateiberuehrung, Dauerkontext **961 kB → 131 kB**. `paths:` filtert; `globs:` laedt immer.
 Der Abschnitt darunter ist damit Historie — er erklaert, warum die Doku allein nicht reichte.
+⛔ **Bis zum Trennstrich ist alles VERGANGENHEIT, auch wo ein Satz im Praesens stand** (v5.145.0,
+Veras Befund M-I, Zustellplan 12.10.2026 — sie haette den Pflichtschritt beinahe ausgelassen):
+`migrate` schreibt seit v5.43.0 **nichts** um · die Richtung ist seit v5.118.0 `globs:` → `paths:`
+· `ladeprotokoll_auswertung` misst `path_glob_match` (in Veras Lauf 184x). Ein Satz im Praesens
+ist eine Anweisung — deshalb stehen die Saetze unten jetzt in der Vergangenheit.
 
 **Bis v5.42.0 schrieb dieser Skill AUTONOM `paths:` nach `globs:` um** — auch in
 fremden Projekten. Die Begruendung stammte aus dem Januar 2026, als `paths:`
@@ -228,7 +233,7 @@ umstellen, frische Sitzung, `/context`. Stehen dort weniger Dateien, filtert es.
 **Nur der Mensch kann das ausloesen** — `/context` ist fuer den Assistenten nicht
 aufrufbar.
 
-Dieser Skill migriert `paths:` → `globs:` und stuft `paths:` als *„won't work"* ein.
+Dieser Skill migrierte bis v5.42.0 `paths:` → `globs:` und stufte `paths:` als *„won't work"* ein.
 **Die offizielle Doku sagt das Gegenteil** (Recherche 21.08.2026):
 
 | Quelle | Aussage |
@@ -239,12 +244,12 @@ Dieser Skill migriert `paths:` → `globs:` und stuft `paths:` als *„won't wor
 | `[ISSUE]` #21858 · #22170 (**offen**) | fuer `~/.claude/rules/` (global) laedt `paths:` **gar nicht**; im Projekt funktioniert dieselbe Regel |
 
 ⛔ **Der Widerspruch wird hier NICHT aufgeloest.** Beide Seiten haben Belege, keine
-hat eine Messung an dieser Maschine. **`migrate` bleibt wie es ist** — es folgt den
-Nutzerberichten, und die sind naeher am Verhalten als die Doku.
+hatte damals eine Messung an dieser Maschine. Damals blieb `migrate`, wie es war — es folgte
+den Nutzerberichten. *(Ueberholt: seit v5.43.0 schreibt `migrate` nichts, seit v5.118.0 ist gemessen.)*
 
 **Was ihn aufloesen wuerde:** eine Sonde, die beide Feldnamen auf eine wirklich
 gelesene Datei setzt, plus das Ladeprotokoll (`budget`). Taucht `path_glob_match`
-auf, traegt `paths:` hier. Bis dahin gilt: **im Bericht beide Seiten nennen.**
+auf, traegt `paths:` hier. *(Diese Sonde ist seit v5.118.0 gefahren — Ergebnis oben in P1.)*
 
 ---
 
@@ -527,7 +532,7 @@ done
 ⚠ **Nicht verwechseln mit „ganz ohne Frontmatter".** Eine Datei ohne jedes `---` nutzt den
 alwaysApply-Weg und laedt korrekt. Eine Datei mit **einem** `---` ist kaputt.
 
-## ⛔ `paths:` gegen `globs:` — Stand der Belege (NEU v5.7.0)
+## ⛔ `paths:` gegen `globs:` — Stand der Belege (NEU v5.7.0) — HISTORIE, entschieden in v5.118.0 (P1)
 
 Die Migrations-Empfehlung dieses Skills stuetzte sich bis v5.6.0 **ausschliesslich** auf
 Community-Recherche (`Wissen/block-4-community.md`), nicht auf die offizielle Doku. Am
@@ -559,7 +564,7 @@ Hinweis ausgegeben, nie als Grund fuer eine Aenderung.
 
 **Das Experiment, das beides entscheiden wuerde:** je eine Testregel mit `paths:` und mit
 `globs:` anlegen, den `InstructionsLoaded`-Hook registrieren und nachsehen, welche geladen
-wird. Bis dahin: **`migrate` nicht blind laufen lassen.**
+wird. *(Das Experiment ist seit v5.118.0 gemacht, P1; `migrate` schreibt seit v5.43.0 ohnehin nichts.)*
 
 ---
 

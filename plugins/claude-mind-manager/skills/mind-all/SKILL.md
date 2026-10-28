@@ -52,7 +52,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.144.0"
+MIND_SKILL_VERSION="5.145.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 # ⛔ v5.98.0: die fuenf Skills sind KEINE Schritte von mind-all — jeder hat seinen EIGENEN
 #    Start-Block (Step 2, Punkt 1). Bis v5.97.0 standen sie hier, Ritas Kalibrierlauf hakte
@@ -212,6 +212,10 @@ MIND_SID="${CLAUDE_CODE_SESSION_ID:-$(basename "${MIND_TP:-nosession}" .jsonl)}"
 #    zufrieden — dieselbe Zirkularitaet eine Ebene hoeher.
 # ⛔ UND KEIN FAIL-SAFE-NEURECHNEN: ein `|| LAUF=$(date …)` wuerde genau den Fall
 #    wieder verdecken, um den es geht. Fehlt der eigene Kopf, bricht der Lauf AB.
+# ⛔ v5.145.0 (Etappe 55 §6): GENAU EINMAL rufen. `mind_kopf_lauf_frisch` VERBRAUCHT den
+#    Merker `lauf-offen` — ein zweiter Aufruf in einem spaeteren Block scheitert mit
+#    „KOPF-BLOCK FEHLT". Spaetere Bloecke LESEN die ID: `mind_lock_lauf "$PROJ"` (der Lock
+#    traegt sie bis Step 2.9) oder `mind_kopf_lauf "$PROJ"` (die Kopfzeile).
 if ! LAUF=$(mind_kopf_lauf_frisch "$PROJ"); then
   echo "ABBRUCH: ohne eigenen Kopf-Block laeuft hier nichts weiter." >&2
   exit 1
@@ -340,14 +344,18 @@ echo "snapshot=$SNAPSHOT"        >> "$SCOPES_FILE"
 #       10.–13.09.2026, drei Laeufe, zehn Rettungen ungetilgt).
 mind_agent_quittung_start "$PROJ" 4
 
-# ⛔ v5.38.0: DEN TRANSKRIPT-PFAD JETZT HOLEN, NICHT SPAETER.
-#    Der Merker `.claude-mind/transkript-pfad` ist EINE Datei je PROJEKT, soll
-#    aber eine SITZUNG kennzeichnen — jede Sitzung ueberschreibt ihn bei jedem
-#    Prompt, der Letzte gewinnt. Wer ihn erst in Step 2.96a liest, hat dazwischen
-#    MINUTEN Rennfenster; wer ihn hier liest, Millisekunden. Der eigene
-#    prompt-submit.sh ist gerade gelaufen, also gehoert er in diesem Moment uns.
-# ⚠ EIN REST BLEIBT: schiebt eine andere Sitzung ihren Prompt genau dazwischen,
-#   ist er schon fremd. Aufloesen liesse sich das nur mit einer Sitzungskennung
+# ⛔ v5.145.0 (Etappe 55 §6, Veras Befund): DIESER ABSCHNITT IST HISTORIE. Den Merker
+#    `.claude-mind/transkript-pfad` gibt es seit v5.66.0 NICHT MEHR — niemand schreibt
+#    oder liest ihn (gemessen am Paket 5.144.0: nur noch Kommentare). `mind_transkript_pfad`
+#    adressiert die Sitzung ueber `CLAUDE_CODE_SESSION_ID`. Eine liegengebliebene Datei
+#    (Zustellplan, Stand 04.09.2026) ist ein Rest, kein Zustand. Vera las die Saetze unten im
+#    Praesens als heutige Mechanik — sie stehen deshalb jetzt in der Vergangenheit.
+# v5.38.0–v5.65.0: der Merker WAR eine Datei je PROJEKT und sollte eine SITZUNG
+#    kennzeichnen — jede Sitzung ueberschrieb ihn bei jedem Prompt, der Letzte gewann.
+#    Wer ihn erst in Step 2.96a las, hatte dazwischen MINUTEN Rennfenster; wer ihn hier
+#    las, Millisekunden.
+# ⚠ Der Rest damals: schob eine andere Sitzung ihren Prompt genau dazwischen,
+#   war er schon fremd. Aufloesen liesse sich das nur mit einer Sitzungskennung
 #   im Skill — die gibt es dort nicht (CLAUDE_SESSION_ID ist LEER, gemessen v5.30.0).
 #   ⛔ v5.66.0 KORRIGIERT: die Messung stimmte, der Schluss nicht —
 #      `CLAUDE_CODE_SESSION_ID` ist gesetzt und traegt genau diese Kennung.

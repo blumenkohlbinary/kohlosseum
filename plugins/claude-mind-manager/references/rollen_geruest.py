@@ -548,31 +548,38 @@ def spalten_pruefen(text, uo=None, projekt=None):
             break
     if kopf is None:
         return B, H
-    n = len(_zellen(zeilen[kopf]))
-    if n == 5:
-        if _normal(_zellen(zeilen[kopf])[4].strip().lower()) != "ordner":
-            B.append("die fuenfte Spalte der Rollentabelle heisst %r, §10a nennt "
-                     "sie `Ordner` — umbenannt?" % _zellen(zeilen[kopf])[4].strip())
-        if uo is not None and not uo:
-            H.append("fuenf Spalten, aber kein Unterordner mit eigenem Kontext "
-                     "gemessen — Spalte `Ordner` ist hier nicht noetig (zulaessig)")
-    elif n == 4:
+    # ⛔ v5.145.0 (Etappe 55 §6b, Veras Befund M-G, Zustellplan 12.10.2026): DIE SPALTE `Ordner`
+    #    WIRD AN IHRER UEBERSCHRIFT ERKANNT, NICHT AN DER SPALTENZAHL. Bis v5.144.0 galt „fuenf
+    #    Spalten = die fuenfte ist `Ordner`". Veras gesunder Roster `Rolle | Name | sessionId |
+    #    Kennung belegt | Tut` ergab vier Befunde, alle Fehlalarm: die Taetigkeitstexte wurden als
+    #    Ordnernamen gesucht. Der vorgeschriebene Fix (Spalte umbenennen) waere falsch gewesen.
+    #    ⚠ Unser eigener Roster hat vier Spalten — darum fiel es hier nie auf.
+    kz = [_normal(c.strip().lower()) for c in _zellen(zeilen[kopf])]
+    n = len(kz)
+    if n < 4:
+        B.append("die Rollentabelle hat %d Spalten, §10a verlangt mindestens vier" % n)
+        return B, H
+    oi = kz.index("ordner") if "ordner" in kz else None
+    if oi is None:
         if uo:
             B.append("Unterordner-Aufbau gemessen (%s), aber die Rollentabelle hat "
                      "keine Spalte `Ordner` — weder Sync noch Manager wissen, wo "
-                     "eine Sitzung lebt" % " · ".join("`%s/`" % u for u in uo))
-    else:
-        B.append("die Rollentabelle hat %d Spalten, §10a kennt vier oder fuenf" % n)
-        return B, H
+                     "eine Sitzung lebt%s" % (" · ".join("`%s/`" % u for u in uo),
+                     # ⚠ Mehr als vier Spalten, keine heisst `Ordner`: vermutlich UMBENANNT —
+                     #   das sagte die Meldung bis v5.144.0 (dann ohne Aufbau-Bedingung).
+                     " — umbenannt?" if n >= 5 else ""))
+    elif uo is not None and not uo:
+        H.append("Spalte `Ordner` vorhanden, aber kein Unterordner mit eigenem Kontext "
+                 "gemessen — hier nicht noetig (zulaessig)")
 
-    if n == 5:
+    if oi is not None:
         for z in zeilen[kopf + 2:]:
             if not z.lstrip().startswith("|"):
                 break
             if _zelle(z, 1) not in _ROLLEN:
                 continue
             name = _zelle(z, 2)
-            ordner = _zellen(z)[4].strip().replace("`", "") if len(_zellen(z)) > 4 else ""
+            ordner = _zellen(z)[oi].strip().replace("`", "") if len(_zellen(z)) > oi else ""
             if _platzhalter(name):
                 continue
             if _platzhalter(ordner):
