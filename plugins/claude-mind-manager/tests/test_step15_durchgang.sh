@@ -42,6 +42,21 @@ printf '# A\n\n```\nx\n```\nStand v1.2 in `docs/b.md`\n' > "$P/docs/a.md"
 L=$(lauf "$P")
 pruef "die eine Datei wird erkannt" "$(printf '%s\n' "$L" | grep -c 'docs/a.md')" "1"
 
+echo "=== 3) ⛔ v5.150.0: ein Pfad MIT LEERZEICHEN wird bewertet (vorher in Stuecke zerlegt, nie bewertet) ==="
+P="$TMP/p3"; mkdir -p "$P/docs"
+printf '# A\n\n```\nx\n```\nStand v1.2 in `docs/b.md`\n' > "$P/docs/recherche 1.md"
+L=$(lauf "$P")
+pruef "docs/recherche 1.md ist Custom Context" "$(printf '%s\n' "$L" | grep -cxF './docs/recherche 1.md')" "1"
+
+echo "=== 4) ein GLOB-Verweis holt weiter seine Dateien — aber nie aus .claude-mind/ ==="
+P="$TMP/p4"; mkdir -p "$P/wissen" "$P/.claude-mind/rescued"
+printf '# P\n\nWissen: `wissen/*-funktion.md` und `.claude-mind/rescued/*_chat.md`.\n' > "$P/CLAUDE.md"
+printf 'nur Prosa\n' > "$P/wissen/a-funktion.md"; printf 'nur Prosa\n' > "$P/wissen/b-funktion.md"
+printf 'ein geretteter Chat\n' > "$P/.claude-mind/rescued/x_chat.md"
+L=$(lauf "$P")
+pruef "beide Glob-Treffer drin (ohne Heuristik-Punkte)" "$(printf '%s\n' "$L" | grep -c 'wissen/.-funktion.md')" "2"
+pruef "⛔ kein geretteter Chat als Custom Context"     "$(printf '%s\n' "$L" | grep -c '_chat.md')" "0"
+
 echo ""
 echo "  $ok gruen · $rot rot"
 [ "$rot" -eq 0 ] || exit 1

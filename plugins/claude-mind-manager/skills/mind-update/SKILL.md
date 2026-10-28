@@ -50,7 +50,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.149.0"
+MIND_SKILL_VERSION="5.150.0"
 mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe cleaner_tor mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
@@ -368,31 +368,51 @@ else
   CUSTOM_CONTEXT_FILES=()
 
   # 2a: Alle referenzierten Files (deterministisch, Phase 1)
-  for ref in $REFERENCED; do
+  # ⛔ v5.150.0 (Antons Entscheidung 28.10.2026): ZEILENWEISE, nicht `for ref in $REFERENCED` — das
+  #    zerlegte jeden Pfad mit Leerzeichen in Stuecke, die es nicht gibt; eine solche Datei wurde nie
+  #    bewertet. Dass sich die Liste damit aendert, ist der Zweck.
+  # ⛔ Und die GLOB-Expansion, die das alte `for` nebenbei leistete, bleibt — jetzt ausdruecklich
+  #    (`compgen -G`, ohne Zerlegen): ein Verweis wie `wissen/reinraum/*-funktion.md` holt seine Dateien
+  #    (CK3: 40). ⚠ Verweise unter `.claude-mind/` fallen heraus: so kamen die geretteten Chats
+  #    (`.claude-mind/rescued/*_chat.md`, je mehrere hundert KB) als „Custom Context" in den Sync.
+  while IFS= read -r ref; do
+    [ -n "$ref" ] || continue
+    case "${ref#./}" in .claude-mind/*) continue ;; esac
+    case "$ref" in
+      *[\*\?\[]*)
+        while IFS= read -r candidate; do
+          [ -n "$candidate" ] && [ -f "$candidate" ] || continue
+          case "${candidate#./}" in .claude-mind/*) continue ;; esac
+          is_in_skip_set "./${candidate#./}" && continue
+          [[ " ${CUSTOM_CONTEXT_FILES[@]} " =~ " ./${candidate#./} " ]] && continue
+          CUSTOM_CONTEXT_FILES+=("./${candidate#./}")
+        done < <(compgen -G "$ref" 2>/dev/null)
+        continue ;;
+    esac
     for candidate in "./$ref" "$ref"; do
       if [ -f "$candidate" ] && ! is_in_skip_set "$candidate"; then
         CUSTOM_CONTEXT_FILES+=("$candidate")
         break
       fi
     done
-  done
+  done <<< "$REFERENCED"
 
   # 2b: Heuristik fuer nicht-referenzierte .md
   # ⛔ v5.149.0 (Etappe 57 §2, CK3): FUENF grep UEBER ALLE DATEIEN statt fuenf grep JE Datei. Vorher
   #    5 x N Prozesse (CK3: 245 Dateien, ueber 300 s; hier gemessen 84,4 s fuer 401 Eintraege). Dieselben
   #    Muster, derselbe grep — die Zaehlungen sind dieselben, die Ausgabe byteweise gleich (Gegenprobe
   #    an zwei Projekten, alter gegen neuen Block). `-H`, damit auch EINE Datei ihren Namen traegt.
-  # ⚠ `for f in $ALL_MD` zerlegt weiter an Leerzeichen, wie bisher — Absicht dieser Aenderung ist
-  #   NUR die Laufzeit; das Zerlegen steht als eigener Befund im Bericht der Etappe.
+  # ⛔ v5.150.0: ZEILENWEISE (bis v5.149.0 `for f in $ALL_MD`, zerlegte an Leerzeichen — siehe 2a).
   _KAND=()
-  for f in $ALL_MD; do
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
     # Skip wenn bereits in Step 1 Liste (B1-Fix)
     is_in_skip_set "$f" && continue
     # Skip wenn bereits via Referenz aufgenommen
     [[ " ${CUSTOM_CONTEXT_FILES[@]} " =~ " $f " ]] && continue
     [[ " ${_KAND[@]} " =~ " $f " ]] && continue
     _KAND+=("$f")
-  done
+  done <<< "$ALL_MD"
   declare -A _SCORE=()
   if [ "${#_KAND[@]}" -gt 0 ]; then
     while IFS= read -r _z; do
