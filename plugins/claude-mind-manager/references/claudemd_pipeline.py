@@ -308,6 +308,44 @@ def classify_path(p):
 
 
 # ---------------------------------------------------------------------------
+
+# _nicht_aufloesbar(rel, projekt) -> '' (normal weiter) | 'LEBT' | '<Grund>' (Hinweis statt DEAD)
+# ⛔ v5.147.0 (Etappe 56 §5). Jede Klasse ist an echten Meldungen gemessen (28.10.2026):
+#   1 Laufzeit-Merker   `.claude-mind/mind-all.lock`, `.claude-mind/lauf-offen` — existieren nur
+#                       WAEHREND eines Laufs; ausserhalb ist ihr Fehlen der Normalzustand
+#   2 Befehlswort davor `ls .claude-mind/mind-all.lock` — der Span ist ein Befehl, der Pfad steht dahinter
+#   3 `rules/<x>`       gemeint ist `.claude/rules/<x>` (so schreiben Rollen-Dateien ihren Roster)
+#   4 Elternordner      `_claude_backups/...` liegt eine Ebene ueber dem Projekt (KOHLEKTIV)
+#   5 fremde Maschine   `~/ck3test`, `~/.local/share/...` — gibt es den ERSTEN Teil unter HOME
+#                       nicht, ist der Pfad hier nicht pruefbar (Workstation). Gibt es ihn
+#                       (`~/.claude/...`), wird geprueft wie bisher: dort ist ein Fehlen echt tot.
+def _nicht_aufloesbar(rel, projekt, roh=''):
+    r = rel.replace('\\', '/').strip()
+    m = re.match(r'(ls|cat|rm|cp|mv|cd|head|tail|grep|wc|du|test|stat)\s+(-\S+\s+)*(\S+)$', r)
+    if m:
+        r = m.group(3)
+    if r.startswith('.claude-mind/'):
+        return 'Laufzeit-Merker, existiert nur waehrend eines Laufs'
+    if r.startswith('rules/') and os.path.exists(os.path.join(projekt, '.claude', r)):
+        return 'LEBT'
+    if m and os.path.exists(os.path.join(projekt, r)):
+        return 'LEBT'
+    if not os.path.isabs(r) and not r.startswith('~'):
+        d = os.path.dirname(os.path.abspath(projekt))
+        for _ in range(3):
+            if os.path.exists(os.path.join(d, r)):
+                return 'liegt relativ zu einem Elternordner (%s)' % d
+            d2 = os.path.dirname(d)
+            if d2 == d:
+                break
+            d = d2
+    o = (roh or r).replace('\\', '/').strip()
+    if o.startswith('~/'):
+        erst = o[2:].split('/')[0]
+        if erst and not os.path.exists(os.path.join(os.path.expanduser('~'), erst)):
+            return 'Pfad einer anderen Maschine (`~/%s` gibt es hier nicht)' % erst
+    return ''
+
 # Pfad-Bild — die EINE Regel gegen die Fehlalarm-Klassen von Check 13 (v5.127.0, Etappe 38 §6)
 # ---------------------------------------------------------------------------
 # ⛔ GEMESSEN 19.09.2026 ueber CLAUDE.md + Rules von vier Projekten (40 Dateien): 152 DEAD,
@@ -599,6 +637,13 @@ def pruefe(pfad, projekt):
             voll = os.path.expanduser(roh)
             if os.path.exists(voll):
                 continue
+            # ⛔ v5.147.0 (Etappe 56 §5): gibt es den ERSTEN Teil unter HOME nicht (`~/ck3test`,
+            #    `~/.local/...` — Workstation-Pfade), ist der Pfad hier nicht pruefbar, nicht tot.
+            _nh = _nicht_aufloesbar(roh, projekt, roh)
+            if _nh and _nh != 'LEBT':
+                unsure += 1
+                hinweis(13, 0, 'hier nicht aufloesbar (%s): %s' % (_nh, s))
+                continue
             dead.append(s)
             continue
         # pytest-Notation `datei.py::test_name` — der Teil hinter :: ist kein Pfad.
@@ -621,6 +666,17 @@ def pruefe(pfad, projekt):
         # EXTERN: existiert unter einer der erkannten Wurzeln. Nur Hinweis, nie Befund.
         if any(os.path.exists(os.path.join(w, rel)) for w in wurzeln[1:]):
             extern.append(s)
+            continue
+        # ⛔ v5.147.0 (Etappe 56 §5): „HIER NICHT AUFLOESBAR“ ist eine eigene Klasse, kein DEAD.
+        #    Gemessen 28.10.2026 an vier Projekten (Zustellplan, CK3, Palvedo, hier): 33 Meldungen,
+        #    darunter fuenf Formen, die NIE tot sind, sondern hier nicht pruefbar — derselbe Fehler
+        #    wie M-D in Etappe 55 (ein gueltiger Zeiger, vom falschen Ort aus gesucht):
+        _nh = _nicht_aufloesbar(rel, wurzeln[0], s)
+        if _nh == 'LEBT':
+            continue
+        if _nh:
+            unsure += 1
+            hinweis(13, 0, 'hier nicht aufloesbar (%s): %s' % (_nh, s))
             continue
         # v5.127.0 — die EINE Regel (pfadbild): nicht gefunden heisst erst dann DEAD, wenn der
         #    Span wie EIN Dateipfad aussieht. Verzeichnis-Form und Bezeichner sind UNSURE (Hinweis).

@@ -52,7 +52,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.146.0"
+MIND_SKILL_VERSION="5.147.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 # ⛔ v5.98.0: die fuenf Skills sind KEINE Schritte von mind-all — jeder hat seinen EIGENEN
 #    Start-Block (Step 2, Punkt 1). Bis v5.97.0 standen sie hier, Ritas Kalibrierlauf hakte
@@ -597,7 +597,7 @@ Lauf 2, Auszug         339 KB   rules      335 159 Tok / 20 Aufrufe -> 0 Byte
 
 **3,1x kleinere Eingabe, MEHR Tokens, vier von vier gleichfoermig tot.**
 
-⭐ **Ein Agent am 20-Turn-Limit ist KEIN Wiederholungsfall** (v5.96.0): der `tool_result` endet
+⭐ **Ein Agent am Turn-Limit (`maxTurns`, 25 seit v5.147.0) ist KEIN Wiederholungsfall** (v5.96.0): der `tool_result` endet
 ohne Bericht, der Agent lebt. Fortsetzung ist `SendMessage {to: <agentId>, message: „Bericht
 jetzt liefern“}` — kein neuer `Agent`-Aufruf. Gemessen 12.09.2026 (Rita): zwei Agenten am Limit,
 beide lieferten danach vollstaendig. Im Desktop-Reiter „Code“ erst `ToolSearch select:SendMessage`.

@@ -1000,7 +1000,13 @@ def lauf(projekt, bereich="alles", liefere=False):
     drift = [z for z in zeilen if z[0] == "zahlendrift"]
     if drift:
         print("\n  " + "=" * 82)
-        print("  ⛔ ZAHLENDRIFT — hier ist eine Stelle FALSCH, nicht nur doppelt")
+        # ⛔ v5.147.0 (Etappe 56 §5): GEMESSEN, BEVOR GEBAUT WURDE — 0 von 14 ZAHLENDRIFT-Meldungen
+        #    waren echt (Vera 4/4 am 11.10., ein Agent 10/10 an Zustellplan am 28.10.2026). Haeufigste
+        #    Form 6/10: die Zahl gehoert zu einer ANDEREN Aussage in der Naehe. Die Ueberschrift
+        #    behauptete „hier ist eine Stelle FALSCH" — das stimmte in keinem gemessenen Fall.
+        #    Klasse und Plan-Logik bleiben (cleaner_plan.py), bis der manager ueber das Umstufen entscheidet.
+        print("  ⛔ ZAHLENDRIFT — VERDACHT, erst ansehen: gemessen 0 von 14 echt (28.10.2026),"
+              " meist gehoert die Zahl zu einer Nachbaraussage")
         print("  " + "=" * 82)
         for _, m, na, nb, grund, pa, pb in drift[:12]:
             print("\n  %s" % m)

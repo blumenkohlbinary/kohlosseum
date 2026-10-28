@@ -43,7 +43,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.146.0"
+MIND_SKILL_VERSION="5.147.0"
 mind_schritt_start "$PROJ" mind-memory bestandszahlen_kandidaten cleaner_stichprobe cleaner_tor mind_debug_write mind_kontext_bilanz mind_scan_poisoning mind_snapshot verdichten
 ```
 
@@ -235,7 +235,7 @@ von vier Agenten meldeten Nichtbelegtes, keiner mit Vorbehalt). ⚠ Eine Bitte, 
 
 ⛔ **`run_in_background: false` in JEDEM Agent-Aufruf (v5.94.0, Nutzer-/Anton-Entscheidung 11.09.2026).** Die Vorgabe des Agent-Werkzeugs ist HINTERGRUND: der `tool_result` ist dann nur das Ack „Async agent launched“ (1 151 B, nach 1–2 s), das Ergebnis kommt — wenn überhaupt — später als `<task-notification>`. Gemessen 10.09.2026 (`docs/plugin/rueckkanal-messung.md`): getrennte Tool-Calls serialisieren im Hintergrund NICHTS (vier Agenten gleichzeitig bei „sequenziellen“ Aufrufen), und **5 von 8** Ergebnissen kamen nie an. Mit `false` blockt der Aufruf bis zur Rückgabe, `RUECKGABE` IST der `tool_result`, und ein Nachliefern mitten im Fan-out ist mechanisch unmöglich. ⚠ Preis: die Sitzung wartet je Agent 60–130 s und ist solange nicht ansprechbar — Nachrichten kommen ohnehin erst am Turn-Ende an.
 
-⭐ **Trifft der Agent sein 20-Turn-Limit VOR dem Bericht** (der `tool_result` endet ohne Ergebnis, der Agent lebt), ist die Fortsetzung `SendMessage {to: <agentId>, message: „Bericht jetzt liefern“}` — ⛔ **KEIN neuer `Agent`-Aufruf**, das wäre ein zweiter Agent gegen dieselbe Grenze (v5.96.0). Gemessen 12.09.2026 (Rita): zwei Agenten am Limit, beide lieferten nach der Nachricht vollständig. ⚠ Im Desktop-Reiter „Code“ ist `SendMessage` verzögert: erst `ToolSearch select:SendMessage`, dann ist es da.
+⭐ **Trifft der Agent sein Turn-Limit (`maxTurns`, 25 seit v5.147.0) VOR dem Bericht** (der `tool_result` endet ohne Ergebnis, der Agent lebt), ist die Fortsetzung `SendMessage {to: <agentId>, message: „Bericht jetzt liefern“}` — ⛔ **KEIN neuer `Agent`-Aufruf**, das wäre ein zweiter Agent gegen dieselbe Grenze (v5.96.0). Gemessen 12.09.2026 (Rita): zwei Agenten am Limit, beide lieferten nach der Nachricht vollständig. ⚠ Im Desktop-Reiter „Code“ ist `SendMessage` verzögert: erst `ToolSearch select:SendMessage`, dann ist es da.
 
 ## Step 4: Deterministische Inline-Checks (ergaenzend, NICHT statt Agent)
 
@@ -570,8 +570,15 @@ Bedrohung betrifft `.claude/rules/*.md` und `CLAUDE.md`; einmal gebaut, dreifach
 
 ```bash
 source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-for f in "$MEMORY_DIR"/*.md; do mind_scan_poisoning "$f"; done
-# Ausgabe je Fund: BEFUND|<art>|<zeile>|<detail>  bzw.  HINWEIS|...
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
+# ⛔ v5.147.0 (Etappe 56 §5): EINE ZAEHLZEILE AM ENDE. Ohne Fund gab der Scan 0 Byte aus — die
+#    Quittung war LEER, und „nichts gefunden" war von „nicht gelaufen" nicht zu trennen (zweites
+#    Auftreten, CK3). `DATEIEN=0` heisst jetzt: der Scan hatte keinen Gegenstand (MEMORY_DIR leer?).
+S="$PROJ/.claude-mind/schritt-mind-memory-poisoning.txt"; : > "$S"; _n=0
+for f in "$MEMORY_DIR"/*.md; do [ -f "$f" ] || continue; _n=$((_n+1)); mind_scan_poisoning "$f" >> "$S"; done
+echo "DATEIEN=$_n BEFUNDE=$(grep -c '^BEFUND|' "$S") HINWEISE=$(grep -c '^HINWEIS|' "$S")" >> "$S"; cat "$S"
+mind_schritt mind_scan_poisoning gelaufen --datei "$S" "$PROJ"
+# Ausgabe je Fund: BEFUND|<art>|<zeile>|<detail>  bzw.  HINWEIS|...  — danach die Zaehlzeile
 ```
 
 | Muster | Klasse |

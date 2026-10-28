@@ -2082,6 +2082,17 @@ mind_zeilenenden_waechter() {
   local v z ziel a b vergl=0 ohne=0 kipp=0 liste=""
 
   [ -n "$snap" ] && [ -d "$snap" ] || { echo "VERGLICHEN=0 OHNE_ZIEL=0 GEKIPPT=0"; return 2; }
+  # ⛔ v5.147.0 (Etappe 56 §5, Veras Fund 26.09.2026): FALSCHER AUFRUF IST KEIN ERGEBNIS. Mit
+  #    vertauschten oder fehlenden Argumenten lief die Schleife ueber ein PROJEKT statt einen
+  #    Snapshot: `OHNE_ZIEL=511 VERGLICHEN=0` — rc 2 kam zwar, aber die Zeile sah aus wie eine
+  #    Messung. Ein PROJEKT erkennt man an `.claude/` oder `.claude-mind/` — ein Snapshot traegt
+  #    beides nie (seine Zweige heissen rules/ global/ memory/ project/). ⚠ NICHT an MANIFEST
+  #    festmachen: ein Snapshot mit nur `CLAUDE.md` ist gueltig (`test_zeilenenden.sh`, SNAP2).
+  if [ -z "$proj" ] || [ ! -d "$proj" ] || [ -d "$snap/.claude" ] || [ -d "$snap/.claude-mind" ]; then
+    echo "⛔ mind_zeilenenden_waechter: Aufruf ist \`mind_zeilenenden_waechter <snapshot> <projekt> [memory-dir]\` — '$snap' ist kein Snapshot oder '$proj' kein Verzeichnis. Nichts gemessen." >&2
+    echo "VERGLICHEN=0 OHNE_ZIEL=0 GEKIPPT=0 AUFRUF=falsch"
+    return 2
+  fi
 
   while IFS= read -r v; do
     [ -n "$v" ] || continue
@@ -4212,6 +4223,15 @@ mind_stufe3_datei() {
   [ -n "$datei" ] || return 1
   d=$(cd "$(dirname "$datei")" 2>/dev/null && pwd -P) || d=$(dirname "$datei")
   stamm=$(basename "$datei"); stamm="${stamm%.md}"
+  # ⛔ v5.147.0 (Etappe 56 §6, CK3 zweimal): MEMORY-DATEIEN haben einen eigenen Ort. Der Aufstieg
+  #    unten fand fuer `~/.claude/projects/<slug>/memory/x.md` die `~/.claude` in HOME — die Datei
+  #    landete in `~/.claude/archiv/x.stufe3.md`, ueber ALLE Projekte geteilt: zwei gleichnamige
+  #    Memory-Dateien zweier Projekte haetten eine Stufe-3-Datei. Jetzt neben dem Memory-Ordner
+  #    (`<slug>/stufe3/`), nie darin — dort wuerde sie als Memory-Datei mitgelesen.
+  case "$d" in
+    */.claude/projects/*/memory|*/.claude/projects/*/memory/*)
+      printf '%s/stufe3/%s.stufe3.md\n' "${d%%/memory*}" "$stamm"; return 0 ;;
+  esac
   local p="$d"
   while [ -n "$p" ] && [ "$p" != "/" ] && [ "$p" != "." ]; do
     if [ -d "$p/.claude" ]; then wurzel="$p"; break; fi
@@ -4610,7 +4630,22 @@ mind_projekt_wurzel() {
     # Laufwerkswurzel ("C:") oder Dateisystemwurzel ("") beendet den Aufstieg.
     case "$d" in ?:|"") break ;; esac
   done
-  printf '%s\n' "$start"
+  # ⛔ v5.147.0 (Etappe 56 §6, CK3): ohne Roster kam der Startpfad unveraendert zurueck — auch
+  #    wenn er IN `.claude-mind/` oder `.claude/` lag (ein `mind-files`-Startblock mit cwd
+  #    `.claude-mind/`). `$PROJ` war dann der Merker-Ordner, und alles landete eine Ebene zu tief.
+  #    Jetzt: genau in diesem Fall der Ordner darueber — nie `$HOME` (dort liegt `~/.claude/`).
+  #    ⚠ Jeder andere Startpfad kommt byteweise zurueck wie bisher (`test_unterordner.sh` 4).
+  local s="${start//\\//}"; s="${s%/}"
+  case "$s" in
+    */.claude-mind|*/.claude-mind/*) s="${s%%/.claude-mind*}" ;;
+    */.claude|*/.claude/*)           s="${s%%/.claude/*}"; s="${s%/.claude}" ;;
+    *) printf '%s\n' "$start"; return 0 ;;
+  esac
+  if [ -n "$s" ] && [ "$s" != "$home" ]; then
+    printf '%s\n' "$s"
+  else
+    printf '%s\n' "$start"
+  fi
   return 0
 }
 

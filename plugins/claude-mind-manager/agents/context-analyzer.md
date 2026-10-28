@@ -20,11 +20,16 @@ disallowedTools:
   - Edit
   - Write
   - Bash
-maxTurns: 20
+maxTurns: 25
 color: green
 ---
 
 # Context Analyzer Agent
+
+> **`maxTurns: 25`** (v5.147.0, Etappe 56 §2, vorher 20) — gemessen 28.10.2026 ueber alle Projekte:
+> 27 von 393 Knowledge-Sync-Starts (7 %) stoppten bei 20 und brauchten insgesamt 21–23 Turns, die
+> sie ueber die Fortsetzung ohnehin bekamen; vollstaendige Laeufe Median 8, p95 20, hoechstens 21.
+> Die Grenze spart dort nichts — sie kostet eine Fortsetzungsrunde im Hauptkontext.
 
 Unified analysis of all context files. Replaces claude-md-analyzer + memory-auditor + context-optimizer.
 **v3.3.0:** zusaetzlicher Knowledge-Sync-Mode fuer mind-update Step 3.5.

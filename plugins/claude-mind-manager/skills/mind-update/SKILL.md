@@ -50,7 +50,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.146.0"
+MIND_SKILL_VERSION="5.147.0"
 mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe cleaner_tor mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
@@ -399,6 +399,13 @@ else
   done
 fi
 
+# ⛔ v5.147.0 (Etappe 56 §5, CK3): EINE Schreibweise je Datei. Ein Verweis, der selbst mit `./`
+#    beginnt, wurde zu `././docs/x.md` und zaehlte neben `./docs/x.md` aus dem Scan doppelt
+#    (CK3: 24 statt 19). Normalisiert auf `./<pfad>`, Reihenfolge bleibt, Doppel fallen weg.
+if [ "${#CUSTOM_CONTEXT_FILES[@]}" -gt 0 ]; then
+  mapfile -t CUSTOM_CONTEXT_FILES < <(printf '%s\n' "${CUSTOM_CONTEXT_FILES[@]}" \
+    | sed 's#^\(\./\)*##; s#^#./#' | awk '!gesehen[$0]++')
+fi
 echo "Custom Context discovered: ${#CUSTOM_CONTEXT_FILES[@]} files"
 ```
 
@@ -635,6 +642,12 @@ while IFS= read -r z; do
   [ -n "$z" ] && [ -f "$z" ] && ZIELE+=("$z")
 done < <(grep -oE '`[A-Za-z0-9_./-]+\.md`' CLAUDE.md 2>/dev/null | tr -d '`' | sort -u)
 
+# ⛔ v5.147.0 (Etappe 56 §5, CK3): OHNE CONVENTIONAL COMMITS MISST DAS GATE NICHTS — und sagt es.
+#    CK3: 0 von 30 (deutsche Commits), Palvedo ebenso; dann kam gar keine Zeile, und das las
+#    sich wie „keine Luecken“. Jetzt steht NICHT ANWENDBAR da, keine Zahl.
+_KC=$(git log --oneline -30 2>/dev/null | wc -l | tr -d ' ')
+_KK=$(git log --oneline -30 2>/dev/null | grep -ciE '^[0-9a-f]+ (feat|fix|refactor|perf|docs)(\(|:)')
+[ "${_KK:-0}" -eq 0 ] && echo "NICHT ANWENDBAR: 0 von ${_KC:-0} Commits im Conventional-Format (feat:/fix:/...) — Commit-Coverage misst hier NICHTS (keine Zahl, kein 'keine Luecken')"
 git log --oneline -30 | grep -iE '^[0-9a-f]+ (feat|fix|refactor|perf|docs)(\(|:)' | while read -r line; do
   hash=$(echo "$line" | cut -d' ' -f1)
   subj=$(echo "$line" | cut -d' ' -f2-)
@@ -649,7 +662,10 @@ git log --oneline -30 | grep -iE '^[0-9a-f]+ (feat|fix|refactor|perf|docs)(\(|:)
     # Sichtbar machen statt verschweigen: ohne belastbares Stichwort ist der Commit
     # UNGEPRUEFT, nicht unauffaellig. Genau diese Stille war der Defekt bis v5.5.1.
     echo "KEIN-STICHWORT: $hash '$subj' — ungeprueft, kein belastbares Stichwort"
-  elif ! grep -qi "$key" "${ZIELE[@]}" 2>/dev/null; then
+  # ⚠ v5.147.0: Umlaut-Schreibweisen (CK3: Fehl-GAPs) — beide Formen gelten als Treffer.
+  elif ! grep -qi "$key" "${ZIELE[@]}" 2>/dev/null \
+       && ! grep -qi "$(printf '%s' "$key" | sed 's/ä/ae/g;s/ö/oe/g;s/ü/ue/g;s/ß/ss/g')" "${ZIELE[@]}" 2>/dev/null \
+       && ! grep -qi "$(printf '%s' "$key" | sed 's/ae/ä/g;s/oe/ö/g;s/ue/ü/g')" "${ZIELE[@]}" 2>/dev/null; then
     echo "GAP: $hash '$subj' — Stichwort '$key' fehlt in ${#ZIELE[@]} Context-Dateien"
   fi
 done
@@ -792,7 +808,9 @@ if [ "$QUICK_MODE" != "yes" ]; then
   for f in .claude/rules/*.md "$HOME"/.claude/rules/*.md; do
     [ -f "$f" ] || continue
     # Versions-Patterns nur mit Kontext-Keyword (Stable/Unstable/Last sync/Tabelle/Bullet/Code)
-    hits=$(grep -nE "v?[0-9]+\.[0-9]+\.[0-9]+(-dev\.[0-9]+)?" "$f" 2>/dev/null | \
+    # ⛔ v5.147.0 (Etappe 56 §5, CK3): der letzte Teil hoechstens DREI Ziffern — `10.09.2026` ist
+    #    ein Datum (vierstelliges Jahr), keine Version; das alte Muster las es als Drift.
+    hits=$(grep -nE "v?[0-9]+\.[0-9]+\.[0-9]{1,3}(-dev\.[0-9]+)?([^0-9]|$)" "$f" 2>/dev/null | \
            grep -iE "(stable|unstable|tag|commit|last sync|^[[:space:]]*[-*|\`])" )
     # Test-Counts nur mit Test-Keyword in derselben Zeile
     hits2=$(grep -nE "\b[0-9]{2,4}\s+(pytest-)?[Tt]ests?\b" "$f" 2>/dev/null | \
@@ -1120,7 +1138,7 @@ Agent 1+2 in einem Tool-Call, Welle 2 = Agent 3+4 im nächsten). Alle 4 laufen �
 
 ⛔ **`run_in_background: false` in JEDEM Agent-Aufruf (v5.94.0, Nutzer-/Anton-Entscheidung 11.09.2026).** Die Vorgabe des Agent-Werkzeugs ist HINTERGRUND: der `tool_result` ist dann nur das Ack „Async agent launched“ (1 151 B, nach 1–2 s), das Ergebnis kommt — wenn überhaupt — später als `<task-notification>`. Gemessen 10.09.2026 (`docs/plugin/rueckkanal-messung.md`): getrennte Tool-Calls serialisieren im Hintergrund NICHTS (vier Agenten gleichzeitig bei „sequenziellen“ Aufrufen), und **5 von 8** Ergebnissen kamen nie an. Mit `false` blockt der Aufruf bis zur Rückgabe, `RUECKGABE` IST der `tool_result`, und ein Nachliefern mitten im Fan-out ist mechanisch unmöglich. ⚠ Preis: die Sitzung wartet je Agent 60–130 s und ist solange nicht ansprechbar — Nachrichten kommen ohnehin erst am Turn-Ende an.
 
-⭐ **Trifft der Agent sein 20-Turn-Limit VOR dem Bericht** (der `tool_result` endet ohne Ergebnis, der Agent lebt), ist die Fortsetzung `SendMessage {to: <agentId>, message: „Bericht jetzt liefern“}` — ⛔ **KEIN neuer `Agent`-Aufruf**, das wäre ein zweiter Agent gegen dieselbe Grenze (v5.96.0). Gemessen 12.09.2026 (Rita): zwei Agenten am Limit, beide lieferten nach der Nachricht vollständig. ⚠ Im Desktop-Reiter „Code“ ist `SendMessage` verzögert: erst `ToolSearch select:SendMessage`, dann ist es da.
+⭐ **Trifft der Agent sein Turn-Limit (`maxTurns`, 25 seit v5.147.0) VOR dem Bericht** (der `tool_result` endet ohne Ergebnis, der Agent lebt), ist die Fortsetzung `SendMessage {to: <agentId>, message: „Bericht jetzt liefern“}` — ⛔ **KEIN neuer `Agent`-Aufruf**, das wäre ein zweiter Agent gegen dieselbe Grenze (v5.96.0). Gemessen 12.09.2026 (Rita): zwei Agenten am Limit, beide lieferten nach der Nachricht vollständig. ⚠ Im Desktop-Reiter „Code“ ist `SendMessage` verzögert: erst `ToolSearch select:SendMessage`, dann ist es da.
 ⭐ **Erst damit misst die Grenze oben wieder etwas:** zwei Aufrufe in EINER Nachricht = zwei
 gleichzeitig, getrennte Nachrichten = nacheinander.
 
