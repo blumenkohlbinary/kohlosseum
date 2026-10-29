@@ -1527,7 +1527,7 @@ mind_umfang_bilden() {
 #    irrefuehrend. Gemessen an seiner `analyzed-scopes.done`: zehn `bestand=`-Zeilen,
 #    jede der fuenf Skills GENAU ZWEIMAL quittiert (zwei Durchlaeufe). Die Zahl stimmt,
 #    aber `x/5` legt „von fuenf" nahe, waehrend Quittungen gezaehlt werden, nicht Skills.
-#    Klasse aus `kontext-anlegen.md`: **eine Bestandszahl nennt ihren Gegenstand GENAU.**
+#    Klasse aus `file-handling.md` („Context files“): **eine Bestandszahl nennt ihren Gegenstand GENAU.**
 # ⛔ DIE MASCHINENLESBARE ZEICHENKETTE BLEIBT UNVERAENDERT — `mind_sync_voll` liest sie,
 #    und ein Wort darin waere ein annotierter Bruch (v5.105.0). Uebersetzt wird nur fuer
 #    den BERICHT, an genau dieser Stelle.
@@ -4144,7 +4144,7 @@ mind_rettungen() {
 #    unlesbar, Kennung nicht gefunden, sync-Zeile ohne Kennung) redet wie heute.
 #
 # ⚠ WARUM `unbekannt` NICHT stillgelegt wird, obwohl der Auftrag "alles
-#   andere" sagt: eine sessionId wechselt beim Neustart. Ein Roster, der eine
+#   andere" sagt: eine sessionId wechselt bei Fortsetzung und Leeren (nicht bei /compact). Ein Roster, der eine
 #   Nacht alt ist, macht die sync-Sitzung selbst zu `unbekannt` — und wer
 #   `unbekannt` stilllegt, legt genau die Sitzung stumm, die mahnen soll. Der
 #   Satz "Stillschweigen nur bei einem positiven Treffer" ist die engere

@@ -263,7 +263,7 @@ def geruest(projekt, plugin_root=None, rollen=3):
     a("\u26a0 Bist du keine dieser Rollen, gilt diese Datei nicht \u2014 normal "
       "weiterarbeiten.")
     a("")
-    a("\u26d4 **Nach einem Neustart ZUERST <Datei> und <Datei> lesen** "
+    a("\u26d4 **Nach Neustart, Fortsetzung oder Leeren ZUERST <Datei> und <Datei> lesen** "
       "(laden NICHT mit).")
     a("Ohne sie kennt eine frische Sitzung ihre Rolle, aber nicht ihren Auftrag.")
     a("")
@@ -303,9 +303,9 @@ def geruest(projekt, plugin_root=None, rollen=3):
     a("")
     a("`%s`" % (" \u00b7 ".join(wz) if wz else "<liste>"))
     a("")
-    a("**Absprache:** nur wenn die anderen idle sind. Warum, und welcher "
-      "Kontextstand welchen")
-    a("Fan-out ergibt: `manager-chats.md`.")
+    # v5.157.0 (Etappe 61): „welcher Kontextstand welchen Fan-out ergibt“ zeigte ins Leere
+    #   (die Regel gibt es nicht mehr) und stand in 4 von 4 Rostern — sie kamen von hier.
+    a("**Absprache:** nur wenn die anderen idle sind. Warum: `manager-chats.md` \u2192 Limits.")
     a("")
     a("## \u26d4 Wer den NUTZER fragen darf \u2014 und wer NICHT")
     a("")
@@ -313,7 +313,12 @@ def geruest(projekt, plugin_root=None, rollen=3):
       "fragen ihn \u2014 auch bei")
     a("Uneinigkeit, auch wenn die Frage dringend wirkt, auch wenn sie ihn "
       "selbst betrifft.")
-    a("\u26d4 **Und er fragt nur im Notfall.**")
+    # v5.157.0: „fragt nur im Notfall“ ohne die vier Faelle stand in 3 Rostern (Pruefliste c).
+    a("\u26d4 **Und er fragt nur in einem von vier Notf\u00e4llen** (`manager-chats.md`): "
+      "Freigabe-Dialog \u00b7")
+    a("unumkehrbarer Verlust (kein Weg zur\u00fcck) \u00b7 beide Wege zerst\u00f6ren Arbeit \u00b7 "
+      "eine Messung widerspricht")
+    a("dem erkl\u00e4rten ZIEL des Nutzers. Alles andere entscheidet er selbst.")
     a("\u26a0 **Die eine Ausnahme:** ein **Freigabe-Dialog** \u00f6ffnet sich "
       "beim Ausf\u00fchrenden und kann nur")
     a("dort beantwortet werden. Das ist kein Fragen, das ist der Mechanismus.")
@@ -327,17 +332,20 @@ def geruest(projekt, plugin_root=None, rollen=3):
     a("| eine Messung widerspricht der Doku | **<Manager>** |")
     a("| **Freigabe-Dialog** (l\u00f6schen, Plan anwenden, Push) | "
       "\u26d4 **NUR der Nutzer** |")
-    a("| Freigabe f\u00fcr eine \u00c4nderung, die bestehendes Verhalten "
-      "ersetzt | \u26d4 **NUR der Nutzer** |")
+    # v5.157.0 (Pruefliste b): der manager entscheidet und NENNT es (manager-chats.md).
+    a("| \u00c4nderung, die bestehendes Verhalten ersetzt | **<Manager>** entscheidet "
+      "und **nennt** es im Bericht |")
     a("")
     a("## \u26d4 Offene Deckel-Schuld")
     a("")
     # \u26d4 Der REGELTEXT steht seit dem 09.09.2026 global in
-    #   `~/.claude/rules/kontext-anlegen.md` und NICHT mehr hier. Vorher stand
+    #   `~/.claude/rules/kontext-anlegen.md` (seit 29.10.2026 `context-saving.md`) und NICHT mehr hier. Vorher stand
     #   er in zwei Rostern und null globalen Regeln; als er korrigiert wurde,
     #   zog nur eine Kopie nach, und beide Dateien meldeten fuer sich gruen.
-    a("Die **Regel** steht global in `~/.claude/rules/kontext-anlegen.md` \u2014 "
-      "wer anlegt, zahlt aus")
+    # v5.157.0: `kontext-anlegen.md` gibt es seit 29.10.2026 nicht mehr — die Deckel-Regel steht
+    #   in `context-saving.md`, Abschnitt „Always-loaded context“.
+    a("Die **Regel** steht global in `~/.claude/rules/context-saving.md` "
+      "(\u201eAlways-loaded context\u201c) \u2014 wer anlegt, zahlt aus")
     a("dem Bestand; wer nichts zu streichen findet, weist die Schuld aus. "
       "\u26d4 **Hier steht nur die")
     a("Schuld DIESES Projekts**, sonst nichts:")
@@ -593,6 +601,125 @@ def spalten_pruefen(text, uo=None, projekt=None):
     return B, H
 
 
+# ---------------------------------------------------------------------------
+# v5.157.0 (Etappe 61): der Roster ist kein NOTIZHEFT, und er wiederholt keine widerlegte Regel.
+# Vorlage ist die Pruefliste a–m der Update-Vorlage (Joplin `4ccf1cf8333543269a6ed1a64784f437`).
+# ⛔ Gebaut wurde NUR, was an den fuenf echten Rostern (28./29.10.2026) einen echten Treffer hatte
+#    (`Learnings/roster_messung.py`): b 3/5 · c 3/5 · d 1/5 · e 1/5 · f 2/5 · g 1/5 · h 3/5 · m 4/5 ·
+#    Notizheft 4/5. NICHT gebaut, Trefferquote 0 oder nur Fehlalarm: a (Zeiger auf den Fan-out —
+#    im Bestand schon weg, die Quelle war dieses Geruest, behoben), i (Kennungs-Erklaerung), j
+#    (Pfad doppelt: 6 Treffer, alle Ordner-Praefixe oder Erwaehnungen), k (der einzige Fall ist
+#    eine begruendete lokale Ausnahme, Buerokratie), „Spalte 3 mit Zusatz“ (0; die `local_…`-Form
+#    meldet `kennungen_pruefen` schon).
+# ⭐ Zeilen der Deckel-TABELLE beschreiben fruehere Aenderungen („`backup-before-delete.md` →
+#    `file-handling.md`“) — sie sind kein Zeiger und keine Regel. Sie prueft nur der Betrag (h).
+# ⛔ Nur MELDEN. Der Roster gehoert dem manager.
+# ---------------------------------------------------------------------------
+_WIDERLEGT = [
+    ("b", re.compile(r"Verhalten ersetzt.*nur der nutzer", re.I),
+     "„Änderung, die bestehendes Verhalten ersetzt | NUR der Nutzer“ — der manager entscheidet "
+     "und NENNT es im Bericht (`manager-chats.md`)"),
+    ("d", re.compile(r"frei (miteinander )?reden|reden frei|schreiben einander", re.I),
+     "Kollegen „reden frei“ — Nachrichten nur nach `manager-chats.md` → Messages, eine Zeile"),
+    ("e", re.compile(r"VOR- und NACH-Meldung|meldet beim ersten Start", re.I),
+     "VOR-Meldung als Nachricht — VOR gehoert in die Auftragsdatei, nur `NACH` ist eine Nachricht"),
+    ("f", re.compile(r"wandert bei jedem Neustart|local_\S*\W+wandert|"
+                     r"(sessionId|Kennung)\W+wechselt beim Neustart", re.I),
+     "„`local_…` wandert / sessionId wechselt beim Neustart“ — widerlegt: die UUID wechselt bei "
+     "Fortsetzung und Leeren, nicht bei `/compact`; `local_…` bleibt stabil"),
+    ("g", re.compile(r"manager kompaktiert|kompaktier\w*\W+(nur|erst),? wenn|"
+                     r"wenn (seine|die|ihre) Aufgabe abgeschlossen|nur nach Abschluss", re.I),
+     "Kompaktier-Regel im Roster („nur nach Abschluss“, „manager kompaktiert“) — die App "
+     "kompaktiert ueber die Grenze, selbst kompaktieren darf jeder Chat, wann er will"),
+]
+_NOTFALL = re.compile(r"fragt nur im Notfall", re.I)
+# Die vier Notfaelle gelten als ausgeschrieben, wenn der unumkehrbare Verlust dasteht — er ist der
+# Fall, den kein anderer Satz eines Rosters zufaellig enthaelt.
+_VIER = re.compile(r"irrevers|unumkehrbar|kein(en)? Weg zur(ü|ue)ck", re.I)
+_NOTIZ = [
+    re.compile(r"gemessen \d{1,2}\.\d{1,2}\.(\d{4})? an \w", re.I),
+    re.compile(r"w(ö|oe)rtlich|Ansage w", re.I),
+    re.compile(r"\bVorfall\b|schon einmal passiert", re.I),
+    re.compile(r"seit \d{1,2}\.\d{1,2}\.\d{4} leer", re.I),
+]
+_BETRAG = re.compile(r"\d[\d \u00a0\u202f]*\s?K?B\b")
+_DATUM_VORN = re.compile(r"^(\d{8}(_\d{6})?|\d{4}-\d{2}-\d{2})_")
+
+
+def _archivierte_rules(home=None):
+    """Namen globaler Rules, die im Archiv liegen und in `~/.claude/rules/` FEHLEN — umgezogen."""
+    home = home or os.path.expanduser("~")
+    da = os.path.join(home, ".claude", "rules")
+    arch = os.path.join(home, ".claude", "rules-archiv")
+    if not os.path.isdir(arch):
+        return set()
+    heute = set(os.listdir(da)) if os.path.isdir(da) else set()
+    weg = set()
+    for wurzel, _, dateien in os.walk(arch):
+        for d in dateien:
+            if d.endswith(".md"):
+                n = _DATUM_VORN.sub("", d)
+                if n not in heute:
+                    weg.add(n)
+    return weg
+
+
+def notizheft_pruefen(text, projekt=None, home=None):
+    """Widerlegte Regeln, tote Rule-Zeiger, Betraege im Deckel, Notizheft-Inhalt. (befunde, hinweise)
+
+    Zeilennummern in jeder Meldung — der manager raeumt seinen Roster selbst auf.
+    """
+    B, H = [], []
+    zeilen = text.splitlines()
+    tot = _archivierte_rules(home)
+    eigene = set()
+    if projekt and os.path.isdir(os.path.join(projekt, ".claude", "rules")):
+        eigene = set(os.listdir(os.path.join(projekt, ".claude", "rules")))
+    deckel = False
+    funde = {}
+    betrag, notiz, zeiger = [], [], {}
+    for n, z in enumerate(zeilen, 1):
+        if z.startswith("#"):
+            deckel = "deckel" in z.lower()
+            continue
+        tabelle = z.lstrip().startswith("|")
+        if deckel and _BETRAG.search(z):
+            betrag.append(n)
+        if deckel and tabelle:
+            continue
+        for kurz, rx, _ in _WIDERLEGT:
+            if rx.search(z):
+                funde.setdefault(kurz, []).append(n)
+        if _NOTFALL.search(z) and not _VIER.search(text):
+            funde.setdefault("c", []).append(n)
+        for name in re.findall(r"([A-Za-z0-9_-]+\.md)\b", z):
+            if name in tot and name not in eigene:
+                zeiger.setdefault(name, []).append(n)
+        if any(rx.search(z) for rx in _NOTIZ):
+            notiz.append(n)
+
+    def zn(liste):
+        return "Z. " + ", ".join(str(x) for x in liste[:6]) + (" …" if len(liste) > 6 else "")
+
+    for kurz, _, meldung in _WIDERLEGT:
+        if kurz in funde:
+            B.append("widerlegte Regel (%s): %s — %s" % (kurz, meldung, zn(funde[kurz])))
+    if "c" in funde:
+        B.append("widerlegte Regel (c): „fragt nur im Notfall“ ohne die vier Notfaelle "
+                 "(`manager-chats.md`) — %s" % zn(funde["c"]))
+    for name, ns in sorted(zeiger.items()):
+        B.append("toter Zeiger (m): `%s` liegt nur noch in `~/.claude/rules-archiv/` — %s"
+                 % (name, zn(ns)))
+    if betrag:
+        B.append("Deckel mit Betraegen (h): ein Ausweis nennt Datum, Anlass und Datei, keinen "
+                 "Bestandsbetrag — der Betrag wird gemessen (`mind_kontext_bilanz`) — %s" % zn(betrag))
+    if notiz:
+        H.append("Notizheft (l): Messbelege, Vorfaelle, woertliche Ansagen oder Ordnerzustaende im "
+                 "Roster — ins Archiv verschieben, nicht loeschen (`manager-chats.md`, „The roster is "
+                 "not a notebook“) — %s" % zn(notiz))
+    return B, H
+
+
 def pruefe(text, projekt=None):
     """Pruefung 8: Abschnittsfolge und Saetze. (befunde, hinweise)
 
@@ -670,6 +797,9 @@ def pruefe(text, projekt=None):
     B3, H3 = spalten_pruefen(text, uo, projekt)
     B.extend(B3)
     H.extend(H3)
+    B4, H4 = notizheft_pruefen(text, projekt)
+    B.extend(B4)
+    H.extend(H4)
     for name, teil in SAETZE:
         if teil not in text:
             B.append("Pflichtsatz fehlt \u2014 %s (%r)" % (name, teil))
@@ -789,7 +919,7 @@ def selbsttest():
     pruef("   ... und der REGELTEXT ist NICHT mehr drin",
           "100 dazu, 100 weg" in g, False)
     pruef("   ... sondern ein Zeiger auf die globale Regel",
-          "kontext-anlegen.md" in g, True)
+          "context-saving.md" in g, True)
     pruef("4 beide `niemand`-Werte stehen drin",
           "niemand von Hand" in g and "niemand — gesperrt" in g, True)
     pruef("5 feste Eigentuemer-Zeilen",
@@ -942,6 +1072,64 @@ def selbsttest():
     finally:
         import shutil as _sh
         _sh.rmtree(tmp, ignore_errors=True)
+
+    print()
+    print("=== 11) ⭐ v5.157.0: Notizheft und widerlegte Regeln (Etappe 61) ===")
+    import tempfile as _tf
+    import shutil as _sh2
+    fh = _tf.mkdtemp()
+    try:
+        os.makedirs(os.path.join(fh, ".claude", "rules"))
+        os.makedirs(os.path.join(fh, ".claude", "rules-archiv", "2026-10-29_ordner"))
+        io.open(os.path.join(fh, ".claude", "rules", "file-handling.md"), "w").write("x")
+        io.open(os.path.join(fh, ".claude", "rules-archiv", "2026-10-29_alt-regel.md"), "w").write("x")
+        io.open(os.path.join(fh, ".claude", "rules-archiv", "2026-10-29_ordner", "tief.md"), "w").write("x")
+        io.open(os.path.join(fh, ".claude", "rules-archiv", "2026-10-29_file-handling.md"), "w").write("x")
+        pos = {
+            "b": "| Freigabe für eine Änderung, die bestehendes Verhalten ersetzt | ⛔ **NUR der Nutzer** |",
+            "c": "⛔ **Und er fragt nur im Notfall.**",
+            "d": "Paul und Vera dürfen frei miteinander reden.",
+            "e": "Udo bekommt VOR- und NACH-Meldungen.",
+            "f": "Zum Anschreiben (`send_message`, wandert bei jedem Neustart):",
+            "g": "| Kompaktieren | jeder Chat **selbst, wenn seine Aufgabe abgeschlossen ist** |",
+        }
+        for kurz, zeile in pos.items():
+            Bx, _ = notizheft_pruefen("# Rollen\n\n" + zeile + "\n", home=fh)
+            pruef("%s: echte Zeile aus einem Roster -> BEFUND" % kurz,
+                  any("(%s)" % kurz in x for x in Bx), True)
+        Bm, _ = notizheft_pruefen("Regel in `~/.claude/rules/alt-regel.md` und `tief.md`.\n", home=fh)
+        pruef("m: Rule nur im Archiv (Datumsvorsatz) -> toter Zeiger",
+              any("`alt-regel.md`" in x for x in Bm), True)
+        pruef("m: ... auch aus einem Archiv-UNTERORDNER", any("`tief.md`" in x for x in Bm), True)
+        Bm2, _ = notizheft_pruefen("Siehe `file-handling.md`.\n", home=fh)
+        pruef("⛔ m: archiviert UND noch da (alte Fassung) -> KEIN Zeiger-Befund", Bm2, [])
+        Bm3, _ = notizheft_pruefen("Siehe `alt-regel.md`.\n", home=os.path.join(fh, "fehlt"))
+        pruef("⛔ m: ohne Archiv urteilt niemand -> still", Bm3, [])
+        dk = ("## ⛔ Offene Deckel-Schuld\n\n| Datum | Was | Bilanz | Stand |\n|---|---|---|---|\n"
+              "| 29.10. | global `alt-regel.md` -> `file-handling.md`, ersetzt „Clear statt Compact“, "
+              "manager kompaktiert fremden Chat | wird gemessen | OFFEN |\n")
+        Bd, Hd = notizheft_pruefen(dk, home=fh)
+        pruef("⛔ Deckel-TABELLENZEILE beschreibt eine Aenderung -> weder Zeiger noch Regel", Bd + Hd, [])
+        Bh, _ = notizheft_pruefen(dk.replace("wird gemessen", "11 921 → 8 024 B"), home=fh)
+        pruef("h: Betrag in der Deckel-Tabelle -> BEFUND", any("(h)" in x for x in Bh), True)
+        Bh2, _ = notizheft_pruefen("# Arbeit\n\n| Datei | 4 KB |\n", home=fh)
+        pruef("⛔ h: ein Betrag AUSSERHALB des Deckels ist kein Ausweis", Bh2, [])
+        Bc, _ = notizheft_pruefen(pos["c"] + "\nVier Notfaelle: Freigabe-Dialog · unumkehrbarer Verlust …\n",
+                                  home=fh)
+        pruef("⛔ c: die vier Notfaelle stehen da -> still", Bc, [])
+        for i, zeile in enumerate(("Leeren aendert die Kennung (gemessen 24.09.2026 an Udo).",
+                                   "Nutzer-Ansage 15.09.2026, wörtlich sinngemäß: alles selbst.",
+                                   "fuer Repo-Dateien (Vorfall: 5 Adressen).",
+                                   "| `Kinder/**` — seit 21.09.2026 leer | **Sven** |"), 1):
+            _, Hl = notizheft_pruefen(zeile + "\n", home=fh)
+            pruef("l%d: Notizheft-Zeile -> Hinweis, kein Befund" % i, any("(l)" in x for x in Hl), True)
+        Bn, Hn = notizheft_pruefen("Das Emoji ersetzt sie nicht, es zeigt nur das Feld.\n", home=fh)
+        pruef("⛔ l: „ersetzt“ im Alltagssinn ist kein Notizheft (Fehlalarm der Messung)", Bn + Hn, [])
+        g0 = geruest(root, root)
+        Bg, _ = notizheft_pruefen(g0)
+        pruef("⭐ das eigene Geruest traegt keine widerlegte Regel und keinen toten Zeiger", Bg, [])
+    finally:
+        _sh2.rmtree(fh, ignore_errors=True)
     return rot
 
 

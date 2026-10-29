@@ -71,6 +71,9 @@ fi
 # v5.156.0 (Etappe 60): die Sitzung je HOST-Kennung merken — Grundlage der Uebergabe nach dem Leeren.
 #   Die Log-Zeile ist die Messung, ob die Host-Kennung im Hook ueberhaupt ankommt (leer -> Funktion aus).
 _slog DEBUG "host=${CLAUDE_CODE_HOST_SESSION_ID:-leer}"
+# v5.157.0: GEMESSEN 29.10.2026 — im Hook ist die Host-Kennung LEER (host=leer x3), in der Bash-Sitzung
+#   gesetzt. Welche Kennung sieht ein Hook? Nur die NAMEN der CLAUDE_*-Variablen, nie Werte.
+_slog DEBUG "env-namen=$(env 2>/dev/null | grep -oE '^CLAUDE[A-Z0-9_]*' | sort | tr '\n' ',')"
 if command -v mind_sitzung_merken >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
   mind_sitzung_merken "$PROJ" "$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null)" \
     "$(echo "$INPUT" | jq -r '.transcript_path // empty' 2>/dev/null)"

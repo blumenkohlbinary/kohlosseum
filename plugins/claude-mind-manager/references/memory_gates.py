@@ -60,7 +60,7 @@ def zeigt_nur_auf(zeile, weg_namen):
     ⛔ ZWEI FORMEN, und die zweite fehlte bis v5.59.0:
        1. `[[wikilink]]`  — die Verweisform INNERHALB einer Topic-Datei
        2. `- [Titel](datei.md) — Aufhaenger` — die INDEX-Form in `MEMORY.md`,
-          die `kontext-anlegen.md` woertlich vorschreibt.
+          die die Memory-Anweisung von Claude Code woertlich vorschreibt.
     ⭐ GEMESSEN an drei echten Sicherungspaaren: von 30 Meldungen eines
        Versuchs-Gates waren die gezeigten Beispiele ALLE Index-Zeilen. Sie
        galten als Inhalt, ihre Entfernung als Verlust — waehrend Gate 3
@@ -69,7 +69,7 @@ def zeigt_nur_auf(zeile, weg_namen):
       der entfernten Datei, kein eigenes Wissen; er verschwindet mit ihr.
     """
     # ⭐ DIE INDEX-ZEILE IST GANZ EIN ZEIGER, Aufhaenger eingeschlossen.
-    #    `kontext-anlegen.md` schreibt die Form woertlich vor:
+    #    Die Memory-Anweisung von Claude Code schreibt die Form woertlich vor:
     #    `- [Titel](datei.md) — Aufhaenger`. Titel und Aufhaenger beschreiben
     #    die Datei; verschwindet sie, verschwinden sie mit ihr. Sie als Inhalt
     #    zu zaehlen hiess, jedes korrekte Aufraeumen des Index als Verlust zu
@@ -705,7 +705,7 @@ def selbsttest():
     print("=== 7) ⛔ DIE INDEX-FORM — bis v5.59.0 zaehlte sie als Verlust ===")
     # ⭐ GEMESSEN an drei echten Sicherungspaaren: die Zeiger-Erkennung kannte
     #    nur `[[wikilinks]]`. Die Index-Form `- [Titel](datei.md) — Aufhaenger`,
-    #    die `kontext-anlegen.md` woertlich vorschreibt, galt als Inhalt — und
+    #    die die Memory-Anweisung woertlich vorschreibt, galt als Inhalt — und
     #    ihre Entfernung, die Gate 3 VERLANGT, als Verlust.
     pruef("die Index-Zeile einer entfernten Datei ist ein Zeiger",
           zeigt_nur_auf("- [B](thema-b.md) — Aufhaenger B", {"thema-b"}), True)

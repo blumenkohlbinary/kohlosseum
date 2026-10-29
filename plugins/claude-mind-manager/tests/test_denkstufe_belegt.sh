@@ -29,11 +29,11 @@ pruef "name steht im Frontmatter" "$(grep -c '^name: mind-denkstufe$' "$S")" "1"
 pruef "allowed-tools stehen da"   "$(grep -c '^allowed-tools:' "$S")" "1"
 pruef "Agent ist erlaubt (die Gegenprobe braucht es)" \
   "$(grep '^allowed-tools:' "$S" | grep -c 'Agent')" "1"
-# ⛔ `kontext-anlegen.md`: die description muss DIREKTIV sein, sonst zieht das Modell
+# ⛔ `file-handling.md` („Context files“): die description muss DIREKTIV sein, sonst zieht das Modell
 #    den Skill nicht (gemessen 20-84 % Auswahlquote, direktiver Stil half).
 pruef "description ist direktiv (ALWAYS invoke)" \
   "$(grep -c 'ALWAYS invoke' "$S")" "1"
-# Ausschluesse am Ende fangen Fehlaktivierung ab — ebenfalls aus kontext-anlegen.md.
+# Ausschluesse am Ende fangen Fehlaktivierung ab — ebenfalls aus file-handling.md.
 pruef "description nennt AUSSCHLUESSE" \
   "$(sed -n '/^description:/,/^allowed-tools:/p' "$S" | grep -c 'NICHT fuer')" "1"
 

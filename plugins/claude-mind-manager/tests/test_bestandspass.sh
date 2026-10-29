@@ -173,7 +173,7 @@ janein "Quittung landet in analyzed-scopes" "ja" \
 echo
 echo "== ⭐ v5.72.0: DER VERDICHTUNGS-VERTRAG =="
 # ⛔ WOZU. Der Vertrag sagt "wer die eine Kopie aendert, aendert die andere mit" —
-#    und eine Regel ohne Durchsetzung ist genau das, was `kontext-anlegen.md`
+#    und eine Regel ohne Durchsetzung ist genau das, was `file-handling.md` („Context files“)
 #    verbietet: was erzwungen werden MUSS, gehoert in einen Test, nicht in Prosa.
 #    Zwei Kopien, die auseinanderlaufen, heissen: ab jetzt widersprechen sich
 #    zwei Messungen und niemand weiss, welche gilt.

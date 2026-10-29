@@ -15,7 +15,7 @@
 ⭐ **Der Schutz ist seit dem 19.08.2026 dokumentiert und wurde trotzdem nicht
    eingetragen.** Er haengt an einem Handgriff im Ablauf, den niemand prueft —
    und genau das ist der Unterschied zwischen einer Regel und einer Ratsche.
-   `kontext-anlegen.md`: was ERZWUNGEN werden muss, gehoert in ein Werkzeug.
+   `file-handling.md` („Context files“): was ERZWUNGEN werden muss, gehoert in ein Werkzeug.
 
 ## ⛔ HIER STAND EINE STUNDE LANG "UNGEMESSEN" — UND DAS WAR FALSCH
 

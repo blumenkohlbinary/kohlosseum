@@ -48,7 +48,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.156.0"
+MIND_SKILL_VERSION="5.157.0"
 mind_schritt_start "$PROJ" mind-cleaner bestandsaufnahme cleaner_audit cleaner_einordnung cleaner_grenzen cleaner_leitplanke cleaner_ratsche cleaner_rebuild cleaner_tor cleaner_umzug cleaner_wirkung ladeprotokoll_auswertung mind_debug_write mind_snapshot
 ```
 
@@ -408,7 +408,7 @@ Bindung aus dem Rule-Text selbst: Backtick-Pfade, die im Projekt **existieren** 
 `mind_pfad_lebt`) — ein toter Pfad bindet nichts, `.claude/rules/*.md` zählt nicht. Die
 **Sonde** wählt ihre Rule in jedem Projekt selbst (kleinste mit lebendem Dateibezug) und
 meldet, ob schon ein Ergebnis aus einem **anderen** Projekt liegt — der Satz für
-`kontext-anlegen.md` gilt erst mit zwei.
+`file-handling.md` gilt erst mit zwei.
 
 ⛔ **Hier standen bis v5.27.0 VIER Wege — „Skill" und „Slash-Command" getrennt.**
 Das sind nicht zwei Dinge: ein Command **ist** das, was du mit `/name` tippst, und
@@ -783,7 +783,7 @@ in ihrer eigenen Kopfzeile.
 
 ## `--paths-sonde` — misst, ob `paths:` überhaupt filtert (NEU v5.108.0)
 
-`kontext-anlegen.md` sagt: *„dass `paths:` filtert, ist dokumentiert, nicht nachgemessen."*
+`kontext-anlegen.md` (seit 29.10.2026 `file-handling.md` („Context files“)) sagte: *„dass `paths:` filtert, ist dokumentiert, nicht nachgemessen."*
 Gemessen 14.09.2026 in einem Projekt: 14 Rules, 865 kB, alle `globs:`, alle laden beim Start;
 2 766 Ladevorgänge im Protokoll, nie `path_glob_match`. Die Sonde misst es in **zwei Schritten**,
 weil nur der Mensch eine neue Sitzung starten kann:
@@ -801,12 +801,12 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_paths_sonde.py" --auswerten "$PRO
 #    ⛔ v5.115.0: OHNE Merker (Tausch lief von Hand, wie im Zustellplan 15.09.) geht es auch:
 #       --auswerten "$PROJ" --seit "YYYY-MM-DD HH:MM:SS" [--datei <rule.md>]
 #       ohne --datei ALLE Rules mit paths: — je Rule ein Urteil, eines fuer den Bestand,
-#       Satz fuer kontext-anlegen.md („paths: filtert — gemessen <Datum>, <Projekt>, n Rules,
+#       Satz fuer file-handling.md („paths: filtert — gemessen <Datum>, <Projekt>, n Rules,
 #       Nachladen bei Dateiberuehrung"). Der Satz kommt erst mit dem ZWEITEN Projekt.
 #    Ladeprotokoll SEIT dem Merker aus einer ANDEREN Sitzung: geladen mit session_start ->
 #    filtert NICHT (rc 1) · geladen nur mit path_glob_match -> filtert (rc 0) · neue Sitzung,
 #    Rule fehlt -> filtert (rc 0) · keine neue Sitzung -> noch nicht messbar (rc 3)
-#    Ergebnis: $MIND_DEBUG_DIR/paths-sonde-<ts>.md + der Satz fuer kontext-anlegen.md (mit Datum)
+#    Ergebnis: $MIND_DEBUG_DIR/paths-sonde-<ts>.md + der Satz fuer file-handling.md (mit Datum)
 ```
 
 ⛔ **Rückweg ist die Sicherung** (der Merker nennt sie: `cp "<sicherung>" "<datei>"`); die Sonde

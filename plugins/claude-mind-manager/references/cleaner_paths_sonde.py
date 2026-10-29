@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """cleaner_paths_sonde.py — misst, ob `paths:` in .claude/rules/ wirklich filtert.
 
-⛔ v5.108.0 (Etappe 16 §4). `kontext-anlegen.md` sagt seit Wochen: "dass `paths:` filtert,
+⛔ v5.108.0 (Etappe 16 §4). `kontext-anlegen.md` (seit 29.10.2026 `file-handling.md` („Context files“)) sagte seit Wochen: "dass `paths:` filtert,
    ist dokumentiert, nicht nachgemessen." Zustellplan (14.09.2026): 14 Rules, 865 kB, alle
    `globs:`, alle laden beim Start; 2 766 Ladevorgaenge im Protokoll, nie `path_glob_match`.
    Diese Sonde macht die Messung — in ZWEI Schritten, weil nur der Mensch eine neue Sitzung
@@ -19,7 +19,7 @@
       ANDEREN Sitzung: Rule geladen mit Grund session_start -> `paths:` filtert NICHT;
       geladen mit path_glob_match -> filtert (Grund belegt); Protokoll traegt neue Sitzung,
       Rule fehlt -> filtert; keine neue Sitzung -> noch nicht messbar. Ergebnis nach
-      $MIND_DEBUG_DIR/paths-sonde-<ts>.md und als Satz fuer kontext-anlegen.md.
+      $MIND_DEBUG_DIR/paths-sonde-<ts>.md und als Satz fuer file-handling.md.
       ⛔ v5.115.0 (Etappe 23 §1): OHNE Merker geht es auch — der globs->paths-Tausch im
       Zustellplan lief von Hand (15.09., vor v5.108.0), und das Ergebnis lag trotzdem vor:
       13 paths-Rules fehlten beim Sitzungsstart, ein Read lud 3 nach (Sitzung Otto, 16.09.).
@@ -119,7 +119,7 @@ def _andere_melden(projekt):
         print("  ⭐ Ergebnis(se) aus anderen Projekten: %d" % len(a))
         for pj, u in a[-3:]:
             print("     %-40s %s" % (os.path.basename(pj)[:40], u))
-        print("     -> dieses Projekt bestaetigt oder widerlegt sie; der Satz fuer kontext-anlegen.md gilt erst mit zwei.")
+        print("     -> dieses Projekt bestaetigt oder widerlegt sie; der Satz fuer file-handling.md gilt erst mit zwei.")
     else:
         print("  ⚠ noch kein Ergebnis aus einem anderen Projekt — dies waere das erste.")
 
@@ -273,7 +273,7 @@ def auswerten(projekt, log=None, seit=None, datei=None):
                                                          os.path.basename(os.path.abspath(projekt))))
             rc = 1
     print("  URTEIL: %s" % urteil)
-    print("  Satz fuer kontext-anlegen.md: %s" % satz)
+    print("  Satz fuer file-handling.md: %s" % satz)
     _andere_melden(projekt)
     if m and not datei:
         print("  Rueckweg: cp \"%s\" \"%s\"" % (m.get("sicherung", "?"), m["datei"]))

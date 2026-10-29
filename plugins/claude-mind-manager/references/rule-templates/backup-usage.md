@@ -72,7 +72,7 @@ Gate übersprungen — der Normalfall in Projekten ohne Tests.
 ## Zwei Backup-Schichten — kein Widerspruch
 
 Es gibt ZWEI Ebenen, die sich **ergänzen**:
-- **Global** (`~/.claude/rules/backup-before-delete.md`, falls vorhanden): ad-hoc Sicherheitsnetz,
+- **Global** (`~/.claude/rules/file-handling.md`, falls vorhanden): ad-hoc Sicherheitsnetz,
   das Claude vor Löschungen ganz allgemein nach `C:\CD\KOHLEKTIV\_claude_backups\{ts}\` sichert.
 - **Projekt-lokal (dieses Tool):** strukturiertes System für die **Projekt-eigenen** Dateien —
   GFS-Retention + SHA-256-Integritäts-Manifest + Rollback, nach `.claude-mind/backups/`.

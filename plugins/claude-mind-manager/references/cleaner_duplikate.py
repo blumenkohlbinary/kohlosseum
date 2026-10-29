@@ -899,7 +899,7 @@ _WORTMARKE = re.compile(r"^[A-Za-zÄÖÜäöüß]+$")
 # wuerde eine Verbindung kappen statt einer Wiederholung.
 #
 # ⭐ WARUM DIE ZAHL HIER STEHT UND NICHT IN EINER REGEL: was durchgesetzt
-#    werden muss, gehoert in ein Werkzeug (`kontext-anlegen.md`). Ein
+#    werden muss, gehoert in ein Werkzeug (`file-handling.md` („Context files“)). Ein
 #    kuenftiger Lauf SIEHT die Verteilung, bevor er urteilt.
 # ⛔ UND SIE IST KEIN FREISPRUCH. Sie bindet zur PRUEFUNG, nicht zum
 #    Ergebnis: kommt eine andere Verteilung heraus, urteilt der Lauf anders.

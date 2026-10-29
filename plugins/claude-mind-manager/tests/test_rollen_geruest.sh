@@ -119,6 +119,17 @@ OUT10=$(python "$S" --pruefe "$TMP/local.md" 2>&1); RC10=$?
 pruef "ausgefuellte local_…-Kennung -> 1" 1 "$RC10"
 hat "  ... und sagt, dass das Gate die blanke UUID liest" "BLANKEN UUID" "$OUT10"
 
+echo "== v5.157.0: /mind-learnings meldet den Roster (dieselbe Pruefung, EINE Stelle) =="
+LP="$TMP/projekt mit roster"; mkdir -p "$LP/.claude/rules"
+printf '# Rollen\n\n\xe2\x9b\x94 **Und er fragt nur im Notfall.**\n' > "$LP/.claude/rules/rollen.md"
+lscan() { ( cd "$(dirname "$S")" && python -c "import sys; sys.path.insert(0,'.'); import learnings_scan as l, learnings_quellen as q
+b=[x for x in l.pruefe(sys.argv[1], q.quellen(sys.argv[1])) if x['kurz'].startswith('rollen.md:')]
+print(len(b)); print('\n'.join(x['klasse']+' '+x['kurz'] for x in b))" "$LP" 2>&1 ); }
+OUT11=$(lscan)
+hat "  widerlegte Regel landet als doku-veraltet" "doku-veraltet rollen.md: widerlegte Regel (c)" "$OUT11"
+printf '# Rollen\n\nnichts Auffaelliges\n' > "$LP/.claude/rules/rollen.md"
+pruef "  ⛔ unauffaelliger Roster -> kein Roster-Befund" 0 "$(lscan | head -1)"
+
 echo
 echo "  $GRUEN gruen · $ROT rot"
 [ "$ROT" -eq 0 ]

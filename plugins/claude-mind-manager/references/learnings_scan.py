@@ -270,6 +270,19 @@ def pruefe(projekt, q):
     # einem Defekt-Kanal war es genau der Laerm, der die Aufmerksamkeit fuer
     # die echten Befunde abstumpft (5 von 16 Befunden am 21.08.2026).
 
+    # --- Roster: widerlegte Regeln, tote Rule-Zeiger, Notizheft (v5.157.0) --
+    # ⭐ EINE Stelle: `rollen_geruest.notizheft_pruefen` — dieselbe, die `--pruefe` in `/mind-files`
+    #   faehrt. Hier nur sie, nicht die ganze §10a-Pruefung: Abschnittsfolgen sind kein Defekt-Kanal.
+    # ⛔ Nur melden — der Roster gehoert dem manager seines Projekts.
+    ro = os.path.join(projekt, ".claude", "rules", "rollen.md")
+    if os.path.isfile(ro):
+        from rollen_geruest import notizheft_pruefen
+        rb, rh = notizheft_pruefen(lies(ro), projekt)
+        for x in rb:
+            f("doku-veraltet", "rollen.md: " + x, ro)
+        for x in rh:
+            f("sonstiges", "rollen.md: " + x, ro)
+
     # --- Werkzeuge ohne Companion-Rule -----------------------------------
     td = os.path.join(projekt, "tools")
     if os.path.isdir(td) and q["rules"]:

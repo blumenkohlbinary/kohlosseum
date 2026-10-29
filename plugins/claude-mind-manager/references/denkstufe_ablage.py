@@ -17,7 +17,7 @@ Aufrufe
    eine Bitte — und dieses Projekt hat gemessen, dass Prosa-Vorschriften ohne Pruefer
    durchrutschen (die vier Memory-Gates aus `mind-memory` standen als Tabelle da und
    hatten NULL Pruefsammlungen). Deshalb WEIGERT sich dieses Werkzeug zu schreiben,
-   wenn ein Feld fehlt: `kontext-anlegen.md` — was durchgesetzt werden muss, gehoert in
+   wenn ein Feld fehlt: `file-handling.md` („Context files“) — was durchgesetzt werden muss, gehoert in
    einen Pruefer, nicht in eine Regeldatei.
 
 ⛔ AUSGABE IST ASCII-ONLY, mit Absicht.
