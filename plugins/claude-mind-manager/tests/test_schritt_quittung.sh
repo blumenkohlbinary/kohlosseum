@@ -153,7 +153,7 @@ janein "alle rufen mind_schritt_start" "" \
        grep -q 'mind_schritt_start' "$s" || printf ' %s' "$(basename "$(dirname "$s")")"; done)"
 janein "alle weisen die Bilanz im Bericht aus" "" \
   "$(for s in "$CLAUDE_PLUGIN_ROOT"/skills/*/SKILL.md; do
-       grep -q 'mind_schritt_bilanz' "$s" || printf ' %s' "$(basename "$(dirname "$s")")"; done)"
+       grep -q 'mind_schritt_bilanz' "$(skill_text_datei "$CLAUDE_PLUGIN_ROOT" "$(basename "$(dirname "$s")")")" || printf ' %s' "$(basename "$(dirname "$s")")"; done)"
 
 echo
 echo "== v5.130.0 (Etappe 42): die FEHLT-Zeile ist maschinenlesbar — _mind_fehlt_liste =="

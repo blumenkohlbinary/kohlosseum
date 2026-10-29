@@ -148,7 +148,7 @@ janein "bestands-pass.md: bezahlt heisst anwenden, auch bei 2 %" "ja" "$(grep -q
 # v5.100.0: das Ergebnis ist eine DATEI — der Agent schreibt .nachher.md, Anwenden ist cp, nie nachtippen
 janein "bestands-pass.md: ERGEBNIS = verdichten-<skill>.nachher.md, vom Agenten geschrieben" "ja" "$(grep -q 'verdichten-<skill>.nachher.md' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
 janein "bestands-pass.md: NIE NACHTIPPEN" "ja" "$(grep -q 'NIE NACHTIPPEN' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
-janein "alle fuenf Traeger nennen die .nachher.md-Datei" "5" "$(grep -l 'verdichten-mind-[a-z]*\.nachher\.md' "$WURZEL"/skills/mind-{claudemd,files,memory,rules,update}/SKILL.md | wc -l | tr -d ' ')"
+janein "alle fuenf Traeger nennen die .nachher.md-Datei" "5" "$(grep -l 'verdichten-mind-[a-z]*\.nachher\.md' "$WURZEL"/skills/mind-{claudemd,files,memory,rules}/SKILL.md "$(skill_text_datei "$WURZEL" mind-update)" | wc -l | tr -d ' ')"
 
 echo "=============================================================================="
 echo "  4c) v5.101.0: Absatz ins Archiv — die Marken bleiben im ZEIGER-Satz"
@@ -184,7 +184,7 @@ janein "Zeiger-Satz traegt die Marken des Archiv-Absatzes -> Stufe 1 voll, anwen
 janein "⛔ Zeiger-Satz ohne die Marken -> Stufe 1 unvollstaendig, verwerfen (1)" "1" \
   "$(mind_verdichtung_pruefen "$D/orig2.md" "$D/zeiger-ohne.md" "" probe.md >/dev/null 2>&1; echo $?)"
 janein "bestands-pass.md: die Kasten-Zeile steht (Code-Spans bleiben im ZEIGER-Satz)" "ja" "$(grep -q 'bleiben im ZEIGER-Satz' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
-janein "alle fuenf Traeger tragen die Zeile im Auftrag" "5" "$(grep -l 'bleiben im Zeiger-Satz' "$WURZEL"/skills/mind-{claudemd,files,memory,rules,update}/SKILL.md | wc -l | tr -d ' ')"
+janein "alle fuenf Traeger tragen die Zeile im Auftrag" "5" "$(grep -l 'bleiben im Zeiger-Satz' "$WURZEL"/skills/mind-{claudemd,files,memory,rules}/SKILL.md "$(skill_text_datei "$WURZEL" mind-update)" | wc -l | tr -d ' ')"
 # v5.102.0 (Etappe 10, Noras Palvedo-Lauf 12.09.2026): rc 1 mit unbenanntem Marker wurde von
 # Hand freigesprochen — die Vorschrift sagt jetzt: entfernt:-Zeile nachtragen, Gate erneut
 # fahren. Die Mechanik dazu (unbenannt rot, nachgetragen gruen) prueft Abschnitt 4 oben.
@@ -201,19 +201,19 @@ janein "mind-memory: MEMORY.md ist nie Kandidatin" "ja" "$(grep -q "grep -v '/ME
 janein "mind-memory: Frontmatter und Wikilinks unantastbar, Stufe 3 Pflicht" "2" "$(grep -cE 'Frontmatter \(`---`|STUFE 3 \(Wort-Diff lesen' "$WURZEL/skills/mind-memory/SKILL.md")"
 janein "mind-memory: verdichten als PFLICHTSCHRITT und in mind_schritt_start" "2" "$(grep -cE '^verdichten$|^mind_schritt_start .* verdichten' "$WURZEL/skills/mind-memory/SKILL.md")"
 # v5.90.0: vierter Traeger mind-update — ersetzt "Lossless Compression" (Kuerzen ohne Gate)
-janein "mind-update: Step 5 ist VERDICHTEN, nicht mehr Lossless Compression" "ja" "$(grep -q '^## Step 5: .*VERDICHTEN' "$WURZEL/skills/mind-update/SKILL.md" && ! grep -q '^## Step 5: Lossless Compression' "$WURZEL/skills/mind-update/SKILL.md" && echo ja || echo nein)"
-janein "mind-update: Stufe 3 vor dem Anwenden" "ja" "$(grep -q 'STUFE 3 (Wort-Diff lesen' "$WURZEL/skills/mind-update/SKILL.md" && echo ja || echo nein)"
-janein "mind-update: verdichten als PFLICHTSCHRITT und in mind_schritt_start" "2" "$(grep -cE '^verdichten$|^mind_schritt_start .* verdichten' "$WURZEL/skills/mind-update/SKILL.md")"
+janein "mind-update: Step 5 ist VERDICHTEN, nicht mehr Lossless Compression" "ja" "$(grep -q '^## Step 5: .*VERDICHTEN' "$(skill_text_datei "$WURZEL" mind-update)" && ! grep -q '^## Step 5: Lossless Compression' "$(skill_text_datei "$WURZEL" mind-update)" && echo ja || echo nein)"
+janein "mind-update: Stufe 3 vor dem Anwenden" "ja" "$(grep -q 'STUFE 3 (Wort-Diff lesen' "$(skill_text_datei "$WURZEL" mind-update)" && echo ja || echo nein)"
+janein "mind-update: verdichten als PFLICHTSCHRITT und in mind_schritt_start" "2" "$(grep -cE '^verdichten$|^mind_schritt_start .* verdichten' "$(skill_text_datei "$WURZEL" mind-update)")"
 janein "⭐ alle Datei-Traeger merken 'verdichtet=' in analyzed-scopes (nie dieselbe Datei zweimal je Kette)" "4" \
-  "$(grep -l 'mind_verdichtet_merken "$PROJ" "$DATEI"' "$WURZEL"/skills/mind-rules/SKILL.md "$WURZEL"/skills/mind-claudemd/SKILL.md "$WURZEL"/skills/mind-update/SKILL.md "$WURZEL"/skills/mind-files/SKILL.md | wc -l | tr -d ' ')"
+  "$(grep -l 'mind_verdichtet_merken "$PROJ" "$DATEI"' "$WURZEL"/skills/mind-rules/SKILL.md "$WURZEL"/skills/mind-claudemd/SKILL.md "$(skill_text_datei "$WURZEL" mind-update)" "$WURZEL"/skills/mind-files/SKILL.md | wc -l | tr -d ' ')"
 # v5.91.0: fuenfter Traeger mind-files — nur die eigenen Companion-Rules, Tool->Rule-Nachweis als Gate
 janein "mind-files: Step 5g VERDICHTEN vorhanden" "ja" "$(grep -q '^## Step 5g: .*VERDICHTEN' "$WURZEL/skills/mind-files/SKILL.md" && echo ja || echo nein)"
 janein "mind-files: mind_check_tools_have_rules als Gate nach dem Lauf" "ja" "$(grep -q 'mind_check_tools_have_rules "$PROJ" auf das ERGEBNIS' "$WURZEL/skills/mind-files/SKILL.md" && echo ja || echo nein)"
 janein "mind-files: verdichten als PFLICHTSCHRITT und in mind_schritt_start" "2" "$(grep -cE '^verdichten$|^mind_schritt_start .* verdichten' "$WURZEL/skills/mind-files/SKILL.md")"
 janein "⭐ ZIEL 4: alle fuenf Context-Skills tragen 'verdichten' als PFLICHTSCHRITT" "5" \
-  "$(grep -l '^verdichten$' "$WURZEL"/skills/mind-rules/SKILL.md "$WURZEL"/skills/mind-claudemd/SKILL.md "$WURZEL"/skills/mind-memory/SKILL.md "$WURZEL"/skills/mind-update/SKILL.md "$WURZEL"/skills/mind-files/SKILL.md | wc -l | tr -d ' ')"
+  "$(grep -l '^verdichten$' "$WURZEL"/skills/mind-rules/SKILL.md "$WURZEL"/skills/mind-claudemd/SKILL.md "$WURZEL"/skills/mind-memory/SKILL.md "$(skill_text_datei "$WURZEL" mind-update)" "$WURZEL"/skills/mind-files/SKILL.md | wc -l | tr -d ' ')"
 janein "   ... und alle fuenf den Lister" "5" \
-  "$(grep -l 'references/bestandszahlen_kandidaten.py' "$WURZEL"/skills/mind-rules/SKILL.md "$WURZEL"/skills/mind-claudemd/SKILL.md "$WURZEL"/skills/mind-memory/SKILL.md "$WURZEL"/skills/mind-update/SKILL.md "$WURZEL"/skills/mind-files/SKILL.md | wc -l | tr -d ' ')"
+  "$(grep -l 'references/bestandszahlen_kandidaten.py' "$WURZEL"/skills/mind-rules/SKILL.md "$WURZEL"/skills/mind-claudemd/SKILL.md "$WURZEL"/skills/mind-memory/SKILL.md "$(skill_text_datei "$WURZEL" mind-update)" "$WURZEL"/skills/mind-files/SKILL.md | wc -l | tr -d ' ')"
 
 echo
 echo "=============================================================================="
@@ -304,7 +304,7 @@ janein "   ... Meldung: „Deponat veraltet … neu verdichten\"" ja "$(printf '
 janein "Deponat ohne md5-Zeile (vor v5.125.0): rc 3, KEIN cp" "3 ja" "$(printf 'alt\n' > "$D8/alt.txt"; mind_verdichtung_anwenden "$D8/live.md" "$D8/live.nachher.md" "$D8/alt.txt" >/dev/null 2>&1; echo "$? $(grep -q 'Auftraege/' "$D8/live.md" && echo ja || echo nein)")"
 janein "blanker md5 als Deponat (passend): rc 0" 0 "$(mind_verdichtung_anwenden "$D8/live.md" "$D8/live.nachher.md" "$(_md5 "$D8/live.md")" >/dev/null 2>&1; echo $?)"
 janein "bestands-pass.md Schritt 4: mind_verdichtung_anwenden statt blankem cp" ja "$(grep -q '^mind_verdichtung_anwenden "\$DATEI" "\$ERGEBNIS"' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
-janein "alle fuenf Traeger nennen mind_verdichtung_anwenden" 5 "$(grep -l 'mind_verdichtung_anwenden' "$WURZEL"/skills/mind-{claudemd,files,memory,rules,update}/SKILL.md | wc -l | tr -d ' ')"
+janein "alle fuenf Traeger nennen mind_verdichtung_anwenden" 5 "$(grep -l 'mind_verdichtung_anwenden' "$WURZEL"/skills/mind-{claudemd,files,memory,rules}/SKILL.md "$(skill_text_datei "$WURZEL" mind-update)" | wc -l | tr -d ' ')"
 
 rm -rf "$D"
 echo

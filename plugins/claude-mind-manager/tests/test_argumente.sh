@@ -76,7 +76,7 @@ janein "mind_schritt_start <projekt> x a (freier Name, richtig): rc 0" 0 "$(mind
 janein "mind_schritt a gelaufen 5 <projekt> (richtig): rc 0" 0 "$(mind_schritt a gelaufen 5 "$P" >/dev/null 2>&1; echo $?)"
 janein "ohne Projekt-Argument (Vorgabe mind_projekt_wurzel): rc 0 wie bisher" 0 "$(cd "$P" && mind_agent_dispatch rules >/dev/null 2>&1; echo $?)"
 janein "mind_ungepruef_bilden nutzt dieselbe Menge (_MIND_SYNC_BEREICHE, keine zweite Liste)" 1 "$(grep -c 'for _b in \$_MIND_SYNC_BEREICHE' "$LIB")"
-janein "Skill-Texte zeigen die Reihenfolge <bereich> <projekt> weiterhin ausdruecklich" ja "$(grep -q 'mind_agent_dispatch "<bereich>" "\$PROJ"' "$WURZEL/skills/mind-update/SKILL.md" && echo ja || echo nein)"
+janein "Skill-Texte zeigen die Reihenfolge <bereich> <projekt> weiterhin ausdruecklich" ja "$(grep -q 'mind_agent_dispatch "<bereich>" "\$PROJ"' "$(skill_text_datei "$WURZEL" mind-update)" && echo ja || echo nein)"
 
 echo
 echo "=============================================================================="
@@ -99,7 +99,7 @@ mind_agent_dispatch memory "$P2" >/dev/null 2>&1
 janein "dispatch memory, dann ergebnis memory: rc 0, eine ergebnis-Zeile" "0 1" "$(mind_agent_ergebnis memory --datei "$P2/erg.md" "$P2" >/dev/null 2>&1; echo "$? $(grep -c '"ereignis":"ergebnis","bereich":"memory"' "$Q2")")"
 mind_agent_quittung_start "$P2" 4 >/dev/null 2>&1     # neuer Lauf: der alte dispatch zaehlt nicht mehr
 janein "neuer Lauf (neue Start-Zeile): alter dispatch zaehlt nicht, rc 2" 2 "$(mind_agent_ergebnis memory --datei "$P2/erg.md" "$P2" >/dev/null 2>&1; echo $?)"
-janein "Skill-Text mind-update nennt die Folge (dispatch fehlt)" ja "$(grep -q 'ergebnis ohne dispatch\|dispatch fehlt' "$WURZEL/skills/mind-update/SKILL.md" && echo ja || echo nein)"
+janein "Skill-Text mind-update nennt die Folge (dispatch fehlt)" ja "$(grep -q 'ergebnis ohne dispatch\|dispatch fehlt' "$(skill_text_datei "$WURZEL" mind-update)" && echo ja || echo nein)"
 
 echo
 echo "=============================================================================="

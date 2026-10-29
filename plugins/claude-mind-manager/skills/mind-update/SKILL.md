@@ -50,7 +50,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.152.0"
+MIND_SKILL_VERSION="5.153.0"
 mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe cleaner_tor mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
@@ -114,10 +114,7 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-mind_schritt_bilanz "$PROJ"
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/pflicht-bilanz.sh"
 ```
 
 ⛔ **Fehlt diese Zeile oder nennt sie `FEHLT`, ist der Bericht unvollstaendig** und
@@ -143,43 +140,7 @@ ihn zu ueberspringen — siehe Step 3c Commit-Coverage, die Gaps objektiv belegt
 angewendet (frueher: alles ASK-Default).
 
 ```bash
-ARGS="${ARGUMENTS:-}"; AUTO_MODE="yes"
-echo "$ARGS" | grep -qE '(^|[[:space:]])--(ask|interactive)([[:space:]]|$)' && AUTO_MODE="no"
-# ⛔ v5.139.0: der PROBELAUF ist ERSATZLOS entfallen (Nutzer 29.09.2026: „wieso kein
-#    richtiger lauf kostet geld", „allgemein keine Probelaeufe mehr … ich will Ergebnisse
-#    sehen"). Wer die Flagge noch mitgibt, bekommt einen ABBRUCH und keinen stillen
-#    Echtlauf: wer `--dry-run` tippt, erwartet, dass nichts geschrieben wird.
-if echo "$ARGS" | grep -qE '(^|[[:space:]])--dry-run([[:space:]]|$)'; then
-  echo "ABBRUCH: --dry-run ist entfallen (seit 5.139.0) — es gibt keinen Probelauf mehr." >&2
-  echo "         Bitte OHNE die Flagge aufrufen. Der Lauf ist dann ein echter Lauf," >&2
-  # ⛔ KEINE Backticks in diesem Text: in doppelten Anfuehrungszeichen FUEHRT BASH AUS, was
-  #    zwischen ihnen steht (shell-windows.md). Hier stand "`--ask`" — das haette bei jedem
-  #    Abbruch ein "--ask: command not found" erzeugt und das Wort aus der Meldung getilgt.
-  echo "         mit Snapshot vorher (Rueckweg). --ask fragt weiterhin vor dem Anwenden." >&2
-  exit 2
-fi
-
-# Laeuft dieser Skill innerhalb eines AKTIVEN /mind-all? (C1-Fix: drei Bedingungen, nicht nur
-# "Datei existiert" — sonst gilt nach dem ersten /mind-all JEDER spaetere Einzellauf als Kette
-# und editiert ohne Snapshot.)
-CHAIN="no"; _SC="$PROJ/.claude-mind/analyzed-scopes"
-if [ -f "$_SC" ]; then
-  _SNAP=$(grep -m1 '^snapshot=' "$_SC" 2>/dev/null | cut -d= -f2-)
-  _START=$(grep -m1 '^run_started=' "$_SC" 2>/dev/null | cut -d= -f2)
-  _AGE=$(( $(date +%s) - ${_START:-0} ))
-  # 1) Snapshot-Pfad eingetragen  2) Verzeichnis existiert wirklich  3) Lauf juenger als 2 h
-  [ -n "$_SNAP" ] && [ -d "$_SNAP" ] && [ "$_AGE" -lt 7200 ] && CHAIN="yes"
-fi
-
-if [ "$CHAIN" = "no" ]; then
-  [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
-  [ -z "$CLAUDE_PLUGIN_ROOT" ] && { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
-  source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-  SNAPSHOT=$(mind_snapshot "$PROJ" "pre-update") || {
-    echo "ABBRUCH: Snapshot fehlgeschlagen — es wird NICHTS editiert." >&2; exit 1; }
-  echo "Snapshot: $SNAPSHOT"
-fi
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step0-snapshot.sh"
 ```
 
 | Modus | Aufruf | Verhalten |
@@ -219,60 +180,13 @@ der Spalte `Ordner` des Rosters mit (fehlt die Spalte: jeder direkte Unterordner
 `CLAUDE.md`) — das ist der Dauerkontext der Arbeiter-Sitzungen. Gemessen 14.09.2026 (Creator,
 Doro): sieben Unterordner, fuenf CLAUDE.md und 17 Rules, in keinem Bericht genannt.
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-UNTER_KONTEXT=$(mind_unterordner_kontext "$PROJ" 2>/dev/null)   # leer ohne Rollen-Aufbau
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step1-dateien.sh"
 ```
 Der Bericht nennt je Datei den Ordner (`<Ordner>/CLAUDE.md`, `<Ordner>/.claude/rules/<name>`).
 `mind_snapshot` sichert sie seit v5.106.0 von selbst mit.
 
 ```bash
-# Hash + Memory-Verzeichnis (v3.2.2: zentralisiert in lib.sh)
-# Nutzt cygpath fuer korrektes Windows-Slug-Mapping (siehe lib.sh hash_project_dir)
-# M3-Fix: $CLAUDE_PLUGIN_ROOT Guard vor source
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
-if [ -z "$CLAUDE_PLUGIN_ROOT" ] || [ ! -f "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" ]; then
-  echo "ERROR: \$CLAUDE_PLUGIN_ROOT nicht gesetzt oder lib.sh nicht gefunden" >&2
-  exit 1
-fi
-source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-MEMORY_DIR=$(get_memory_dir)
-GET_MEM_RC=$?  # H1-Fix Skill-Review v3.3.1: $? in Variable capturen vor naechstem Cmd
-# H2-aware: $? = 1 wenn Fallback verwendet wurde
-if [ "$GET_MEM_RC" = "1" ]; then
-  echo "WARN: MEMORY-Dir-Fallback aktiv — Slug-Mismatch erkannt" >&2
-fi
-
-# ⛔ v5.81.0 — UNTERORDNER-AUFBAU: das Memory gehoert zum cwd der RETTUNG, nicht
-#    zu $PROJ. Claude Code laedt das Memory des Ordners, in dem die Sitzung lief;
-#    $PROJ ist seit v5.80.0 die Wurzel mit dem Roster. Jede Rettung nennt ihren
-#    cwd (mind_rettung_cwd) — fehlt er (Rettung vor v5.81.0), gilt $PROJ wie bisher.
-#    ⭐ Diese Tabelle geht WOERTLICH an den memory-Agenten in Step 3.5: er schreibt
-#    die Erkenntnisse einer Rettung in DEREN Memory (Spalte 3), nie in $MEMORY_DIR,
-#    wenn die Spalte abweicht. Das ist kein Rueckfall auf ein fremdes Projekt
-#    (v5.70.0-Verbot): der Ordner kommt AUS DER RETTUNG, nicht aus einem `ls -t`.
-RETTUNGS_MEMORY=""
-while IFS= read -r _r; do
-  [ -n "$_r" ] || continue
-  _c=$(mind_rettung_cwd "$PROJ" "$_r" 2>/dev/null) || _c="$PROJ"
-  _m=$(get_memory_dir "$_c" 2>/dev/null) || true
-  RETTUNGS_MEMORY="${RETTUNGS_MEMORY}${_r}|${_c}|${_m}"$'\n'
-done < <(mind_rettungen "$PROJ" 2>/dev/null)
-[ -n "$RETTUNGS_MEMORY" ] && { echo "Memory je Rettung (rettung|cwd|memory):"; printf '%s' "$RETTUNGS_MEMORY" | sed 's/^/  /'; }
-
-# MEMORY.md (Hauptdatei)
-MEMORY_MAIN="$MEMORY_DIR/MEMORY.md"
-
-# Topic-Files-Glob (NEU v3.2.1) — alle .md im memory-Verzeichnis AUSSER MEMORY.md
-TOPIC_FILES=$(ls "$MEMORY_DIR"/*.md 2>/dev/null | grep -v "/MEMORY.md$")
-
-# Project Rules — v5.106.0: plus die Rules der Roster-Unterordner (leer ohne Rollen-Aufbau)
-PROJECT_RULES=$(ls .claude/rules/*.md 2>/dev/null; mind_unterordner_kontext "$PROJ" 2>/dev/null | grep '/rules/')
-
-# Global Rules
-GLOBAL_RULES=$(ls "$HOME"/.claude/rules/*.md 2>/dev/null)
+# laeuft in step1-dateien.sh mit — KEIN eigener Aufruf
 ```
 
 Record line counts for each file immediately. Output-Pattern (siehe Step 6):
@@ -292,161 +206,19 @@ das fachlichen/technischen Code-Context enthaelt, nicht nur Auto-Loading-Rules).
 ### SKIP_SET: Files die in Step 1 bereits behandelt sind
 
 ```bash
-# Step 1.5 darf KEINE Files erneut als Custom Context aufnehmen die
-# Step 1 schon hat (CLAUDE.md, MEMORY, Topic-Files, Rules) — sonst
-# Double-Counting in Step 3a Version-Match (Bug B1 v3.2.2 Skill-Review).
-SKIP_SET=("./CLAUDE.md" "./.claude/CLAUDE.md" "$MEMORY_MAIN")
-
-# Add MEMORY-Topic-Files + Project-Rules + Global-Rules (von Step 1)
-while IFS= read -r f; do SKIP_SET+=("$f"); done <<< "$TOPIC_FILES"
-while IFS= read -r f; do SKIP_SET+=("$f"); done <<< "$PROJECT_RULES"
-while IFS= read -r f; do SKIP_SET+=("$f"); done <<< "$GLOBAL_RULES"
-
-is_in_skip_set() {
-  local target="$1"
-  for skip in "${SKIP_SET[@]}"; do
-    [ "$skip" = "$target" ] && return 0
-    # Normalize ./path vs path
-    [ "$skip" = "./$target" ] && return 0
-    [ "./$skip" = "$target" ] && return 0
-  done
-  return 1
-}
+# laeuft in step1-dateien.sh mit — KEIN eigener Aufruf
 ```
 
 ### Phase 1: Referenz-Discovery (deterministisch)
 
 ```bash
-# Whitelist nur Doku-Formate (.md/.txt/.rst) — KEINE .json/.yaml/.py
-# (das sind Build-Configs/Source-Files, nicht Custom Context)
-REFERENCED=$(
-  grep -hoE '`[^`]*\.(md|txt|rst)`' \
-    CLAUDE.md .claude/rules/*.md ~/.claude/rules/*.md 2>/dev/null |
-  sed 's|^`||; s|`$||' |
-  sort -u
-)
+# laeuft in step1-dateien.sh mit — KEIN eigener Aufruf
 ```
 
 ### Phase 2: Heuristik-Discovery (Fallback)
 
 ```bash
-# Optional: User-Override via .mindcontext (EC1)
-if [ -f .mindcontext ]; then
-  # Explizite Liste — Heuristik skippen
-  CUSTOM_CONTEXT_FILES=()
-  while IFS= read -r line; do
-    # Skip Kommentare + leere Zeilen
-    [[ -z "$line" || "$line" =~ ^# ]] && continue
-    # Glob-Expansion
-    for f in $line; do
-      [ -f "$f" ] && CUSTOM_CONTEXT_FILES+=("$f")
-    done
-  done < .mindcontext
-else
-  # Glob alle .md ausser ignorierte
-  ALL_MD=$(find . -name "*.md" \
-    -not -path "./.venv/*" \
-    -not -path "./.git/*" \
-    -not -path "./dist/*" \
-    -not -path "./build/*" \
-    -not -path "./node_modules/*" \
-    -not -path "./.pytest_cache/*" \
-    -not -path "./.claude-mind/*" \
-    -not -path "./CLAUDE.md" \
-    -not -path "./.claude/rules/*" \
-    2>/dev/null)
-
-  TOTAL_MD=$(echo "$ALL_MD" | wc -l)
-
-  # Tiered Schwelle (EC1: gross-Projekte)
-  if [ "$TOTAL_MD" -gt 100 ]; then
-    SCORE_THRESHOLD=3
-    echo "INFO: $TOTAL_MD .md Files gefunden — Heuristik-Schwelle erhoeht auf score >= 3"
-    echo "      Tipp: .mindcontext anlegen fuer explizite User-Konfiguration"
-  else
-    SCORE_THRESHOLD=2  # User-Direktive Default
-  fi
-
-  CUSTOM_CONTEXT_FILES=()
-
-  # 2a: Alle referenzierten Files (deterministisch, Phase 1)
-  # ⛔ v5.150.0 (Antons Entscheidung 28.10.2026): ZEILENWEISE, nicht `for ref in $REFERENCED` — das
-  #    zerlegte jeden Pfad mit Leerzeichen in Stuecke, die es nicht gibt; eine solche Datei wurde nie
-  #    bewertet. Dass sich die Liste damit aendert, ist der Zweck.
-  # ⛔ Und die GLOB-Expansion, die das alte `for` nebenbei leistete, bleibt — jetzt ausdruecklich
-  #    (`compgen -G`, ohne Zerlegen): ein Verweis wie `wissen/reinraum/*-funktion.md` holt seine Dateien
-  #    (CK3: 40). ⚠ Verweise unter `.claude-mind/` fallen heraus: so kamen die geretteten Chats
-  #    (`.claude-mind/rescued/*_chat.md`, je mehrere hundert KB) als „Custom Context" in den Sync.
-  while IFS= read -r ref; do
-    [ -n "$ref" ] || continue
-    case "${ref#./}" in .claude-mind/*) continue ;; esac
-    case "$ref" in
-      *[\*\?\[]*)
-        while IFS= read -r candidate; do
-          [ -n "$candidate" ] && [ -f "$candidate" ] || continue
-          case "${candidate#./}" in .claude-mind/*) continue ;; esac
-          is_in_skip_set "./${candidate#./}" && continue
-          [[ " ${CUSTOM_CONTEXT_FILES[@]} " =~ " ./${candidate#./} " ]] && continue
-          CUSTOM_CONTEXT_FILES+=("./${candidate#./}")
-        done < <(compgen -G "$ref" 2>/dev/null)
-        continue ;;
-    esac
-    for candidate in "./$ref" "$ref"; do
-      if [ -f "$candidate" ] && ! is_in_skip_set "$candidate"; then
-        CUSTOM_CONTEXT_FILES+=("$candidate")
-        break
-      fi
-    done
-  done <<< "$REFERENCED"
-
-  # 2b: Heuristik fuer nicht-referenzierte .md
-  # ⛔ v5.149.0 (Etappe 57 §2, CK3): FUENF grep UEBER ALLE DATEIEN statt fuenf grep JE Datei. Vorher
-  #    5 x N Prozesse (CK3: 245 Dateien, ueber 300 s; hier gemessen 84,4 s fuer 401 Eintraege). Dieselben
-  #    Muster, derselbe grep — die Zaehlungen sind dieselben, die Ausgabe byteweise gleich (Gegenprobe
-  #    an zwei Projekten, alter gegen neuen Block). `-H`, damit auch EINE Datei ihren Namen traegt.
-  # ⛔ v5.150.0: ZEILENWEISE (bis v5.149.0 `for f in $ALL_MD`, zerlegte an Leerzeichen — siehe 2a).
-  _KAND=()
-  while IFS= read -r f; do
-    [ -n "$f" ] || continue
-    # Skip wenn bereits in Step 1 Liste (B1-Fix)
-    is_in_skip_set "$f" && continue
-    # Skip wenn bereits via Referenz aufgenommen
-    [[ " ${CUSTOM_CONTEXT_FILES[@]} " =~ " $f " ]] && continue
-    [[ " ${_KAND[@]} " =~ " $f " ]] && continue
-    _KAND+=("$f")
-  done <<< "$ALL_MD"
-  declare -A _SCORE=()
-  if [ "${#_KAND[@]}" -gt 0 ]; then
-    while IFS= read -r _z; do
-      _f="${_z%:*}"; _c="${_z##*:}"
-      case "$_c" in ''|*[!0-9]*) _c=0 ;; esac
-      _SCORE["$_f"]=$(( ${_SCORE["$_f"]:-0} + _c ))
-    done < <(
-      # ⚠ per `xargs -0` in Teilen: EINE Befehlszeile mit allen Pfaden sprengt bei grossen Projekten
-      #   das Windows-Limit (~32 000 Zeichen) — dann scheitert grep, und JEDER Wert waere still 0.
-      #   `-0` zerlegt nicht an Leerzeichen (die Falle aus „Rotation nie mit xargs" greift hier nicht).
-      printf '%s\0' "${_KAND[@]}" | xargs -0 grep -cH '```' -- 2>/dev/null
-      printf '%s\0' "${_KAND[@]}" | xargs -0 grep -cHE '`[^`]*[/\\][^`]*`' -- 2>/dev/null
-      printf '%s\0' "${_KAND[@]}" | xargs -0 grep -cHE 'v[0-9]+\.[0-9]+' -- 2>/dev/null
-      printf '%s\0' "${_KAND[@]}" | xargs -0 grep -cHE '\b[0-9]{2,4}\s+[Tt]ests?\b' -- 2>/dev/null
-      printf '%s\0' "${_KAND[@]}" | xargs -0 grep -cHE '`[a-z_][a-zA-Z0-9_]*\(\)`|`[A-Z][a-zA-Z0-9]+\.[a-zA-Z_]+`' -- 2>/dev/null
-    )
-  fi
-  for f in "${_KAND[@]}"; do
-    if [ "${_SCORE["$f"]:-0}" -ge "$SCORE_THRESHOLD" ]; then
-      CUSTOM_CONTEXT_FILES+=("$f")
-    fi
-  done
-fi
-
-# ⛔ v5.147.0 (Etappe 56 §5, CK3): EINE Schreibweise je Datei. Ein Verweis, der selbst mit `./`
-#    beginnt, wurde zu `././docs/x.md` und zaehlte neben `./docs/x.md` aus dem Scan doppelt
-#    (CK3: 24 statt 19). Normalisiert auf `./<pfad>`, Reihenfolge bleibt, Doppel fallen weg.
-if [ "${#CUSTOM_CONTEXT_FILES[@]}" -gt 0 ]; then
-  mapfile -t CUSTOM_CONTEXT_FILES < <(printf '%s\n' "${CUSTOM_CONTEXT_FILES[@]}" \
-    | sed 's#^\(\./\)*##; s#^#./#' | awk '!gesehen[$0]++')
-fi
-echo "Custom Context discovered: ${#CUSTOM_CONTEXT_FILES[@]} files"
+# laeuft in step1-dateien.sh mit — KEIN eigener Aufruf
 ```
 
 **Edge-Cases-Handling:**
@@ -512,25 +284,7 @@ Mismatch → Finding mit Klasse AUTO/ASK/DESIGN (siehe Step 4 v3.2.1).
 Skill ist projekt-agnostisch — bei Nicht-Python-Projekten skippen.
 
 ```bash
-# Pytest verfuegbar UND tests/ existiert?
-if [ -d "tests/" ] && (command -v pytest &>/dev/null || [ -x ".venv/Scripts/python.exe" ]); then
-  # Source of Truth: pytest --collect-only
-  if [ -x ".venv/Scripts/python.exe" ]; then
-    REAL_COUNT=$(.venv/Scripts/python -m pytest tests/ --collect-only -q 2>/dev/null | tail -1 | grep -oE '[0-9]+' | head -1)
-  else
-    REAL_COUNT=$(pytest tests/ --collect-only -q 2>/dev/null | tail -1 | grep -oE '[0-9]+' | head -1)
-  fi
-
-  if [ -n "$REAL_COUNT" ] && [ "$REAL_COUNT" -gt 0 ]; then
-    # Grep alle Custom-Context-Files fuer hardcoded Test-Counts
-    # Pattern: '\b\d{2,4}\s+[Tt]ests?\b' (z.B. "434 Tests", "283 tests")
-    # Mismatch → Finding (AUTO bei Drift <10%, ASK bei groesserer)
-    :  # Logik in Step 4 implementiert
-  fi
-else
-  # Skip — nicht-Python oder kein tests/-Dir
-  REAL_COUNT=""
-fi
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3a1-testcounts.sh"
 ```
 
 ### 3b: Dead Paths (kontextuell, KEINE False-Positives)
@@ -645,13 +399,7 @@ das Gate fand also **nie** etwas und meldete jedes Mal „0 Luecken".
 dieses Schritts.**
 
 ```bash
-# VOR der Auswertung pruefen, ob die Konvention ueberhaupt vorkommt:
-TREFFER=$(git log --oneline -50 | grep -cE '^[0-9a-f]+ (feat|fix|refactor|perf|docs|test|chore)')
-if [ "$TREFFER" -eq 0 ]; then
-  echo "Schritt 3c: NICHT ANWENDBAR — keine Conventional-Commits-Praefixe in den letzten"
-  echo "  50 Commits. Das ist KEIN '0 Luecken'."
-  # Hat das Projekt eine eigene Konvention, gehoert ihr Muster in CLAUDE.md und hierher.
-fi
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3c-commits.sh"
 ```
 
 **Zweck (v3.3.2):** Dies ist der DETERMINISTISCHE Kern der Knowledge-Gap-Erkennung.
@@ -679,6 +427,9 @@ zu wissen glaubt. Diese Findings speisen Step 3.5 mit konkreten Pruef-Punkten.
 # Stuecke — derselbe Fehler, der in v5.2.1 die Rotation lahmlegte (xargs +
 # "Plugin - Entwicklung"). Die Zusatzziele kommen aus der CLAUDE.md SELBST; es wird nicht
 # geraten, welche Datei "kanonisch" ist. Gemessen: 2 -> 17 Ziele im Zustellplan-Projekt.
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+# v5.153.0: MEMORY_MAIN kam aus Step 1 — einem anderen Prozess. Leer war das zweite Ziel "".
+MEMORY_MAIN="${MEMORY_MAIN:-$(get_memory_dir 2>/dev/null)/MEMORY.md}"
 ZIELE=("CLAUDE.md" "$MEMORY_MAIN")
 while IFS= read -r z; do
   [ -n "$z" ] && [ -f "$z" ] && ZIELE+=("$z")
@@ -755,45 +506,7 @@ Lösung: der semantische Pass (Step 3.5) prüft nur die **session-berührten** R
 deterministisch bestimmen — aus den Commit-Scopes (die mappen auf Datei-Inhalte).
 
 ```bash
-# Existenz-Guards (H3/Skill-Review G): ohne .git kein Scope-Signal, ohne rules-Dir nichts zu targeten.
-if [ ! -d .claude/rules ]; then
-  echo "kein .claude/rules/ -> 3c.1 gegenstandslos"; SEM_RULES=""; TARGET_MODE="none"
-else
-  # 1) Größe des gesamten Rules-Satzes — entscheidet, ob Targeting überhaupt nötig ist.
-  RULES_KB=$(( $(cat .claude/rules/*.md 2>/dev/null | wc -c) / 1024 ))
-
-  # 2) Commit-Scopes als Targeting-Signal (nur wenn .git). SCOPE bevorzugen (mappt auf Datei-Inhalt).
-  KEYS=""
-  if [ -d .git ]; then
-    STOP='the|and|for|that|with|from|into|als|der|die|das|und|fix|feat|add|new|update'
-    KEYS=$(git log --oneline -30 | grep -iE '^[0-9a-f]+ (feat|fix|refactor|perf)(\(|:)' | while read -r line; do
-      subj=$(echo "$line" | cut -d' ' -f2-)
-      scope=$(echo "$subj" | sed -nE 's/^[a-z]+\(([a-z0-9_-]{3,})\).*/\1/p' | head -1)
-      key="${scope:-$(echo "$subj" | tr ' ' '\n' | grep -iE '^[a-z_]{4,}$' | grep -ivE "^($STOP)$" | head -1)}"
-      [ -n "$key" ] && echo "$key"
-    done | sort -u)
-  fi
-
-  # 3) Touched-Map: robuster per-Datei-grep OHNE -r und OHNE -F (crashen zusammen auf Git-Bash/MSYS
-  #    bei UTF-8-Rules, verifiziert 2026-07-15). Keys sind regex-safe ([a-z0-9_-]).
-  TOUCHED_RULES=$(for key in $KEYS; do for f in .claude/rules/*.md; do grep -li "$key" "$f" 2>/dev/null; done; done | sort -u)
-
-  # 4) Entscheidungsbaum — KEIN stilles 0 (Skill-Review B):
-  if [ "$RULES_KB" -lt 160 ]; then
-    TARGET_MODE="all"; SEM_RULES=$(ls .claude/rules/*.md)   # klein genug -> alle passen, Targeting unnötig
-    echo "Rules-Satz klein (${RULES_KB}KB) -> semantischer Pass: ALLE Rules"
-  elif [ -n "$TOUCHED_RULES" ]; then
-    TARGET_MODE="targeted"; SEM_RULES="$TOUCHED_RULES"
-    echo "Rules groß (${RULES_KB}KB) -> semantischer Pass NUR session-berührte:"; echo "$SEM_RULES"
-  else
-    TARGET_MODE="unscopable"; SEM_RULES=""
-    echo "WARN: Rules groß (${RULES_KB}KB) ABER kein Commit-Scope-Signal (kein .git / keine passenden Scopes)."
-    echo "      -> semantischer Rules-Pass NICHT scopebar. Report MUSS das als 'deterministisch-only,"
-    echo "         nicht semantisch geprüft' ausweisen + /mind-rules einzeln empfehlen. KEIN stilles 0."
-  fi
-  echo "=== NICHT im semantischen Pass (nur deterministisch: 3e+3e.2) ==="
-  for f in .claude/rules/*.md; do echo "$SEM_RULES" | grep -qxF "$f" || printf "  %s (%s Z.)\n" "$f" "$(wc -l < "$f")"; done
-fi
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3c1-targeting.sh"
 ```
 
 - **Erring broad = sicher:** ein zu breiter Treffer prüft nur ein paar Files extra; ein *verpasster*
@@ -829,11 +542,7 @@ fi
   (fehlendes Feld / unbekannter type) — NICHT dafuer, dass Frontmatter da ist.
 
 ```bash
-# Project rules — Syntax-Check (paths: vs globs:)
-grep -rn '^paths:' .claude/rules/*.md 2>/dev/null
-
-# Global rules (NEU v3.2.1)
-grep -rn '^paths:' "$HOME"/.claude/rules/*.md 2>/dev/null
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3e-syntax.sh"
 ```
 
 ### 3e.2: Rules-Inhalts-Drift (NEU v3.3.1, zusaetzlich zu 3e Syntax) — PFLICHT
@@ -845,27 +554,7 @@ unbemerkt. **Skip nur bei `QUICK_MODE=yes`.**
 **Restriktive Patterns** (vermeiden Plauder-False-Positives wie "we discussed dev.13"):
 
 ```bash
-if [ "$QUICK_MODE" != "yes" ]; then
-  RULES_HITS=0
-  for f in .claude/rules/*.md "$HOME"/.claude/rules/*.md; do
-    [ -f "$f" ] || continue
-    # Versions-Patterns nur mit Kontext-Keyword (Stable/Unstable/Last sync/Tabelle/Bullet/Code)
-    # ⛔ v5.147.0 (Etappe 56 §5, CK3): der letzte Teil hoechstens DREI Ziffern — `10.09.2026` ist
-    #    ein Datum (vierstelliges Jahr), keine Version; das alte Muster las es als Drift.
-    hits=$(grep -nE "v?[0-9]+\.[0-9]+\.[0-9]{1,3}(-dev\.[0-9]+)?([^0-9]|$)" "$f" 2>/dev/null | \
-           grep -iE "(stable|unstable|tag|commit|last sync|^[[:space:]]*[-*|\`])" )
-    # Test-Counts nur mit Test-Keyword in derselben Zeile
-    hits2=$(grep -nE "\b[0-9]{2,4}\s+(pytest-)?[Tt]ests?\b" "$f" 2>/dev/null | \
-            grep -iE "(gruen|gruene|passed|collected|pytest|coverage)")
-    if [ -n "$hits$hits2" ]; then
-      echo "=== $f ($(wc -l < "$f") Zeilen) ==="
-      [ -n "$hits" ] && echo "$hits"
-      [ -n "$hits2" ] && echo "$hits2"
-      RULES_HITS=$((RULES_HITS + 1))
-    fi
-  done
-  echo "Rules-Files mit potentieller Drift: $RULES_HITS"
-fi
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3e2-drift.sh"
 ```
 
 **False-Positive-Mitigation:**
@@ -961,12 +650,7 @@ zaehlt gegen die Obergrenze.
   **NICHT erneut dispatchen** — im Self-Check ausweisen als
   `scope=<x> → bereits durch <skill> abgedeckt (analyzed-scopes)`.
   ```bash
-  [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-  mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-  SCOPES_FILE="$PROJ/.claude-mind/analyzed-scopes"
-  # nur wenn Scope UND Modus uebereinstimmen:
-  scope_done() { [ -f "$SCOPES_FILE" ] && grep -q "^$1=.*:knowledge-sync$" "$SCOPES_FILE"; }
-  # z.B.: scope_done claude-md && echo "skip" || dispatch...
+  bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3.5-zuschnitt.sh"
   ```
   **NUR bei gleichem Modus ueberspringen (M3-Fix):** Der Eintrag traegt den Modus
   (`claude-md=mind-claudemd:default`). `mode: default` ist eine **andere Analyse** als
@@ -1027,152 +711,7 @@ Bei langen Sessions (>500 Events) verliert naives "letzte 200" Architektur-Entsc
 aus der Mitte. 3-Stufen-Algorithmus:
 
 ```bash
-# Python-Helper extrahiert relevante Events aus aktueller JSONL
-# (gleicher Code wie mind-compact Step 3, hier zur Wiederverwendung)
-# --- QUELLEN-WAHL (NEU v5.1.0): geretteter Chat schlaegt Live-Sampling ---
-# Nach einer Kompaktierung enthaelt das Live-Transkript nur noch die Zusammenfassung.
-# Der PreCompact-Hook hat den VOLLEN Chat vorher nach .claude-mind/rescued/ gerettet —
-# DAS ist dann die richtige Quelle. Ohne diese Wahl wuerde der Knowledge-Sync nach jeder
-# Kompaktierung auf Resten arbeiten und genau das verpassen, wofuer er da ist.
-# v5.2.1: Vorrang hat der Zeiger aus der offenen Schuld (OPEN) — er nennt genau die Rettung,
-# fuer die der Sync noch aussteht. Fehlt OPEN (aeltere Version): neueste Datei per Zeitstempel.
-_MU_OPEN="$PROJ/.claude-mind/rescued/OPEN"
-# ⛔ v5.57.0: EINE Stelle, und sie liegt in `lib.sh`. Hier stand ein Halbfix
-#    aus v5.4.1: das Sammeln war auf mehrere Zeilen umgestellt, die
-#    Einzeldatei-Pruefung darunter nicht. `[ ! -f "$RESCUED" ]` auf einen
-#    mehrzeiligen Text ist immer wahr — bei ZWEI oder mehr Rettungen wurde die
-#    Liste geleert und der Rueckfall nahm die juengste Datei im Ordner.
-#    GEMESSEN mit drei Rettungen: EINE kam an. Die Doku behauptete seit v5.4.1
-#    das Gegenteil, und niemand hatte es je nachgestellt.
-RESCUED_ALLE=$(mind_rettungen "$PROJ")
-RESCUED_N=$(printf '%s' "$RESCUED_ALLE" | grep -c . 2>/dev/null)
-case "$RESCUED_N" in ''|*[!0-9]*) RESCUED_N=0 ;; esac
-# Die JUENGSTE ist die Leitrettung fuer Zaehlungen und Meldungen; gespeist
-# werden die Agents mit ALLEN (siehe unten).
-RESCUED=$(printf '%s' "$RESCUED_ALLE" | tail -1)
-
-# ⛔ FIX v5.2.2 — hier stand ein ENTWEDER-ODER, und das war ein Konstruktionsfehler.
-# Die Rettung enthaelt per Definition nur, was VOR der Kompaktierung war. Alles, was danach
-# gearbeitet wird, steht ausschliesslich im Live-Transkript. Wer nur die Rettung nimmt, ist
-# blind fuer die juengste Arbeitsphase — und genau die ist der Grund, warum der Stop-Hook den
-# Lauf ueberhaupt erzwingt.
-# BELEGT am 2026-08-16 im eigenen Projekt: die Rettung endete 17:40:15, der gesamte
-# v5.2.1-Bau lag danach. Der rules-Agent fand NULL Treffer fuer "stop.sh", "OPEN",
-# "Flut-Sperre", "listeverbesserungen" — er konnte sie nicht finden, sie waren nicht drin.
-# Der Sync haette die Arbeit, wegen der er lief, komplett verpasst.
-# Deshalb jetzt: BEIDE Quellen, wenn beide da sind.
-if [ -n "$RESCUED" ] && [ -s "$RESCUED" ]; then
-  SESSION_SOURCE="gerettet+live"
-  # NUR ZAEHLEN, NICHT LESEN (Kontext-Flut-Sperre v5.2.1)
-  echo "Session-Quelle: gerettet -> $RESCUED_N Rettung(en), aelteste zuerst:"
-  printf '%s\n' "$RESCUED_ALLE" | while IFS= read -r _r; do
-    [ -n "$_r" ] || continue
-    echo "    $_r ($(grep -c '^## \[' "$_r") Beitraege)"
-  done
-  # ⛔ ALLE Rettungen gehen an die Agents, nicht nur die juengste. Bei
-  #    mehreren Sitzungen im selben Ordner gehoert jede einer anderen — wer
-  #    nur die juengste nimmt, synct eine Sitzung und verliert die anderen.
-  echo "                + live    -> Sampler ueber das laufende Transkript (deckt die Zeit NACH der Rettung ab)"
-else
-  SESSION_SOURCE="live"
-  echo "Session-Quelle: live (kein geretteter Chat vorhanden)"
-fi
-
-SAMPLER="$CLAUDE_PLUGIN_ROOT/references/session_sampler.py"   # v5.0.0: ausgeliefert, KEIN Heredoc
-# Frueher wurde das Skript zur Laufzeit per Heredoc nach /tmp geschrieben — auf Windows/Git-Bash
-# unzuverlaessig (Pfade mit '&', Leerzeichen, Umlauten). Jetzt liegt es im Plugin.
-[ -f "$SAMPLER" ] || { echo "ERROR: session_sampler.py fehlt: $SAMPLER" >&2; exit 1; }
-
-# cygpath ist Pflicht (Windows-Pfade fuer den Python-Aufruf)
-command -v cygpath >/dev/null 2>&1 || { echo "ERROR: cygpath nicht verfuegbar" >&2; exit 1; }
-SAMPLER_WIN=$(cygpath -w "$SAMPLER")
-
-# JSONL der aktuellen Session finden (Slug via lib.sh)
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
-[ -z "$CLAUDE_PLUGIN_ROOT" ] && { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
-source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-SLUG=$(hash_project_dir)
-PROJECTS_DIR="$HOME/.claude/projects/$SLUG"
-# ⛔ v5.69.0: HIER STAND EIN RUECKFALL AUF DAS NEUESTE PROJEKT.
-#    `[ ! -d "$PROJECTS_DIR" ] && PROJECTS_DIR=$(ls -td .../projects/*/ | head -1)`
-#    Fehlte der Slug-Ordner, schob er IRGENDEIN anderes Projekt unter — und
-#    der Sync haette den Chat eines FREMDEN PROJEKTS als Quelle genommen.
-#    ⭐ Nachgestellt 10.09.2026: 25 Projekt-Ordner lagen dort, gewaehlt wurde
-#       der nach Aenderungszeit juengste. `mind_transkript_pfad` faengt das
-#       NICHT — sie rechnet ihren Slug selbst, kommt leer zurueck, und der
-#       Rueckfall las dann aus dem fremden Ordner.
-#
-# ⛔ STREICHEN FUEGT KEIN VERHALTEN HINZU. Der Abbruch steht schon weiter
-#    unten (`kein Session-JSONL` -> exit 1); der Rueckfall hat ihn nur
-#    verhindert. ⭐ Ein ausgefallener Lauf hinterlaesst NICHTS, ein falsch
-#    gespeister hinterlaesst FALSCHES.
-#
-# ⚠ Der Ausloeser ist KEIN kaputter Slug: `slug_regression.py` bestand alle
-#   12 Faelle, und live trafen 3 von 3 echten Projekten. Es ist ein Projekt,
-#   in dem NIE eine Sitzung lief — dort gibt es nichts zu syncen, und der
-#   Abbruch ist die richtige Antwort, nicht die harte.
-if [ ! -d "$PROJECTS_DIR" ]; then
-  echo "ABBRUCH: kein Transkript-Ordner fuer dieses Projekt." >&2
-  echo "  erwartet: $PROJECTS_DIR" >&2
-  echo "  Das heisst: in diesem Projekt lief noch nie eine Claude-Sitzung," >&2
-  echo "  also gibt es auch nichts zu syncen. ⛔ KEIN kaputter Slug — nicht" >&2
-  echo "  danach suchen. Frueher wurde hier ein FREMDES Projekt untergeschoben." >&2
-  exit 1
-fi
-# ⛔ v5.68.0: NICHT `ls -t | head -1`. Das ist die nach AENDERUNGSZEIT
-#    juengste Datei — bei mehreren Rollen im selben Ordner also die
-#    Sitzung, die GERADE schreibt. ⚠ Gemessen 10.09.2026: 17 Transkripte,
-#    drei Rollen. Die syncende Sitzung schreibt waehrend ihres Laufs am
-#    wenigsten — sie verliert dieses Rennen fast immer.
-#
-# ⭐ `mind_transkript_pfad` tut seit v5.66.0 genau das Richtige: sie
-#    adressiert `$CLAUDE_CODE_SESSION_ID.jsonl` direkt. Der Griff hier war
-#    ein NACHBAU davon — Klasse `instrument-nachgebaut`, 9 Vorkommen.
-#
-# ⛔ DER RUECKFALL MELDET SICH (Auflage). Ein stiller Fehlgriff darf nicht
-#    wie ein richtiger Griff aussehen: greift die Kennung nicht, steht das
-#    im Bericht, statt lautlos eine fremde Sitzung zu analysieren.
-JSONL=$(mind_transkript_pfad "${PROJ:-$(mind_projekt_wurzel)}" 2>/dev/null)
-_JQUELLE=kennung
-if [ -z "$JSONL" ] || [ ! -f "$JSONL" ]; then
-  JSONL=$(ls -t "$PROJECTS_DIR"/*.jsonl 2>/dev/null | grep -v '/subagents/' | head -1)
-  _JQUELLE=rueckfall
-elif [ -z "${CLAUDE_CODE_SESSION_ID:-}" ] \
-     || [ "$JSONL" != "$PROJECTS_DIR/$CLAUDE_CODE_SESSION_ID.jsonl" ]; then
-  # ⚠ Ein Treffer, der NICHT aus der eigenen Kennung stammt (Hook-Vorgabe
-  #   oder die alte cwd-Heuristik), ist ebenfalls ein Rueckfall — er kann
-  #   richtig sein, belegt ist er nicht.
-  _JQUELLE=rueckfall
-fi
-if [ "$_JQUELLE" = rueckfall ]; then
-  echo "⚠ TRANSKRIPT ueber den RUECKFALL gewaehlt, nicht ueber die eigene Kennung."
-  echo "  Gewaehlt: $(basename "${JSONL:-(nichts)}")"
-  echo "  CLAUDE_CODE_SESSION_ID: ${CLAUDE_CODE_SESSION_ID:-(leer)}"
-  echo "  ⛔ Bei mehreren Sitzungen im selben Ordner kann das eine FREMDE sein."
-  echo "     Das gehoert in den Bericht — nicht verschweigen."
-fi
-[ -z "$JSONL" ] && { echo "ERROR: kein Session-JSONL in $PROJECTS_DIR" >&2; exit 1; }
-JSONL_WIN=$(cygpath -w "$JSONL")
-
-# Python-Path
-if [ -x ".venv/Scripts/python.exe" ]; then PYTHON=".venv/Scripts/python.exe"
-elif command -v python3 &>/dev/null; then PYTHON="python3"
-else PYTHON="python"; fi
-
-# ⛔ v5.126.0 (Etappe 38 §2): JE SITZUNG, IM PROJEKT — nicht mehr fest /tmp/mind_update_session.json.
-#    Der feste Pfad kollidierte zwischen gleichzeitigen Sitzungen (Creator 16.09.2026) und war
-#    aus der Agent-Sandbox nicht erreichbar (17./18.09.2026, memory-Agent). Aufraeumen: Step 6.
-SESSION_SAMPLE_BASH=$(mind_sampler_pfad "$PROJ" mind-update)     # <PROJ>/.claude-mind/sampler/mind-update.<sid>.json
-SESSION_SAMPLE_WIN=$(cygpath -w "$SESSION_SAMPLE_BASH")
-"$PYTHON" "$SAMPLER_WIN" "$JSONL_WIN" "$SESSION_SAMPLE_WIN"
-
-# Hinweis bei sehr langer Session
-TOTAL=$(grep -oE '"total_events":\s*[0-9]+' "$SESSION_SAMPLE_BASH" | grep -oE '[0-9]+')
-LONG=$(grep -oE '"long_session_hint":\s*(true|false)' "$SESSION_SAMPLE_BASH" | grep -oE '(true|false)')
-if [ "$LONG" = "true" ]; then
-  echo "WARN: Session sehr lang ($TOTAL Events). Empfehlung: erst /mind-compact + /compact, dann /mind-update erneut."
-fi
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3.5-sampling.sh"
 ```
 
 ### 4 Agent-Dispatches — sequenziell bzw. in 2 Wellen à 2 (NIE ≥3 gleichzeitig)
@@ -1241,18 +780,7 @@ auftauchte. Der Creator-Lauf hat den Ausweg selbst benannt:
 > nicht dem Ermessen des Laufs ueberlassen und landet automatisch im Bericht."*
 
 ```bash
-# ⛔ v5.64.0: HIER WURDE DER KONTEXT GEMESSEN. Das faellt komplett weg.
-#    Nutzer-Entscheidung 10.09.2026: "die sollen garnicht mehr tokens messen
-#    das soll komplett raus". Weder die Agentenzahl noch der Abbruch haengen
-#    noch an einer Tokenzahl — `AGENT_MAX` ist fest 4.
-# ⭐ GEMESSEN, warum: der Tokenstand kam aus einem Merker je PROJEKT, und im
-#    selben Ordner arbeiten mehrere Rollen. Die Zahl gehoerte zuverlaessig einer
-#    fremden Sitzung (Palvedo, 10.09.2026: ~130 000 echt gegen 721 405 gemeldet).
-# ⛔ DAS TEILSYNC-VERBOT BLEIBT — gemessen wird HINTERHER, an der Quittung:
-#    kommt ein Agent leer zurueck, steht er in `ungepruef=`, `mind_sync_voll`
-#    sagt "teil", und die Schuld bleibt liegen.
-AGENT_MAX=4
-AGENT_SOLL=$AGENT_MAX          # Step 2.96a von mind-all liest das
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3.5-agentzahl.sh"
 ```
 
 ⛔ **Hier stand bis v5.54.0 die Begruendung fuer einen halben Lauf** — *„das senkt
@@ -1304,6 +832,7 @@ PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT
 #    Dateien) hier 3 uebergeben, nicht 4.
 # ⛔ v5.104.0: 3 bei 0 Custom-Context-Dateien — Step 1.5 hat gezaehlt — und das
 #    Ueberspringen wird QUITTIERT; sonst heisst es "nur 3 von 4" und der Lauf ist Teilsync.
+[ "${#CUSTOM_CONTEXT_FILES[@]}" -gt 0 ] || mapfile -t CUSTOM_CONTEXT_FILES < "$(mind_sampler_pfad "$PROJ" mind-update-ccf.txt)" 2>/dev/null   # v5.153.0
 if [ "${#CUSTOM_CONTEXT_FILES[@]}" -eq 0 ]; then
   [ -f "$PROJ/.claude-mind/agent-quittung.jsonl" ] || mind_agent_quittung_start "$PROJ" 3
   mind_agent_uebersprungen custom-context 0 "$PROJ"
@@ -1380,7 +909,9 @@ scope: <claude-md|memory|rules|custom-context>
 
 Die `CUSTOM_CONTEXT_FILES`-Array wird **als 1 Pfad pro Zeile** in die `## Custom Context Files`-Section serialisiert:
 ```bash
-printf '%s\n' "${CUSTOM_CONTEXT_FILES[@]}"
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung
+cat "$(mind_sampler_pfad "$PROJ" mind-update-ccf.txt)"   # v5.153.0: das Array aus Step 1.5 ist hier leer — die Liste steht in der Datei
 ```
 
 Findings aller (3-4) Agents aggregieren → an Step 4.
@@ -1543,40 +1074,7 @@ Lies sie.** Hier nur, was für diesen Skill gilt:
 | ⚠ **in der Kette** | läuft `mind-update` in `/mind-all`, haben `mind-claudemd` (Step 5e) und `mind-rules` (Step 9b) ihre Datei schon verdichtet — dann hier **die nächstgrößere**, nie dieselbe zweimal im Lauf (`analyzed-scopes` trägt `verdichtet=<datei>`) |
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-# Kandidat: die groesste Datei aus CLAUDE.md + rules, ohne rollen.md, ohne die schon
-# in DIESEM Kettenlauf verdichteten (analyzed-scopes: verdichtet=<pfad>)
-_SCHON=$(grep '^verdichtet=' "$PROJ/.claude-mind/analyzed-scopes" 2>/dev/null | cut -d= -f2-)
-# ⛔ v5.118.0 (Etappe 26 §6): Rules mit `paths:` sind KEIN Kandidat — sie liegen nicht im
-#    Dauerkontext (Zustellplan: routenplaner.md 161 kB, laedt nur bei Beruehrung), das Kriterium
-#    „Dauerkontext kleiner" waere unerfuellbar. Gleiche Regel wie mind-rules 9b.
-DATEI=$(ls -S "$PROJ/CLAUDE.md" "$PROJ"/.claude/rules/*.md 2>/dev/null | grep -v '/rollen\.md$' \
-        | while IFS= read -r f; do
-            head -12 "$f" | grep -qi '^paths:' && continue
-            case "
-$_SCHON
-" in *"
-$f
-"*) ;; *) echo "$f" ;; esac; done \
-        | mind_verdicht_kandidat "$PROJ" mind-update merken)   # v5.138.0: kein `break` — die Rotation waehlt aus der ganzen Liste
-[ -n "$DATEI" ] || { echo "VERDICHTEN: keine Kandidatin"; }
-# ... dann exakt der Lauf aus bestands-pass.md: Snapshot -> Agent (Kasten + Unantastbare
-#     ⛔ v5.100.0: der Agent schreibt $PROJ/.claude-mind/verdichten-mind-update.nachher.md (Zeilenenden
-#        der Quelle); Anwenden ist `cp` nach Stufe 3 — NIE nachtippen (bestands-pass.md, Schritt 1)
-#     ⭐ v5.101.0 im Auftrag: Absatz ins Archiv = seine Code-Spans, Zahlen und ALLCAPS-Woerter
-#        bleiben im Zeiger-Satz — Stufe 1 zaehlt jede Marke, auch aus Herleitungen
-#     WOERTLICH) -> mind_verdichtung_pruefen -> (CLAUDE.md: Pipeline vorher/nachher)
-#     -> ⛔ STUFE 3 (Wort-Diff lesen; ohne Leser NICHT anwenden, ablegen und melden)
-#     -> mind_verdichtung_anwenden "$DATEI" "$ERGEBNIS" "$PROJ/.claude-mind/verdichten-<skill>.txt" (v5.125.0:
-#        vergleicht die Live-Datei mit dem md5 der Vorher-Fassung aus dem Deponat — seitdem geaendert = rc 1,
-#        kein cp, neu verdichten; Ritas CLAUDE.md-Deponat 22:51 hinter Live 23:41 am 18.09.2026)
-#     -> mind_kontext_bilanz gegen vorher -> sonst rollback.py restore
-# ⛔ v5.140.0 (Etappe 51 §2): ueber die pruefende Funktion, nicht per `echo >>`. Sie
-#    weist ein Deponat unter `.claude-mind/` ab — Rita hat zweimal `$ERGEBNIS` gebucht
-#    statt `$DATEI`, und nichts hat den Pfad geprueft. rc 2 ist KEIN Laufabbruch.
-mind_verdichtet_merken "$PROJ" "$DATEI" || true
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step5-verdichten.sh"
 ```
 
 ⛔ **Der Bericht dieses Schritts sind die drei Zeilen aus `mind_verdichtung_pruefen`** — oder
@@ -1744,11 +1242,7 @@ gemeldet und der Skill **läuft weiter**. Ein Bestands-Pass darf nie einen Sync 
 Bis v5.145.0 stand dieser Schritt im Pflichtkasten und in der Startzeile, aber **nirgends als Aufruf** — erwartet, nie gelaufen. So entstand Noras `FEHLT: mind-rules/cleaner_duplikate` (Palvedo, 20.09.2026), und so wurden Schritte von Hand nachgeholt. Ihre Ausgabe ist die Zeile `Agent-Quittung:` im Self-Check-Block unten.
 
 ```bash
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-A="$PROJ/.claude-mind/schritt-mind-update-agentbilanz.txt"
-mind_agent_bilanz "$PROJ" > "$A" 2>&1; echo "rc=$?" >> "$A"; cat "$A"
-mind_schritt mind_agent_bilanz gelaufen --datei "$A" "$PROJ"
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/agent-bilanz.sh"
 ```
 
 ## Step 6: Report — PFLICHT-Self-Check-Block am Anfang (NEU v3.3.1)

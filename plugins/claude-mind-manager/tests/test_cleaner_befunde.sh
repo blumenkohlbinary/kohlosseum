@@ -283,7 +283,7 @@ _T=$(mind_check_tools_have_rules "$P/proj" 2>/dev/null)
 janein "mind_check_tools_have_rules: paths-Rule heisst [bei Beruehrung: 2 Pfade]" ja "$(printf '%s\n' "$_T" | grep -q 'werk.md\[bei Beruehrung: 2 Pfade\]' && echo ja || echo nein)"
 janein "   ... globs-Rule heisst [globs (laedt immer)]" ja "$(printf '%s\n' "$_T" | grep -q 'gl.md\[globs (laedt immer)\]' && echo ja || echo nein)"
 rm -rf "$P"
-MR="$CLAUDE_PLUGIN_ROOT/skills/mind-rules/SKILL.md"; MU="$CLAUDE_PLUGIN_ROOT/skills/mind-update/SKILL.md"
+MR="$CLAUDE_PLUGIN_ROOT/skills/mind-rules/SKILL.md"; MU="$(skill_text_datei "$CLAUDE_PLUGIN_ROOT" mind-update)"
 janein "mind-rules: Hard Constraint sagt paths:, nicht globs:" ja "$(grep -q 'ALWAYS use `paths:` in generated rules for file-bound rules, NEVER `globs:`' "$MR" && ! grep -q 'ALWAYS use `globs:` in generated rules' "$MR" && echo ja || echo nein)"
 janein "mind-rules check: globs: ist INFO (laedt immer), paths: keine WARNING mehr" ja "$(grep -q 'Uses `globs:` (laedt IMMER, filtert nicht' "$MR" && ! grep -q 'Uses `paths:` instead of `globs:` | WARNING' "$MR" && echo ja || echo nein)"
 janein "mind-rules migrate: Richtung globs -> paths ueber die Sonde" ja "$(grep -q 'die Richtung ist `globs:` → `paths:`' "$MR" && echo ja || echo nein)"

@@ -181,7 +181,10 @@ _lebend = [os.path.join(PROJEKT, "CLAUDE.md"), os.path.join(PROJEKT, ".claude", 
            os.path.join(_H, ".claude", "CLAUDE.md")] \
     + _glob.glob(os.path.join(PROJEKT, ".claude", "rules", "*.md")) \
     + _glob.glob(os.path.join(_H, ".claude", "rules", "*.md"))
-_BEKANNT = {"backup-usage": 1, "hooks": 1, "rollen": 1}
+# ⛔ rollen 1 -> 5 (Anton, 29.10.2026): gewollter Archiv-Umzug vom 28.10. — „der Roster ist kein Notizheft".
+#    Die vier neuen Absaetze tragen die ALTEN Kennungen 62ca5f72/acd4e029 und den alten Titel; sie sind
+#    ueberholt und duerfen NICHT wieder lebend werden. Jedes weitere Loch bleibt rot.
+_BEKANNT = {"backup-usage": 1, "hooks": 1, "rollen": 5}
 sys.path.insert(0, os.path.join(WURZEL, "references", "doc-templates"))
 _halte = sys.stdout  # coverage_gate legt beim Import einen neuen Wrapper um .buffer; ohne Referenz schloesse der GC unseren und damit den Puffer
 from coverage_gate import checkpoints, normalize, P_VERSION  # noqa: E402,F841 — _halte bleibt referenziert, der neue Wrapper schreibt weiter

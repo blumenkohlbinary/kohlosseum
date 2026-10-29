@@ -58,7 +58,7 @@ pruef() { if [ "$2" = "$3" ]; then GRUEN=$((GRUEN+1)); echo "  [ok ] $1"
 . "$R/hooks/lib.sh" 2>/dev/null
 
 MA="$(skill_text_datei "$R" mind-all)"
-MU="$R/skills/mind-update/SKILL.md"
+MU="$(skill_text_datei "$R" mind-update)"
 
 echo "=== 1) ⛔ Die Funktion ist WEG — nicht nur ungenutzt ==="
 # ⛔ GEGEN DEN ALTEN STAND ROT. Das ist der Zweck dieses Abschnitts: er

@@ -71,11 +71,11 @@ EOF
   janein "$s: jede Launch/Dispatch-Zeile traegt die Marke im 3-Zeilen-Fenster" 0 "$fehl"
 done
 janein "mind-update: der Aufruf-Kasten nennt subagent_type UND die Marke" ja \
-  "$(grep -q 'subagent_type: "claude-mind-manager:context-analyzer", run_in_background: false' "$R/skills/mind-update/SKILL.md" && echo ja || echo nein)"
+  "$(grep -q 'subagent_type: "claude-mind-manager:context-analyzer", run_in_background: false' "$(skill_text_datei "$R" mind-update)" && echo ja || echo nein)"
 janein "mind-update: die Quittung im Skill-Text laeuft ueber --datei" ja \
-  "$(grep -q 'mind_agent_ergebnis "<bereich>" --datei' "$R/skills/mind-update/SKILL.md" && echo ja || echo nein)"
+  "$(grep -q 'mind_agent_ergebnis "<bereich>" --datei' "$(skill_text_datei "$R" mind-update)" && echo ja || echo nein)"
 janein "mind-update: die alte wc-c-Form steht nicht mehr im Text" 0 \
-  "$(grep -c "printf '%s' \"\$RUECKGABE\" | wc -c" "$R/skills/mind-update/SKILL.md")"
+  "$(grep -c "printf '%s' \"\$RUECKGABE\" | wc -c" "$(skill_text_datei "$R" mind-update)")"
 janein "mind-memory: 'While the agent runs' ist weg (Hintergrund-Annahme)" 0 \
   "$(grep -c 'While the agent runs' "$R/skills/mind-memory/SKILL.md")"
 

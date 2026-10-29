@@ -125,7 +125,7 @@ echo "  Fall 9: ⛔ wer den Merker verdichtet= SCHREIBT, muss ihn auch LESEN (Ko
 #   Faithful nachgestellt (Kettenreihenfolge, backup-usage.md groesste Rule UND
 #   Companion-Rule): ALT waehlten mind-files und mind-rules DIESELBE Datei.
 for _s in mind-files mind-rules mind-update; do
-  _md="$R/skills/$_s/SKILL.md"
+  _md="$(skill_text_datei "$R" "$_s")"
   # ⚠ v5.140.0: die Form ist jetzt die pruefende Funktion (Etappe 51 §2) — die
   #    Zusicherung („der Traeger merkt die Datei") ist unveraendert.
   pruef "$_s merkt verdichtet= (ueber die pruefende Funktion)" "ja" \

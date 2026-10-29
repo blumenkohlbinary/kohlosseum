@@ -128,7 +128,7 @@ echo "=== 6) ⛔ v5.68.0: DIE DREI SKILLS GREIFEN NICHT MEHR NACH ls -t ==="
 # ⭐ Es war ein NACHBAU von `mind_transkript_pfad` (Klasse
 #    `instrument-nachgebaut`, 9 Vorkommen). Alle drei sourcen `lib.sh` laengst.
 for _sk in mind-update mind-compact mind-session-log; do
-  _f="$R/skills/$_sk/SKILL.md"
+  _f="$(skill_text_datei "$R" "$_sk")"
   pruef "$_sk ruft mind_transkript_pfad" "1" \
         "$(grep -c 'JSONL=$(mind_transkript_pfad' "$_f")"
   # ⚠ GEZAEHLT WIRD DER PRIMAERE GRIFF, NICHT JEDES VORKOMMEN: `ls -t` steht
@@ -149,7 +149,7 @@ _BLK="$TMP/blk.sh"
 #    laesst den Meldungsblock weg — der Prueffall fuehre dann einen Block, den
 #    es so nicht gibt, und meldete zu Recht eine fehlende Meldung.
 awk '/^# .* v5.68.0: NICHT/{an=1} an{print} an && /^fi$/{n++; if(n==2) exit}' \
-  "$R/skills/mind-update/SKILL.md" | sed 's/\r$//' > "$_BLK"
+  "$(skill_text_datei "$R" mind-update)" | sed 's/\r$//' > "$_BLK"
 pruef "der Block liess sich ausschneiden" "ja" \
       "$([ -s "$_BLK" ] && echo ja || echo nein)"
 bash -n "$_BLK" 2>/dev/null
@@ -217,7 +217,7 @@ echo "=== 8) ⛔ v5.69.0: KEIN RUECKFALL AUF EIN FREMDES PROJEKT ==="
 # ⭐ Ein ausgefallener Lauf hinterlaesst nichts, ein falsch gespeister
 #    hinterlaesst Falsches. Deshalb Abbruch statt Ersatz.
 for _sk in mind-update mind-compact mind-session-log; do
-  _f="$R/skills/$_sk/SKILL.md"
+  _f="$(skill_text_datei "$R" "$_sk")"
   # ⛔ GEZAEHLT WIRD DIE ZUWEISUNG AM ZEILENANFANG, NICHT DIE NENNUNG.
   #   Die erste Fassung zaehlte die Zeichenkette schlechthin und wurde rot
   #   am EIGENEN Kommentar, der zitiert, was entfernt WURDE. Sechstes
@@ -241,7 +241,7 @@ echo "=== 9) ⭐ (d) NACHGESTELLT: Projekt ohne Slug-Ordner ==="
 # ⛔ Der ECHTE Block aus der SKILL.md, ausgeschnitten und gefahren.
 _ABB="$TMP/abbruch.sh"
 awk '/^# .* v5.69.0: HIER STAND EIN RUECKFALL/{an=1} an{print} an && /^fi$/{exit}' \
-  "$R/skills/mind-update/SKILL.md" | sed 's/\r$//' > "$_ABB"
+  "$(skill_text_datei "$R" mind-update)" | sed 's/\r$//' > "$_ABB"
 pruef "der Abbruch-Block liess sich ausschneiden" "ja" \
       "$([ -s "$_ABB" ] && echo ja || echo nein)"
 bash -n "$_ABB" 2>/dev/null
