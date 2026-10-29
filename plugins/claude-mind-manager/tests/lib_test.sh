@@ -22,6 +22,12 @@ case "${TMPDIR:-}" in
     trap 'rmdir "$_MT" 2>/dev/null' EXIT ;;
 esac
 
+# ⛔ v5.156.0: die HOST-Kennung der LAUFENDEN Sitzung gehoert nicht in die Fixtures. `mind_rolle` liest sie seit
+#    Etappe 60 als zweite Kennung; die Suite erbt sie von der Sitzung, die sie startet — und `test_rollen_gate.sh`
+#    traegt genau diese Kennungen als Fixture (fremde sid galt dann als `arbeiter`, 5 rot). Wer sie braucht, setzt
+#    sie je Aufruf selbst (`test_leeren_uebergabe.sh`).
+unset CLAUDE_CODE_HOST_SESSION_ID
+
 # skill_text_datei <plugin-root> <skill>  -> Pfad einer Datei: SKILL.md + bloecke/*.sh aneinander (v5.152.0)
 # ⭐ Seit Etappe 58 Hebel B steht der Code eines Skills in `skills/<s>/bloecke/*.sh`, der Text in
 #    SKILL.md. Eine Zusicherung "der Code tut X" behaelt so ihr Ziel, egal auf welcher Seite er steht.

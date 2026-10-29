@@ -57,6 +57,35 @@ if [ -d "$PROJ" ]; then
 fi
 
 
+# --- v5.156.0 (Etappe 60): Uebergabe nach dem LEEREN oder einer Fortsetzung ---
+# ⛔ GEMESSEN 29.10.2026: Leeren per Desktop liefert source=startup, kein PreCompact — die Sitzung
+#    sah den RESUME einer laengst vergangenen Kompaktierung, die letzten Nutzernachrichten fehlten
+#    (Anton 28.10.: Rekonstruktion ~152 000 Agent-Tokens). Gleiche Host-Kennung, andere sid:
+#    dieselbe Rettung wie pre-compact.sh, aus DEM alten Transkript. Fremde Host-Kennung: nichts.
+_VSID=""
+command -v jq >/dev/null 2>&1 && _VSID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null)
+if [ -n "$_VSID" ] && command -v mind_sitzung_vorgaenger >/dev/null 2>&1 \
+   && _VTR=$(mind_sitzung_vorgaenger "$PROJ" "$_VSID") && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+  _VPY=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)
+  _VS="$CLAUDE_PLUGIN_ROOT/references/session_sampler.py"
+  _VD="$PROJ/.claude-mind/rescued"; mkdir -p "$_VD" 2>/dev/null
+  _VR="$_VD/$(date +%Y%m%d-%H%M%S)-leeren-$(printf '%s' "$_VSID" | cut -c1-8)_RESUME.md"
+  _VA="${_VR%_RESUME.md}_ARBEITSSTAND.json"
+  _w() { if command -v cygpath >/dev/null 2>&1; then cygpath -w "$1"; else printf '%s' "$1"; fi; }
+  if [ -n "$_VPY" ] && [ -f "$_VS" ] && "$_VPY" "$(_w "$_VS")" --orders "$(_w "$_VTR")" "$(_w "$_VR")" >/dev/null 2>&1 \
+     && [ -s "$_VR" ]; then
+    _slog INFO "Uebergabe nach Leeren/Fortsetzung aus $(basename "$_VTR") -> $(basename "$_VR")"
+    echo "[Mind Manager] Uebergabe aus der VORIGEN Sitzung (geleert oder fortgesetzt) — ihre letzten Auftraege:"
+    sed -n '/^## /,$p' "$_VR" | head -30
+    if "$_VPY" "$(_w "$_VS")" --arbeitsstand "$(_w "$_VTR")" "$(_w "$_VA")" - >/dev/null 2>&1 && [ -s "$_VA" ]; then
+      _VTXT=$("$_VPY" "$CLAUDE_PLUGIN_ROOT/references/arbeitsstand_render.py" "$_VA" 2>/dev/null)
+      [ -n "$_VTXT" ] && { echo "[Mind Manager] Arbeitsstand der vorigen Sitzung:"; echo "$_VTXT"; }
+    fi
+  else
+    _slog WARN "Uebergabe nach Leeren: Rettung aus $(basename "$_VTR") fehlgeschlagen"
+  fi
+fi
+
 # --- v5.7.0: Uebergabe nach einer Kompaktierung, unabhaengig von jeder Schuld ---
 # Wird eine Sitzung nach der Kompaktierung neu gestartet, ist prompt-submit.sh noch nicht
 # gelaufen. Ohne diesen Zweig ginge der Arbeitsstand genau dann verloren, wenn er am

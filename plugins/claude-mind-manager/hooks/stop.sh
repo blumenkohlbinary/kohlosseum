@@ -68,6 +68,14 @@ if [ -f "$_WLIB" ]; then
 fi
 [ -z "$PROJ" ] && PROJ="$(pwd)"
 
+# v5.156.0 (Etappe 60): die Sitzung je HOST-Kennung merken — Grundlage der Uebergabe nach dem Leeren.
+#   Die Log-Zeile ist die Messung, ob die Host-Kennung im Hook ueberhaupt ankommt (leer -> Funktion aus).
+_slog DEBUG "host=${CLAUDE_CODE_HOST_SESSION_ID:-leer}"
+if command -v mind_sitzung_merken >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+  mind_sitzung_merken "$PROJ" "$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null)" \
+    "$(echo "$INPUT" | jq -r '.transcript_path // empty' 2>/dev/null)"
+fi
+
 # --- Kontext-Wache: messen am Turn-Ende, melden beim naechsten Prompt ------
 # ⭐ Der einzige Grund, warum dieser Hook noch existiert.
 _KW="${CLAUDE_PLUGIN_ROOT:-}/hooks/kontext-wache.sh"

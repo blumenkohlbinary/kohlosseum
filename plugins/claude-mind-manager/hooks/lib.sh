@@ -1697,6 +1697,34 @@ mind_kopf_lauf() {
   printf '%s\n' "$l"
 }
 
+# mind_sitzung_merken <projekt> <sid> <transkript>   (v5.156.0, Etappe 60)
+# ⛔ GEMESSEN 29.10.2026: ein Leeren per Desktop liefert `SessionStart` mit source=startup, NICHT clear
+#    (Antons Transkript 750b6366), und kein PreCompact — die Uebergabe war veraltet. Was die Sitzung
+#    ueberdauert, ist die HOST-Kennung (Anton: local_acd4e029 vor und nach dem Leeren). Der Merker liegt
+#    JE HOST-Kennung, nicht projektweit (hooks.md, Klasse „projektweiter Merker meint einen Abschnitt").
+#    Ohne Host-Kennung: nichts geschrieben (Fail-safe, Verhalten wie bisher).
+mind_sitzung_merken() {
+  local proj="${1:-}" sid="${2:-}" tr="${3:-}" host d
+  host=$(printf '%s' "${CLAUDE_CODE_HOST_SESSION_ID:-}" | tr -cd 'A-Za-z0-9_-')
+  [ -n "$proj" ] && [ -n "$sid" ] && [ -n "$host" ] || return 0
+  d="$proj/.claude-mind/sitzung"; mkdir -p "$d" 2>/dev/null || return 0
+  printf 'sid=%s\ntranskript=%s\nts=%s\n' "$sid" "$tr" "$(date +%s)" > "$d/$host.letzte" 2>/dev/null
+  return 0
+}
+
+# mind_sitzung_vorgaenger <projekt> <sid>  -> Transkript der VORIGEN Sitzung derselben Host-Kennung; rc 1: keine
+# ⭐ Eine Kollegin im selben Ordner hat eine ANDERE Host-Kennung — ihr Transkript wird nie gefunden.
+mind_sitzung_vorgaenger() {
+  local proj="${1:-}" sid="${2:-}" host f asid atr
+  host=$(printf '%s' "${CLAUDE_CODE_HOST_SESSION_ID:-}" | tr -cd 'A-Za-z0-9_-')
+  [ -n "$proj" ] && [ -n "$sid" ] && [ -n "$host" ] || return 1
+  f="$proj/.claude-mind/sitzung/$host.letzte"
+  [ -f "$f" ] || return 1
+  asid=$(sed -n 's/^sid=//p' "$f" | head -1); atr=$(sed -n 's/^transkript=//p' "$f" | head -1)
+  [ -n "$asid" ] && [ "$asid" != "$sid" ] && [ -n "$atr" ] && [ -f "$atr" ] || return 1
+  printf '%s\n' "$atr"
+}
+
 # mind_block_umgebung   -> setzt PROJ, SCOPES_FILE, LAUF, AGENT_SOLL, sofern leer (v5.152.0)
 # ⛔ Jeder bash-Block eines Skills ist ein EIGENER Prozess (gemessen 28.10.2026, Etappe 58): was ein
 #    frueherer Block setzte, ist im naechsten leer. 2.96a-Merker schrieb `sync-stand` nur bei
@@ -4175,6 +4203,20 @@ mind_rolle() {
     # ⚠ Nur die Kopfzeile ausschliessen — sie traegt in Spalte 3 nie eine
     #   Kennung und kann hier gar nicht treffen; der Fall bleibt als Guard.
     case "$r" in ''|rolle|---) ;; *) printf '%s' "$r"; return 0 ;; esac
+  done < "$datei"
+  # v5.156.0 (Etappe 60 §3): die sid wechselt beim LEEREN (Anton 28.10.: 99786305 -> 750b6366), die
+  #   Host-Kennung nicht. Steht sie als GANZE Zelle in einer Rosterzeile (eigene Spalte, traegt der manager
+  #   ein), gilt deren Rolle. Ohne Host-Kennung oder ohne Spalte: wie bisher `unbekannt` (Fail-safe).
+  local host q
+  host=$(printf '%s' "${CLAUDE_CODE_HOST_SESSION_ID:-}" | tr 'A-Z' 'a-z')
+  case "$host" in local_?*) ;; *) printf 'unbekannt'; return 0 ;; esac
+  while IFS= read -r zeile; do
+    case "$zeile" in '|'*) ;; *) continue ;; esac
+    for q in 2 3 4 5 6 7; do
+      [ "$(_mind_zelle "$zeile" "$q" | tr 'A-Z' 'a-z')" = "$host" ] || continue
+      r=$(_mind_zelle "$zeile" 1)
+      case "$r" in ''|rolle|---) ;; *) printf '%s' "$r"; return 0 ;; esac
+    done
   done < "$datei"
   printf 'unbekannt'
   return 0
