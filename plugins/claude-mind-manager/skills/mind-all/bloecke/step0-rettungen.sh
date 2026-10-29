@@ -64,6 +64,8 @@ if [ "$RESCUED_N" -gt 0 ]; then
     [ -n "$r" ] || continue
     i=$((i+1))
     echo "     [$i] $(basename "$r")  $(grep -c '^## \[' "$r") Beitraege"
+    # v5.160.0 (Etappe 62): das Verlaufsbuch ist die ERSTE Quelle, die Rettung der Rueckfall
+    _vb=$(mind_verlauf_fuer "$PROJ" "$r") && echo "         -> Verlaufsbuch (zuerst lesen): $_vb  — Abschnitt rettung=$(basename "${r%%_*}")"
   done
   echo "  live     -> Sampler ueber das laufende Transkript (die Zeit nach der letzten)"
   [ -n "$COMPACTIONS" ] && [ "$COMPACTIONS" -gt 1 ] 2>/dev/null && \

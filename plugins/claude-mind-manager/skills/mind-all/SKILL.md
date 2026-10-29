@@ -52,7 +52,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.159.0"
+MIND_SKILL_VERSION="5.160.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 # ⛔ v5.98.0: die fuenf Skills sind KEINE Schritte von mind-all — jeder hat seinen EIGENEN
 #    Start-Block (Step 2, Punkt 1). Bis v5.97.0 standen sie hier, Ritas Kalibrierlauf hakte
@@ -155,6 +155,8 @@ steht ein Sync aus. `OPEN` nennt die Rettungsdatei und den gesicherten Auftrag.
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step0-rettungen.sh"
 ```
 
+> ⭐ **v5.160.0 — das Verlaufsbuch zuerst:** `.claude-mind/verlauf/<sid>.md` traegt je Kompaktierung einen Abschnitt (Arbeitsstand + Claudes Zusammenfassung, 20–30 KB); nennt die Rettungsliste dazu `-> Verlaufsbuch (zuerst lesen)`, bekommt der Agent DIESEN Pfad zuerst und die Rettung nur als Rueckfall.
+>
 > ⛔ **KONTEXT-FLUT-SPERRE (NEU v5.2.1, Hard Constraint).** Die Rettungsdatei `*_chat.md` wird
 > **NIE im Hauptkontext gelesen** — kein `Read`, kein `cat`, kein `head`/`sed` auf ihren Inhalt.
 > Sie ist mehrere hundert KB gross (gemessen: 417 KB / 555 Beitraege). Erlaubt sind ausschliesslich:

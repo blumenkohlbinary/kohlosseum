@@ -39,7 +39,7 @@ die Pruefliste A1–D10 ersetzt die acht Fragen vom 30.08.2026. Die alten gehen 
 | **D10** | Deckel — wer anlegt, zahlt aus dem Bestand | `mind_kontext_bilanz --vergleichen` · `cleaner_tor --memory` | ✅ ja | — |
 | **R1** | Beim Aufraeumen: stimmt es noch? | `cleaner_tor` · `cleaner_belege` | ⚠ teilweise | A2 |
 
-⛔ **Neue Detektoren nur nach Messung** (`Learnings/tor_messung.py`, 29.10.2026, 56 Dateien): C9 7 Kandidaten,
+⛔ **Neue Detektoren nur nach Messung** (Messung im Entwicklungs-Workspace, 29.10.2026, 56 Context-Dateien): C9 7 Kandidaten,
 0 echt · „Verbot ohne Alternative“ 265 Kandidaten, schon die ersten trugen ihre Alternative · B6 0. Diese drei
 bleiben Urteile — das Tor erzwingt die Antwort, es gibt sie nicht.
 ⭐ **Zeilenweise:** `--datei` listet die Treffer je Frage UND je Zeile (`── je Zeile ──`); eine Zeile mit zwei

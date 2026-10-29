@@ -4095,6 +4095,22 @@ mind_rettungen() {
   return 0
 }
 
+mind_verlauf_fuer() {
+  # $1 = Projekt, $2 = Rettung (Pfad oder Dateiname, `<stamm>_chat.md`)
+  # -> der Pfad des Verlaufsbuchs, dessen Abschnittskopf `rettung=<stamm>` traegt (rc 0), sonst rc 1.
+  # v5.160.0 (Etappe 62): das Verlaufsbuch ist die verdichtete Quelle des Syncs (Abschnitt 20–30 KB statt
+  #   300–950 KB Chat), die volle Rettung der Rueckfall. ⛔ Nur ein Abschnitt, der GENAU diese Rettung nennt,
+  #   zaehlt — ein Buch derselben Sitzung ohne den Abschnitt ist kein Ersatz.
+  local proj="${1:-}" stamm v
+  stamm=$(basename "${2:-}"); stamm="${stamm%%_*}"
+  [ -n "$proj" ] && [ -n "$stamm" ] || return 1
+  for v in "$proj/.claude-mind/verlauf"/*.md; do
+    [ -f "$v" ] || continue
+    grep -q "^## Kompaktierung .* rettung=${stamm}\$" "$v" 2>/dev/null && { printf '%s\n' "$v"; return 0; }
+  done
+  return 1
+}
+
 # ===== v5.64.0: DAS TOKEN-GATE IST WEG ======================================
 # ⛔ Nutzer-Entscheidung 10.09.2026, woertlich: "die sollen garnicht mehr
 #    tokens messen das soll komplett raus ea nervt ihr seit zu bloed zum messrn".

@@ -60,7 +60,8 @@ else
     "$(grep -c 'Slash-Commands des Plugins (11)' "$W/CLAUDE.md")" "1"
   pruef "CLAUDE.md nennt /mind-denkstufe" \
     "$(grep -c '/mind-denkstufe' "$W/CLAUDE.md" | awk '$1>0{print 1;exit}$1==0{print 0}')" "1"
-  pruef "CLAUDE.md: 6 der 11" "$(grep -c '6 der 11' "$W/CLAUDE.md")" "1"
+  # v5.159.0: /mind-cleaner ist autonom (Nutzer 29.10.2026) — 7 der 11, nicht mehr 6
+  pruef "CLAUDE.md: 7 der 11" "$(grep -c '7 der 11' "$W/CLAUDE.md")" "1"
   pruef "CLAUDE.md: stempelt alle elf" \
     "$(grep -c 'stempelt alle elf' "$W/CLAUDE.md")" "1"
   pruef "CLAUDE.md sagt nirgends mehr '(10)' fuer die Commands" \

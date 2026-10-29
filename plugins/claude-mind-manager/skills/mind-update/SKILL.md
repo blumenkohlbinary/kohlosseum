@@ -50,7 +50,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.159.0"
+MIND_SKILL_VERSION="5.160.0"
 mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe cleaner_tor mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
@@ -674,6 +674,7 @@ zaehlt gegen die Obergrenze.
   gesehen). Der Agent hat den Guard auch selbst (context-analyzer), das hier ist der Skill-Hinweis.
 - **Die Commit-Coverage-Gaps aus Step 3c** als konkrete Pruef-Punkte ("verifiziere/ergaenze diese unreflektierten Commits in deinem Bereich")
 - Session-Auszug — **Quelle je `SESSION_SOURCE`:**
+  - ⭐ **v5.160.0 — ZUERST das Verlaufsbuch:** nennt Step 3.5 zu einer Rettung `-> Verlaufsbuch (zuerst lesen)`, bekommt der Agent DIESEN Pfad als erste Quelle, mit dem Abschnitt `rettung=<stamm>` (Arbeitsstand + Claudes Kompaktierungs-Zusammenfassung, 20–30 KB statt 300–950 KB). Die Rettungsdatei darunter nur als Rueckfall — fehlt der Abschnitt oder ist er leer, gilt der Absatz hier unveraendert. Gemessen: der Abschnitt deckt 18–36 % der Marken des Chats bei 3–8 % der Groesse (gemessen 29.10.2026 an drei Rettungen).
   - `gerettet`: **die Rettungsdatei** `.claude-mind/rescued/<ts>_chat.md` (vollstaendiger Chat
     vor der Kompaktierung, ungekuerzt). Bei >600 Zeilen/60 KB gilt der Groessen-Guard des
     Agenten — er greppt gezielt statt blind zu lesen.

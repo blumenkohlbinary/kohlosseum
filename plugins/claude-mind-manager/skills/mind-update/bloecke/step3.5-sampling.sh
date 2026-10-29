@@ -45,6 +45,8 @@ if [ -n "$RESCUED" ] && [ -s "$RESCUED" ]; then
   printf '%s\n' "$RESCUED_ALLE" | while IFS= read -r _r; do
     [ -n "$_r" ] || continue
     echo "    $_r ($(grep -c '^## \[' "$_r") Beitraege)"
+    # v5.160.0 (Etappe 62): das Verlaufsbuch ist die ERSTE Quelle, die Rettung der Rueckfall
+    _vb=$(mind_verlauf_fuer "$PROJ" "$_r") && echo "      -> Verlaufsbuch (zuerst lesen): $_vb  — Abschnitt rettung=$(basename "${_r%%_*}")"
   done
   # ⛔ ALLE Rettungen gehen an die Agents, nicht nur die juengste. Bei
   #    mehreren Sitzungen im selben Ordner gehoert jede einer anderen — wer

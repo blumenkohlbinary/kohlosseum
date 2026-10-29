@@ -44,7 +44,8 @@ echo "=== 2) Die Doktrin steht dabei, nicht nur der Aufruf ==="
 D=$(cat "$R"/skills/*/SKILL.md)
 hat "D1 MELDET, es entscheidet nicht" "MELDET, es entscheidet nicht" "$D"
 hat "UNBESTIMMT -> Ort bleibt, wo er war" "Ort bleibt, wo er war" "$D"
-hat "die Quittung wird um D1 erweitert" "C1/C2:D1=" "$D"
+# v5.158.0: die Quittung fuehrt die Pruefliste A1–D10 (Nutzer 29.10.2026) — D1 haengt weiter hinten dran
+hat "die Quittung wird um D1 erweitert" "C7/C8/C9:D10:D1=" "$D"
 hat "die bekannte Schwaeche ist genannt" "Aussage ueber den **Leser**" "$D"
 
 echo

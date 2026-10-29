@@ -88,6 +88,26 @@ if [ -n "$_VSID" ] && command -v mind_sitzung_vorgaenger >/dev/null 2>&1 \
   fi
 fi
 
+# --- v5.160.0 (Etappe 62): das VERLAUFSBUCH — ein Abschnitt je Kompaktierung, nur angehaengt ---
+# ⭐ GEMESSEN 29.10.2026: Claudes Kompaktierungs-Zusammenfassung steht im Transkript VOR diesem Hook (18/18);
+#    pre-compact.sh lief davor und hat den Arbeitsstand schon geschrieben. Hier kommen beide zusammen.
+# ⛔ Fail-open und still: ein Fehler kostet nur den Abschnitt, nie den Sitzungsstart (430 ms bei 83 MB gemessen).
+_VBSRC=""; _VBTR=""
+if command -v jq >/dev/null 2>&1; then
+  _VBSRC=$(echo "$INPUT" | jq -r '.source // empty' 2>/dev/null)
+  _VBTR=$(echo "$INPUT" | jq -r '.transcript_path // empty' 2>/dev/null)
+fi
+if [ "$_VBSRC" = "compact" ] && [ -n "$_VSID" ] && [ -n "$_VBTR" ] && [ -f "$_VBTR" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+  _VBPY=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)
+  _vw() { if command -v cygpath >/dev/null 2>&1; then cygpath -w "$1"; else printf '%s' "$1"; fi; }
+  if [ -n "$_VBPY" ] && _VBOUT=$("$_VBPY" "$(_vw "$CLAUDE_PLUGIN_ROOT/references/verlaufsbuch.py")" --anhaengen \
+       --projekt "$(_vw "$PROJ")" --transkript "$(_vw "$_VBTR")" --sid "$_VSID" 2>&1); then
+    _slog INFO "Verlaufsbuch: ${_VBOUT##*verlauf}"
+  else
+    _slog DEBUG "Verlaufsbuch: kein Abschnitt (${_VBOUT:-ohne Ausgabe})"
+  fi
+fi
+
 # --- v5.7.0: Uebergabe nach einer Kompaktierung, unabhaengig von jeder Schuld ---
 # Wird eine Sitzung nach der Kompaktierung neu gestartet, ist prompt-submit.sh noch nicht
 # gelaufen. Ohne diesen Zweig ginge der Arbeitsstand genau dann verloren, wenn er am
