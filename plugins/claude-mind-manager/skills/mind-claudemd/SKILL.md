@@ -45,7 +45,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.157.0"
+MIND_SKILL_VERSION="5.159.0"
 mind_schritt_start "$PROJ" mind-claudemd bestandszahlen_kandidaten claudemd_pipeline cleaner_duplikate cleaner_stichprobe cleaner_tor cleaner_urteile mind_check_tools_have_rules mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -109,7 +109,7 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/01-pflichtschritte-dieser.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/01-pflichtschritte-dieser.sh"
 ```
 
 ⛔ **Fehlt diese Zeile oder nennt sie `FEHLT`, ist der Bericht unvollstaendig** und
@@ -127,7 +127,7 @@ Erkennen → Erstellen oder Auditieren → **autonom anwenden** (bzw. Freigabe b
 **Autonom ist der Standard.** Dieser Skill wendet gefundene Befunde selbstaendig an.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/02-step0-modus-snapshot.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/02-step0-modus-snapshot.sh"
 ```
 
 | Modus | Aufruf | Verhalten |
@@ -148,7 +148,7 @@ auf das Projekt zurueck: Step 5a sicherte `$PROJECT_DIR/CLAUDE.md` und meldete
 schlimmer als gar keiner.** Gemeldet vom Nutzer am 28.08.2026.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/00-step1-bereich.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/00-step1-bereich.sh"
 ```
 
 ⛔ **Die vier Variablen sind ab hier VERBINDLICH.** Jeder Schritt, der die Zieldatei
@@ -268,7 +268,7 @@ der Spalte `Ordner` des Rosters mit (fehlt die Spalte: jeder direkte Unterordner
 `CLAUDE.md`) — das ist der Dauerkontext der Arbeiter-Sitzungen. Gemessen 14.09.2026 (Creator,
 Doro): sieben Unterordner, fuenf CLAUDE.md und 17 Rules, in keinem Bericht genannt.
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/03-step4b-dispatch-context.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/03-step4b-dispatch-context.sh"
 ```
 Der Bericht nennt je Datei den Ordner (`<Ordner>/CLAUDE.md`, `<Ordner>/.claude/rules/<name>`).
 `mind_snapshot` sichert sie seit v5.106.0 von selbst mit.
@@ -293,7 +293,7 @@ dieselbe Groesse im selben Bericht.
 ⛔ **AUSGEFUEHRT WIRD DAS SKRIPT, NICHT DIESE TABELLE (NEU v5.7.0).**
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/04-step4c-deterministische-pruf.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/04-step4c-deterministische-pruf.sh"
 ```
 
 ⛔ **Diese Pipeline NIE nachbauen.** Sie stand von v5.4.0 bis v5.6.0 nur als Prosa hier — und
@@ -573,7 +573,7 @@ die Messung spaeter als versionsabhaengig erweist.
 Bis v5.145.0 stand dieser Schritt im Pflichtkasten und in der Startzeile, aber **nirgends als Aufruf** — erwartet, nie gelaufen. So entstand Noras `FEHLT: mind-rules/cleaner_duplikate` (Palvedo, 20.09.2026), und so wurden Schritte von Hand nachgeholt. Das erste prueft, ob jedes Werkzeug unter `tools/` eine Rule hat, die es erreichbar macht; das zweite, ob eine Aussage der `CLAUDE.md` schon woanders steht (Frage B1 des Kontext-Tors).
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/05-pflichtschritt-mind.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/05-pflichtschritt-mind.sh"
 ```
 
 ## Step 5: Fixes anwenden (nach User-OK)
@@ -583,7 +583,7 @@ bash "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/05-pflichtschritt-mind.sh
 **Backup-Block (KONKRETER Bash-Snippet — NEU v3.2.2, präzisiert):**
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/06-step5a-backup-pre.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/06-step5a-backup-pre.sh"
 ```
 
 **Pre-Edit Read (praezisiert v3.2.2):**
@@ -676,8 +676,8 @@ Bis v5.25.0 arbeitete dieser Command nur **rückwärts** — er prüfte, was sch
 ist. **Es gab kein Tor beim Hineinschreiben.** Deshalb wächst alles.
 
 **Die vollständige Vorschrift steht in
-[references/kontext-tor.md](../../references/kontext-tor.md)** — die neun
-Fragen, beide Richtungen, die Quittung, die Grenzen. **Lies sie**, bevor du
+[references/kontext-tor.md](../../references/kontext-tor.md)** — die Pruefliste
+A1–D10, beide Richtungen, die Quittung, die Grenzen. **Lies sie**, bevor du
 diesen Schritt ausführst. Hier steht nur, was für **diesen** Command gilt:
 
 | | |
@@ -688,7 +688,7 @@ diesen Schritt ausführst. Hier steht nur, was für **diesen** Command gilt:
 
 ```bash
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-. "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/_ziele.sh"   # v5.154.0: BEREICH/ZIEL_* aus Step 1
+ARGUMENTS='$ARGUMENTS' . "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/_ziele.sh"   # v5.154.0: BEREICH/ZIEL_* aus Step 1
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
 [ -n "$CLAUDE_PLUGIN_ROOT" ] || { echo "ERROR: CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
 TOR="$CLAUDE_PLUGIN_ROOT/references/cleaner_tor.py"
@@ -706,7 +706,7 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_einordnung.py" --wohin "$ZIEL_MD"
 
 ## ⛔ D1 — die neunte Frage: WOHIN gehoert diese Aussage?
 
-**Die acht Fragen oben pruefen alle, OB etwas hinein darf. Keine fragt, WOHIN.**
+**Die Pruefliste oben prueft, OB etwas hinein darf; B4 fragt nur, wie OFT es gebraucht wird. WOHIN genau, sagt D1.**
 B3 prueft, ob eine Aussage am **schon gewaehlten** Ort wirkt — es kann zustimmen
 oder ablehnen, nicht umleiten. Ein Tuersteher, kein Wegweiser. Wer durchkommt,
 landet dort, wo der Schreiber gerade steht, und das ist fast immer eine
@@ -739,7 +739,7 @@ laesst, ist **UNGEMESSEN**.
 D1 lief und nichts fand oder gar nicht lief:
 
 ```
-tor=<datei>:A1/A2/A3:B1/B2/B3:C1/C2:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>
+tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>
 ```
 
 ⛔ **Die Quittung MUSS in den Self-Check-Block des Berichts**, eine Zeile je
@@ -747,15 +747,15 @@ tor=<datei>:A1/A2/A3:B1/B2/B3:C1/C2:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>
 Bestands-Pass (v5.22.0) und Schritt-Quittung (v5.25.0).
 
 ```
-tor=<datei>:A1/A2/A3:B1/B2/B3:C1/C2
+tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10
 ```
 
-⛔ **B1/B2/B3 beantwortet `cleaner_tor` NICHT — es nennt sie.** Dafür gibt es
+⛔ **A1 (Code, andere Datei), B4, C8 und D10 beantwortet `cleaner_tor` NICHT — es nennt sie.** Dafür gibt es
 `cleaner_duplikate`, `cleaner_aussagen --code` und `cleaner_grenzen`. Die Klasse
 `instrument-nachgebaut` steht mit 7 Vorkommen im Debug-Ordner, und **kein
 einziger Nachbau war besser als das Original** (`werkzeuge-zuerst.md`).
 
-⚠ **A1 und C2 bleiben Urteile.** Das Tor erzwingt eine **Antwort**, nicht die
+⚠ **A1, A2, A3, B6, C7b und C9 bleiben Urteile.** Das Tor erzwingt eine **Antwort**, nicht die
 richtige — wie die Agent-Quittung (v5.19.0), die keinen Agenten zur Arbeit
 zwingt, sondern sein Fehlen sichtbar macht.
 
@@ -790,7 +790,7 @@ Schritt ausführst. Hier steht nur, was für **diesen** Skill gilt:
 [ -n "$CLAUDE_PLUGIN_ROOT" ] || { echo "ERROR: $CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
 source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-. "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/_ziele.sh"   # v5.154.0: BEREICH/ZIEL_* aus Step 1
+ARGUMENTS='$ARGUMENTS' . "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/_ziele.sh"   # v5.154.0: BEREICH/ZIEL_* aus Step 1
 
 # 1) PFLICHTZEILE — sie MUSS woertlich in den Self-Check-Block des Berichts.
 #    ⛔ Nicht nur erwaehnen: die Zeile selbst, mit beiden Zahlenpaaren.
@@ -841,7 +841,7 @@ Lies sie.** Hier nur, was für `CLAUDE.md` gilt:
 | ⛔ **Stufe 3** | der Wort-Diff wird GANZ gelesen, bevor angewendet wird. **Ohne Leser: nicht anwenden** — Ergebnis, Bericht, Diff ablegen, Pfad melden |
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/07-step5e-verdichten-die.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/07-step5e-verdichten-die.sh"
 ```
 
 ⛔ **Der Bericht dieses Schritts sind die drei Zeilen aus `mind_verdichtung_pruefen`** plus

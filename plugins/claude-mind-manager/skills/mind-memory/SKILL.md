@@ -43,7 +43,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.157.0"
+MIND_SKILL_VERSION="5.159.0"
 mind_schritt_start "$PROJ" mind-memory bestandszahlen_kandidaten cleaner_stichprobe cleaner_tor mind_debug_write mind_kontext_bilanz mind_scan_poisoning mind_snapshot verdichten
 ```
 
@@ -107,7 +107,7 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/01-pflichtschritte-dieser.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/01-pflichtschritte-dieser.sh"
 ```
 
 ⛔ **Fehlt diese Zeile oder nennt sie `FEHLT`, ist der Bericht unvollstaendig** und
@@ -125,7 +125,7 @@ Lokalisieren -> Auditieren -> **autonom anwenden** (bzw. Freigabe bei `--ask`) -
 **Autonom ist der Standard.** Dieser Skill wendet gefundene Befunde selbstaendig an.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/02-step0-modus-snapshot.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/02-step0-modus-snapshot.sh"
 ```
 
 | Modus | Aufruf | Verhalten |
@@ -145,7 +145,7 @@ Compute the project hash for the memory path:
 4. Also glob topic files: `~/.claude/projects/<hash>/memory/*.md`
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/03-step1-memory-lokalisieren.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/03-step1-memory-lokalisieren.sh"
 ```
 
 **Wenn KEINE MEMORY.md gefunden:**
@@ -191,7 +191,7 @@ Sonnet-Seitenabfrage, anhand von **Dateiname und `description`**, NICHT anhand d
 Alles darueber ist pro Turn unerreichbar, egal wie relevant.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/04-sichtbarkeit-der.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/04-sichtbarkeit-der.sh"
 ```
 
 ⚠ **`MEMORY.md` zaehlt NICHT mit** — der Index wird ohnehin immer geladen und steht nicht zur
@@ -249,7 +249,7 @@ das ist wieder ein anderer Fall und gehoert zu `mind-rules`.
 | zwei Beschreibungen zu aehnlich | Ueberlappung > 70 % | Hinweis |
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/05-description-qualitaet.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/05-description-qualitaet.sh"
 ```
 
 **Dateiname ist das zweite Signal.** Generische Namen (`notes-2.md`) verschenken die Haelfte.
@@ -393,7 +393,7 @@ fremde Dinge nennt, passt auf keine Anfrage richtig.
 | `VERWAIST` | Datei ohne Zeiger im Index | Zeile ergaenzen |
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/07-index-integritaet.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/07-index-integritaet.sh"
 ```
 
 ⛔ **Eine reine Existenzpruefung meldet `PRAEFIX` als „fehlt"** — und ein autonomer Fix wuerde
@@ -410,7 +410,7 @@ Zustellplan-Projekt. Aus 17 von 18 Projekten zeigt das ins Leere, und der Pfad `
 ohne Projektbezug **prinzipiell nicht aufloesbar**.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/08-zeiger-von.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/08-zeiger-von.sh"
 ```
 
 ⚠ **Hinweis, kein Befund** — die Datei liegt ausserhalb unserer Zustaendigkeit, und sie zu
@@ -485,7 +485,7 @@ Prompt-Injection **ueberdauert die Vergiftung Sitzungen**.
 Bedrohung betrifft `.claude/rules/*.md` und `CLAUDE.md`; einmal gebaut, dreifach nutzbar.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/09-sicherheit-owasp.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/09-sicherheit-owasp.sh"
 ```
 
 | Muster | Klasse |
@@ -674,8 +674,8 @@ Bis v5.25.0 arbeitete dieser Command nur **rückwärts** — er prüfte, was sch
 ist. **Es gab kein Tor beim Hineinschreiben.** Deshalb wächst alles.
 
 **Die vollständige Vorschrift steht in
-[references/kontext-tor.md](../../references/kontext-tor.md)** — die neun
-Fragen, beide Richtungen, die Quittung, die Grenzen. **Lies sie**, bevor du
+[references/kontext-tor.md](../../references/kontext-tor.md)** — die Pruefliste
+A1–D10, beide Richtungen, die Quittung, die Grenzen. **Lies sie**, bevor du
 diesen Schritt ausführst. Hier steht nur, was für **diesen** Command gilt:
 
 | | |
@@ -704,7 +704,7 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_einordnung.py" --wohin "$MEM_DIR/
 
 ## ⛔ D1 — die neunte Frage: WOHIN gehoert diese Aussage?
 
-**Die acht Fragen oben pruefen alle, OB etwas hinein darf. Keine fragt, WOHIN.**
+**Die Pruefliste oben prueft, OB etwas hinein darf; B4 fragt nur, wie OFT es gebraucht wird. WOHIN genau, sagt D1.**
 B3 prueft, ob eine Aussage am **schon gewaehlten** Ort wirkt — es kann zustimmen
 oder ablehnen, nicht umleiten. Ein Tuersteher, kein Wegweiser. Wer durchkommt,
 landet dort, wo der Schreiber gerade steht, und das ist fast immer eine
@@ -735,7 +735,7 @@ gehoeren. Ob das mechanisch entscheidbar ist, ist **UNGEMESSEN**.
 lief und nichts fand oder gar nicht lief:
 
 ```
-tor=<datei>:A1/A2/A3:B1/B2/B3:C1/C2:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>
+tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>
 ```
 
 
@@ -744,15 +744,15 @@ tor=<datei>:A1/A2/A3:B1/B2/B3:C1/C2:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>
 Bestands-Pass (v5.22.0) und Schritt-Quittung (v5.25.0).
 
 ```
-tor=<datei>:A1/A2/A3:B1/B2/B3:C1/C2
+tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10
 ```
 
-⛔ **B1/B2/B3 beantwortet `cleaner_tor` NICHT — es nennt sie.** Dafür gibt es
+⛔ **A1 (Code, andere Datei), B4, C8 und D10 beantwortet `cleaner_tor` NICHT — es nennt sie.** Dafür gibt es
 `cleaner_duplikate`, `cleaner_aussagen --code` und `cleaner_grenzen`. Die Klasse
 `instrument-nachgebaut` steht mit 7 Vorkommen im Debug-Ordner, und **kein
 einziger Nachbau war besser als das Original** (`werkzeuge-zuerst.md`).
 
-⚠ **A1 und C2 bleiben Urteile.** Das Tor erzwingt eine **Antwort**, nicht die
+⚠ **A1, A2, A3, B6, C7b und C9 bleiben Urteile.** Das Tor erzwingt eine **Antwort**, nicht die
 richtige — wie die Agent-Quittung (v5.19.0), die keinen Agenten zur Arbeit
 zwingt, sondern sein Fehlen sichtbar macht.
 
@@ -763,7 +763,7 @@ zwingt, sondern sein Fehlen sichtbar macht.
 mehr geladen werden, keine Ausnahmen."*
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/10-der-memory.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/10-der-memory.sh"
 ```
 
 ⛔ **„Wird nicht mehr geladen" ist NICHT messbar — gemessen 30.08.2026.**
@@ -878,7 +878,7 @@ Lies sie.** Hier nur, was für Memory gilt:
 | ⛔ **Stufe 3** | der Wort-Diff wird GANZ gelesen, bevor angewendet wird. **Ohne Leser: nicht anwenden** — Ergebnis, Bericht, Diff ablegen, Pfad melden |
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/11-step6e-verdichten-die.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/11-step6e-verdichten-die.sh"
 ```
 
 ⛔ **Der Bericht dieses Schritts sind die drei Zeilen aus `mind_verdichtung_pruefen`** — oder
@@ -889,7 +889,7 @@ die Zeile `verworfen: <grund>`. **Kein Bericht = der Schritt lief nicht.**
 Bis v5.145.0 stand dieser Schritt im Pflichtkasten und in der Startzeile, aber **nirgends als Aufruf** — erwartet, nie gelaufen. So entstand Noras `FEHLT: mind-rules/cleaner_duplikate` (Palvedo, 20.09.2026), und so wurden Schritte von Hand nachgeholt. Er meldet den Lauf an den zentralen Debug-Ordner (still ohne `MIND_DEBUG_DIR`). Abschnitt und Befundzeilen ERST schreiben (Aufbau wie `/mind-all` Step 2.95), dann diesen Block.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/12-pflichtschritt-mind.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/12-pflichtschritt-mind.sh"
 ```
 
 ## Step 7: Summary

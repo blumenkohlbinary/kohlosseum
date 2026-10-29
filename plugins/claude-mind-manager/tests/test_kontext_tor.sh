@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 . "$(dirname "$0")/lib_test.sh"   # v5.114.0: Fixtures unter einem Pfad MIT Leerzeichen
-# KONTEXT-TOR (v5.26.0) — die neun Fragen, bevor eine Zeile Dauerkontext kostet.
+# KONTEXT-TOR (v5.26.0) — seit v5.158.0 die Pruefliste A1–D10 (A2->R1, A3->B5, C1->C7, C2->C7b).
 #
 # ⛔ DER ANLASS, woertlich vom Nutzer am 30.08.2026:
 #    "ueberall es wird immer mehr es darf nicht sein — fuehre was ein wo der
@@ -63,33 +63,33 @@ janein "negativ: Definition MIT Code-Marke bleibt" "0" "$(n_von "$TMP/a1n.md" A1
 echo "== 3/8  A2 Bestandszahl ohne Zaehlbefehl =="
 printf 'Das Plugin hat 5 Hooks.\n' > "$TMP/a2p.md"
 printf 'Das Plugin hat 5 Hooks, gemessen 27.08.2026.\n' > "$TMP/a2n.md"
-janein "positiv: Zahl ohne Beleg" "1" "$(n_von "$TMP/a2p.md" A2)"
-janein "negativ: dieselbe Zahl MIT Beleg" "0" "$(n_von "$TMP/a2n.md" A2)"
+janein "positiv: Zahl ohne Beleg" "1" "$(n_von "$TMP/a2p.md" R1)"
+janein "negativ: dieselbe Zahl MIT Beleg" "0" "$(n_von "$TMP/a2n.md" R1)"
 
 echo "== 4/8  ⭐ C1 hart formulieren — OHNE die Vorbehalte zu fressen =="
 printf 'Man sollte vorher sichern.\n' > "$TMP/c1p.md"
-janein "positiv: weiches Gebot wird gemeldet" "1" "$(n_von "$TMP/c1p.md" C1)"
+janein "positiv: weiches Gebot wird gemeldet" "1" "$(n_von "$TMP/c1p.md" C7)"
 # ⛔ DIE ZUSICHERUNG, DIE GEGEN DEN AUFTRAG STEHT.
 printf '⚠ Beide Schwellen sind geraten, man kann sie korrigieren.\n' > "$TMP/c1v.md"
-janein "⭐ EVIDENZ-VORBEHALT wird NIE gemeldet" "0" "$(n_von "$TMP/c1v.md" C1)"
+janein "⭐ EVIDENZ-VORBEHALT wird NIE gemeldet" "0" "$(n_von "$TMP/c1v.md" C7)"
 printf 'Der Betrag ist nicht gemessen, man kann ihn nur schaetzen.\n' > "$TMP/c1v2.md"
-janein "⭐ 'nicht gemessen' wird NIE gemeldet" "0" "$(n_von "$TMP/c1v2.md" C1)"
+janein "⭐ 'nicht gemessen' wird NIE gemeldet" "0" "$(n_von "$TMP/c1v2.md" C7)"
 # ⛔ ⛔ befreit NICHT — der gemischte Fall gehoert gehaertet.
 printf '⛔ Moeglichst nicht loeschen.\n' > "$TMP/c1m.md"
-janein "⛔ befreit NICHT: gemischter Fall wird gemeldet" "1" "$(n_von "$TMP/c1m.md" C1)"
+janein "⛔ befreit NICHT: gemischter Fall wird gemeldet" "1" "$(n_von "$TMP/c1m.md" C7)"
 # ⭐ NEBENSATZ ist keine Regel — sonst waren beide echten Treffer Fehlalarme.
 printf 'Er lieferte den Befund, den der Agent finden sollte.\n' > "$TMP/c1nb.md"
-janein "⭐ Nebensatz (Modalverb am Ende) ist keine Regel" "0" "$(n_von "$TMP/c1nb.md" C1)"
+janein "⭐ Nebensatz (Modalverb am Ende) ist keine Regel" "0" "$(n_von "$TMP/c1nb.md" C7)"
 
 echo "== 5/8  A3 Historie, C2 unspezifisch =="
 printf 'Hier stand bis 27.08. eine andere Zahl.\n' > "$TMP/a3p.md"
 printf 'Bis v5.20.2 stand hier NIE kuerzen — das gilt nicht mehr.\n' > "$TMP/a3n.md"
-janein "A3 positiv: Rueckblick" "1" "$(n_von "$TMP/a3p.md" A3)"
-janein "A3 negativ: Rueckblick MIT geltendem Gebot bleibt" "0" "$(n_von "$TMP/a3n.md" A3)"
+janein "A3 positiv: Rueckblick" "1" "$(n_von "$TMP/a3p.md" B5)"
+janein "A3 negativ: Rueckblick MIT geltendem Gebot bleibt" "0" "$(n_von "$TMP/a3n.md" B5)"
 printf 'NIE unvorsichtig sein.\n' > "$TMP/c2p.md"
 printf 'NIE mit Edit auf Z:/daten schreiben.\n' > "$TMP/c2n.md"
-janein "C2 positiv: Gebot ohne Handlung" "1" "$(n_von "$TMP/c2p.md" C2)"
-janein "C2 negativ: Gebot MIT Pfad" "0" "$(n_von "$TMP/c2n.md" C2)"
+janein "C2 positiv: Gebot ohne Handlung" "1" "$(n_von "$TMP/c2p.md" C7b)"
+janein "C2 negativ: Gebot MIT Pfad" "0" "$(n_von "$TMP/c2n.md" C7b)"
 
 echo "== 6/8  Fences und Tabellen zaehlen nicht =="
 { printf 'Python ist eine Programmiersprache.\n'
@@ -140,10 +140,21 @@ PYEOF
 janein "⭐ Import nach eigener stdout-Umhuellung stuerzt NICHT ab" "ueberlebt" \
        "$(REFS="$(w "$CLAUDE_PLUGIN_ROOT/references")" \
           python "$(w "$TMP/wrap.py")" 2>/dev/null | tail -1)"
-# B1/B2/B3 werden NICHT nachgebaut — sie werden GENANNT (werkzeuge-zuerst.md)
+echo "== v5.158.0: Pruefliste A1–D10 und zeilenweise =="
+printf 'Python ist eine Programmiersprache.\nMan sollte vorher sichern.\n' > "$TMP/zw.md"
+_ZW=$(python "$TORW" --datei "$(w "$TMP/zw.md")" 2>/dev/null)
+janein "die Ausgabe hat einen Abschnitt je Zeile" "1" "$(printf '%s' "$_ZW" | grep -c '── je Zeile')"
+janein "  ... Z1 traegt A1, Z2 traegt C7" "2" "$(printf '%s' "$_ZW" | grep -cE '^  Z(1 +A1|2 +C7) ')"
+for k in A2 A3 B4 B6 C8 C9 D10; do
+  janein "  Frage $k wird als Urteil/Zeiger genannt" "1" "$(printf '%s' "$_ZW" | grep -cE "^  ▸ $k ")"
+done
+_Q=$(python "$TORW" --text "Man sollte vorher sichern." 2>/dev/null)
+janein "die Quittung traegt die neuen Kuerzel" "1" "$(printf '%s' "$_Q" | grep -c 'tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10')"
+
+# A1 (Code, andere Datei), B4, C8, D10 werden NICHT nachgebaut — sie werden GENANNT (werkzeuge-zuerst.md)
 janein "verweist auf cleaner_duplikate statt es nachzubauen" "1" \
        "$(python "$TORW" --datei "$(w "$TMP/a1p.md")" 2>/dev/null \
-          | grep -c 'cleaner_duplikate.py')"
+          | grep -c 'cleaner_duplikate.py --bereich')"   # v5.158.0: C8 nennt es zusaetzlich mit --widersprueche
 janein "verweist auf cleaner_grenzen" "1" \
        "$(python "$TORW" --datei "$(w "$TMP/a1p.md")" 2>/dev/null \
           | grep -c 'cleaner_grenzen.py')"

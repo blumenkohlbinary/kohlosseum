@@ -43,7 +43,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.157.0"
+MIND_SKILL_VERSION="5.159.0"
 mind_schritt_start "$PROJ" mind-files bestandszahlen_kandidaten cleaner_stichprobe cleaner_tor mind_check_tools_have_rules mind_hook_health mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -107,7 +107,7 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/01-pflichtschritte-dieser.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/01-pflichtschritte-dieser.sh"
 ```
 
 ⛔ **Fehlt diese Zeile oder nennt sie `FEHLT`, ist der Bericht unvollstaendig** und
@@ -125,7 +125,7 @@ Projekttyp erkennen -> Soll-Zustand definieren -> Ist pruefen -> User-OK -> Erst
 **Autonom ist der Standard.** Fehlende Dateien werden erstellt, verbesserbare verbessert.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/02-step0-modus-snapshot.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/02-step0-modus-snapshot.sh"
 ```
 
 `--ask` = Report + Freigabe (Verhalten vor v5.0.0).
@@ -405,7 +405,7 @@ UND User Backup-Vorschlag bestaetigt: Backup-System ins Projekt installieren.
 **Vorgehen:**
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/03-backup-system.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/03-backup-system.sh"
 ```
 
 **Test-Cmd-Detection fuer `.backuprc`** (project-scanner-Output nutzen):
@@ -451,7 +451,7 @@ Etappe 27 §1). Gleiches gilt fuer `release-hygiene.md`, `wissenstransfer-pruefe
 und macht das Backup-Tool **erreichbar**.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/04-backup-system.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/04-backup-system.sh"
 ```
 
 Dann **1 Pointer-Zeile** in `CLAUDE.md` (via Edit, unter einem `## Tooling`/`## Backup`-Abschnitt
@@ -492,7 +492,7 @@ KERN-Invariante durchsetzt. Gemessen am 21.08.2026 im Claude-Mind-Manager-Worksp
 kein Remote, kein Versions-Signal — das Angebot waere gekommen.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/05-step5b-release-hygiene.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/05-step5b-release-hygiene.sh"
 ```
 Rule-only-Baseline fuer Commit-/Changelog-Disziplin — kein Sprach-Gate, funktioniert fuer
 Node/C#/Python/etc. (Bump laeuft ueber die native Toolchain bzw. das Versioning-Pack unten).
@@ -501,7 +501,7 @@ Node/C#/Python/etc. (Bump laeuft ueber die native Toolchain bzw. das Versioning-
 installiert, nie allein.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/06-step5b-release-hygiene.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/06-step5b-release-hygiene.sh"
 ```
 
 Dann **1 Pointer-Zeile** in `CLAUDE.md`: `- Release-Hygiene: Conventional Commits + \`python tools/update_changelog.py\` — siehe \`.claude/rules/release-hygiene.md\``
@@ -525,7 +525,7 @@ totes Tool — genau der Bug den v4.0 killt). User bestaetigt ("notwendig").
 ohne `release-build.md` installiert:
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/07-step5c-versioning-pack.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/07-step5c-versioning-pack.sh"
 ```
 
 Dann **1 Pointer-Zeile** in `CLAUDE.md`: `- Versionierung: \`python tools/version.py show|bump|release\` — siehe \`.claude/rules/release-build.md\``
@@ -558,7 +558,7 @@ statt Angebot: *"zu wenig Doku-Flaeche, das Gate haette hier keinen Gegenstand"*
 **Immer detect-and-OFFER, nie erzwungen.** User bestaetigt.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/08-step5d-doku-gate.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/08-step5d-doku-gate.sh"
 ```
 
 Dann **1 Pointer-Zeile** in `CLAUDE.md`: `- Wissenstransfer messen: \`python tools/coverage_gate.py <ziel.md> <quelle...>\` — siehe \`.claude/rules/wissenstransfer-pruefen.md\``
@@ -595,7 +595,7 @@ keinen Gegenstand"*.
 **Immer detect-and-OFFER, nie erzwungen.** User bestaetigt.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/09-step5e-zaehl-gate.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/09-step5e-zaehl-gate.sh"
 ```
 
 **Danach im Bericht nennen** — und den ersten Lauf gleich mitliefern, sonst weiss niemand,
@@ -620,8 +620,8 @@ Bis v5.25.0 arbeitete dieser Command nur **rückwärts** — er prüfte, was sch
 ist. **Es gab kein Tor beim Hineinschreiben.** Deshalb wächst alles.
 
 **Die vollständige Vorschrift steht in
-[references/kontext-tor.md](../../references/kontext-tor.md)** — die neun
-Fragen, beide Richtungen, die Quittung, die Grenzen. **Lies sie**, bevor du
+[references/kontext-tor.md](../../references/kontext-tor.md)** — die Pruefliste
+A1–D10, beide Richtungen, die Quittung, die Grenzen. **Lies sie**, bevor du
 diesen Schritt ausführst. Hier steht nur, was für **diesen** Command gilt:
 
 | | |
@@ -650,7 +650,7 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_einordnung.py" --wohin "$PROJ/CLA
 
 ## ⛔ D1 — die neunte Frage: WOHIN gehoert diese Aussage?
 
-**Die acht Fragen oben pruefen alle, OB etwas hinein darf. Keine fragt, WOHIN.**
+**Die Pruefliste oben prueft, OB etwas hinein darf; B4 fragt nur, wie OFT es gebraucht wird. WOHIN genau, sagt D1.**
 B3 prueft, ob eine Aussage am **schon gewaehlten** Ort wirkt — es kann zustimmen
 oder ablehnen, nicht umleiten. Ein Tuersteher, kein Wegweiser. Wer durchkommt,
 landet dort, wo der Schreiber gerade steht, und das ist fast immer eine
@@ -681,7 +681,7 @@ gehoeren. Ob das mechanisch entscheidbar ist, ist **UNGEMESSEN**.
 lief und nichts fand oder gar nicht lief:
 
 ```
-tor=<datei>:A1/A2/A3:B1/B2/B3:C1/C2:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>
+tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>
 ```
 
 
@@ -690,15 +690,15 @@ tor=<datei>:A1/A2/A3:B1/B2/B3:C1/C2:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>
 Bestands-Pass (v5.22.0) und Schritt-Quittung (v5.25.0).
 
 ```
-tor=<datei>:A1/A2/A3:B1/B2/B3:C1/C2
+tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10
 ```
 
-⛔ **B1/B2/B3 beantwortet `cleaner_tor` NICHT — es nennt sie.** Dafür gibt es
+⛔ **A1 (Code, andere Datei), B4, C8 und D10 beantwortet `cleaner_tor` NICHT — es nennt sie.** Dafür gibt es
 `cleaner_duplikate`, `cleaner_aussagen --code` und `cleaner_grenzen`. Die Klasse
 `instrument-nachgebaut` steht mit 7 Vorkommen im Debug-Ordner, und **kein
 einziger Nachbau war besser als das Original** (`werkzeuge-zuerst.md`).
 
-⚠ **A1 und C2 bleiben Urteile.** Das Tor erzwingt eine **Antwort**, nicht die
+⚠ **A1, A2, A3, B6, C7b und C9 bleiben Urteile.** Das Tor erzwingt eine **Antwort**, nicht die
 richtige — wie die Agent-Quittung (v5.19.0), die keinen Agenten zur Arbeit
 zwingt, sondern sein Fehlen sichtbar macht.
 
@@ -732,7 +732,7 @@ Zeitstempel. Von 15 Transkripten wurde eines gewertet, und **dieses** Projekt me
 bekannt wahre Fall in der Ausgabe stand.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/10-das-gate.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/10-das-gate.sh"
 ```
 
 **Angeboten wird, wenn `_N >= 2` UND `.claude/rules/rollen.md` fehlt.**
@@ -741,7 +741,7 @@ bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/10-das-gate.sh"
 ### Das Geruest wird NICHT entworfen — es steht schon
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/11-das-geruest.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/11-das-geruest.sh"
 ```
 
 ⛔ **Verbindlich ist Joplin `🧭 Manager-Chats` §10a** (ID
@@ -880,7 +880,7 @@ Lies sie.** Hier nur, was für diesen Skill gilt:
 | ⛔ **Stufe 3** | der Wort-Diff wird GANZ gelesen, bevor angewendet wird. **Ohne Leser: nicht anwenden** — Ergebnis, Bericht, Diff ablegen, Pfad melden |
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/12-step5g-verdichten-die.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/12-step5g-verdichten-die.sh"
 ```
 
 ⛔ **Der Bericht dieses Schritts sind die drei Zeilen aus `mind_verdichtung_pruefen`** plus
@@ -916,7 +916,7 @@ User darf zurueckweisen mit "Self-Check-Block fehlt — bitte Step 1 ausfuehren"
 
 **Der Nachweis wird AUSGEFUEHRT, nicht aufgeschrieben (NEU v5.2.1):**
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/13-step6-report-pflicht.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/13-step6-report-pflicht.sh"
 ```
 ⚠ **`mind_ordner_hinweise` ist ein Hinweis, kein Befund** (Etappe 38 §7, gemessen 19.09.2026:
 2 783 ungenannte Skripte in vier Projekten, 0 tote Werkzeuge — `docs/plugin/tools-have-rules-messung-20260919.md`).

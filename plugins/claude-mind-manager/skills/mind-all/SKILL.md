@@ -52,7 +52,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.157.0"
+MIND_SKILL_VERSION="5.159.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 # ⛔ v5.98.0: die fuenf Skills sind KEINE Schritte von mind-all — jeder hat seinen EIGENEN
 #    Start-Block (Step 2, Punkt 1). Bis v5.97.0 standen sie hier, Ritas Kalibrierlauf hakte
@@ -111,7 +111,7 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/pflicht-bilanz.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/pflicht-bilanz.sh"
 ```
 
 ⛔ **Fehlt diese Zeile oder nennt sie `FEHLT`, ist der Bericht unvollstaendig** und
@@ -127,7 +127,7 @@ Ein Snapshot -> 5 Skills sequenziell -> alle Befunde angewendet -> ein Bericht.
 ## Step -1: Was ist hier schon einmal schiefgegangen? (PFLICHT, NEU v5.7.1)
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step-1-debug.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step-1-debug.sh"
 ```
 
 ⛔ **Das steht VOR Step 0, und das ist der ganze Punkt.** Der Debug-Ordner sammelte bis v5.7.0
@@ -141,7 +141,7 @@ Die Ausgabe ist kein Befund und blockt nichts — sie ist eine Erinnerung an dre
 ## Step 0: Modus + EIN Snapshot fuer den ganzen Durchlauf (PFLICHT)
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step0-snapshot.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step0-snapshot.sh"
 ```
 
 Bricht der Block ab (kein Snapshot), startet KEIN Skill. Meldet er einen Hook-Ausfall, ist das
@@ -152,7 +152,7 @@ du einen Block aenderst oder wenn ein Schritt rot ist; der Lauf selbst braucht s
 **Geretteter Chat (v5.1.0) + offene Schuld (v5.2.1):** Existiert `.claude-mind/rescued/OPEN`,
 steht ein Sync aus. `OPEN` nennt die Rettungsdatei und den gesicherten Auftrag.
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step0-rettungen.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step0-rettungen.sh"
 ```
 
 > ⛔ **KONTEXT-FLUT-SPERRE (NEU v5.2.1, Hard Constraint).** Die Rettungsdatei `*_chat.md` wird
@@ -327,7 +327,7 @@ nicht killen — sonst bleibt der Context halb aktualisiert zurueck.
 **Direkt nach dem letzten Skill, VOR dem Bericht:**
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step2.9-kettenmarke.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step2.9-kettenmarke.sh"
 ```
 
 **Warum das kein Beiwerk ist:** Die Einzel-Skills erkennen die Kette an dieser Datei und
@@ -352,7 +352,7 @@ bricht der Block ab und sagt es. ⚠ Bis v5.151.0 leerte der Block die Befund-Da
 meldete — ein Befund kam so nie im Debug-Ordner an.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step2.95-liste.sh" "<Ausloeser: Kompaktierung manual|auto oder Handaufruf>"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step2.95-liste.sh" "<Ausloeser: Kompaktierung manual|auto oder Handaufruf>"
 ```
 
 **Die Ursachenklassen** — feste Liste, **kanonisch ist `KLASSEN` in `references/debug_auswertung.py`**:
@@ -429,7 +429,7 @@ beschaedigen, Umschreiben schon):
 kippen.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step2.95-waechter.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step2.95-waechter.sh"
 ```
 
 ⛔ **Rueckgabe 2 ist ein BEFUND, kein Nebensatz.** Sie heisst: der Waechter hat hoechstens
@@ -474,7 +474,7 @@ Selbsteinschaetzung — genau das, was `cleaner_belege.py` seit v5.18.0 ueberall
 untaugliche Belegquelle ersetzt.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step2.96-abschluss.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step2.96-abschluss.sh"
 ```
 
 ⚠ **`nein` und `teil` sind verschiedene Dinge.** `nein` heisst: kein einziger Skill lief
@@ -568,7 +568,7 @@ passieren darf — genau daran ist v5.2.0 gescheitert.
 Bis v5.145.0 stand dieser Schritt im Pflichtkasten und in der Startzeile, aber **nirgends als Aufruf** — erwartet, nie gelaufen. So entstand Noras `FEHLT: mind-rules/cleaner_duplikate` (Palvedo, 20.09.2026), und so wurden Schritte von Hand nachgeholt. Seine Ausgabe gehoert in den Schlussbericht: ein Werkzeug ohne erreichbare Rule liegt tot im Ordner.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/tools-rules.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/tools-rules.sh"
 ```
 
 ## Step 3: Konsolidierter Schlussbericht (PFLICHT)

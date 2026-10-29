@@ -50,7 +50,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.157.0"
+MIND_SKILL_VERSION="5.159.0"
 mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe cleaner_tor mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
@@ -114,7 +114,7 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/pflicht-bilanz.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/pflicht-bilanz.sh"
 ```
 
 ⛔ **Fehlt diese Zeile oder nennt sie `FEHLT`, ist der Bericht unvollstaendig** und
@@ -140,7 +140,7 @@ ihn zu ueberspringen — siehe Step 3c Commit-Coverage, die Gaps objektiv belegt
 angewendet (frueher: alles ASK-Default).
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step0-snapshot.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step0-snapshot.sh"
 ```
 
 | Modus | Aufruf | Verhalten |
@@ -180,7 +180,7 @@ der Spalte `Ordner` des Rosters mit (fehlt die Spalte: jeder direkte Unterordner
 `CLAUDE.md`) — das ist der Dauerkontext der Arbeiter-Sitzungen. Gemessen 14.09.2026 (Creator,
 Doro): sieben Unterordner, fuenf CLAUDE.md und 17 Rules, in keinem Bericht genannt.
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step1-dateien.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step1-dateien.sh"
 ```
 Der Bericht nennt je Datei den Ordner (`<Ordner>/CLAUDE.md`, `<Ordner>/.claude/rules/<name>`).
 `mind_snapshot` sichert sie seit v5.106.0 von selbst mit.
@@ -235,7 +235,7 @@ Read these reference files for budget thresholds:
 ## Step 2.5: Args parsen (NEU v3.3.0)
 
 ```bash
-ARGS="${ARGUMENTS:-}"
+ARGS='$ARGUMENTS'   # v5.159.0: Claude Code ersetzt beim Laden nur das blanke Argument-Token, nie die Form mit Klammern
 QUICK_MODE="no"
 echo "$ARGS" | grep -qE '(^|[[:space:]])--quick([[:space:]]|$)' && QUICK_MODE="yes"
 
@@ -284,7 +284,7 @@ Mismatch → Finding mit Klasse AUTO/ASK/DESIGN (siehe Step 4 v3.2.1).
 Skill ist projekt-agnostisch — bei Nicht-Python-Projekten skippen.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3a1-testcounts.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3a1-testcounts.sh"
 ```
 
 ### 3b: Dead Paths (kontextuell, KEINE False-Positives)
@@ -399,7 +399,7 @@ das Gate fand also **nie** etwas und meldete jedes Mal „0 Luecken".
 dieses Schritts.**
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3c-commits.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3c-commits.sh"
 ```
 
 **Zweck (v3.3.2):** Dies ist der DETERMINISTISCHE Kern der Knowledge-Gap-Erkennung.
@@ -506,7 +506,7 @@ Lösung: der semantische Pass (Step 3.5) prüft nur die **session-berührten** R
 deterministisch bestimmen — aus den Commit-Scopes (die mappen auf Datei-Inhalte).
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3c1-targeting.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3c1-targeting.sh"
 ```
 
 - **Erring broad = sicher:** ein zu breiter Treffer prüft nur ein paar Files extra; ein *verpasster*
@@ -542,7 +542,7 @@ bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3c1-targeting.sh"
   (fehlendes Feld / unbekannter type) — NICHT dafuer, dass Frontmatter da ist.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3e-syntax.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3e-syntax.sh"
 ```
 
 ### 3e.2: Rules-Inhalts-Drift (NEU v3.3.1, zusaetzlich zu 3e Syntax) — PFLICHT
@@ -554,7 +554,7 @@ unbemerkt. **Skip nur bei `QUICK_MODE=yes`.**
 **Restriktive Patterns** (vermeiden Plauder-False-Positives wie "we discussed dev.13"):
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3e2-drift.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3e2-drift.sh"
 ```
 
 **False-Positive-Mitigation:**
@@ -711,7 +711,7 @@ Bei langen Sessions (>500 Events) verliert naives "letzte 200" Architektur-Entsc
 aus der Mitte. 3-Stufen-Algorithmus:
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3.5-sampling.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3.5-sampling.sh"
 ```
 
 ### 4 Agent-Dispatches — sequenziell bzw. in 2 Wellen à 2 (NIE ≥3 gleichzeitig)
@@ -780,7 +780,7 @@ auftauchte. Der Creator-Lauf hat den Ausweg selbst benannt:
 > nicht dem Ermessen des Laufs ueberlassen und landet automatisch im Bericht."*
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3.5-agentzahl.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3.5-agentzahl.sh"
 ```
 
 ⛔ **Hier stand bis v5.54.0 die Begruendung fuer einen halben Lauf** — *„das senkt
@@ -1074,7 +1074,7 @@ Lies sie.** Hier nur, was für diesen Skill gilt:
 | ⚠ **in der Kette** | läuft `mind-update` in `/mind-all`, haben `mind-claudemd` (Step 5e) und `mind-rules` (Step 9b) ihre Datei schon verdichtet — dann hier **die nächstgrößere**, nie dieselbe zweimal im Lauf (`analyzed-scopes` trägt `verdichtet=<datei>`) |
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step5-verdichten.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step5-verdichten.sh"
 ```
 
 ⛔ **Der Bericht dieses Schritts sind die drei Zeilen aus `mind_verdichtung_pruefen`** — oder
@@ -1091,8 +1091,8 @@ Bis v5.25.0 arbeitete dieser Command nur **rückwärts** — er prüfte, was sch
 ist. **Es gab kein Tor beim Hineinschreiben.** Deshalb wächst alles.
 
 **Die vollständige Vorschrift steht in
-[references/kontext-tor.md](../../references/kontext-tor.md)** — die neun
-Fragen, beide Richtungen, die Quittung, die Grenzen. **Lies sie**, bevor du
+[references/kontext-tor.md](../../references/kontext-tor.md)** — die Pruefliste
+A1–D10, beide Richtungen, die Quittung, die Grenzen. **Lies sie**, bevor du
 diesen Schritt ausführst. Hier steht nur, was für **diesen** Command gilt:
 
 | | |
@@ -1121,7 +1121,7 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_einordnung.py" --wohin "$PROJ/CLA
 
 ## ⛔ D1 — die neunte Frage: WOHIN gehoert diese Aussage?
 
-**Die acht Fragen oben pruefen alle, OB etwas hinein darf. Keine fragt, WOHIN.**
+**Die Pruefliste oben prueft, OB etwas hinein darf; B4 fragt nur, wie OFT es gebraucht wird. WOHIN genau, sagt D1.**
 B3 prueft, ob eine Aussage am **schon gewaehlten** Ort wirkt — es kann zustimmen
 oder ablehnen, nicht umleiten. Ein Tuersteher, kein Wegweiser. Wer durchkommt,
 landet dort, wo der Schreiber gerade steht, und das ist fast immer eine
@@ -1152,7 +1152,7 @@ gehoeren. Ob das mechanisch entscheidbar ist, ist **UNGEMESSEN**.
 lief und nichts fand oder gar nicht lief:
 
 ```
-tor=<datei>:A1/A2/A3:B1/B2/B3:C1/C2:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>
+tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>
 ```
 
 
@@ -1161,15 +1161,15 @@ tor=<datei>:A1/A2/A3:B1/B2/B3:C1/C2:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>
 Bestands-Pass (v5.22.0) und Schritt-Quittung (v5.25.0).
 
 ```
-tor=<datei>:A1/A2/A3:B1/B2/B3:C1/C2
+tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10
 ```
 
-⛔ **B1/B2/B3 beantwortet `cleaner_tor` NICHT — es nennt sie.** Dafür gibt es
+⛔ **A1 (Code, andere Datei), B4, C8 und D10 beantwortet `cleaner_tor` NICHT — es nennt sie.** Dafür gibt es
 `cleaner_duplikate`, `cleaner_aussagen --code` und `cleaner_grenzen`. Die Klasse
 `instrument-nachgebaut` steht mit 7 Vorkommen im Debug-Ordner, und **kein
 einziger Nachbau war besser als das Original** (`werkzeuge-zuerst.md`).
 
-⚠ **A1 und C2 bleiben Urteile.** Das Tor erzwingt eine **Antwort**, nicht die
+⚠ **A1, A2, A3, B6, C7b und C9 bleiben Urteile.** Das Tor erzwingt eine **Antwort**, nicht die
 richtige — wie die Agent-Quittung (v5.19.0), die keinen Agenten zur Arbeit
 zwingt, sondern sein Fehlen sichtbar macht.
 
@@ -1242,7 +1242,7 @@ gemeldet und der Skill **läuft weiter**. Ein Bestands-Pass darf nie einen Sync 
 Bis v5.145.0 stand dieser Schritt im Pflichtkasten und in der Startzeile, aber **nirgends als Aufruf** — erwartet, nie gelaufen. So entstand Noras `FEHLT: mind-rules/cleaner_duplikate` (Palvedo, 20.09.2026), und so wurden Schritte von Hand nachgeholt. Ihre Ausgabe ist die Zeile `Agent-Quittung:` im Self-Check-Block unten.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/agent-bilanz.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/agent-bilanz.sh"
 ```
 
 ## Step 6: Report — PFLICHT-Self-Check-Block am Anfang (NEU v3.3.1)

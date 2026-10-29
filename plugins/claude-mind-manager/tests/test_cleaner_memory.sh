@@ -59,7 +59,12 @@ janein "--audit nennt --nur …|memory" ja "$(grep -q 'global|projekt|alles|memo
 # ⚠ v5.145.0: der Aufruf heisst jetzt python "$CLAUDE_PLUGIN_ROOT/references/memory_gates.py" "$B" (M-C) —
 #   das Anfuehrungszeichen vor "$B" ist erlaubt, die Zusicherung (Gates nach der Sicherung) ist dieselbe.
 janein "Sicherung + memory_gates.py vor dem Anwenden" ja "$(grep -q '_memory"' "$MC" && grep -qE 'memory_gates\.py"? "\$B"' "$MC" && echo ja || echo nein)"
-janein "nicht autonom bleibt stehen" ja "$(grep -q 'Unverändert nicht autonom' "$MC" && echo ja || echo nein)"
+# ⛔ v5.159.0 (Nutzer 29.10.2026): der Cleaner ist AUTONOM — die alte Zusicherung „nicht autonom" ist
+#    bewusst aufgehoben, nicht verloren. Geprueft wird der NEUE Vertrag: autonom, --ask stellt die OKs her,
+#    und was ausdruecklich NICHT autonom bleibt (--hook-bauen, die Unantastbaren), steht weiter da.
+janein "Memory-Anwenden ist autonom wie der Ablauf" ja "$(grep -q 'Autonom wie der übrige Ablauf' "$MC" && echo ja || echo nein)"
+janein "  ... --ask stellt die OKs wieder her" ja "$(grep -q 'nur mit `--ask`' "$MC" && echo ja || echo nein)"
+janein "  ... --hook-bauen und Unantastbare bleiben NICHT autonom" ja "$(grep -q 'Unverändert NICHT autonom:' "$MC" && echo ja || echo nein)"
 
 echo "== 5  v5.111.0 (Etappe 17): Unterordner, CLAUDE.local.md, Skills-Bestand, tote Regler =="
 janein "Selbsttest cleaner_audit nennt Unterordner, CLAUDE.local.md, Skills und Regler" ja "$($PY "$(w "$REF/cleaner_audit.py")" --selbsttest 2>/dev/null | grep -q 'Idee/CLAUDE.md' && $PY "$(w "$REF/cleaner_audit.py")" --selbsttest 2>/dev/null | grep -q 'TOT-VERDACHT' && $PY "$(w "$REF/cleaner_audit.py")" --selbsttest 2>/dev/null | grep -q 'tote Regler' && echo ja || echo nein)"

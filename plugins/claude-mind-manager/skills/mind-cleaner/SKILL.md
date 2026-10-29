@@ -3,12 +3,13 @@ name: mind-cleaner
 description: |
   [Mind Manager] Raeumt Regelbestaende auf: misst, was da ist und was wirklich laedt,
   ordnet jede Regeldatei in Hook · Skill · Slash-Command · bleibt-Rule ein und zieht
-  auf ein ok einen ganzen PLAN um (v5.110.0: mehrere Dateien, ein ok, Stopp am ersten
-  gebrochenen Gate) — mit Erhaltungs-Gate, Pfad-Gate, Memory-Gates und Rueckweg.
+  einen ganzen PLAN um — AUTONOM seit v5.159.0 (Nutzer 29.10.2026): Bericht, Plan und
+  Anwenden in einem Lauf, Snapshot davor, Stopp am ersten gebrochenen Gate — mit
+  Erhaltungs-Gate, Pfad-Gate, Memory-Gates, Kontext-Tor A1–D10 und Rueckweg.
 
-  ⛔ Der Vorgabelauf AENDERT NICHTS. Er berichtet. Ein Plan entsteht erst auf "ok",
-  angewendet wird erst nach Freigabe des Plans. Hooks werden nur GEMELDET, nie
-  gebaut — dafuer gibt es --hook-bauen auf ausdrueckliche Ansage.
+  '--ask' fragt wie bisher zweimal (nach dem Bericht, nach dem Plan); '--audit' nur
+  berichten. Hooks werden nur GEMELDET, nie gebaut — dafuer gibt es --hook-bauen auf
+  ausdrueckliche Ansage.
 
   Use when the user says "mind cleaner", "regeln aufraeumen", "startkontext kuerzen",
   "was kann weg aus den rules", "regel zu skill machen", or "/mind-cleaner".
@@ -48,7 +49,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.157.0"
+MIND_SKILL_VERSION="5.159.0"
 mind_schritt_start "$PROJ" mind-cleaner bestandsaufnahme cleaner_audit cleaner_einordnung cleaner_grenzen cleaner_leitplanke cleaner_ratsche cleaner_rebuild cleaner_tor cleaner_umzug cleaner_wirkung ladeprotokoll_auswertung mind_debug_write mind_snapshot
 ```
 
@@ -118,23 +119,34 @@ hat nie begonnen zu quittieren, und das ist NICHT „nichts zu melden".
 sichtbar — wie `decision:block` und die Agent-Quittung. Und sie misst nicht die GUETE:
 ein Werkzeug, das laeuft und Unsinn liefert, quittiert als `gelaufen`.
 
-## ⛔ Der Ablauf ist dreistufig, und jede Stufe braucht ein OK
+## ⛔ Der Ablauf — drei Schritte, AUTONOM in einem Lauf (v5.159.0)
 
 ```
-1. BERICHT     /mind-cleaner [--bereich global|projekt|alles|memory]   aendert NICHTS
-      ↓  Nutzer sagt ok
-2. PLAN        /mind-cleaner --plan [--bereich …]        EIN Plan ueber ALLE Befunde (v5.110.0)
-      ↓  Nutzer gibt den Plan frei — „ok" oder „ok ohne 3,7"
+1. BERICHT     /mind-cleaner [--bereich global|projekt|alles|memory]   (--audit: nur bis hier)
+      ↓  autonom weiter — mit --ask: Nutzer sagt ok
+2. PLAN        EIN Plan ueber ALLE Befunde (v5.110.0), Kontext-Tor A1–D10 ZEILENWEISE
+      ↓  autonom weiter — mit --ask: Nutzer gibt den Plan frei („ok" oder „ok ohne 3,7")
 3. ANWENDEN    cleaner_plan.py --anwenden <plan> [--ohne 3,7]   ALLES in einem Lauf
                /mind-cleaner --umzug <datei> · --rebuild <datei>   der Einzelfall (--nur)
 ```
+
+⛔ **Nutzer-Entscheidung 29.10.2026, wörtlich:** *„mind cleaner soll autonom arbeiten und er soll
+die neuen fragen auch drin haben“*. Sie **ersetzt** die zwei OKs vom 24.08./14.09.2026 (unten,
+als Geschichte). Was BLEIBT, weil der Grund bleibt — hier wird die Wissensbasis zerschnitten:
+gemeinsamer Snapshot vor dem Anwenden · jedes Gate je Zeile · Stopp am ersten gebrochenen Gate,
+danach NICHT ANGEWENDET · Status je Plan-Zeile · `--audit` danach · Rueckweg `rollback.py`.
+⛔ **Unverändert NICHT autonom:** `--hook-bauen` (nur auf ausdrückliche Ansage, 24.08.2026) und
+die UNANTASTBAREN (Roster, `CLAUDE.md`, `MEMORY.md` — nur Meldung).
+⚠ **Eine Plan-Zeile ohne vorbereitete Kurz-Rule (`kurz=<pfad>`) wird nicht geraten:** die
+Sitzung schreibt sie vor dem Anwenden; kann sie es nicht, setzt sie die Zeile auf `--ohne` und
+nennt sie im Bericht.
 
 **Nutzer-Entscheidung 24.08.2026, wörtlich:** *„er soll erstmal berichten dann wenn ich
 ok gebe plan schreiben und anwenden"*.
 ⛔ **v5.110.0 — Nutzer 14.09.2026, wörtlich:** *„ja mach einen plan über mehrere dateien und
 auch mind memory muss das gefixt werden mit einem ok"*. Das ersetzt „GENAU EINE Datei je
 Umzug" (24.08.); die 73 liegengebliebenen Audit-Befunde vom 25.08. waren der Preis.
-Bericht → Plan → ok bleiben drei Schritte — nur das „eine Datei" fällt.
+Bericht → Plan → ok blieben drei Schritte — nur das „eine Datei" fiel. ⛔ Die OKs selbst fielen am 29.10.2026 (oben).
 
 ```bash
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
@@ -143,8 +155,8 @@ mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 #    Archivierungen, Zeiger) in EINE Datei, je Zeile Datei · Klasse · Ziel · Gates · Rückweg
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_plan.py" --neu "$PROJ" --nur projekt
 #    -> $MIND_DEBUG_DIR/laeufe/<ts>_plan.md; UMZUG/DOCS-Zeilen brauchen `kurz=<pfad>` —
-#       die vorbereitete Kurz-Rule schreibt die Sitzung VOR dem ok in den Plan
-# 3  das eine ok: gemeinsamer Snapshot (eine Einheit, wie /mind-all), dann Zeile für Zeile
+#       die vorbereitete Kurz-Rule schreibt die Sitzung VOR dem Anwenden in den Plan
+# 3  anwenden (autonom; mit --ask erst nach dem ok): gemeinsamer Snapshot (eine Einheit, wie /mind-all), dann Zeile für Zeile
 #    mit den bestehenden Gates; bricht EIN Gate, stoppt der Lauf — davor bleibt, danach
 #    NICHT ANGEWENDET, der Plan trägt je Zeile den Status, der Bericht nennt die Zeile
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_plan.py" --anwenden <plan> [--ohne 3,7]
@@ -214,13 +226,14 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_audit.py" --bereich "$PROJ"   # P
   der Platte, 131 kB beim Start.
 
 ⛔ **`/mind-memory` bleibt AUTONOM** (Nutzer 15.09.2026: *„oh man /mind-memory arbeitet
-autonom und mind cleaner nicht"*) — das ok gehört NUR zum Cleaner, weil er über alles
-hinweg eingreift. Was mind-memory aus dieser Reihe bekommt, ist allein v5.109.0 (alle
+autonom und mind cleaner nicht"*) — seit 29.10.2026 arbeitet auch der Cleaner autonom; ein ok
+gibt es nur noch mit `--ask`. Was mind-memory aus dieser Reihe bekommt, ist allein v5.109.0 (alle
 Memory-Verzeichnisse, nie über Slugs mergen) — autonom angewendet wie seit v5.0.0.
 
-⛔ **Das weicht bewusst von den v5.0.0-Skills ab**, die autonom anwenden. Der Grund steht
-im Entwurf und gilt: hier wird die **Wissensbasis zerschnitten**, nicht eine Zahl korrigiert.
-Ein falsch herausgeschnittener Satz fällt erst auf, wenn er gebraucht wird — und dann fehlt er.
+⛔ **Bis v5.158.0 wich der Cleaner bewusst von den v5.0.0-Skills ab** (nicht autonom). Der
+Grund gilt weiter: hier wird die **Wissensbasis zerschnitten**, nicht eine Zahl korrigiert —
+ein falsch herausgeschnittener Satz fällt erst auf, wenn er gebraucht wird. Deshalb blieben beim
+Wechsel zu autonom (29.10.2026) Snapshot, Gates und der Stopp am ersten Bruch stehen.
 
 Weitere Aufrufe:
 
@@ -259,7 +272,7 @@ Er fährt **alle sechs Werkzeuge** und legt fünf Gruppen vor — **Gruppe 5 zue
 Gemessen wird: Länge (`MIND_SKILL_DESC_MAX`, Vorgabe 600; Kappung 1 536), Direktivität
 (`ALWAYS invoke when…` — gemessen half direktiver Stil), Zeiger aus einer Kurz-Rule (Pfad
 4/4 gegen Auswahl 20–84 %), Aufruf `/<name>` in Transkripten der letzten `MIND_SKILL_TOT_TAGE`
-(Vorgabe 30) Tage, gleiche description = DOPPELT. Nichts davon wird angewendet ohne Plan-OK.
+(Vorgabe 30) Tage, gleiche description = DOPPELT. Nichts davon wird angewendet ohne Plan (mit `--ask`: ohne Plan-OK).
 ⭐ **Gruppe 8 (§4):** `MIND_*` in `settings.json`, das kein Hook/Skill/Werkzeug mehr LIEST
 (Zuweisung, nicht Prosa) — **Nutzerdatei, nur du.** Gemessen 14.09.2026: drei tote Regler.
 
@@ -319,13 +332,13 @@ ich kann dann angeben ob global oder lokal nur der projekt ordner"*.
 
 ⛔ **v5.107.0 — das Memory ist VOLLWERTIGER Bestand.** Nutzer-Entscheidung 14.09.2026,
 wörtlich: *„nein mind cleaner ist für alles da"* — auf die Antwort, Memory sei Sache von
-`/mind-memory`. Seither laufen Bestandsaufnahme, Einordnung, Kontext-Tor (A1–C2), Duplikate
+`/mind-memory`. Seither laufen Bestandsaufnahme, Einordnung, Kontext-Tor (A1–D10, bis v5.157.0 A1–C2), Duplikate
 gegen Rules und CLAUDE.md in **beide** Richtungen, `--umzug` und `--rebuild` auch über die
 Topic-Dateien. Der Pfad kommt **immer aus dem Slug** (`learnings_quellen.memory_pfad`,
 `cleaner_duplikate._memory_dir`), nie aus dem Projektordner; der Bericht nennt jede Datei als
 `memory/<name>`.
-⛔ **Unverändert nicht autonom** — Bericht → OK → Plan → OK — **und für Memory kommen die
-vier Gates aus `mind-memory` 4.0c dazu.** Vor JEDEM anwendenden Schritt an einer Topic-Datei:
+⛔ **Autonom wie der übrige Ablauf (v5.159.0; Bericht → OK → Plan → OK nur mit `--ask`)** —
+**und für Memory kommen die vier Gates aus `mind-memory` 4.0c dazu.** Vor JEDEM anwendenden Schritt an einer Topic-Datei:
 
 ```bash
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
@@ -791,7 +804,7 @@ weil nur der Mensch eine neue Sitzung starten kann:
 ```bash
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-# 1  nach dem OK des Cleaners — die Sonde AENDERT eine Datei (wie jeder Umzug)
+# 1  im Anwenden-Schritt des Cleaners (mit --ask: nach seinem OK) — die Sonde AENDERT eine Datei (wie jeder Umzug)
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_paths_sonde.py" --start "$PROJ" [--datei <rule.md>]
 #    kleinste Rule mit Datei-Bezug, Sicherung nach _claude_backups/<ts>_paths-sonde/,
 #    globs: -> paths: nur im Frontmatter, Merker .claude-mind/paths-sonde (datei, ts, sid, sicherung)
@@ -827,8 +840,8 @@ Aufruf — mit Prüffall, und ohne Eintrag in `hooks.json`, bis der Prüffall gr
 ## Hard Constraints
 
 - ⛔ **NIE ohne Snapshot.** Schlägt `mind_snapshot` fehl, bricht der Lauf ab.
-- ⛔ **NIE ohne Plan mehr als eine Datei.** Seit v5.110.0 wendet EIN Plan mit EINEM ok
-  alle Zeilen an — je Zeile mit Status, Snapshot als Einheit, Stopp am ersten gebrochenen
+- ⛔ **NIE ohne Plan mehr als eine Datei.** Seit v5.110.0 wendet EIN Plan (seit v5.159.0
+  autonom, mit `--ask` nach EINEM ok) alle Zeilen an — je Zeile mit Status, Snapshot als Einheit, Stopp am ersten gebrochenen
   Gate. Ohne Plan bleibt es bei einer Datei (`--nur`).
 - ⛔ **NIE eine Leitplanke wegnehmen, ohne Ersatz an ihrer Stelle.**
 - ⛔ **NIE behaupten, Kontext sei gespart.** Erst das Ladeprotokoll einer **neuen** Sitzung

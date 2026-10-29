@@ -73,7 +73,10 @@ fi
 _slog DEBUG "host=${CLAUDE_CODE_HOST_SESSION_ID:-leer}"
 # v5.157.0: GEMESSEN 29.10.2026 — im Hook ist die Host-Kennung LEER (host=leer x3), in der Bash-Sitzung
 #   gesetzt. Welche Kennung sieht ein Hook? Nur die NAMEN der CLAUDE_*-Variablen, nie Werte.
-_slog DEBUG "env-namen=$(env 2>/dev/null | grep -oE '^CLAUDE[A-Z0-9_]*' | sort | tr '\n' ',')"
+# v5.159.0: GEMESSEN — der Hook sieht CLAUDE_CODE_SESSION_ID und CLAUDE_PID, keine Host-Kennung. Ob CLAUDE_PID
+#   ein Leeren ueberlebt, zeigt erst ein echtes Leeren: deshalb hier und in session-start.sh der WERT (eine
+#   Prozessnummer) neben der sid. Die Namensliste hat ihre Antwort gegeben und entfaellt.
+_slog DEBUG "pid=${CLAUDE_PID:-leer} sid=$(printf '%s' "$INPUT" | grep -oE '"session_id" *: *"[^"]*"' | grep -oE '[0-9a-f-]{36}' | head -1)"
 if command -v mind_sitzung_merken >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
   mind_sitzung_merken "$PROJ" "$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null)" \
     "$(echo "$INPUT" | jq -r '.transcript_path // empty' 2>/dev/null)"

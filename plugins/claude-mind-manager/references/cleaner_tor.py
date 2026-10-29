@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Das Kontext-Tor — acht Fragen, bevor eine Zeile Dauerkontext kostet.
+"""Das Kontext-Tor — die Pruefliste A1–D10, bevor eine Zeile Dauerkontext kostet.
 
     Rules, Dokus, CLAUDE.md und Memory existieren AUSSCHLIESSLICH fuer das,
     was Claude nicht ohnehin weiss.
@@ -7,16 +7,27 @@
 Bis v5.25.0 arbeitete das Plugin nur RUECKWAERTS: es prueft Bestaende, die
 schon da sind. Es gab kein Tor beim HINEINschreiben — deshalb waechst alles.
 
-## Die acht Fragen
+## Die Pruefliste (Nutzer 29.10.2026; ersetzt die acht Fragen vom 30.08.2026)
 
-  A  braucht es die AUSSAGE?      A1 weiss das Modell es ohnehin?
-                                  A2 ist es noch wahr?
-                                  A3 handlungsleitend — oder Historie?
-  B  braucht es sie HIER?         B1 steht es schon woanders?
-                                  B2 steht es im Code?
-                                  B3 wirkt es an diesem Ort?
-  C  traegt die FORM?             C1 ist es hart formuliert?
-                                  C2 ist es befolgbar?
+  A  braucht es die AUSSAGE?   A1 fehlt es sonst? (Code, andere Datei, eigenes Wissen —
+                                  und stimmt das Wissen fuer DIESES System?)
+                               A2 bringt es spuerbar und oft etwas?          [Urteil]
+                               A3 geht es ohne nicht richtig?                [Urteil]
+  B  wohin?                    B4 jede Sitzung (Rule/CLAUDE.md) oder nur manchmal
+                                  (Command/`paths:`)?                        [Zeiger]
+                               B5 Anweisung oder Beleg (-> Archiv)?
+                               B6 muss es ohne Ausnahme gelten (-> Hook/Test)? [Urteil]
+  C  traegt die FORM?          C7 hart formuliert, Verbot mit Alternative
+                               C8 kein Widerspruch zum Bestand               [Zeiger]
+                               C9 Workaround mit Messdatum und Ablaufzeichen [Urteil]
+  D                            D10 Deckel                                    [Zeiger]
+  beim Aufraeumen              R1 stimmt es noch?
+
+  Die acht alten gehen darin auf: A1 -> A1 · A2 -> R1 · A3 -> B5 · B1/B2 -> A1 (Zeiger) ·
+  B3 -> B4 (Zeiger) · C1 -> C7 · C2 -> C7b. Jede Meldung nennt ihr altes Kuerzel mit.
+  ⛔ Neue Detektoren nur nach Messung (`Learnings/tor_messung.py`, 29.10.2026): C9 7 Kandidaten,
+     0 echt · Verbot ohne Alternative 265, schon die ersten trugen ihre Alternative · B6 0.
+     Diese drei bleiben Urteile.
 
 ⛔ B1/B2/B3 werden hier NICHT nachgebaut. Dafuer gibt es `cleaner_duplikate`,
    `cleaner_aussagen --code` und `cleaner_grenzen`. Die Klasse
@@ -296,18 +307,45 @@ def unspezifisch(s):
 
 _FRAGEN = [
     ("A1", "allgemeinwissen", allgemeinwissen,
-     "weiss das Modell ohnehin?"),
-    ("A2", "unbelegte-zahl", unbelegte_zahl,
-     "Bestandszahl ohne Zaehlbefehl — ist sie noch wahr?"),
-    ("A3", "historie", historie,
-     "Rueckblick statt Anweisung — gehoert ins Archiv"),
-    ("C1", "weich", weich,
-     "Gebot in weicher Form"),
+     "fehlt es sonst? — das Modell weiss es ohnehin"),
+    ("B5", "historie", historie,
+     "Beleg/Rueckblick statt Anweisung — gehoert ins Archiv (frueher A3)"),
+    ("C7", "weich", weich,
+     "Gebot in weicher Form (frueher C1)"),
+    ("R1", "unbelegte-zahl", unbelegte_zahl,
+     "stimmt es noch? — Bestandszahl ohne Zaehlbefehl (frueher A2)"),
 ]
 _NACHRANGIG = [
-    ("C2", "unspezifisch", unspezifisch,
-     "Gebot ohne pruefbare Handlung (hohe Fehlalarmquote)"),
+    ("C7b", "unspezifisch", unspezifisch,
+     "Gebot ohne pruefbare Handlung, hohe Fehlalarmquote (frueher C2)"),
 ]
+# ⭐ Altes Kuerzel -> neues. Wer einen alten Bericht liest, findet so die Frage wieder.
+ALT = {"A1": "A1", "A2": "R1", "A3": "B5", "C1": "C7", "C2": "C7b",
+       "B1": "A1", "B2": "A1", "B3": "B4"}
+
+# Die Fragen, die das Tor NICHT selbst beantwortet: Urteile (es erzwingt die Antwort) und
+# Zeiger auf die Werkzeuge, die es gibt (werkzeuge-zuerst.md — nicht nachbauen).
+URTEILE = [
+    ("A1", "fehlt es sonst? Steht es im Code oder in einer anderen Datei?",
+     "python cleaner_duplikate.py --bereich <projekt>  ·  python cleaner_aussagen.py --code <quellbaum>"),
+    ("A2", "bringt es spuerbar und oft etwas?", "Urteil"),
+    ("A3", "geht es ohne nicht richtig — wuerde Claude ohne die Zeile einen Fehler machen?", "Urteil"),
+    ("B4", "jede Sitzung oder nur manchmal (Command, `paths:`)? Wirkt es an diesem Ort?",
+     "python cleaner_einordnung.py --verzeichnis <pfad>  ·  python cleaner_grenzen.py --bestand <projekt>"),
+    ("B6", "muss es ohne Ausnahme gelten? Dann Hook/Test, keine Regel", "Urteil"),
+    ("C8", "widerspricht es dem Bestand?", "python cleaner_duplikate.py --widersprueche --bereich <projekt>"),
+    ("C9", "Workaround? Dann mit Messdatum und Zeichen, woran man merkt, dass er nicht mehr gilt", "Urteil"),
+    ("D10", "Deckel: wer anlegt, zahlt aus dem Bestand", "mind_kontext_bilanz <projekt> --vergleichen  ·  cleaner_tor.py --memory <projekt>"),
+]
+
+
+def je_zeile(treffer):
+    """{kuerzel: [(nr, s)]} -> [(nr, [kuerzel…], s)] — die Fragen ZEILENWEISE, nicht nur je Datei."""
+    z = {}
+    for k, liste in treffer.items():
+        for nr, s in liste:
+            z.setdefault(nr, ([], s))[0].append(k)
+    return [(nr, sorted(ks), s) for nr, (ks, s) in sorted(z.items())]
 
 
 def pruefe_text(text):
@@ -331,13 +369,13 @@ def pruefe_text(text):
 
 def _verweise():
     print()
-    print("  B1  steht es schon woanders / ist es doppelt?")
-    print("      python cleaner_duplikate.py --bereich <projekt>")
-    print("  B2  steht es im Code?")
-    print("      python cleaner_aussagen.py --code <quellbaum>")
-    print("  B3  wirkt es an diesem Ort?")
-    print("      python cleaner_grenzen.py --bestand <projekt>")
-    print("  ⛔ Diese drei werden hier NICHT nachgebaut — es gibt sie.")
+    print("  ── Urteile und Zeiger — das Tor erzwingt die Antwort, es gibt sie nicht ──")
+    for k, frage, weg in URTEILE:
+        # ▸ vor dem Kuerzel: die Zaehlzeilen oben beginnen mit "  <K> " — eine Urteilszeile in derselben
+        #   Form wuerde jeder Zaehler mitzaehlen (beim Bau gemessen: A1 zweimal getroffen).
+        print("  ▸ %-3s %s" % (k, frage))
+        print("        %s" % weg)
+    print("  ⛔ Die Werkzeuge werden hier NICHT nachgebaut — es gibt sie.")
 
 
 def lauf_datei(pfad):
@@ -372,9 +410,18 @@ def lauf_datei(pfad):
         for nr, s in tr[:3]:
             print("         Z%-5d %s" % (nr, s))
 
+    zw = je_zeile(treffer)
+    if zw:
+        print()
+        print("  ── je Zeile ─────────────────────────────────────────────────")
+        for nr, ks, s in zw[:20]:
+            print("  Z%-5d %-12s %s" % (nr, "/".join(ks), s[:60]))
+        if len(zw) > 20:
+            print("  … %d weitere Zeilen" % (len(zw) - 20))
+
     _verweise()
     print()
-    print("  ⚠ KANDIDATEN, keine Urteile. A1 und C2 sind Bedeutungsfragen;")
+    print("  ⚠ KANDIDATEN, keine Urteile. A1 und C7b sind Bedeutungsfragen;")
     print("    mechanisch entscheidbar sind nur Formmerkmale.")
     return 1 if gesamt else 0
 
@@ -395,7 +442,7 @@ def lauf_text(s):
     _verweise()
     print()
     print("  Quittung fuer den Lauf (in den Bericht, sonst Teilsync):")
-    print("    tor=<datei>:A1/A2/A3:B1/B2/B3:C1/C2")
+    print("    tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10")
     return 1 if offen else 0
 
 
@@ -540,7 +587,7 @@ def selbsttest():
                   allgemeinwissen("Ein Snapshot ist eine Kopie von 3 Staenden."),
                   False))
 
-    print("\n A2 — Bestandszahl ohne Zaehlbefehl")
+    print("\n R1 (frueher A2) — Bestandszahl ohne Zaehlbefehl")
     ok.append(_ja("positiv: '5 Hooks' ohne Beleg",
                   unbelegte_zahl("Das Plugin hat 5 Hooks."), True))
     ok.append(_ja("negativ: dieselbe Zahl MIT Zaehlbefehl",
@@ -551,7 +598,7 @@ def selbsttest():
     ok.append(_ja("negativ: Zahl ohne Bestandswort",
                   unbelegte_zahl("Die Schwelle liegt bei 5 Minuten."), False))
 
-    print("\n A3 — Rueckblick statt Anweisung")
+    print("\n B5 (frueher A3) — Rueckblick statt Anweisung")
     ok.append(_ja("positiv: 'Hier stand bis gestern X'",
                   historie("Hier stand bis 27.08. eine andere Zahl."), True))
     ok.append(_ja("positiv: 'Bis v5.20.2 lautete es anders'",
@@ -562,7 +609,7 @@ def selbsttest():
     ok.append(_ja("negativ: ein BELEG ist kein Rueckblick",
                   historie("Gemessen am 21.08.2026 an vier Projekten."), False))
 
-    print("\n C1 — Gebot in weicher Form")
+    print("\n C7 (frueher C1) — Gebot in weicher Form")
     ok.append(_ja("positiv: 'man sollte vorher sichern'",
                   weich("Man sollte vorher sichern."), True))
     ok.append(_ja("positiv: 'moeglichst nicht loeschen'",
@@ -583,7 +630,7 @@ def selbsttest():
     ok.append(_ja("positiv: HAUPTSATZ mit demselben Wort bleibt Kandidat",
                   weich("Der Agent sollte den Befund liefern."), True))
 
-    print("\n C2 — Gebot ohne pruefbare Handlung")
+    print("\n C7b (frueher C2) — Gebot ohne pruefbare Handlung")
     ok.append(_ja("positiv: 'NIE unvorsichtig sein'",
                   unspezifisch("NIE unvorsichtig sein."), True))
     ok.append(_ja("negativ: Gebot MIT Pfad",
@@ -600,6 +647,17 @@ def selbsttest():
     tr = pruefe_text(t)
     ok.append(_ja("nur die freie Zeile zaehlt (1 Treffer A1)",
                   len(tr.get("A1", [])), 1))
+
+    print("\n Zeilenweise (Nachtrag 3, 29.10.2026)")
+    zw = je_zeile({"A1": [(3, "x")], "C7": [(3, "x"), (5, "y")]})
+    ok.append(_ja("zwei Fragen an EINER Zeile stehen zusammen",
+                  zw, [(3, ["A1", "C7"], "x"), (5, ["C7"], "y")]))
+    ok.append(_ja("jedes alte Kuerzel hat ein neues", sorted(ALT),
+                  ["A1", "A2", "A3", "B1", "B2", "B3", "C1", "C2"]))
+    neu = {k for k, *_ in _FRAGEN + _NACHRANGIG} | {k for k, *_ in URTEILE}
+    ok.append(_ja("jedes neue Ziel ist eine Frage des Tors", set(ALT.values()) <= neu, True))
+    ok.append(_ja("A1 bis D10 sind alle da",
+                  {"A1", "A2", "A3", "B4", "B5", "B6", "C7", "C8", "C9", "D10"} <= neu, True))
 
     n_ok = sum(1 for x in ok if x)
     print()

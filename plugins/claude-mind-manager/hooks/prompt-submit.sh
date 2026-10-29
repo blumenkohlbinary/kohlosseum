@@ -359,10 +359,10 @@ Das ist KEIN Fehler und blockt nichts — Handarbeit an Context-Dateien ist norm
 Es ist eine Erinnerung: dieser Zuwachs ist an den fuenf Context-Commands vorbei
 entstanden und hat deshalb das Kontext-Tor nie gesehen.
 
-Die acht Fragen, kurz:
-  A1 selbsterklaerend?   A2 noch wahr?      A3 Regel oder Historie?
-  B1 steht es schon woanders?   B2 im Code?   B3 wirkt es an DIESEM Ort?
-  C1 hart formuliert?    C2 befolgbar?
+Die Pruefliste, kurz:
+  A1 fehlt es sonst?   A2 bringt es oft etwas?   A3 geht es ohne nicht?
+  B4 jede Sitzung oder manchmal?   B5 Anweisung oder Beleg?   B6 Hook/Test statt Regel?
+  C7 hart, Verbot mit Alternative?   C8 Widerspruch?   C9 Workaround datiert?   D10 Deckel
 ${_KAB:+
 ⛔ DECKEL-ANKER ABGELEHNT: ${_KAB}
    Fail-safe: ein zu hoher Anker meldet zu viel Schuld, ein zu niedriger verschweigt sie.

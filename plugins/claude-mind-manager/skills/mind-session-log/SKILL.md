@@ -35,7 +35,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.157.0"
+MIND_SKILL_VERSION="5.159.0"
 mind_schritt_start "$PROJ" mind-session-log 
 ```
 
@@ -128,7 +128,7 @@ die mind command erfassen"). User-Internals (`/model`, `/context`, `/compact`) w
 ausgefiltert. Override via `--all-commands` Arg.
 
 ```bash
-ARGS="${ARGUMENTS:-}"
+ARGS='$ARGUMENTS'   # v5.159.0: Claude Code ersetzt beim Laden nur das blanke Argument-Token, nie die Form mit Klammern
 MODE="full-notrunc"     # v3.3.0 DEFAULT: kein 5000-char-Cap (war "full" mit Cap)
 THEMA=""
 SPLIT_MODE="per-command"  # v3.3.0 DEFAULT: 1 File pro Slash-Command

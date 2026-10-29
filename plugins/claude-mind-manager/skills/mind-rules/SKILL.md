@@ -43,7 +43,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.157.0"
+MIND_SKILL_VERSION="5.159.0"
 mind_schritt_start "$PROJ" mind-rules bestandsaufnahme bestandszahlen_kandidaten cleaner_duplikate cleaner_stichprobe cleaner_tor ladeprotokoll_auswertung mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -107,7 +107,7 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/01-pflichtschritte-dieser.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/01-pflichtschritte-dieser.sh"
 ```
 
 ⛔ **Fehlt diese Zeile oder nennt sie `FEHLT`, ist der Bericht unvollstaendig** und
@@ -131,7 +131,7 @@ Provide complete management of `.claude/rules/*.md` files including syntax valid
 zu erzeugen gibt.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/02-step0-modus-snapshot.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/02-step0-modus-snapshot.sh"
 ```
 
 `--ask` = Diff zeigen + Freigabe (Verhalten vor v5.0.0).
@@ -278,7 +278,7 @@ Plugin den Hook mit (`hooks/instructions-loaded.sh`, per Auto-Discovery registri
 Er laeuft in **jedem** Projekt und schreibt ein Ladeprotokoll:
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/03-subcommand-check.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/03-subcommand-check.sh"
 ```
 
 *(Die frueher hier vorgeschlagene Handregistrierung riet den Feldnamen `.files` —
@@ -297,7 +297,7 @@ es braucht eine neue.
 wirklich, und wie ist der Bestand aufgebaut?
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/04-subcommand-budget.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/04-subcommand-budget.sh"
 ```
 
 **Danach je Regel einordnen** — nach dem Vier-Wege-Kriterium:
@@ -419,7 +419,7 @@ After:
 Bis v5.145.0 stand dieser Schritt im Pflichtkasten und in der Startzeile, aber **nirgends als Aufruf** — erwartet, nie gelaufen. So entstand Noras `FEHLT: mind-rules/cleaner_duplikate` (Palvedo, 20.09.2026), und so wurden Schritte von Hand nachgeholt. Teil von `check`: steht eine Regel schon in einer anderen Ablage (Frage B1 des Kontext-Tors)?
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/05-pflichtschritt-cleaner.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/05-pflichtschritt-cleaner.sh"
 ```
 
 ## ⛔ SUCHEN, BEVOR DU ERGAENZT (PFLICHT, NEU v5.20.0)
@@ -493,7 +493,7 @@ deshalb als Meldung da, nicht als Tatsache.** Der Check bleibt trotzdem richtig:
 einen realen Fehlermodus, den kein anderer sieht.
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/06-der-schwerste.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/06-der-schwerste.sh"
 ```
 
 ⚠ **Nicht verwechseln mit „ganz ohne Frontmatter".** Eine Datei ohne jedes `---` nutzt den
@@ -546,8 +546,8 @@ Bis v5.25.0 arbeitete dieser Command nur **rückwärts** — er prüfte, was sch
 ist. **Es gab kein Tor beim Hineinschreiben.** Deshalb wächst alles.
 
 **Die vollständige Vorschrift steht in
-[references/kontext-tor.md](../../references/kontext-tor.md)** — die neun
-Fragen, beide Richtungen, die Quittung, die Grenzen. **Lies sie**, bevor du
+[references/kontext-tor.md](../../references/kontext-tor.md)** — die Pruefliste
+A1–D10, beide Richtungen, die Quittung, die Grenzen. **Lies sie**, bevor du
 diesen Schritt ausführst. Hier steht nur, was für **diesen** Command gilt:
 
 | | |
@@ -576,7 +576,7 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_einordnung.py" --wohin "$ZIEL_RUL
 
 ## ⛔ D1 — die neunte Frage: WOHIN gehoert diese Aussage?
 
-**Die acht Fragen oben pruefen alle, OB etwas hinein darf. Keine fragt, WOHIN.**
+**Die Pruefliste oben prueft, OB etwas hinein darf; B4 fragt nur, wie OFT es gebraucht wird. WOHIN genau, sagt D1.**
 B3 prueft, ob eine Aussage am **schon gewaehlten** Ort wirkt — es kann zustimmen
 oder ablehnen, nicht umleiten. Ein Tuersteher, kein Wegweiser. Wer durchkommt,
 landet dort, wo der Schreiber gerade steht, und das ist fast immer eine
@@ -607,7 +607,7 @@ gehoeren. Ob das mechanisch entscheidbar ist, ist **UNGEMESSEN**.
 lief und nichts fand oder gar nicht lief:
 
 ```
-tor=<datei>:A1/A2/A3:B1/B2/B3:C1/C2:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>
+tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>
 ```
 
 
@@ -616,15 +616,15 @@ tor=<datei>:A1/A2/A3:B1/B2/B3:C1/C2:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>
 Bestands-Pass (v5.22.0) und Schritt-Quittung (v5.25.0).
 
 ```
-tor=<datei>:A1/A2/A3:B1/B2/B3:C1/C2
+tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10
 ```
 
-⛔ **B1/B2/B3 beantwortet `cleaner_tor` NICHT — es nennt sie.** Dafür gibt es
+⛔ **A1 (Code, andere Datei), B4, C8 und D10 beantwortet `cleaner_tor` NICHT — es nennt sie.** Dafür gibt es
 `cleaner_duplikate`, `cleaner_aussagen --code` und `cleaner_grenzen`. Die Klasse
 `instrument-nachgebaut` steht mit 7 Vorkommen im Debug-Ordner, und **kein
 einziger Nachbau war besser als das Original** (`werkzeuge-zuerst.md`).
 
-⚠ **A1 und C2 bleiben Urteile.** Das Tor erzwingt eine **Antwort**, nicht die
+⚠ **A1, A2, A3, B6, C7b und C9 bleiben Urteile.** Das Tor erzwingt eine **Antwort**, nicht die
 richtige — wie die Agent-Quittung (v5.19.0), die keinen Agenten zur Arbeit
 zwingt, sondern sein Fehlen sichtbar macht.
 
@@ -660,7 +660,7 @@ der Spalte `Ordner` des Rosters mit (fehlt die Spalte: jeder direkte Unterordner
 `CLAUDE.md`) — das ist der Dauerkontext der Arbeiter-Sitzungen. Gemessen 14.09.2026 (Creator,
 Doro): sieben Unterordner, fuenf CLAUDE.md und 17 Rules, in keinem Bericht genannt.
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/07-step9-der-bestands.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/07-step9-der-bestands.sh"
 ```
 Der Bericht nennt je Datei den Ordner (`<Ordner>/CLAUDE.md`, `<Ordner>/.claude/rules/<name>`).
 `mind_snapshot` sichert sie seit v5.106.0 von selbst mit.
@@ -742,7 +742,7 @@ Lies sie.** Hier nur, was für diesen Skill gilt:
 | ⛔ **Stufe 3** (v5.83.0) | der Wort-Diff wird GANZ gelesen, bevor angewendet wird. **Ohne Leser: nicht anwenden** — Ergebnis, Bericht, Diff ablegen, Pfad melden. Zwei Verfälschungen bei 100 % Stufe 1 gemessen (11.09.2026) |
 
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/08-step9b-verdichten-die.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/08-step9b-verdichten-die.sh"
 ```
 
 ⛔ **Der Bericht dieses Schritts sind die drei Zeilen aus `mind_verdichtung_pruefen`** — oder

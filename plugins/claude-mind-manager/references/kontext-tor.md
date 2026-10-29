@@ -20,32 +20,32 @@ schon da sind. Es gab **kein Tor beim Hineinschreiben.** Deshalb wächst alles.
 
 ---
 
-## Die acht Fragen
+## Die Pruefliste A1–D10
 
-### Gruppe A — braucht es die AUSSAGE überhaupt?
+Nutzer 29.10.2026: *„mind cleaner soll autonom arbeiten und er soll die neuen fragen auch drin haben“* —
+die Pruefliste A1–D10 ersetzt die acht Fragen vom 30.08.2026. Die alten gehen darin auf (rechte Spalte).
 
-| # | Frage | wer beantwortet sie | mechanisch? |
-|---|---|---|---|
-| **A1** | Weiß das Modell es ohnehin? | `cleaner_tor` (Extremfall) | ⚠ teilweise |
-| **A2** | Ist es noch wahr? | `cleaner_tor`, `cleaner_belege` | ⚠ teilweise |
-| **A3** | Handlungsleitend — oder Historie? | `cleaner_tor` | ⚠ teilweise |
+| # | Frage | wer beantwortet sie | mechanisch? | frueher |
+|---|---|---|---|---|
+| **A1** | Fehlt es sonst? (Code, andere Datei, eigenes Wissen — und stimmt das Wissen fuer DIESES System?) | `cleaner_tor` (Extremfall) · `cleaner_duplikate` · `cleaner_aussagen --code` | ⚠ teilweise | A1, B1, B2 |
+| **A2** | Bringt es spuerbar und oft etwas? | Urteil | ✗ | — |
+| **A3** | Geht es ohne nicht richtig? | Urteil | ✗ | — |
+| **B4** | Jede Sitzung (Rule/CLAUDE.md) oder nur manchmal (Command/`paths:`)? | `cleaner_einordnung` · `cleaner_grenzen` · D1 | ⚠ teilweise | B3 |
+| **B5** | Anweisung oder Beleg (→ Archiv)? | `cleaner_tor` | ⚠ teilweise | A3 |
+| **B6** | Muss es ohne Ausnahme gelten (→ Hook/Test)? | Urteil | ✗ | — |
+| **C7** | Hart formuliert, Verbot mit Alternative | `cleaner_tor` (C7 weich, C7b unspezifisch) | ✅ / ⚠ | C1, C2 |
+| **C8** | Kein Widerspruch zum Bestand | `cleaner_duplikate --widersprueche` | ✅ ja | — |
+| **C9** | Workaround mit Messdatum und Ablaufzeichen | Urteil | ✗ | — |
+| **D10** | Deckel — wer anlegt, zahlt aus dem Bestand | `mind_kontext_bilanz --vergleichen` · `cleaner_tor --memory` | ✅ ja | — |
+| **R1** | Beim Aufraeumen: stimmt es noch? | `cleaner_tor` · `cleaner_belege` | ⚠ teilweise | A2 |
 
-### Gruppe B — braucht es sie an DIESEM ORT?
+⛔ **Neue Detektoren nur nach Messung** (`Learnings/tor_messung.py`, 29.10.2026, 56 Dateien): C9 7 Kandidaten,
+0 echt · „Verbot ohne Alternative“ 265 Kandidaten, schon die ersten trugen ihre Alternative · B6 0. Diese drei
+bleiben Urteile — das Tor erzwingt die Antwort, es gibt sie nicht.
+⭐ **Zeilenweise:** `--datei` listet die Treffer je Frage UND je Zeile (`── je Zeile ──`); eine Zeile mit zwei
+Treffern steht einmal, mit beiden Kuerzeln.
 
-| # | Frage | wer beantwortet sie | mechanisch? |
-|---|---|---|---|
-| **B1** | Steht es schon woanders? Ist es doppelt? | `cleaner_duplikate` | ✅ **ja** |
-| **B2** | Steht es im Code? | `cleaner_aussagen --code` | ⚠ teilweise |
-| **B3** | Wirkt es an diesem Ort? | `cleaner_grenzen` | ✅ ja |
-
-### Gruppe C — trägt die FORM?
-
-| # | Frage | wer beantwortet sie | mechanisch? |
-|---|---|---|---|
-| **C1** | Ist es hart formuliert? | `cleaner_tor` | ✅ ja |
-| **C2** | Ist es befolgbar? | `cleaner_tor` | ⚠ schwächste |
-
-⛔ **B1/B2/B3 werden von `cleaner_tor` NICHT beantwortet, sondern GENANNT.** Die
+⛔ **A1 (Code, andere Datei), B4, C8 und D10 werden von `cleaner_tor` NICHT beantwortet, sondern GENANNT.** Die
 Klasse `instrument-nachgebaut` steht mit **7** Vorkommen im Debug-Ordner, Bilanz
 ~250 · 11 · 9 · 7 Fehltreffer — **kein einziger Nachbau war besser als das
 Original** (`werkzeuge-zuerst.md`).
@@ -73,8 +73,8 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_tor.py" --datei "<datei.md>"
 ## Die Quittung
 
 ```
-tor=<datei>:A1/A2/A3:B1/B2/B3:C1/C2
-z.B.  tor=CLAUDE.md:neu/wahr/regel:neu/n-a/wirkt:hart/spez
+tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10
+z.B.  tor=CLAUDE.md:fehlt/oft/noetig:jede/regel/nein:hart/frei/n-a:gezahlt
 ```
 
 ⛔ **Ein `ADD` ohne Tor-Quittung macht den Lauf zum Teilsync** — dieselbe
@@ -115,7 +115,7 @@ zweimal derselbe Satz.
 
 ## ⛔ Was das Tor NICHT kann
 
-- **A1 und C2 bleiben Urteile.** Ob ein Modell etwas weiß, steht in keiner
+- **A1, A2, A3, B6, C7b und C9 bleiben Urteile.** Ob ein Modell etwas weiß, steht in keiner
   Datei. Das Tor erzwingt eine **Antwort**, nicht die richtige — dieselbe
   Mechanik wie die Agent-Quittung (v5.19.0): sie zwingt keinen Agenten zu
   arbeiten, sie macht sein **Fehlen** sichtbar. Das hat gereicht.

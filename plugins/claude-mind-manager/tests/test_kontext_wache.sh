@@ -97,7 +97,7 @@ printf 'vorher=100\njetzt=180\ndelta=80\nts=1\n' > "$MERKER"
 _B=$(printf '%s' "$_EIN" | CLAUDE_PROJECT_DIR="$P" bash "$PS" 2>/dev/null)
 janein "⭐ MIT Merker meldet er den Zuwachs" \
        "$(printf '%s' "$_B" | grep -c 'um 80 Zeilen gewachsen')" "1"
-janein "die Meldung nennt die acht Fragen" \
+janein "die Meldung nennt die Pruefliste (A1–D10)" \
        "$(printf '%s' "$_B" | grep -c 'A1')" "1"
 janein "⛔ Merker ist VERBRAUCHT (sonst meldet es bei jedem Prompt)" \
        "$([ -f "$MERKER" ] && echo ja || echo nein)" "nein"

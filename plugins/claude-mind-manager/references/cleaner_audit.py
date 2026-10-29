@@ -436,11 +436,12 @@ def lauf(projekt, nur="alles", doku=None):
             _tr = tor.pruefe_text(_txt)
         except OSError:
             _tr = {}
-        for _k in ("A1", "A2", "A3", "C1"):
-            if _tr.get(_k):
-                gruppen["6"].append(
-                    (p, "%s x%d — %s" % (_k, len(_tr[_k]),
-                                         _tr[_k][0][1][:40])))
+        # v5.159.0 (Nutzer 29.10.2026): ZEILENWEISE, nicht nur je Datei — eine Zeile je getroffener
+        #   Zeile, mit allen Kuerzeln dieser Zeile. Bis v5.158.0 stand je Datei und Kuerzel nur der
+        #   ERSTE Treffer da ("A1 x5 — …"); die Zahl der Gruppe steigt dadurch, der Inhalt nicht.
+        _tr = {_k: _v for _k, _v in _tr.items() if _k in ("A1", "R1", "B5", "C7")}
+        for _nr, _ks, _s in tor.je_zeile(_tr):
+            gruppen["6"].append((p, "Z%d %s — %s" % (_nr, "/".join(_ks), _s[:40])))
 
         # Falsch platziert? — v5.108.0: DOCS dazu, und die ZWEITE Klasse steht mit im Bericht
         if _unant and (vorschlag in ("HOOK-KANDIDAT", "COMMAND", "DOCS") or "RULE-PATHS" in ((e or {}).get("vorschlaege") or [])):
@@ -588,7 +589,7 @@ def lauf(projekt, nur="alles", doku=None):
 
     if gruppen["6"]:
         print()
-        print("       ⚠ A1 (weiss das Modell es?) und C2 (befolgbar?) sind")
+        print("       ⚠ A1 (fehlt es sonst?) und C7b (befolgbar?) sind")
         print("         URTEILE, keine Messungen — Kandidaten, kein Befund.")
         print("         Vorschrift: references/kontext-tor.md")
 

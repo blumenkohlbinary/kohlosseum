@@ -24,6 +24,8 @@ INPUT=$(cat 2>/dev/null)
 # hinterlassen.
 MIND_LOG_FILE="/tmp/mind-manager.log"
 _slog() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1 session-start: ${*:2}" >> "$MIND_LOG_FILE" 2>/dev/null; }
+# v5.159.0 (Etappe 60): Messung — ueberlebt CLAUDE_PID ein Leeren? Die Host-Kennung kommt im Hook nicht an.
+_slog DEBUG "pid=${CLAUDE_PID:-leer} source=$(printf '%s' "$INPUT" | grep -oE '"source" *: *"[a-z]*"' | grep -oE '"[a-z]*"$' | tr -d '"') sid=$(printf '%s' "$INPUT" | grep -oE '"session_id" *: *"[^"]*"' | grep -oE '[0-9a-f-]{36}' | head -1)"
 
 PROJ="${CLAUDE_PROJECT_DIR:-}"
 if [ -z "$PROJ" ] && command -v jq >/dev/null 2>&1; then
