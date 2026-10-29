@@ -44,7 +44,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.154.0"
+MIND_SKILL_VERSION="5.155.0"
 mind_schritt_start "$PROJ" mind-denkstufe antwort_zuerst aufgabe_verstehen ablage_lesen eigene_erfahrung gegenprobe antwort_speichern
 
 ARGS="${ARGUMENTS:-}"
@@ -205,6 +205,34 @@ fuer einen Befund liest.
 
 Dazu `listeverbesserungen.md` im Projekt: welche Laeufe Befunde brachten und welche nicht.
 
+**Messgrundlage Verlauf (v5.155.0, Etappe 59) — Grundlast, Stand nach Kompaktierung, Einlese-Bedarf bis zur ersten
+Aenderung, Verteilung, Agenten und Workflows dieses Ordners, ZAEHLEND aus den Transkripten:**
+
+```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung
+_G=$(jq -r '.autoCompactWindow // empty' "$PROJ/.claude/settings.json" 2>/dev/null)
+[ -n "$_G" ] || _G=$(jq -r '.autoCompactWindow // empty' "$HOME/.claude/settings.json" 2>/dev/null)
+python "$CLAUDE_PLUGIN_ROOT/references/kontext_grundlage.py" --projekt "$PROJ" ${_G:+--grenze "$_G"}
+```
+
+⛔ **Die Ausgabe ist Information, KEINE Schwelle** (Nutzer 28.10.2026: *„das soll nicht einfach festgelegt
+sein, jeder chat an eigene aufgabe"*). Sie hilft beim Urteil, ob ein Chat seinen Verlauf braucht; eine
+Kompaktier-Zahl je Ordner wird NICHT empfohlen. Teilen sich mehrere Rollen den Ordner, sagt das Werkzeug es —
+dann gibt es nur einen Wert fuer alle. `NICHT MESSBAR` heisst: globale Vorgabe lassen, keine Zahl nennen.
+
+**Ultracode — ob er sich fuer diese Aufgabe lohnt** (Teil der Empfehlung, nicht eine dritte getrennte Antwort):
+
+| | |
+|---|---|
+| lohnt bei **Breite** | viele Dateien/Projekte durchsuchen, Audits, Migrationen, Gegenpruefung durch unabhaengige Pruefer |
+| lohnt **nicht** | Tiefe an einer bekannten Stelle, kleine Aenderungen, Gespraech — und wenn das Kontingent knapp ist |
+| BELEGT | *„each request uses more tokens and takes longer"* — code.claude.com/docs/en/workflows (29.10.2026) |
+| BELEGT | braucht ein Modell, das `xhigh` kann (u. a. Opus 5.5, Sonnet 5.5, Fable 5) — code.claude.com/docs/en/model-config |
+
+Gemessen statt geschaetzt: die Zeile `Workflows` oben zaehlt, wie oft in diesem Ordner Workflows liefen.
+Ohne Messwert ist die Ultracode-Empfehlung **HERGELEITET**.
+
 ---
 
 ## Step 5 · `gegenprobe` — zwei Agenten, JE GEGEN EINE THESE
@@ -237,7 +265,17 @@ zurueck, gilt seine Richtung als **ungeprueft** und steht so im Bericht — nich
 
 ```
 Aufgabe:     <Wortlaut>
-Empfehlung:  Modell <…>, Denkstufe <low|medium|high|xhigh|max>
+Empfehlung:  <Modell> · <low|medium|high|xhigh|max> · Ultracode <an|aus>     (EINE Kombination, v5.155.0)
+
+VERLAUF  (Messgrundlage aus Step 4 — Information, keine Schwelle)
+  BELEGT       Grundlast <n> · nach Kompaktierung <n> · Einlese-Bedarf p50/p95 <n>/<n>
+  HERGELEITET  Leeren mit Uebergabe gegen Kompaktieren: <Satz aus dem Werkzeug>
+
+EINSTELLEN  (Quelle: code.claude.com/docs/en/model-config, /workflows, /settings-reference — 29.10.2026)
+  Sitzung:   /model <Modell> · /effort <Stufe> · /effort ultracode  (bzw. /effort ultracode off)
+  Ordner:    .claude/settings.json  {"model": "<id>", "effortLevel": "<Stufe>", "ultracode": true|false}
+  eine Aufgabe: das Wort „ultracode" im selbst getippten Prompt (nicht bei -p)
+  ⚠ effortLevel kennt kein "max"; Ultracode setzt die Stufe nicht.
 
 BEGRUENDUNG
   BELEGT       <Aussage>                        Quelle: <URL oder eigene Messung>  (<Datum>)
