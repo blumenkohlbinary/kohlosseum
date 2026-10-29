@@ -42,7 +42,7 @@
 set -u
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { echo "CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 2; }
 LIB="$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-SK="$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md"
+SK="$(skill_text_datei "$CLAUDE_PLUGIN_ROOT" mind-all)"
 for f in "$LIB" "$SK"; do [ -f "$f" ] || { echo "fehlt: $f" >&2; exit 2; }; done
 # shellcheck disable=SC1090
 . "$LIB"
@@ -139,7 +139,7 @@ echo "=== ⛔ Noras Befund 2: die Sperre steht VOR dem Snapshot ==="
 # ⛔ GEMESSEN in Palvedo: jeder abgewiesene Zweitlauf liess rund 464 KB
 #    Sicherung liegen — fuer einen Lauf, den es nie gab. Geprueft wird die
 #    REIHENFOLGE im Skill, denn der Effekt entsteht nur aus ihr.
-_MA="$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md"
+_MA="$(skill_text_datei "$CLAUDE_PLUGIN_ROOT" mind-all)"
 _ZS=$(grep -n 'mind_lauf_sperre "\$PROJ"' "$_MA" | head -1 | cut -d: -f1)
 _ZN=$(grep -n 'mind_snapshot "\$PROJ" "pre-mind-all"' "$_MA" | head -1 | cut -d: -f1)
 janein "die Sperre wird genommen" "1" "$([ -n "$_ZS" ] && echo 1 || echo 0)"

@@ -97,7 +97,7 @@ pruef "   ... und die zwei aus dem Merker bleiben" "2" "$(zahl "$P")"
 
 echo
 echo "=== 7) ⛔ Die Auswahl steht an EINER Stelle ==="
-MA="$R/skills/mind-all/SKILL.md"
+MA="$(skill_text_datei "$R" mind-all)"
 MU="$R/skills/mind-update/SKILL.md"
 pruef "mind-all ruft mind_rettungen"    "1" "$(grep -c 'mind_rettungen "\$PROJ"' "$MA")"
 pruef "mind-update ruft mind_rettungen" "1" "$(grep -c 'RESCUED_ALLE=\$(mind_rettungen' "$MU")"

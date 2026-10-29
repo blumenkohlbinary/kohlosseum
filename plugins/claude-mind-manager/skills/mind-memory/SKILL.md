@@ -43,7 +43,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.151.0"
+MIND_SKILL_VERSION="5.152.0"
 mind_schritt_start "$PROJ" mind-memory bestandszahlen_kandidaten cleaner_stichprobe cleaner_tor mind_debug_write mind_kontext_bilanz mind_scan_poisoning mind_snapshot verdichten
 ```
 
@@ -161,6 +161,7 @@ if [ "$CHAIN" = "no" ]; then
   [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
   [ -z "$CLAUDE_PLUGIN_ROOT" ] && { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
   source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
   SNAPSHOT=$(mind_snapshot "$PROJ" "pre-memory") || {
     echo "ABBRUCH: Snapshot fehlgeschlagen — es wird NICHTS editiert." >&2; exit 1; }
   echo "Snapshot: $SNAPSHOT"
@@ -194,6 +195,7 @@ if [ -z "$CLAUDE_PLUGIN_ROOT" ] || [ ! -f "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" ]; 
   exit 1
 fi
 source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 MEMORY_DIR=$(get_memory_dir)
 # ⛔ v5.109.0 (Etappe 18, Nutzer 14.09.2026: "jedes fork hat eigenen memory"): im
 #    Rollen-Aufbau hat JEDER Roster-Unterordner sein eigenes Memory (eigener Slug).
@@ -904,6 +906,7 @@ Schritt ausführst. Hier steht nur, was für **diesen** Skill gilt:
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
 [ -n "$CLAUDE_PLUGIN_ROOT" ] || { echo "ERROR: $CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
 source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 
 # 1) PFLICHTZEILE — sie MUSS woertlich in den Self-Check-Block des Berichts.
 #    ⛔ Nicht nur erwaehnen: die Zeile selbst, mit beiden Zahlenpaaren.

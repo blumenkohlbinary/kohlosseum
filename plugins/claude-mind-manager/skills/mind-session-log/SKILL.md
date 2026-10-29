@@ -35,7 +35,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.151.0"
+MIND_SKILL_VERSION="5.152.0"
 mind_schritt_start "$PROJ" mind-session-log 
 ```
 
@@ -197,6 +197,7 @@ if [ -z "$CLAUDE_PLUGIN_ROOT" ] || [ ! -f "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" ]; 
   exit 1
 fi
 source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 SLUG=$(hash_project_dir)
 PROJECTS_DIR="$HOME/.claude/projects/$SLUG"
 

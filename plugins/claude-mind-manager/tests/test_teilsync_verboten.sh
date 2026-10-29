@@ -57,7 +57,7 @@ pruef() { if [ "$2" = "$3" ]; then GRUEN=$((GRUEN+1)); echo "  [ok ] $1"
 # shellcheck disable=SC1090
 . "$R/hooks/lib.sh" 2>/dev/null
 
-MA="$R/skills/mind-all/SKILL.md"
+MA="$(skill_text_datei "$R" mind-all)"
 MU="$R/skills/mind-update/SKILL.md"
 
 echo "=== 1) ⛔ Die Funktion ist WEG — nicht nur ungenutzt ==="

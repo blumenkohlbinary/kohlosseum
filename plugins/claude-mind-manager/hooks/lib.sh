@@ -1697,6 +1697,19 @@ mind_kopf_lauf() {
   printf '%s\n' "$l"
 }
 
+# mind_block_umgebung   -> setzt PROJ, SCOPES_FILE, LAUF, AGENT_SOLL, sofern leer (v5.152.0)
+# ⛔ Jeder bash-Block eines Skills ist ein EIGENER Prozess (gemessen 28.10.2026, Etappe 58): was ein
+#    frueherer Block setzte, ist im naechsten leer. 2.96a-Merker schrieb `sync-stand` nur bei
+#    `SYNC_LIEF=ja` — gesetzt in einem ANDEREN Block. Ohne Handuebertrag durch das Modell entstand
+#    kein Merker, und die Schuld blieb offen. Ein gesetzter Wert gewinnt; nur leere werden hergeleitet.
+mind_block_umgebung() {
+  PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
+  SCOPES_FILE="${SCOPES_FILE:-$PROJ/.claude-mind/analyzed-scopes}"
+  LAUF="${LAUF:-$(mind_kopf_lauf "$PROJ" 2>/dev/null)}"
+  AGENT_SOLL="${AGENT_SOLL:-4}"
+  return 0
+}
+
 # mind_lock_lauf <projekt>   -> die Lauf-ID aus dem Lock (leer + rc 1)
 mind_lock_lauf() {
   local l

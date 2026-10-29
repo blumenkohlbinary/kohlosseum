@@ -55,7 +55,7 @@ pruef "OPEN entfernt" "$([ -f "$P/.claude-mind/rescued/OPEN" ] && echo liegt || 
 pruef "drei RESUME .done" "$A" "3 RESUME .done"
 
 echo "=== 5) /mind-all Step 0 schreibt die Liste aus RESCUED_ALL — Dateinamen, auch aus Windows-Pfaden ==="
-Z=$(tr -d '\r' < "$R/skills/mind-all/SKILL.md" | grep -m1 "^printf '%s\\\\n' \"\$RESCUED_ALL\" | sed")
+Z=$(tr -d '\r' < "$(skill_text_datei "$R" mind-all)" | grep -m1 "^printf '%s\\\\n' \"\$RESCUED_ALL\" | sed")
 pruef "Zeile gefunden" "$([ -n "$Z" ] && echo ja || echo nein)" "ja"
 RESCUED_ALL=$(printf '%s\n' 'C:\CD\x\.claude-mind\rescued\20261026-1_chat.md' '/c/CD/x/.claude-mind/rescued/20261027-2_chat.md')
 _GL="$TMP/gl.txt" RESCUED_ALL="$RESCUED_ALL" bash -c "$Z"

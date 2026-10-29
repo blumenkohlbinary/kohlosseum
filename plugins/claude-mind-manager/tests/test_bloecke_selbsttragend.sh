@@ -42,7 +42,13 @@ def bloecke(t):
 n, ohne = 0, []
 for f in [l.strip() for l in io.open(sys.argv[1], encoding="utf-8") if l.strip()]:
     s = os.path.basename(os.path.dirname(f))
-    for nr, c in bloecke(io.open(f, encoding="utf-8").read()):
+    t = io.open(f, encoding="utf-8").read()
+    if f.endswith(".sh"):   # v5.152.0: ein Block-Skript ist EIN Block (bloecke/*.sh)
+        s = os.path.basename(f)
+        gen = [(1, "\n".join(x for x in t.replace("\r\n", "\n").split("\n") if not x.lstrip().startswith("#")))]
+    else:
+        gen = bloecke(t)
+    for nr, c in gen:
         if RUF.search(c):
             n += 1
             if not SRC.search(c):
@@ -53,7 +59,7 @@ PYEOF
 # ⚠ Windows-Python schreibt CRLF auf stdout — das `\r` muss weg, sonst ist „81\r" keine Zahl
 pruefe() { mapfile -t ERG < <("$PY" "$(win "$TMP/pruefe.py")" "$(win "$TMP/liste.txt")" | tr -d '\r'); }
 
-for f in "$R"/skills/*/SKILL.md; do win "$f"; echo; done > "$TMP/liste.txt"
+for f in "$R"/skills/*/SKILL.md "$R"/skills/*/bloecke/*.sh; do [ -f "$f" ] && { win "$f"; echo; }; done > "$TMP/liste.txt"
 pruefe
 pruef "Vakuum-Waechter: mindestens 60 Bloecke mit mind_*-Aufruf gelesen" \
   "$([ "${ERG[0]:-0}" -ge 60 ] 2>/dev/null && echo ja || echo "nein (${ERG[0]:-0})")" "ja"
@@ -64,6 +70,15 @@ mkdir -p "$TMP/kaputt"; printf '```bash\nmind_schritt_bilanz "$PROJ"\n```\n' > "
 win "$TMP/kaputt/SKILL.md" > "$TMP/liste.txt"
 pruefe
 pruef "Gegenkontrolle: ein Block ohne source wird erkannt" "${ERG[1]:-?}" "kaputt:1"
+
+# ⛔ v5.152.0 (Etappe 58 Hebel B): jedes Block-Skript leitet seine Umgebung selbst her. Was ein
+#    frueherer Block setzte, ist dort leer — 2.96a schrieb sonst nie `sync-stand` (Prueffall
+#    test_bloecke_prozesse.sh). Gezaehlt wird der AUFRUF, nicht das Wort im Kommentar.
+umg_ohne() { local o="" b; for b in "$@"; do [ -f "$b" ] || continue
+  grep -v '^\s*#' "$b" | grep -q '^mind_block_umgebung' || o="$o $(basename "$b")"; done; printf '%s' "${o# }"; }
+pruef "⛔ jedes bloecke/*.sh ruft mind_block_umgebung" "$(umg_ohne "$R"/skills/*/bloecke/*.sh)" ""
+printf '#!/usr/bin/env bash\n# mind_block_umgebung nur im Kommentar\necho x\n' > "$TMP/kaputt/x.sh"
+pruef "Gegenkontrolle: ein Skript ohne den Aufruf wird erkannt" "$(umg_ohne "$TMP/kaputt/x.sh")" "x.sh"
 
 echo ""
 echo "  $ok gruen · $rot rot"

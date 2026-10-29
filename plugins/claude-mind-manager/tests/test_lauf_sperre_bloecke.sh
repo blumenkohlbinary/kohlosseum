@@ -14,7 +14,7 @@
 #    sonst prueft der Test seine eigene Kopie.
 set -u
 R="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
-S="$R/skills/mind-all/SKILL.md"
+S="$(skill_text_datei "$R" mind-all)"
 GB="${MIND_TEST_BASH:-bash}"
 ok=0; rot=0
 pruef() {
@@ -27,6 +27,13 @@ TRAPZ=$(grep -m1 "^trap .*mind_lauf_frei" "$S" | tr -d '\r')
 pruef "Step 0 traegt eine trap-Zeile mit mind_lauf_frei" "$([ -n "$TRAPZ" ] && echo ja || echo nein)" "ja"
 [ -n "$TRAPZ" ] || { echo "  Gegenstand fehlt"; echo "  $ok gruen · $rot rot"; exit 1; }
 # Schlussblock = der bash-Fence, der `mind_lauf_frei "$PROJ" "${LAUF:-}"` enthaelt (Step 2.9)
+# ⭐ v5.152.0: der Block ist ein Skript in bloecke/ — gefahren wird das ECHTE Skript; der Fence-Weg
+#    bleibt fuer den alten Aufbau (Gegenprobe gegen den alten Stand).
+SCHLUSS=""
+for _b in "$R"/skills/mind-all/bloecke/*.sh; do
+  grep -qF 'mind_lauf_frei "$PROJ" "${LAUF:-}"' "$_b" 2>/dev/null && { SCHLUSS=$(tr -d '\r' < "$_b"); break; }
+done
+[ -n "$SCHLUSS" ] || \
 SCHLUSS=$(awk '/^```bash/{f=1; b=""; next} /^```/{if(f && b ~ /mind_lauf_frei "\$PROJ" "\$\{LAUF:-\}"/){print b; exit} f=0; next} f{b=b $0 "\n"}' "$S" | tr -d '\r')
 pruef "der Schlussblock (Step 2.9) ist auffindbar" "$([ -n "$SCHLUSS" ] && echo ja || echo nein)" "ja"
 

@@ -155,7 +155,7 @@ janein "pre-compact: RESCUE_KEEP Vorgabe 3" "ja" "$(grep -q 'RESCUE_KEEP="\${MIN
 janein "prompt-submit: Backstop ab KEEP oder 5 MB, und er loescht nicht" "ja" \
   "$(grep -q '_UB" -gt 5000000' "$H/prompt-submit.sh" && ! grep -A40 'BACKSTOP der Rotations-Ratsche' "$H/prompt-submit.sh" | grep -q 'rm -f "\$_f"' && echo ja || echo nein)"
 janein "mind-all Step 2.96a schreibt letzter-sync nur bei SYNC_LIEF=ja" "ja" \
-  "$(grep -q '\[ "\$SYNC_LIEF" = "ja" \] && printf .ts=%s' "$WURZEL/skills/mind-all/SKILL.md" && echo ja || echo nein)"
+  "$(grep -q '\[ "\$SYNC_LIEF" = "ja" \] && printf .ts=%s' "$(skill_text_datei "$WURZEL" mind-all)" && echo ja || echo nein)"
 
 rm -rf "$T"
 echo

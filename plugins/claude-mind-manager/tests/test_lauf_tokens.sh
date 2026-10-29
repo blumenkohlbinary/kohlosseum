@@ -23,7 +23,7 @@ pruef "Werkzeug liegt im Paket" "$([ -f "$L" ] && echo ja || echo nein)" "ja"
 "$PY" "$(win "$L")" --lauf X-123456789 --projekt "$(win "$(mktemp -d)")" >/dev/null 2>&1
 pruef "Lauf ohne Quittung -> rc 2, keine Zahl" "$?" "2"
 
-M="$R/skills/mind-all/SKILL.md"
+M="$(skill_text_datei "$R" mind-all)"
 pruef "/mind-all meldet einen langen eigenen Verlauf" "$(grep -c 'VERLAUF: diese Sitzung traegt rund' "$M")" "1"
 pruef "   ... als Hinweis — der Lauf geht weiter"     "$(grep -c 'Der Lauf geht weiter."' "$M")" "1"
 pruef "   ... und schreibt dafuer KEINEN projektweiten Merker" "$(grep -c 'lauf-verlauf' "$M")" "0"

@@ -45,7 +45,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.151.0"
+MIND_SKILL_VERSION="5.152.0"
 mind_schritt_start "$PROJ" mind-claudemd bestandszahlen_kandidaten claudemd_pipeline cleaner_duplikate cleaner_stichprobe cleaner_tor cleaner_urteile mind_check_tools_have_rules mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -163,6 +163,7 @@ if [ "$CHAIN" = "no" ]; then
   [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
   [ -z "$CLAUDE_PLUGIN_ROOT" ] && { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
   source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
   SNAPSHOT=$(mind_snapshot "$PROJ" "pre-claudemd") || {
     echo "ABBRUCH: Snapshot fehlgeschlagen — es wird NICHTS editiert." >&2; exit 1; }
   echo "Snapshot: $SNAPSHOT"
@@ -664,6 +665,8 @@ mind_schritt cleaner_duplikate gelaufen --datei "$D" "$PROJ"
 **Backup-Block (KONKRETER Bash-Snippet — NEU v3.2.2, präzisiert):**
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 # WICHTIG: Backup MIT cd ins Projekt-Verzeichnis VOR cp.
 # Sonst landet relativer Pfad im aktuellen CWD (z.B. Mind-Manager-Workspace
 # statt Ziel-Projekt — Bug aus Session 2026-05-29 Log 1 Tool 15).
@@ -720,6 +723,8 @@ dass die Entscheidung trägt.
 **Vor jedem `Deduplicate` also:**
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_urteile.py" "$PROJ" \
        --orte "<stelle-a>" "<stelle-b>"
 ```
@@ -738,6 +743,8 @@ das ist Aufräumen, keine Umkehrung.
 **Nach jedem Urteil eintragen — auch bei „nichts tun":**
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_urteile.py" "$PROJ" --schreiben \
        --orte "<a>" "<b>" --urteil duplikat --werkzeug mind-claudemd --von autonom \
        --grund "<ein Satz>"
@@ -882,6 +889,7 @@ Schritt ausführst. Hier steht nur, was für **diesen** Skill gilt:
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
 [ -n "$CLAUDE_PLUGIN_ROOT" ] || { echo "ERROR: $CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
 source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 
 # 1) PFLICHTZEILE — sie MUSS woertlich in den Self-Check-Block des Berichts.
 #    ⛔ Nicht nur erwaehnen: die Zeile selbst, mit beiden Zahlenpaaren.

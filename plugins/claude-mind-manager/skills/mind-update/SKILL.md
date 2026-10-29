@@ -50,7 +50,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.151.0"
+MIND_SKILL_VERSION="5.152.0"
 mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe cleaner_tor mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
@@ -175,6 +175,7 @@ if [ "$CHAIN" = "no" ]; then
   [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
   [ -z "$CLAUDE_PLUGIN_ROOT" ] && { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
   source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
   SNAPSHOT=$(mind_snapshot "$PROJ" "pre-update") || {
     echo "ABBRUCH: Snapshot fehlgeschlagen — es wird NICHTS editiert." >&2; exit 1; }
   echo "Snapshot: $SNAPSHOT"
@@ -236,6 +237,7 @@ if [ -z "$CLAUDE_PLUGIN_ROOT" ] || [ ! -f "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" ]; 
   exit 1
 fi
 source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 MEMORY_DIR=$(get_memory_dir)
 GET_MEM_RC=$?  # H1-Fix Skill-Review v3.3.1: $? in Variable capturen vor naechstem Cmd
 # H2-aware: $? = 1 wenn Fallback verwendet wurde
@@ -540,6 +542,8 @@ NICHT als Pfade behandelt (sind referentielle Code-Erwaehnungen).
 **Extraktion — ⛔ NICHT hier nachbauen, das Werkzeug fahren:**
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 python "$CLAUDE_PLUGIN_ROOT/references/claudemd_pipeline.py" <datei.md> --projekt "$PROJ"
 ```
 
@@ -957,6 +961,8 @@ zaehlt gegen die Obergrenze.
   **NICHT erneut dispatchen** — im Self-Check ausweisen als
   `scope=<x> → bereits durch <skill> abgedeckt (analyzed-scopes)`.
   ```bash
+  [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+  mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
   SCOPES_FILE="$PROJ/.claude-mind/analyzed-scopes"
   # nur wenn Scope UND Modus uebereinstimmen:
   scope_done() { [ -f "$SCOPES_FILE" ] && grep -q "^$1=.*:knowledge-sync$" "$SCOPES_FILE"; }
@@ -1085,6 +1091,7 @@ SAMPLER_WIN=$(cygpath -w "$SAMPLER")
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
 [ -z "$CLAUDE_PLUGIN_ROOT" ] && { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
 source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 SLUG=$(hash_project_dir)
 PROJECTS_DIR="$HOME/.claude/projects/$SLUG"
 # ⛔ v5.69.0: HIER STAND EIN RUECKFALL AUF DAS NEUESTE PROJEKT.
@@ -1597,6 +1604,8 @@ diesen Schritt ausführst. Hier steht nur, was für **diesen** Command gilt:
 | **rückwärts** | über die Zieldatei, einmal je Lauf |
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
 [ -n "$CLAUDE_PLUGIN_ROOT" ] || { echo "ERROR: CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
 TOR="$CLAUDE_PLUGIN_ROOT/references/cleaner_tor.py"
@@ -1696,6 +1705,7 @@ Schritt ausführst. Hier steht nur, was für **diesen** Skill gilt:
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
 [ -n "$CLAUDE_PLUGIN_ROOT" ] || { echo "ERROR: $CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
 source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 
 # 1) PFLICHTZEILE — sie MUSS woertlich in den Self-Check-Block des Berichts.
 #    ⛔ Nicht nur erwaehnen: die Zeile selbst, mit beiden Zahlenpaaren.

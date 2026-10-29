@@ -43,7 +43,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.151.0"
+MIND_SKILL_VERSION="5.152.0"
 mind_schritt_start "$PROJ" mind-files bestandszahlen_kandidaten cleaner_stichprobe cleaner_tor mind_check_tools_have_rules mind_hook_health mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -161,6 +161,7 @@ fi
 # Befundlauf ein totes Netz fuer ein gespanntes (genau so entstand die Befundliste 2026-08-16).
 if [ -n "$CLAUDE_PLUGIN_ROOT" ] && [ -f "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" ]; then
   source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
   mind_hook_health "$PROJ" || HOOK_WARN="ja"
 fi
 
@@ -451,6 +452,8 @@ UND User Backup-Vorschlag bestaetigt: Backup-System ins Projekt installieren.
 **Vorgehen:**
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 # 1. Tools-Dir anlegen
 mkdir -p "$PROJ/tools" "$PROJ/docs" "$PROJ/.claude-mind/backups"
 
@@ -531,6 +534,8 @@ Etappe 27 §1). Gleiches gilt fuer `release-hygiene.md`, `wissenstransfer-pruefe
 und macht das Backup-Tool **erreichbar**.
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 mkdir -p "$PROJ/.claude/rules"
 # Overwrite-Guard: existiert die Rule schon -> NICHT ueberschreiben (ASK, default Skip)
 if [ -f "$PROJ/.claude/rules/backup-usage.md" ]; then
@@ -579,6 +584,8 @@ KERN-Invariante durchsetzt. Gemessen am 21.08.2026 im Claude-Mind-Manager-Worksp
 kein Remote, kein Versions-Signal — das Angebot waere gekommen.
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 HAT_VERSION="nein"
 for _s in VERSION pyproject.toml package.json; do
   [ -f "$PROJ/$_s" ] && HAT_VERSION="ja"
@@ -595,6 +602,8 @@ Node/C#/Python/etc. (Bump laeuft ueber die native Toolchain bzw. das Versioning-
 installiert, nie allein.
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 if [ -d "$PROJ/.git" ]; then
   mkdir -p "$PROJ/tools" "$PROJ/.claude/rules"
 
@@ -644,6 +653,8 @@ totes Tool — genau der Bug den v4.0 killt). User bestaetigt ("notwendig").
 ohne `release-build.md` installiert:
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 # nur ausfuehren wenn Gating erfuellt UND User bestaetigt
 mkdir -p "$PROJ/tools" "$PROJ/.claude/rules"
 
@@ -694,6 +705,8 @@ statt Angebot: *"zu wenig Doku-Flaeche, das Gate haette hier keinen Gegenstand"*
 **Immer detect-and-OFFER, nie erzwungen.** User bestaetigt.
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 # nur ausfuehren wenn Gating erfuellt UND User bestaetigt
 mkdir -p "$PROJ/tools" "$PROJ/.claude/rules"
 
@@ -748,6 +761,8 @@ keinen Gegenstand"*.
 **Immer detect-and-OFFER, nie erzwungen.** User bestaetigt.
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 # nur ausfuehren wenn Gating erfuellt UND User bestaetigt
 mkdir -p "$PROJ/tools" "$PROJ/.claude/rules"
 
@@ -800,6 +815,8 @@ diesen Schritt ausführst. Hier steht nur, was für **diesen** Command gilt:
 | **rückwärts** | über die Zieldatei, einmal je Lauf |
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
 [ -n "$CLAUDE_PLUGIN_ROOT" ] || { echo "ERROR: CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
 TOR="$CLAUDE_PLUGIN_ROOT/references/cleaner_tor.py"
@@ -899,6 +916,8 @@ Zeitstempel. Von 15 Transkripten wurde eines gewertet, und **dieses** Projekt me
 bekannt wahre Fall in der Ausgabe stand.
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 # Zaehlt die Sitzungstranskripte dieses Projekts.
 _SLUG=$(hash_project_dir "$PROJ")
 _N=$(ls -1 "$HOME/.claude/projects/$_SLUG"/*.jsonl 2>/dev/null | wc -l)
@@ -910,6 +929,8 @@ _N=$(ls -1 "$HOME/.claude/projects/$_SLUG"/*.jsonl 2>/dev/null | wc -l)
 ### Das Geruest wird NICHT entworfen — es steht schon
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 python "$CLAUDE_PLUGIN_ROOT/references/rollen_geruest.py" --projekt "$PROJ"
 python "$CLAUDE_PLUGIN_ROOT/references/rollen_geruest.py" --pruefe "$PROJ/.claude/rules/rollen.md"
 python "$CLAUDE_PLUGIN_ROOT/references/rollen_geruest.py" --selbsttest
@@ -995,6 +1016,7 @@ Schritt ausführst. Hier steht nur, was für **diesen** Skill gilt:
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
 [ -n "$CLAUDE_PLUGIN_ROOT" ] || { echo "ERROR: $CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
 source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 
 # 1) PFLICHTZEILE — sie MUSS woertlich in den Self-Check-Block des Berichts.
 #    ⛔ Nicht nur erwaehnen: die Zeile selbst, mit beiden Zahlenpaaren.
@@ -1121,6 +1143,7 @@ User darf zurueckweisen mit "Self-Check-Block fehlt — bitte Step 1 ausfuehren"
 **Der Nachweis wird AUSGEFUEHRT, nicht aufgeschrieben (NEU v5.2.1):**
 ```bash
 source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 mind_check_tools_have_rules "$PROJ"; TOOLCHECK_RC=$?
 mind_ordner_hinweise "$PROJ"      # v5.127.0: HINWEIS je Top-Level-Ordner mit >= 5 ungenannten Skripten, kein Befund
 ```

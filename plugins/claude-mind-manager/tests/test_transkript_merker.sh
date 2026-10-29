@@ -109,7 +109,7 @@ pruef "ein NICHT existierendes zweites Argument zählt nicht" \
 
 echo
 echo "=== 5) ⛔ Die Sitzungskennung der Laufsperre kommt aus der Umgebung ==="
-SK="$R/skills/mind-all/SKILL.md"
+SK="$(skill_text_datei "$R" mind-all)"
 pruef "mind-all nimmt CLAUDE_CODE_SESSION_ID" "1" \
       "$(grep -c 'MIND_SID="\${CLAUDE_CODE_SESSION_ID:-' "$SK")"
 pruef "⛔ mit Rückfall, nicht ungeschützt" "1" \

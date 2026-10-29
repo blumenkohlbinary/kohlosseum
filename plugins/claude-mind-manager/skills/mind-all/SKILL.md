@@ -52,7 +52,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.151.0"
+MIND_SKILL_VERSION="5.152.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 # ⛔ v5.98.0: die fuenf Skills sind KEINE Schritte von mind-all — jeder hat seinen EIGENEN
 #    Start-Block (Step 2, Punkt 1). Bis v5.97.0 standen sie hier, Ritas Kalibrierlauf hakte
@@ -111,10 +111,7 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-mind_schritt_bilanz "$PROJ"
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/pflicht-bilanz.sh"
 ```
 
 ⛔ **Fehlt diese Zeile oder nennt sie `FEHLT`, ist der Bericht unvollstaendig** und
@@ -130,10 +127,7 @@ Ein Snapshot -> 5 Skills sequenziell -> alle Befunde angewendet -> ein Bericht.
 ## Step -1: Was ist hier schon einmal schiefgegangen? (PFLICHT, NEU v5.7.1)
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-mind_debug_top 3      # still, wenn MIND_DEBUG_DIR fehlt oder es keine Wiederholung gibt
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step-1-debug.sh"
 ```
 
 ⛔ **Das steht VOR Step 0, und das ist der ganze Punkt.** Der Debug-Ordner sammelte bis v5.7.0
@@ -147,334 +141,18 @@ Die Ausgabe ist kein Befund und blockt nichts — sie ist eine Erinnerung an dre
 ## Step 0: Modus + EIN Snapshot fuer den ganzen Durchlauf (PFLICHT)
 
 ```bash
-ARGS="${ARGUMENTS:-}"; AUTO_MODE="yes"
-echo "$ARGS" | grep -qE '(^|[[:space:]])--(ask|interactive)([[:space:]]|$)' && AUTO_MODE="no"
-# ⛔ v5.139.0: der PROBELAUF ist ERSATZLOS entfallen (Nutzer 29.09.2026: „wieso kein
-#    richtiger lauf kostet geld", „allgemein keine Probelaeufe mehr … ich will Ergebnisse
-#    sehen"). Wer die Flagge noch mitgibt, bekommt einen ABBRUCH und keinen stillen
-#    Echtlauf: wer die Flagge tippt, erwartet, dass nichts geschrieben wird.
-# ⛔ KEINE Backticks in den Meldungen: in doppelten Anfuehrungszeichen fuehrt bash aus, was
-#    zwischen ihnen steht (shell-windows.md) — beim ersten Bau stand hier "`--ask`", und das
-#    haette bei jedem Abbruch ein "--ask: command not found" erzeugt.
-if echo "$ARGS" | grep -qE '(^|[[:space:]])--dry-run([[:space:]]|$)'; then
-  echo "ABBRUCH: --dry-run ist entfallen (seit 5.139.0) — es gibt keinen Probelauf mehr." >&2
-  echo "         Bitte OHNE die Flagge aufrufen. Der Lauf ist dann ein echter Lauf," >&2
-  echo "         mit Snapshot vorher (Rueckweg). --ask fragt weiterhin vor dem Anwenden." >&2
-  exit 2
-fi
-
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
-[ -z "$CLAUDE_PLUGIN_ROOT" ] && { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
-source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ=$(mind_projekt_wurzel 2>/dev/null) || PROJ="${CLAUDE_PROJECT_DIR:-$(pwd)}"   # v5.80.0: Wurzel mit Roster; ohne lib.sh wie bisher
-
-# Hook-Gesundheit (NEU v5.2.1) — meldet den stillen Hook-Tod nach einem Plugin-Update.
-# Kein Abbruchgrund: /mind-all laeuft auch ohne Hooks. Aber es MUSS im Bericht stehen,
-# sonst haelt der naechste Befundlauf ein totes Netz fuer ein gespanntes.
-mind_hook_health "$PROJ" || HOOK_WARN="ja"
-
-# ⛔ v5.64.0: HIER STAND EIN TOKEN-GATE, DAS DEN LAUF ABBRACH. Es ist WEG.
-#    Nutzer-Entscheidung 10.09.2026: "die sollen garnicht mehr tokens messen
-#    das soll komplett raus". Der Grund ist gemessen: die Zahl kam aus
-#    `mind_transkript_pfad`, und dieser Merker liegt je PROJEKT statt je
-#    SITZUNG — bei mehreren Rollen im Ordner gewinnt der Letzte. Nora (sync,
-#    Palvedo) stand bei ~130 000 und wurde mit 721 405 abgewiesen.
-#    ⭐ DAS TEILSYNC-VERBOT BLEIBT, es wechselt den MESSPUNKT: der Lauf faehrt
-#       immer und versucht immer alle 4 Agents; ob es gereicht hat, entscheidet
-#       HINTERHER `mind_sync_voll` an `umfang=`/`ungepruef=`. Ein Lauf, der
-#       nicht durchkam, begleicht KEINE Schuld — `OPEN` bleibt liegen.
-#    ⚠ Der Transkript-Pfad wird trotzdem HIER geholt: er traegt unten die
-#      Lauf-Kennung und die Sitzungskennung der Sperre. Je frueher, desto
-#      kleiner das Rennfenster (v5.38.0).
-MIND_TP=""
-if type mind_transkript_pfad >/dev/null 2>&1; then
-  MIND_TP=$(mind_transkript_pfad "$PROJ")
-fi
-
-# ⛔ v5.59.0: DIE SPERRE STEHT VOR DEM SNAPSHOT. Befund von Nora (Palvedo):
-#    der Snapshot entstand ZUERST, und jeder abgewiesene Zweitlauf liess rund
-#    464 KB liegen — eine Sicherung fuer einen Lauf, den es nie gab. Bei drei
-#    Sitzungen in einem Ordner summiert sich das mit jedem Versuch.
-# ⚠ DIE KENNUNG KANN DESHALB NICHT MEHR DER SNAPSHOT-NAME SEIN. Sie kommt
-#   jetzt aus Zeitstempel und Transkriptnamen; `mind_lauf_kennung` bleibt
-#   unveraendert fuer alle, die sie mit einem Snapshot rufen.
-# ⛔ v5.139.0: hier stand `if [ "$DRY_RUN" = "no" ]`. Der Probelauf ist entfallen, also laeuft der Block IMMER — die Bedingung ist nicht wahr-gesetzt, sondern WEG.
-# ⭐ v5.66.0: DIE KENNUNG KOMMT AUS DER UMGEBUNG, nicht aus einem Dateinamen.
-#    `CLAUDE_CODE_SESSION_ID` ist in Skill-Bash gesetzt und traegt genau die
-#    Kennung, die die Hooks aus stdin bekommen (gemessen 10.09.2026 in zwei
-#    Sitzungen). ⛔ Bis v5.65.0 kam sie aus `$MIND_TP` — und der stammte aus
-#    einem Merker je PROJEKT. Bei mehreren Rollen im Ordner schrieb der
-#    Sperrenhalter damit womoeglich eine FREMDE Kennung ins Lock, und die
-#    Abweisung nannte die falsche Sitzung. Das ist schlimmer als gar keine.
-# ⚠ FAIL-SAFE: leere Variable -> Rueckfall auf den Dateinamen, wie bisher.
-MIND_SID="${CLAUDE_CODE_SESSION_ID:-$(basename "${MIND_TP:-nosession}" .jsonl)}"
-# ⛔ v5.140.0 (Etappe 51 §1): DIE LAUF-ID KOMMT AUS DEM KOPF, nicht aus `date` hier.
-#    Der Kopf-Block (oben, eigener bash-Fence) hat sie erzeugt und in seine Startzeile
-#    geschrieben; eine Variable von dort erreicht diesen Block NICHT. Holt man sie
-#    stattdessen hier neu, tragen Kopf und Lock VERSCHIEDENE IDs — und die Pruefung,
-#    die beide vergleicht, waere von Anfang an rot.
-# ⚠ FAIL-SAFE: kein `lauf`-Feld im Kopf (Altbestand, Einzellauf) -> wie bisher rechnen.
-# ⛔ v5.140.0, Nachtrag (Antons Befund): `mind_kopf_lauf_frisch`, NICHT `mind_kopf_lauf`.
-#    Der Unterschied ist der ganze Fall: die blosse Kopf-ID kann die eines FRUEHEREN
-#    Laufs sein (Rita fuhr den Kopf-Block nicht, die letzte Startzeile war neun Tage
-#    alt). Uebernimmt der Lock sie, vergleicht `mind_kopf_epoch` alt gegen alt und ist
-#    zufrieden — dieselbe Zirkularitaet eine Ebene hoeher.
-# ⛔ UND KEIN FAIL-SAFE-NEURECHNEN: ein `|| LAUF=$(date …)` wuerde genau den Fall
-#    wieder verdecken, um den es geht. Fehlt der eigene Kopf, bricht der Lauf AB.
-# ⛔ v5.145.0 (Etappe 55 §6): GENAU EINMAL rufen. `mind_kopf_lauf_frisch` VERBRAUCHT den
-#    Merker `lauf-offen` — ein zweiter Aufruf in einem spaeteren Block scheitert mit
-#    „KOPF-BLOCK FEHLT". Spaetere Bloecke LESEN die ID: `mind_lock_lauf "$PROJ"` (der Lock
-#    traegt sie bis Step 2.9) oder `mind_kopf_lauf "$PROJ"` (die Kopfzeile).
-if ! LAUF=$(mind_kopf_lauf_frisch "$PROJ"); then
-  echo "ABBRUCH: ohne eigenen Kopf-Block laeuft hier nichts weiter." >&2
-  exit 1
-fi
-if ! _SPERRE=$(mind_lauf_sperre "$PROJ" "$LAUF" "$MIND_SID"); then
-  echo "$_SPERRE" >&2
-  exit 0    # ⛔ 0, NICHT 1 — kein Fehler, sondern die richtige Antwort.
-            #   Ein Rueckgabewert 1 saehe im Log wie ein kaputter Lauf aus.
-fi
-# ⛔ v5.144.0 (Etappe 56 §1, CK3 18.10.2026): NUR beim ABBRUCH DIESES Blocks freigeben.
-#    Jeder Code-Block ist ein EIGENER Bash-Aufruf — ein `trap … EXIT` feuert am Ende DIESES
-#    Blocks, nicht am Ende des Laufs. Bis v5.143.0 stand hier ein unbedingter trap; gemessen
-#    28.10.2026: im naechsten Aufruf war der Lock WEG. Er schuetzte nichts — weder die
-#    Abweisung eines zweiten Laufs noch „liegt der Lock, aendert der Arbeiter keine
-#    Dauerkontext-Datei" — und die Identitaetspruefung aus v5.140.0 (Kopf-Lauf gegen
-#    Lock-Lauf) lief in jedem echten Lauf in ihren Ohne-Lock-Zweig.
-#    Freigegeben wird im Schlussblock (Step 2.9). Ein Lauf, der danach abbricht, laesst
-#    den Lock liegen: dieselbe Sitzung uebernimmt ihn sofort, eine fremde nach
-#    MIND_LAUF_LOCK_MAXAGE (2 h) — `mind_lauf_sperre`.
-trap '_mind_rc=$?; [ "$_mind_rc" -ne 0 ] && mind_lauf_frei "$PROJ" "$LAUF"' EXIT
-
-# ⛔ v5.139.0: hier stand `if [ "$DRY_RUN" = "no" ]`. Der Probelauf ist entfallen, also laeuft der Block IMMER — die Bedingung ist nicht wahr-gesetzt, sondern WEG.
-SNAPSHOT=$(mind_snapshot "$PROJ" "pre-mind-all") || {
-  echo "ABBRUCH: Snapshot fehlgeschlagen — KEIN Skill wird gestartet." >&2; exit 1; }
-echo "Snapshot fuer den gesamten Durchlauf: $SNAPSHOT"
-
-# ⛔ v5.21.3 — SAGEN, WAS NICHT DRIN IST.
-#    Befund aus `Pc Forschung` (26.08.2026): `INDEX.md`, die zentrale
-#    Projektdatei, lag nicht im Snapshot. Alle Aenderungen daran liefen ohne
-#    Netz, und die Restore-Liste im Bericht war fuer sie schlicht falsch.
-#
-#    Ihr Vorschlag war, `INDEX.md` fest einzubauen. Das waere ein
-#    projektspezifisches Pflaster in einem allgemeinen Werkzeug —
-#    `MIND_SNAPSHOT_EXTRA` loest den Fall seit v5.2.1 allgemein.
-#
-#    ⭐ GEMESSEN, warum sie das nicht wissen konnten: die Variable kommt in
-#       `hooks/lib.sh` vor und in KEINEM Skill, KEINEM Bericht, KEINER
-#       Referenz. Wer den Schlussbericht liest, sieht eine Restore-Liste und
-#       hat keinen Weg zu erfahren, dass sie erweiterbar ist. Genau dasselbe
-#       ist hier zweimal mit `knowledge/` passiert (env-vars.md).
-#
-#    ⚠ Gemeldet wird nur — welche Datei wichtig ist, weiss der Nutzer.
-#    ⚠ NUR die zuletzt GEAENDERTEN, hoechstens fuenf. Eine vollstaendige Liste
-#      waere hier 15 Namen lang (gemessen in diesem Projekt) und damit genau
-#      die Ausgabe, die man gewohnheitsmaessig ueberliest — wovor `Pc Forschung`
-#      im selben Bericht warnt. Die juengsten sind die, an denen gearbeitet wird.
-#    ⛔ Der GLOB laeuft, NICHT `$(ls -t ...)`. Eine unquotierte
-#      Befehlssubstitution zerlegt am Leerzeichen — und dieses Projekt heisst
-#      `Plugin - Entwicklung/Claude Mind Manager`. Erste Fassung meldete
-#      dadurch "79 Dateien" statt 15, mit Namen wie "Plugin - Claude Mind".
-#      Klasse `windows-pfad`, in diesem Projekt seit v5.2.1 dokumentiert
-#      ("Rotation nie mit xargs") und trotzdem wieder entstanden.
-#    ⛔ Und KEINE Pipe in die Schleife: die liefe in einer Subshell, und `_N`
-#      waere danach wieder 0 — derselbe Fehler steckt schon einmal in dieser
-#      Datei (mind_check_tools_have_rules, dort mit einer Merkdatei geloest).
-_LK=$(mind_snapshot_luecken "$PROJ" "$SNAPSHOT")
-_N="${_LK%%|*}"; _UNGEDECKT="${_LK#*|}"
-if [ "${_N:-0}" -gt 0 ] 2>/dev/null; then
-  echo "  ⚠ NICHT im Snapshot ($_N Datei(en), die zuletzt geaenderten): $_UNGEDECKT"
-  echo "    Ist eine davon fuer diesen Lauf tragend, VOR dem naechsten Mal setzen:"
-  echo "      export MIND_SNAPSHOT_EXTRA=\"\$PWD/<pfad>\"   # ⛔ ABSOLUT, relativ wird still verworfen"
-fi
-
-# ⛔ v5.30.0: SPERRE GEGEN PARALLELE LAEUFE — direkt nach dem Snapshot, weil
-#    die Laufkennung aus seinem Namen kommt.
-#    Befund aus `Creator` (30.08.2026), hier unabhaengig nachgemessen:
-#    `SCOPES_FILE` liegt PRO PROJEKT, der Stop-Hook feuert PRO SITZUNG. Zwei
-#    Chats im selben Ordner haengen ihre `skill=`-Zeilen an DIESELBE Datei,
-#    ihre Summe erreicht 5, `SYNC_LIEF` geht auf "ja" — und `rm -f "$OPEN"`
-#    tilgt die Schuld fuer Arbeit, die KEIN EINZELNER Lauf geleistet hat.
-#    ⚠ Kein flock (auf MSYS unzuverlaessig). `mkdir` ist atomar; auf diesem
-#      Aufbau gemessen: 40 gleichzeitig -> genau 1 gewinnt, Gegenprobe
-#      abgewiesen.
-# ⚠ v5.59.0: DIE SPERRE WIRD OBEN GENOMMEN, vor dem Snapshot. Hier stand sie
-#   bis v5.58.0 — also NACH einer Sicherung, die ein abgewiesener Lauf gar
-#   nicht braucht. Der Block ist umgezogen, nicht entfallen.
-
-# Kettenmarke — enthaelt den Snapshot-PFAD, damit die Einzel-Skills pruefen koennen,
-# ob er wirklich da ist.
-# ⚠ v5.139.0: hier stand „NUR wenn ein Snapshot existiert (C2-Fix: im Probelauf keine
-#   Marke, sonst behauptet sie ein Netz, das es nicht gibt)". Der C2-Fix bleibt in der
-#   SACHE gueltig; nur sein Traeger wechselt — ohne Probelauf gibt es keinen Lauf OHNE
-#   Snapshot mehr, weil Step 0 bei gescheitertem Snapshot abbricht.
-SCOPES_FILE="$PROJ/.claude-mind/analyzed-scopes"
-# ⛔ v5.139.0: hier stand `if [ "$DRY_RUN" = "no" ]`. Der Probelauf ist entfallen, also laeuft der Block IMMER — die Bedingung ist nicht wahr-gesetzt, sondern WEG.
-mkdir -p "$(dirname "$SCOPES_FILE")"; : > "$SCOPES_FILE"
-# ⛔ v5.140.0 (Etappe 51 §1, Ritas Befund): run_started kommt aus `lock/ts`, NICHT mehr aus
-#    dem Kopf. Vorher stand hier `mind_kopf_epoch` — und `mind_schritt_start` verglich
-#    damit die ts DES KOPFES: **die Pruefung verglich den Kopf mit sich selbst**
-#    (`Kopf < Kopf - 900`) und konnte nicht fehlschlagen. Gemessen 01.10.2026: ein neun
-#    Tage alter Kopf lief glatt durch, derselbe Kopf mit unabhaengigem Bezug -> rc 1.
-# ⭐ `lock/ts` ist der richtige Bezug: er entsteht unabhaengig vom Kopf und VOR dem
-#    Snapshot (v5.59.0 zog die Sperre genau deshalb nach oben) — damit bleibt auch die
-#    v5.118.0-Falle weg (run_started nach dem Snapshot, 12 s spaeter, erster Skill brach
-#    faelschlich ab).
-# ⚠ Fehlt `lock/ts`, wird KEINE Sekunde geraten: die Zeile entfaellt. mind_schritt_start
-#    kommt damit zurecht, und eine fehlende Zeile ist ehrlicher als eine erfundene.
-_RS=$(cat "$PROJ/.claude-mind/mind-all.lock/ts" 2>/dev/null)
-case "$_RS" in
-  ''|*[!0-9]*) echo "WARN: lock/ts unlesbar — run_started wird NICHT geschrieben (keine geratene Sekunde)." >&2 ;;
-  *) echo "run_started=$_RS"   >> "$SCOPES_FILE" ;;
-esac
-echo "snapshot=$SNAPSHOT"        >> "$SCOPES_FILE"
-
-# ⛔ v5.19.0: Die Agent-Quittung wird HIER angelegt, nicht in mind-update.
-#    Bis v5.18.0 rief `mind_agent_quittung_start` ausschliesslich mind-update
-#    Step 3.5 — also GENAU DER SCHRITT, DER AUSFAELLT. Faellt er aus, faellt die
-#    Quittung mit aus, und ihr FEHLEN sieht aus wie ihr SCHWEIGEN.
-#    Das ist woertlich dasselbe Muster, das v5.3.1 eine Ebene tiefer behoben hat:
-#    ein Hook, der schweigt weil er soll, und einer, der schweigt weil er tot ist,
-#    sind im Log nicht zu unterscheiden.
-#    Ab hier gilt: keine Quittung == die Kette kam nie bis zum Fan-out. Von
-#    aussen messbar, weil der Anleger nicht mehr im Ausfallpfad liegt.
-#    ⛔ v5.21.3: die 4 ist PFLICHT. v5.21.2 gab der Funktion den Parameter und
-#       liess beide Aufrufer unveraendert — die Quittung verhielt sich damit
-#       exakt wie vorher. Woertlich der v5.7.1-Fall ("es sammelte die Variable
-#       und benutzte sie nie") und derselbe Halbfix wie bei classify_path am
-#       selben Tag. Ohne die Zahl kann die Bilanz "nie dispatcht" nicht von
-#       "ueber das Agent-Werkzeug gestartet" unterscheiden — und genau das hat
-#       `Pc Forschung` am 26.08. zum ZWEITEN Mal unveraendert gemeldet.
-#    ⛔ v5.104.0: die 4 bleibt hier stehen, obwohl custom-context bei 0 Dateien
-#       entfaellt — Step 0 kennt die Dateizahl nicht (Step 1.5 von mind-update zaehlt
-#       sie). Das Ueberspringen quittiert mind-update mit `mind_agent_uebersprungen`;
-#       die Bilanz zieht es von ERWARTET ab, Step 2.96a vom Soll (`3/3 agents`).
-#       Ohne das war ein Projekt ohne Custom-Context-Dateien NIE voll (Palvedo,
-#       10.–13.09.2026, drei Laeufe, zehn Rettungen ungetilgt).
-mind_agent_quittung_start "$PROJ" 4
-
-# ⛔ v5.145.0 (Etappe 55 §6, Veras Befund): DIESER ABSCHNITT IST HISTORIE. Den Merker
-#    `.claude-mind/transkript-pfad` gibt es seit v5.66.0 NICHT MEHR — niemand schreibt
-#    oder liest ihn (gemessen am Paket 5.144.0: nur noch Kommentare). `mind_transkript_pfad`
-#    adressiert die Sitzung ueber `CLAUDE_CODE_SESSION_ID`. Eine liegengebliebene Datei
-#    (Zustellplan, Stand 04.09.2026) ist ein Rest, kein Zustand. Vera las die Saetze unten im
-#    Praesens als heutige Mechanik — sie stehen deshalb jetzt in der Vergangenheit.
-# v5.38.0–v5.65.0: der Merker WAR eine Datei je PROJEKT und sollte eine SITZUNG
-#    kennzeichnen — jede Sitzung ueberschrieb ihn bei jedem Prompt, der Letzte gewann.
-#    Wer ihn erst in Step 2.96a las, hatte dazwischen MINUTEN Rennfenster; wer ihn hier
-#    las, Millisekunden.
-# ⚠ Der Rest damals: schob eine andere Sitzung ihren Prompt genau dazwischen,
-#   war er schon fremd. Aufloesen liesse sich das nur mit einer Sitzungskennung
-#   im Skill — die gibt es dort nicht (CLAUDE_SESSION_ID ist LEER, gemessen v5.30.0).
-#   ⛔ v5.66.0 KORRIGIERT: die Messung stimmte, der Schluss nicht —
-#      `CLAUDE_CODE_SESSION_ID` ist gesetzt und traegt genau diese Kennung.
-# ⚠ v5.55.0: MIND_TP steht schon — es wird oben vor dem Teilsync-Gate geholt.
-#   Hier wird es nur noch GEMELDET. Ein zweites `mind_transkript_pfad` waere ein
-#   zweiter Griff auf einen Merker, der sich zwischendurch geaendert haben kann.
-if [ -n "$MIND_TP" ]; then
-  echo "Transkript dieser Sitzung: $(basename "$MIND_TP")"
-  # ⛔ v5.151.0 (Etappe 58 §1, ZIEL 5): DER EIGENE VERLAUF IST DER GROESSTE KOSTENPOSTEN. Jeder Schritt
-  #    dieses Laufs liest ihn neu (Cache-Lesen). Gemessen am Transkript (`references/lauf_tokens.py`):
-  #    Ritas Lauf 29.09. 132,9 Mio Tokens, davon 85 % die steuernde Sitzung bei einem Verlauf bis
-  #    964 634; Veras Lauf 12.10. 91,3 Mio, davon 93 % bei Verlauf bis 770 099. Was der Lauf braucht,
-  #    liegt in Dateien (Rettungen, Quittungen, Context-Dateien) — der alte Verlauf der Sitzung nicht.
-  # ⛔ HINWEIS, KEIN ZWANG (Nutzer 10.09.2026: keine Token-Messung als Zwang). Geleert wird von aussen:
-  #    im Rollen-Aufbau leert der manager die Sync-Sitzung VOR dem Auftrag; allein: `/clear`.
-  _VL=$(grep -o '"cache_read_input_tokens":[0-9]*' "$MIND_TP" 2>/dev/null | tail -1 | cut -d: -f2)
-  case "$_VL" in ''|*[!0-9]*) _VL=0 ;; esac
-  if [ "$_VL" -gt "${MIND_VERLAUF_HINWEIS:-150000}" ] 2>/dev/null; then
-    echo "⚠ VERLAUF: diese Sitzung traegt rund $_VL Tokens Verlauf — jeder Schritt dieses Laufs liest ihn neu."
-    echo "  Gemessen: 85-93 % eines Laufs kostet die steuernde Sitzung. Guenstiger: den Lauf in einer FRISCH"
-    echo "  geleerten Sitzung fahren (Rollen-Aufbau: der manager leert die Sync-Sitzung vorher). Der Lauf geht weiter."
-    echo "  Diese Zeile gehoert in den Schlussbericht (Step 3) — gemessen wird hinterher: references/lauf_tokens.py --lauf <ID>."
-  fi
-else
-  echo "⚠ Transkript NICHT bestimmbar — Tokenzahlen dieses Laufs bleiben LEER."
-  echo "  (Eine fehlende Zahl ist keine Null. Der Lauf geht weiter.)"
-fi
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step0-snapshot.sh"
 ```
+
+Bricht der Block ab (kein Snapshot), startet KEIN Skill. Meldet er einen Hook-Ausfall, ist das
+kein Abbruchgrund, gehoert aber in den Schlussbericht. Den VERLAUF-Hinweis ebenso. ⭐ Warum die
+Bloecke so gebaut sind (Vorfaelle, Messungen): die Kommentare in `bloecke/*.sh` — lies sie, BEVOR
+du einen Block aenderst oder wenn ein Schritt rot ist; der Lauf selbst braucht sie nicht.
 
 **Geretteter Chat (v5.1.0) + offene Schuld (v5.2.1):** Existiert `.claude-mind/rescued/OPEN`,
 steht ein Sync aus. `OPEN` nennt die Rettungsdatei und den gesicherten Auftrag.
 ```bash
-# ⛔ v5.143.0 (Etappe 53 §2) — DAS NETZ, unabhaengig von der Ursache: was die
-#    Rotations-Ratsche als UNGELESEN fuehrt, `OPEN` aber nicht nennt, wird hier
-#    EINGESPEIST und GEMELDET. Gefunden hat die Luecke vom 01.10. nur Noras Gegenzaehlung
-#    von Hand — jetzt macht es der Skill selbst, damit niemand mehr flicken muss.
-# ⚠ Dieser Block ist ein EIGENER Bash-Aufruf (gemessen Etappe 51). Er laedt lib.sh
-#   deshalb selbst — sonst waeren `mind_rettungen` darunter und das Netz hier
-#   unbekannte Befehle und `$PROJ` leer. 52 von 81 Bloecken in allen Skills verlassen
-#   sich darauf, dass ein frueherer Block es tat (gemessen 28.10.2026, eigener Befund).
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel)}"
-mind_rettungen_nachtragen "$PROJ"
-OPEN="$PROJ/.claude-mind/rescued/OPEN"
-RESCUED_ALL=""; RESUME_FILE=""; COMPACTIONS=""
-if [ -f "$OPEN" ]; then
-  # v5.4.1: ALLE offenen Rettungen, aelteste zuerst. Bis v5.4.0 stand hier `grep -m1` —
-  # bei zwei Kompaktierungen ohne Sync wurde die aeltere NIE eingespeist, obwohl ihre Datei
-  # noch dalag. Belegt: 20260816-194132_chat.md, 412 KB, verwaist.
-  # ⛔ v5.57.0: DIESELBE AUSWAHL STAND HIER UND IN `mind-update` — zweimal,
-  #    und nur eine der beiden war richtig. Die in `mind-update` leerte bei
-  #    zwei oder mehr Rettungen ihre eigene Liste (`[ ! -f ]` auf mehrzeiligen
-  #    Text) und fiel auf die juengste Datei im Ordner zurueck. GEMESSEN: von
-  #    drei Rettungen kam EINE an. Von aussen sah die Kette dabei richtig aus,
-  #    weil DIESE Fassung alle drei korrekt AUFZAEHLTE.
-  #    Jetzt beide ueber `mind_rettungen` aus `lib.sh`.
-  RESCUED_ALL=$(mind_rettungen "$PROJ")
-  RESUME_FILE=$(grep '^resume='      "$OPEN" | cut -d= -f2- | tail -1)   # der juengste Auftrag
-  # v5.6.0: der ausfuehrliche Arbeitsstand. Er steht BEWUSST nicht in RESUME.md —
-  # die Erinnerungs-Hooks kappen die dort bei 30 Zeilen, und das ist richtig so.
-  ARBEITSSTAND=$(grep '^arbeitsstand=' "$OPEN" | cut -d= -f2- | tail -1)
-  # ⛔ v5.56.0: gezaehlt statt gelesen — `pre-compact.sh` haengt `OPEN` nur
-  #    noch an. Die Zahl der `path=`-Zeilen IST die Zahl der Kompaktierungen
-  #    seit dem letzten Sync. Alte Merker tragen `compactions=`; deshalb der
-  #    groessere der beiden Werte.
-  COMPACTIONS=$(grep -c '^path=' "$OPEN" 2>/dev/null)
-  _CALT=$(grep -m1 '^compactions=' "$OPEN" 2>/dev/null | cut -d= -f2-)
-  case "$COMPACTIONS" in ''|*[!0-9]*) COMPACTIONS=0 ;; esac
-  case "$_CALT" in ''|*[!0-9]*) _CALT=0 ;; esac
-  [ "$_CALT" -gt "$COMPACTIONS" ] 2>/dev/null && COMPACTIONS="$_CALT"
-fi
-# Rueckfall, falls OPEN fehlt (Rettung aus einer aelteren Version)
-[ -z "$RESCUED_ALL" ] && RESCUED_ALL=$(ls -t "$PROJ/.claude-mind/rescued"/*_chat.md 2>/dev/null | head -1)
-# ⛔ v5.149.0 (Etappe 57 §3): festhalten, WELCHE Rettungen dieser Lauf einliest — Step 2.96 tilgt
-#    nur diese (Veras Lauf: 7 eingelesen, 41 kamen waehrend des Laufs dazu und wurden mitgetilgt).
-#    Lauf-ID aus der Kopfzeile: die Sperre ist in Step 2.96 schon frei (Step 2.9).
-_GL="$PROJ/.claude-mind/rescued/OPEN.gelesen-$(mind_kopf_lauf "$PROJ" 2>/dev/null || echo ohne-lauf)"
-printf '%s\n' "$RESCUED_ALL" | sed 's#.*[/\\]##' | grep . > "$_GL" 2>/dev/null || : > "$_GL"
-RESCUED_N=$(printf '%s\n' "$RESCUED_ALL" | grep -c . 2>/dev/null)
-case "$RESCUED_N" in ''|*[!0-9]*) RESCUED_N=0 ;; esac
-
-if [ "$RESCUED_N" -gt 0 ]; then
-  # NUR ZAEHLEN, NICHT LESEN — siehe Sperre unten
-  # v5.2.2: BEIDE Quellen. Die Rettung endet am Kompaktierungs-Zeitpunkt; alles danach steht
-  # nur im Live-Transkript — und genau das ist die Arbeit, wegen der der Lauf erzwungen wird.
-  echo "Session-Quelle: gerettet+live"
-  echo "  gerettet -> $RESCUED_N Rettung(en), aelteste zuerst:"
-  i=0
-  printf '%s\n' "$RESCUED_ALL" | while IFS= read -r r; do
-    [ -n "$r" ] || continue
-    i=$((i+1))
-    echo "     [$i] $(basename "$r")  $(grep -c '^## \[' "$r") Beitraege"
-  done
-  echo "  live     -> Sampler ueber das laufende Transkript (die Zeit nach der letzten)"
-  [ -n "$COMPACTIONS" ] && [ "$COMPACTIONS" -gt 1 ] 2>/dev/null && \
-    echo "ACHTUNG: $COMPACTIONS Kompaktierungen seit dem letzten Sync — bereits verschleppt."
-else
-  echo "Session-Quelle: live"
-fi
-# Der Auftrags-Merker ist KLEIN (wenige KB) und wird gelesen — er wird am Ende zurueckgegeben.
-[ -n "$RESUME_FILE" ] && [ -f "$RESUME_FILE" ] && \
-  { echo "Unterbrochener Auftrag gefunden:"; sed -n "/^## /,\$p" "$RESUME_FILE" | head -30; }
-
-# Arbeitsstand OHNE Kappung — hier gehoert der ausfuehrliche Stand hin (v5.6.0).
-# Vier Kategorien: Entscheidungen, aktive Bugs, geaenderte Dateien, Constraints.
-if [ -n "$ARBEITSSTAND" ] && [ -s "$ARBEITSSTAND" ]; then
-  echo "Arbeitsstand vor der Kompaktierung:"
-  python "$CLAUDE_PLUGIN_ROOT/references/arbeitsstand_render.py" "$ARBEITSSTAND" 2>/dev/null \
-    || echo "  (Arbeitsstand nicht lesbar — der Lauf geht trotzdem weiter)"
-fi
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step0-rettungen.sh"
 ```
 
 > ⛔ **KONTEXT-FLUT-SPERRE (NEU v5.2.1, Hard Constraint).** Die Rettungsdatei `*_chat.md` wird
@@ -529,6 +207,8 @@ Fuer jeden der 5 in der Reihenfolge oben:
    context-analyzer/project-scanner nie liefen.
 2. **Laufspur schreiben — PFLICHT, nach JEDEM der fuenf** (NEU v5.19.0):
    ```bash
+   [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+   mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
    echo "skill=<name>|$LAUF" >> "$SCOPES_FILE"   # nach jedem der 5, ohne Ausnahme
    ```
    ⛔ **v5.30.0: die Laufkennung `|$LAUF` ist PFLICHT.** Sie ist der Teil, der
@@ -548,6 +228,8 @@ Fuer jeden der 5 in der Reihenfolge oben:
    Self-Check-Block, woertlich) mit `Write` nach `$PROJ/.claude-mind/bericht-<skill>.md`
    legen, dann:
    ```bash
+   [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+   mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
    mind_schritt <skill> gelaufen --datei "$PROJ/.claude-mind/bericht-<skill>.md" "$PROJ"
    ```
    ⛔ **Ohne `--datei` schreibt `mind_schritt` `uebersprungen:kein-artefakt`**, und
@@ -566,6 +248,8 @@ Fuer jeden der 5 in der Reihenfolge oben:
    **gar keine Spur** (gemessen: `analyzed-scopes.done` trug den Stand des Vortages).
 3. **Scope-Marke schreiben — NUR mit Modus-Angabe** (M3-Fix):
    ```bash
+   [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+   mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
    echo "claude-md=mind-claudemd:default" >> "$SCOPES_FILE"   # nach mind-claudemd
    echo "memory=mind-memory:default"      >> "$SCOPES_FILE"   # nach mind-memory
    # KEINE rules-Marke: mind-rules hat gar keinen `Agent` in allowed-tools und macht
@@ -643,23 +327,7 @@ nicht killen — sonst bleibt der Context halb aktualisiert zurueck.
 **Direkt nach dem letzten Skill, VOR dem Bericht:**
 
 ```bash
-# ⛔ v5.144.0 (Etappe 56 §1): DIESER BLOCK IST SELBSTTRAGEND. Er ist ein eigener Bash-Aufruf —
-#    `$PROJ`, `$SCOPES_FILE`, `$LAUF` und `mind_lauf_frei` aus Step 0 kommen hier NICHT an.
-#    Bis v5.143.0 war das gleichgueltig, weil der trap aus Step 0 den Lock schon nach dem
-#    ersten Block entfernt hatte. Seit er haelt, ist dies die EINZIGE Freigabe im Normalweg.
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-SCOPES_FILE="${SCOPES_FILE:-$PROJ/.claude-mind/analyzed-scopes}"
-# ⚠ Die eigene Lauf-ID aus der Kopfzeile dieses Laufs — `mind_lauf_frei` gibt nur frei, wenn
-#   der Lock DIESE ID traegt; einem fremden Lauf wird nichts weggeraeumt.
-LAUF="${LAUF:-$(mind_kopf_lauf "$PROJ" 2>/dev/null)}"
-[ -f "$SCOPES_FILE" ] && mv -f "$SCOPES_FILE" "${SCOPES_FILE}.done" 2>/dev/null
-# ⛔ v5.30.0: Sperre freigeben — NUR die eigene. `mind_lauf_frei` prueft die
-#    Kennung; ein abbrechender Zweitlauf raeumt dem Erstlauf nichts weg.
-#    ⚠ Der `trap` aus Step 0 faengt den Abbruchfall; dieser Aufruf ist der
-#      Normalweg und macht die Freigabe im Bericht sichtbar.
-mind_lauf_frei "$PROJ" "${LAUF:-}" \
-  && echo "Sperre freigegeben (Lauf ${LAUF:-?})."
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step2.9-kettenmarke.sh"
 ```
 
 **Warum das kein Beiwerk ist:** Die Einzel-Skills erkennen die Kette an dieser Datei und
@@ -677,35 +345,14 @@ auch ein Handaufruf ohne Kompaktierung, auch ein Lauf ohne einen einzigen Fund.
 schrieb jeder Lauf das Anhaengen von Hand, mit `>>` und ohne Ruecksicht auf die Zeilenenden.
 Seit v5.7.0 ist es Code, und der Abschnitt geht **zusaetzlich zentral** hinaus.
 
+**Zuerst mit `Write` zwei Dateien anlegen, DANN den Block:** den Abschnitt (Aufbau unten) nach
+`$PROJ/.claude-mind/lauf-abschnitt.md` und je Befund eine JSON-Zeile nach
+`$PROJ/.claude-mind/lauf-befunde.jsonl` (keine Befunde: Datei weglassen). Fehlt der Abschnitt,
+bricht der Block ab und sagt es. ⚠ Bis v5.151.0 leerte der Block die Befund-Datei, bevor er sie
+meldete — ein Befund kam so nie im Debug-Ordner an.
+
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-LISTE="$PROJ/listeverbesserungen.md"
-[ -f "$LISTE" ] || printf '# Verbesserungsliste\n\nAngehaengt von /mind-all. Neueste Abschnitte stehen UNTEN.\n' > "$LISTE"
-
-# 1) Abschnitt in eine Zwischendatei schreiben (Aufbau siehe unten), dann anhaengen.
-#    mind_append statt '>>' — es erhaelt die Zeilenenden der Zieldatei.
-ABSCHNITT="$PROJ/.claude-mind/lauf-abschnitt.md"
-# ... Abschnitt nach "$ABSCHNITT" schreiben ...
-mind_append "$LISTE" < "$ABSCHNITT"
-
-# 2) Befunde MASCHINENLESBAR danebenlegen — eine Zeile je Befund.
-#    Ohne die feste Klassenliste heisst derselbe Fehler dreimal anders und wird nie als
-#    Wiederholung erkannt. Gueltige Klassen stehen in references/debug_auswertung.py.
-BEFUNDE="$PROJ/.claude-mind/lauf-befunde.jsonl"
-: > "$BEFUNDE"
-# je Befund eine Zeile, z.B.:
-#   {"ts":"2026-08-21 01:20","projekt":"<PROJ>","klasse":"instrument-nachgebaut",
-#    "kurz":"Pipeline statt claudemd_pipeline.py nachgebaut","lauf":"<ts>"}
-# ⛔ v5.141.0: `modell` und `stufe` NICHT von Hand dazuschreiben — `mind_debug_write`
-#    setzt beide selbst (nicht bestimmbar -> `unbekannt`, nie leer und nie weggelassen).
-#    ⚠ Eine SELBST geschriebene Angabe bleibt stehen (`//`-Vorrang, damit nachtraeglich
-#      eingespeiste Befunde nicht die Stufe von HEUTE bekommen) — eine falsch geratene also auch.
-
-# 3) zentral melden (still, wenn MIND_DEBUG_DIR nicht gesetzt ist)
-mind_debug_write "$PROJ" "$AUSLOESER" "$ABSCHNITT" "$BEFUNDE"
-rm -f "$ABSCHNITT" "$BEFUNDE" 2>/dev/null
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step2.95-liste.sh" "<Ausloeser: Kompaktierung manual|auto oder Handaufruf>"
 ```
 
 **Die Ursachenklassen** — feste Liste, **kanonisch ist `KLASSEN` in `references/debug_auswertung.py`**:
@@ -782,17 +429,7 @@ beschaedigen, Umschreiben schon):
 kippen.
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-# Der Snapshot aus Step 0 ist der Vorher-Stand — er wird hier zum Messinstrument.
-MEMDIR=$(get_memory_dir "$PROJ" 2>/dev/null) || MEMDIR=""
-mind_zeilenenden_waechter "$MIND_SNAPSHOT_DIR" "$PROJ" "$MEMDIR"
-# ⚠ v5.109.0: der Waechter vergleicht das WURZEL-Memory (Snapshot memory/). Die Memorys der
-#   Roster-Ordner liegen unter memory-unterordner/<ordner>/ und werden hier NICHT verglichen —
-#   ausgewiesen, nicht behoben (Etappe 18, Allbetroffenheit); ihr Rueckweg ist die Kopie.
-RC=$?
-[ "$RC" = 2 ] && echo "⛔ WAECHTER UNGUELTIG — Zeilenenden in diesem Lauf NICHT geprueft."
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step2.95-waechter.sh"
 ```
 
 ⛔ **Rueckgabe 2 ist ein BEFUND, kein Nebensatz.** Sie heisst: der Waechter hat hoechstens
@@ -837,125 +474,7 @@ Selbsteinschaetzung — genau das, was `cleaner_belege.py` seit v5.18.0 ueberall
 untaugliche Belegquelle ersetzt.
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-# --- Was ist tatsaechlich gelaufen? Aus der Spur, nicht aus der Erinnerung. ---
-_SF="$SCOPES_FILE"; [ -f "$_SF" ] || _SF="${SCOPES_FILE}.done"   # Step 2.9 hat umbenannt
-# ⛔ v5.30.0: NUR DIE EIGENEN MARKEN ZAEHLEN. Vorher zaehlte `grep -c '^skill='`
-#    jede Zeile der geteilten Datei — auch die eines fremden Laufs. Genau daraus
-#    entstand die Gefahr: zwei Laeufe, deren Summe 5 erreicht, tilgen gemeinsam
-#    eine Schuld, die keiner von beiden abgearbeitet hat.
-#    ⚠ Faellt `$LAUF` aus (leer), wird auf die alte Zaehlung zurueckgefallen —
-#      fail-safe Richtung "eher Teilsync": lieber eine Mahnung zu viel.
-if [ -n "${LAUF:-}" ]; then
-  _SKILL_IST=$(grep -c "^skill=.*|$LAUF\$" "$_SF" 2>/dev/null)
-else
-  _SKILL_IST=$(grep -c '^skill=' "$_SF" 2>/dev/null)
-fi
-_SKILL_IST=${_SKILL_IST:-0}
-_SKILL_SOLL=5
-
-_BILANZ="$PROJ/.claude-mind/lauf-bilanz.txt"
-mind_agent_bilanz "$PROJ" > "$_BILANZ" 2>/dev/null; _BRC=$?
-_DIS=$(sed -n 's/.*DISPATCH=\([0-9]*\).*/\1/p' "$_BILANZ" | head -1); _DIS=${_DIS:-0}
-# Soll: 4 Bereiche. 3, wenn custom-context mangels Dateien entfaellt (die EINZIGE
-# erlaubte Auslassung, mind-update Step 3.5). 0 nur bei --quick.
-# ⛔ v5.104.0: das Entfallen steht als `UEBERSPRUNGEN:`-Zeile in der Bilanz
-#    (Quittung `uebersprungen`, mind_agent_uebersprungen) und wird HIER vom Soll
-#    abgezogen — `3/3 agents`, nicht `3/4`. Vorher war `AGENT_SOLL` eine Shell-
-#    Variable, die niemand setzte: ein Projekt ohne Custom-Context-Dateien blieb
-#    per Konstruktion Teilsync (Palvedo, drei Laeufe 10.–13.09.2026).
-_UEB=$(grep -c '^ *UEBERSPRUNGEN: ' "$_BILANZ" 2>/dev/null); case "${_UEB:-}" in ''|*[!0-9]*) _UEB=0 ;; esac
-_AGENT_SOLL=$(( ${AGENT_SOLL:-4} - _UEB )); [ "$_AGENT_SOLL" -lt 0 ] && _AGENT_SOLL=0
-
-# ⛔ Der Rueckgabewert der Bilanz REICHT NICHT — am Code gemessen, 24.08.2026.
-#    mind_agent_bilanz zaehlt nur, was in der Quittung STEHT. Ein Agent, der nie
-#    dispatcht wurde, hinterlaesst gar keine Zeile und ist unsichtbar. "2 dispatcht,
-#    beide mit Ergebnis" ergibt deshalb Rueckgabe 0 — "alles gut" — und waere als
-#    vollstaendig durchgewunken worden. Das ist exakt der Creator-Lauf vom 24.08.
-#    Deshalb entscheidet die ZAHL, nicht der Zustand. (tests/test_teilsync.sh, Fall 18)
-if [ "$_SKILL_IST" -eq 0 ] 2>/dev/null; then
-  SYNC_LIEF="nein"
-elif [ "$_BRC" = 0 ] && [ "$_DIS" -ge "$_AGENT_SOLL" ] 2>/dev/null \
-     && [ "$_SKILL_IST" -ge "$_SKILL_SOLL" ] 2>/dev/null; then
-  SYNC_LIEF="ja"
-else
-  SYNC_LIEF="teil"
-fi
-# v5.22.0: der Bestands-Pass zaehlt mit. Jeder der fuenf Skills quittiert
-# `bestand=<skill>:<geprueft>/<stichprobe>` in `analyzed-scopes`; fehlt eine
-# Quittung, hat der Skill seinen Bestand nicht angesehen.
-#
-# ⭐ Es braucht KEIN neues Feld und KEINE Aenderung an mind_sync_voll: die
-#    zerlegt `umfang=` schon in a/b-Paare und macht aus jedem a<b einen
-#    Teilsync. Ein angehaengtes `<n>/5 bestand` wirkt damit sofort.
-#
-# ⛔ Gezaehlt wird in `.done`, falls Step 2.9 die Marke schon umbenannt hat —
-#    sonst zaehlt dieser Block je nach Reihenfolge mal 5 und mal 0, und das
-#    saehe wie ein Befund ueber die Skills aus statt wie ein Lesefehler.
-_SC="$PROJ/.claude-mind/analyzed-scopes"
-[ -f "$_SC" ] || _SC="$PROJ/.claude-mind/analyzed-scopes.done"
-_BEST=$(grep -c '^bestand=' "$_SC" 2>/dev/null); _BEST=${_BEST:-0}
-case "$_BEST" in ''|*[!0-9]*) _BEST=0 ;; esac
-
-# ⛔ v5.67.0: DIE ABDEKUNG ZAEHLT MIT — Nutzer-Auftrag 10.09.2026, woertlich:
-#    "rita und nora sind fertig und nicht komplett gefahren das darf nicht sein
-#     die sollen alles fahren".
-#
-# DER FALL, an dem es auffiel: Ritas Lauf vom 13:25 liess den
-# context-analyzer-Dispatch in `mind-claudemd` aus und quittierte ihn korrekt
-# als Teilabdeckung `1/2`. Der Lauf zaehlte trotzdem `5/5 skills 4/4 agents`,
-# hinterliess KEINE Schuld und galt als beglichen. Sie hat es gesagt; das
-# Werkzeug hat sie durchgewunken.
-#
-# ⭐ ES BRAUCHT KEIN NEUES FELD UND KEINE AENDERUNG AN `mind_sync_voll`:
-#    die zerlegt `umfang=` schon in a/b-Paare und macht aus jedem a<b einen
-#    Teilsync. Ein angehaengtes `<voll>/<gesamt> abdeckung` wirkt sofort —
-#    derselbe Trick wie beim Bestands-Pass in v5.22.0.
-#
-# ⚠ GEZAEHLT WERDEN SCHRITTE, NICHT SKILLS. Die Bilanz kennt Schrittnamen,
-#   keine Skillnamen; ein Skill mit zwei halben Schritten waere sonst falsch
-#   verrechnet. Jede Teilabdeckung macht a<b — mehr braucht das Tor nicht.
-# ⛔ `--alle` IST HIER PFLICHT. Ohne den Schalter saehe die Bilanz nur den
-#    LETZTEN Block (mind-update) — und genau so ist Ritas Beleg verschwunden.
-_ABD=$(mind_schritt_bilanz "$PROJ" --alle 2>/dev/null)
-_ATEIL=$(printf '%s' "$_ABD" | sed -n 's/.*TEIL=\([0-9]*\).*/\1/p' | head -1)
-_AGEL=$(printf '%s' "$_ABD"  | sed -n 's/.*GELAUFEN=\([0-9]*\).*/\1/p' | head -1)
-case "${_ATEIL:-}" in ''|*[!0-9]*) _ATEIL=0 ;; esac
-case "${_AGEL:-}"  in ''|*[!0-9]*) _AGEL=0 ;; esac
-
-# ⛔ v5.97.0: FORMAL — Quittungen, die da sind und nichts belegen (kein eigener
-#    Start-Block, Bytes getippt statt --datei, zwei Skills in derselben Sekunde).
-#    Gemessen am Lauf 00:02 (12.09.2026): alle vier inneren Skills. `<5-n>/5 echt`
-#    macht daraus ueber mind_sync_voll einen Teilsync, `formal-<skill>` sagt welchen.
-# ⛔ v5.104.0: gezaehlt werden nur die FUENF — `FORMAL: mind-all` (kein Kopf-Block,
-#    Etappe 12 §3) geht als `formal-mind-all` in `ungepruef=`.
-# ⛔ v5.106.0: beides bilden seither `mind_umfang_bilden` und `mind_ungepruef_bilden`
-#    aus der Bilanz — hier steht keine Zaehlung mehr, die man abtippen koennte.
-
-# ⛔ v5.105.0 (Etappe 13 a): der Wert kommt aus `mind_umfang_bilden` — gelesen aus den
-#    beiden Bilanzen und der Laufspur, NICHT aus den Variablen dieses Blocks. Die
-#    Variablen oben tragen nur noch SYNC_LIEF und `ungepruef=`. Gemessen 13.09.2026
-#    (Palvedo, Nora): `umfang=5/5 skills 3/4-echt-1-strukturell-leer agents 3/5 bestand
-#    0/N abdeckung 5/5 echt` — von Hand getippt, kein Wert aus einer Datei, und
-#    `mind_sync_voll` sah den 3/4 nicht einmal. ⛔ NIE `UMFANG="..."` aus Variablen bauen.
-UMFANG=$(mind_umfang_bilden "$PROJ" "${LAUF:-}" "${AGENT_SOLL:-4}")
-
-# ⛔ v5.106.0 (Etappe 14 §2): `ungepruef=` kommt aus `mind_ungepruef_bilden` — nie
-#    dispatchte und UNGEPRUEFT-Bereiche aus der Agent-Bilanz, `bestand-<skill>` ohne
-#    Quittung, `abdeckung-<schritt>` aus TEILABDECKUNG, `formal-<skill>` inkl.
-#    `formal-mind-all`, `fehlt-<skill>:<schritt>` aus FEHLT (v5.130.0, Etappe 42 — Noras
-#    Palvedo-Lauf 20.09.2026: `cleaner_duplikate` im mind-rules-Block nie quittiert, Bilanz
-#    sagte FEHLT, der Merker sagte voll). Gemessen 14.09.2026 (Creator, Doro): Bilanz LEER=4 + FORMAL=1,
-#    Merker von Hand „voll" — OPEN getilgt, `letzter-sync` geschrieben, zu Unrecht.
-#    ⛔ NIE `UNGEPRUEFT="..."` aus Schleifen bauen. Was der Lauf SELBST weiss (z. B. ein
-#    Bereich, den kein Werkzeug sieht), haengt er in UNGEPRUEFT_HAND an — es wird als
-#    `hand:<text>` ANGEHAENGT, ersetzt nichts und kann nichts wegnehmen.
-UNGEPRUEFT=$(mind_ungepruef_bilden "$PROJ" "${LAUF:-}")
-if [ -n "${UNGEPRUEFT_HAND:-}" ]; then
-  UNGEPRUEFT="${UNGEPRUEFT:+$UNGEPRUEFT,}hand:${UNGEPRUEFT_HAND//,/;}"
-fi
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step2.96-abschluss.sh"
 ```
 
 ⚠ **`nein` und `teil` sind verschiedene Dinge.** `nein` heisst: kein einziger Skill lief
@@ -974,45 +493,7 @@ ueberhaupt auf die idee zu kommen auch nur ein wort oder zeile vom plugin zu mis
 darf nix uebersprungen werden oder verschoben."*
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-# Vor dem Schreiben: Reparatur-Paesse, so viele wie noetig — der Lauf stoppt NICHT bei teil.
-# Je Eintrag in ungepruef=:
-#   formal-<skill>      -> den Skill-Block ERNEUT ausfuehren (Kopf-Block liegt, §1) — nicht nachtippen
-#   <bereich>           -> mind_agent_dispatch + Agent (blockierend) + mind_agent_ergebnis --datei, JETZT
-#                          (v5.126.0: ergebnis ohne dispatch desselben Laufs = rc 2, nichts geschrieben);
-#                          stirbt er, engerer Auftrag, wieder JETZT (workflow-agent-rate-limit.md)
-#   bestand-<skill>     -> den Bestands-Pass des Skills nachfahren, bestand= quittieren
-#   abdeckung-<schritt> -> den Schritt nachfahren und mit --datei quittieren
-#   fehlt-<skill>:<schritt> -> der Pflichtschritt wurde NIE quittiert (uebersprungen): den
-#                          Skill-Block VOLLSTAENDIG erneut fahren — alle Schritte seiner
-#                          Erwartung, jeden quittieren; nicht den einen Schritt nachtippen
-#                          (v5.130.0). `fehlt-mind-all:<skill>` heisst: der Skill fehlt im
-#                          Kopf-Block — nach seinem Block dort quittieren
-#   formal-mind-all     -> kann seit §1 nicht mehr entstehen; steht es doch da: Kopf-Block und
-#                          die fuenf Bloecke erneut, in dieser Reihenfolge
-_PASS=0
-while [ "$(mind_lauf_voll "$PROJ" "${LAUF:-}" "${AGENT_SOLL:-4}")" = "teil" ]; do
-  _PASS=$((_PASS + 1))
-  echo "⚠ Lauf ist teil — Reparatur-Pass $_PASS: $(mind_ungepruef_bilden "$PROJ" "${LAUF:-}")"
-  # Anton 16.09.2026: ab Pass 3 WARTEN, nie abbrechen — 60 s je Pass, Deckel 10 min. Kein Stopp,
-  # aber kein Haemmern auf ein Rate-Limit. (python statt `sleep`: das Bash-Werkzeug der
-  # Desktop-App blockt ein Vordergrund-sleep laut seiner Werkzeugbeschreibung.)
-  if [ "$_PASS" -ge 3 ]; then _W=$((60 * _PASS)); [ "$_W" -gt 600 ] && _W=600
-    echo "   warte ${_W}s vor Pass $_PASS — warten, nie abbrechen"; python -c "import time; time.sleep($_W)"; fi
-  [ "$_PASS" -eq 2 ] && mind_teilsync_meldung "$PROJ" "$(mind_ungepruef_bilden "$PROJ" "${LAUF:-}")" "$(mind_umfang_bilden "$PROJ" "${LAUF:-}" "${AGENT_SOLL:-4}")"
-  #   -> nach dem ZWEITEN Pass: Kennung aus .claude-mind/rescued/teilsync-meldung (manager=), per
-  #      mcp__ccd_session_mgmt__list_sessions die local_-Kennung, send_message mit der satz=-Zeile —
-  #      als INFORMATION. Der Lauf laeuft weiter; er wartet nicht auf eine Antwort.
-  # ... hier die Eintraege ABARBEITEN (oben) ...
-  break   # ⛔ der Skill fuehrt die Reparatur als Werkzeugaufrufe aus und ruft diesen Block danach ERNEUT — so lange, bis mind_lauf_voll voll sagt
-done
-UMFANG=$(mind_umfang_bilden "$PROJ" "${LAUF:-}" "${AGENT_SOLL:-4}")
-UNGEPRUEFT=$(mind_ungepruef_bilden "$PROJ" "${LAUF:-}")
-if [ "$(mind_lauf_voll "$PROJ" "${LAUF:-}" "${AGENT_SOLL:-4}")" = "voll" ]; then SYNC_LIEF="ja"; elif [ "$SYNC_LIEF" != "nein" ]; then SYNC_LIEF="teil"; fi
-# ⛔ Mit SYNC_LIEF=teil geht es hier NICHT weiter: kein sync-stand, kein Bericht, kein Ende —
-#    zurueck in die Schleife oben. Ein Teilsync wird nie mehr geschrieben.
+# laeuft in step2.96-abschluss.sh mit (Step 2.96a) — KEIN eigener Aufruf
 ```
 
 ⛔ **Kein Pass-Limit, kein Abbruch, kein Verschieben — ab Pass 3 warten, nie abbrechen.**
@@ -1020,62 +501,7 @@ Die Meldung nach dem zweiten Pass ersetzt nicht die Arbeit — sie macht sie sic
 kommt als Nachricht; bis dahin laeuft die Reparatur.
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-# ⛔ v5.113.0: NUR bei `ja`. Ein Merker fuer teil entsteht nicht mehr — teil ist kein Zustand,
-#    in dem dieser Block erreicht wird (2.96a-R laeuft, bis voll).
-if [ "$SYNC_LIEF" = "ja" ]; then
-  mkdir -p "$PROJ/.claude-mind/rescued"
-  # ⛔ v5.65.0: HIER STAND `tokens=` UND DIE ERZEUGUNG VON `COMPACT-FAELLIG`.
-  #    Beides ist weg. Nutzer-Entscheidung 10.09.2026: "die sollen garnicht
-  #    mehr tokens messen das soll komplett raus".
-  #
-  #    `tokens=` speiste `mind_sync_frisch` (Zuwachs seit dem Sync). Die
-  #    Funktion ist in v5.65.0 entfallen; ohne sie hat die Zahl keinen Leser.
-  #    Der Merker wird jetzt wieder von `pre-compact.sh` verbraucht — der
-  #    Zustand von v5.7.0 bis v5.10.0.
-  #
-  #    `COMPACT-FAELLIG` entstand AUSSCHLIESSLICH token-getriggert. ⚠ Damit
-  #    bittet ab jetzt niemand mehr um eine Kompaktierung; das traegt die
-  #    Auto-Kompaktierung (gemessen ~966 000, `env-vars.md`).
-  #
-  # ⭐ WAS BLEIBT UND JETZT ALLEIN TRAEGT: `umfang=` ist der Beleg,
-  #    `ungepruef=` sagt WAS fehlt. Ohne beide sieht ein Teilsync im Merker aus
-  #    wie ein Vollsync — und `pre-compact.sh` loescht dann die Schuld fuer
-  #    Arbeit, die nie stattgefunden hat.
-  # ⛔ v5.143.0 (Etappe 53 §1): `sid=` sagt, WESSEN Verlauf dieser Sync gelesen hat.
-  #    Ein Sync liest seinen eigenen laufenden Verlauf und die eingetragenen Rettungen —
-  #    NICHT den laufenden Verlauf einer anderen Sitzung. Ohne diese Zeile hielt jede
-  #    Sitzung den Merker fuer ihren eigenen (Palvedo 01.10.2026, 5 090 Beitraege verloren).
-  printf 'ts=%s\numfang=%s\nungepruef=%s\nsid=%s\n' \
-    "$(date '+%Y-%m-%d %H:%M:%S')" "$UMFANG" "$UNGEPRUEFT" "${CLAUDE_CODE_SESSION_ID:-unbekannt}" \
-    > "$PROJ/.claude-mind/rescued/sync-stand"
-  # ⛔ v5.113.0 (Etappe 20 §4a): das Urteil IST mind_sync_voll auf dem GERADE geschriebenen
-  #    Merker — nicht die Zaehler oben. Noras Lauf 10 (16.09. 17:00): `ungepruef=abdeckung-…`,
-  #    mind_sync_voll rc 1, und SYNC_LIEF stand trotzdem auf ja — OPEN getilgt, letzter-sync
-  #    geschrieben, zu Unrecht. Sagt es teil, bleibt KEIN teil-Merker liegen (Nutzer 16.09.):
-  #    zurueck nach 2.96a-R, die Eintraege abarbeiten, diesen Block erneut.
-  mind_sync_voll "$PROJ/.claude-mind/rescued/sync-stand"; _SV_RC=$?
-  if [ "$_SV_RC" -eq 0 ]; then SYNC_LIEF="ja"
-  elif [ "$_SV_RC" -eq 3 ]; then
-    # ⛔ v5.113.1: rc 3 ist ein AUFRUFFEHLER (Pfad falsch, Ordner fehlt) — KEIN teil, KEIN
-    #    Reparatur-Pass: 2.96a-R kann daran nichts reparieren, die Schleife liefe endlos.
-    #    Melden, Merker entfernen, den Pfad pruefen (PROJ, .claude-mind/rescued vorhanden?).
-    SYNC_LIEF="nein"; rm -f "$PROJ/.claude-mind/rescued/sync-stand"
-    echo "⛔ AUFRUFFEHLER: mind_sync_voll rc 3 auf $PROJ/.claude-mind/rescued/sync-stand — kein Urteil. Pfad und Ordner pruefen; OPEN bleibt, kein letzter-sync."
-  else
-    SYNC_LIEF="teil"; rm -f "$PROJ/.claude-mind/rescued/sync-stand"
-    echo "⛔ Der geschriebene Merker ist TEIL (mind_sync_voll) — entfernt. Zurueck nach 2.96a-R: ${UNGEPRUEFT:-?}"
-  fi
-  # v5.86.0: der Merker der Rotations-Ratsche — NUR bei einem vollen Sync, und er
-  #   wird von niemandem verbraucht. Was juenger ist als diese Zeit, rotiert nicht.
-  #   v5.88.0: `utc=` dazu — die Beitraege der Rettungen sind in UTC gestempelt;
-  #   `mind_rettung_nach_sync` vergleicht damit, ob eine Rettung Material nach
-  #   dem Sync traegt (Ja/Nein, keine Schwelle).
-  [ "$SYNC_LIEF" = "ja" ] && printf 'ts=%s\nutc=%s\n' "$(date +%Y%m%d-%H%M%S)" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    > "$PROJ/.claude-mind/rescued/letzter-sync"
-fi
+# laeuft in step2.96-abschluss.sh mit (Step 2.96a) — KEIN eigener Aufruf
 ```
 
 ⛔ **Seit v5.65.0 traegt `sync-stand` KEINE Tokenzahl mehr.** Er sagt nur noch,
@@ -1120,33 +546,7 @@ repariert, bis voll); beide Bloecke haengen jetzt an `ja`, und `OPEN` verschwind
 nur hier.
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-# ⛔ v5.113.0 (Etappe 20 §4): getilgt wird NUR, wenn mind_sync_voll den frischen Merker
-#    mit rc 0 bestaetigt — und die resume=-Zeilen der EINGELESENEN Rettungen werden .done (mind_schuld_begleichen, seit v5.149.0 mit Liste).
-#    Bis v5.112.0 stand hier `grep -m1 '^resume='`: nur die aelteste RESUME wurde .done,
-#    zwei juengere blieben liegen (Noras Fund, 16.09.2026).
-if [ "$SYNC_LIEF" = "ja" ] \
-   && mind_sync_voll "$PROJ/.claude-mind/rescued/sync-stand"; then
-  # ⛔ v5.149.0: nur die Rettungen, die Step 0 eingelesen hat (Liste mit der Lauf-ID der Kopfzeile).
-  _GL="$PROJ/.claude-mind/rescued/OPEN.gelesen-$(mind_kopf_lauf "$PROJ" 2>/dev/null || echo ohne-lauf)"
-  _BEGL=$(mind_schuld_begleichen "$PROJ" "$_GL") && echo "Sync-Schuld beglichen: $_BEGL."
-fi
-
-# ⛔ v5.28.0: Die PLAN-PAUSE wird IMMER aufgehoben — ausserhalb des
-#    SYNC_LIEF-Blocks und auch, wenn gar keine Schuld bestand.
-#    Sonst liefe ein von Hand gestarteter Sync waehrend eines Plans zwar
-#    durch, der Merker bliebe aber liegen und legte die naechsten Stunden
-#    still. Ein Merker, der einen erledigten Zustand behauptet, ist genau
-#    der `PENDING`-Fehler aus v5.2.1 — eine Quittung fuers Reden statt einer
-#    fuer die Arbeit.
-#    ⚠ Der Merker ist Ablaufzustand, kein Inhalt — deshalb haengt er nicht daran,
-#      ob eine Context-Datei geaendert wurde.
-if command -v mind_plan_frei >/dev/null 2>&1 \
-   && [ -f "$PROJ/.claude-mind/PLAN-AKTIV" ]; then
-  mind_plan_frei "$PROJ" && echo "Plan-Pause aufgehoben (PLAN-AKTIV entfernt)."
-fi
+# laeuft in step2.96-abschluss.sh mit (Step 2.96a) — KEIN eigener Aufruf
 ```
 
 **Die Rettungsdateien `*_chat.md` bleiben liegen** — sie sind das Archiv. Entfernt wird nur
@@ -1168,11 +568,7 @@ passieren darf — genau daran ist v5.2.0 gescheitert.
 Bis v5.145.0 stand dieser Schritt im Pflichtkasten und in der Startzeile, aber **nirgends als Aufruf** — erwartet, nie gelaufen. So entstand Noras `FEHLT: mind-rules/cleaner_duplikate` (Palvedo, 20.09.2026), und so wurden Schritte von Hand nachgeholt. Seine Ausgabe gehoert in den Schlussbericht: ein Werkzeug ohne erreichbare Rule liegt tot im Ordner.
 
 ```bash
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-A="$PROJ/.claude-mind/schritt-mind-all-toolcheck.txt"
-mind_check_tools_have_rules "$PROJ" > "$A" 2>&1; echo "rc=$?" >> "$A"; cat "$A"
-mind_schritt mind_check_tools_have_rules gelaufen --datei "$A" "$PROJ"
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/tools-rules.sh"
 ```
 
 ## Step 3: Konsolidierter Schlussbericht (PFLICHT)

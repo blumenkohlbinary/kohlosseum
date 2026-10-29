@@ -132,7 +132,7 @@ janein "plan-pause.sh meldet unerreichbare lib.sh statt zu schweigen" "1" \
        "$(grep -c 'lib.sh unerreichbar' "$CLAUDE_PLUGIN_ROOT/hooks/plan-pause.sh")"
 janein "mind-all HEBT die Pause auf" "1" \
        "$(grep -c 'mind_plan_frei "$PROJ"' \
-          "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md")"
+          "$(skill_text_datei "$CLAUDE_PLUGIN_ROOT" mind-all)")"
 janein "hooks.json registriert PostToolUse/ExitPlanMode" "1" \
        "$(grep -c '"matcher": "ExitPlanMode"' "$HJ")"
 # ⛔ Der Hook prueft den Tool-Namen SELBST nach, nicht nur ueber den Matcher.

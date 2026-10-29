@@ -50,7 +50,7 @@
 set -u
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { echo "CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 2; }
 H="$CLAUDE_PLUGIN_ROOT/hooks"
-MA="$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md"
+MA="$(skill_text_datei "$CLAUDE_PLUGIN_ROOT" mind-all)"
 OK=0; ROT=0
 
 janein() { # name erwartung(ja|nein) ist(ja|nein)

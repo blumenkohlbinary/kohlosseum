@@ -77,8 +77,8 @@ janein "   Gegenprobe: Kopf 2 h alt (voriger Lauf), run_started jetzt -> rc 1" 1
 #    und bezog ihren Bezugswert damit aus dem Gegenstand, den sie pruefen soll. Sie konnte
 #    nicht fehlschlagen (gemessen 01.10.2026: Kopf 9 Tage alt → rc 0; derselbe Kopf mit
 #    unabhaengigem Bezug → rc 1). Jetzt kommt run_started aus `lock/ts`.
-janein "mind-all Step 0 nimmt run_started aus lock/ts" ja "$(grep -q 'mind-all.lock/ts' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" && echo ja || echo nein)"
-janein "   ... und NICHT mehr aus dem Kopf (kein mind_kopf_epoch-Aufruf dafuer)" 0 "$(grep -c 'run_started=$(mind_kopf_epoch' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md")"
+janein "mind-all Step 0 nimmt run_started aus lock/ts" ja "$(grep -q 'mind-all.lock/ts' "$(skill_text_datei "$CLAUDE_PLUGIN_ROOT" mind-all)" && echo ja || echo nein)"
+janein "   ... und NICHT mehr aus dem Kopf (kein mind_kopf_epoch-Aufruf dafuer)" 0 "$(grep -c 'run_started=$(mind_kopf_epoch' "$(skill_text_datei "$CLAUDE_PLUGIN_ROOT" mind-all)")"
 rm -rf "$(dirname "$P")"
 
 echo "== §3  Skill-Text =="

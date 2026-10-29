@@ -48,7 +48,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.151.0"
+MIND_SKILL_VERSION="5.152.0"
 mind_schritt_start "$PROJ" mind-cleaner bestandsaufnahme cleaner_audit cleaner_einordnung cleaner_grenzen cleaner_leitplanke cleaner_ratsche cleaner_rebuild cleaner_tor cleaner_umzug cleaner_wirkung ladeprotokoll_auswertung mind_debug_write mind_snapshot
 ```
 
@@ -137,6 +137,8 @@ Umzug" (24.08.); die 73 liegengebliebenen Audit-Befunde vom 25.08. waren der Pre
 Bericht → Plan → ok bleiben drei Schritte — nur das „eine Datei" fällt.
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 # 2  der Plan: ALLE Befunde der Gruppen 2–4 (Umzüge, docs/-Ziele, paths:-Vorschläge,
 #    Archivierungen, Zeiger) in EINE Datei, je Zeile Datei · Klasse · Ziel · Gates · Rückweg
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_plan.py" --neu "$PROJ" --nur projekt
@@ -231,6 +233,8 @@ Weitere Aufrufe:
 ## ⭐ `--audit` — der Bericht, in dem alles zusammenläuft
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_audit.py" \
        --bereich "$PROJ" --nur global|projekt|alles|memory
 ```
@@ -324,6 +328,8 @@ Topic-Dateien. Der Pfad kommt **immer aus dem Slug** (`learnings_quellen.memory_
 vier Gates aus `mind-memory` 4.0c dazu.** Vor JEDEM anwendenden Schritt an einer Topic-Datei:
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 TS=$(date +%Y%m%d_%H%M%S); B="C:/CD/KOHLEKTIV/_claude_backups/${TS}_memory"
 MEM=$(python -c "import sys; sys.path.insert(0,'$CLAUDE_PLUGIN_ROOT/references');
 from learnings_quellen import memory_pfad; print(memory_pfad(r'$PROJ') or '')")
@@ -561,6 +567,8 @@ den Command schiebt und die Erklärung in der Rule lässt, besteht **alle vier**
 ### ⛔ Step 5b: Stille Kappungen — PFLICHT vor jedem Umzug (NEU v5.17.0)
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_grenzen.py" --ziel <zieldatei> --dazu <inhalt>
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_grenzen.py" --bestand "$PROJ"
 ```
@@ -610,6 +618,8 @@ Kontext"*). Deduplizieren macht eine Stelle zum **Zeiger**; erst dann fällt die
 Summe. Beides sieht im Bericht gleich erfolgreich aus.
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 W="$CLAUDE_PLUGIN_ROOT/references/cleaner_wirkung.py"
 python "$W" --vorher  "$PROJ"                       # VOR dem Anwenden
 # … anwenden …
@@ -656,6 +666,8 @@ mind_schritt cleaner_tor gelaufen --datei "$A" "$PROJ"
 ### ⭐ Step 7b: Die Ratsche — damit aufgeräumt auch aufgeräumt BLEIBT (NEU v5.17.0)
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 # beim Archivieren — der Grund ist PFLICHT
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_ratsche.py" \
        --archiviere <datei> --grund "<warum es weggeht>" --projekt "$PROJ"
@@ -707,6 +719,8 @@ nicht „würdest du es tun".
 Archiv, und der Weg zurück steht offen.
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_rebuild.py" --bereich "$PROJ" <regel.md>
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_rebuild.py" --bereich "$PROJ" <regel.md> --auto
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_rebuild.py" --bereich "$PROJ" <regel.md> --auto --anwenden
@@ -773,6 +787,8 @@ Gemessen 14.09.2026 in einem Projekt: 14 Rules, 865 kB, alle `globs:`, alle lade
 weil nur der Mensch eine neue Sitzung starten kann:
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 # 1  nach dem OK des Cleaners — die Sonde AENDERT eine Datei (wie jeder Umzug)
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_paths_sonde.py" --start "$PROJ" [--datei <rule.md>]
 #    kleinste Rule mit Datei-Bezug, Sicherung nach _claude_backups/<ts>_paths-sonde/,

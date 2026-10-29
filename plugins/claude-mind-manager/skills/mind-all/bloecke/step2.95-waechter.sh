@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# /mind-all — aus skills/mind-all/SKILL.md ausgelagert (v5.152.0, Etappe 58 Hebel B, ZIEL 5).
+# ⛔ Jeder Block ist ein EIGENER Bash-Aufruf. Was ein frueherer Block setzte, ist hier LEER —
+#    deshalb leitet mind_block_umgebung PROJ, SCOPES_FILE, LAUF und AGENT_SOLL selbst her.
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung
+# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
+# Der Snapshot aus Step 0 ist der Vorher-Stand — er wird hier zum Messinstrument.
+MEMDIR=$(get_memory_dir "$PROJ" 2>/dev/null) || MEMDIR=""
+mind_zeilenenden_waechter "$MIND_SNAPSHOT_DIR" "$PROJ" "$MEMDIR"
+# ⚠ v5.109.0: der Waechter vergleicht das WURZEL-Memory (Snapshot memory/). Die Memorys der
+#   Roster-Ordner liegen unter memory-unterordner/<ordner>/ und werden hier NICHT verglichen —
+#   ausgewiesen, nicht behoben (Etappe 18, Allbetroffenheit); ihr Rueckweg ist die Kopie.
+RC=$?
+[ "$RC" = 2 ] && echo "⛔ WAECHTER UNGUELTIG — Zeilenenden in diesem Lauf NICHT geprueft."

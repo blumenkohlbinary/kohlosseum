@@ -108,14 +108,14 @@ pruef "   ... und die Sekunde des Kopfes kommt zurueck" "ja" \
 
 echo "  Fall 7: ⛔ run_started kommt aus lock/ts, NICHT aus dem Kopf"
 pruef "mind-all liest lock/ts" "ja" \
-  "$(grep -q 'mind-all.lock/ts' "$R/skills/mind-all/SKILL.md" && echo ja || echo nein)"
+  "$(grep -q 'mind-all.lock/ts' "$(skill_text_datei "$R" mind-all)" && echo ja || echo nein)"
 pruef "   ... und ruft mind_kopf_epoch NICHT mehr dafuer" "0" \
-  "$(grep -c '$(mind_kopf_epoch' "$R/skills/mind-all/SKILL.md")"
+  "$(grep -c '$(mind_kopf_epoch' "$(skill_text_datei "$R" mind-all)")"
 pruef "   ... der Lock holt die ID aus dem Kopf" "ja" \
-  "$(grep -q 'LAUF=$(mind_kopf_lauf' "$R/skills/mind-all/SKILL.md" && echo ja || echo nein)"
+  "$(grep -q 'LAUF=$(mind_kopf_lauf' "$(skill_text_datei "$R" mind-all)" && echo ja || echo nein)"
 # ⚠ Fehlt lock/ts, darf KEINE Sekunde geraten werden — die Zeile entfaellt dann.
 pruef "   ... fehlt lock/ts, wird run_started NICHT geschrieben" "ja" \
-  "$(grep -q 'run_started wird NICHT geschrieben' "$R/skills/mind-all/SKILL.md" && echo ja || echo nein)"
+  "$(grep -q 'run_started wird NICHT geschrieben' "$(skill_text_datei "$R" mind-all)" && echo ja || echo nein)"
 
 echo "  Fall 8: ⛔ RITAS LAGE, woertlich — Kopf-Block NICHT gefahren"
 # ⛔ Antons Pflicht-Fall, und er deckt den Fehler in MEINEM ersten Entwurf auf:
@@ -187,9 +187,9 @@ CLAUDE_CODE_SESSION_ID="aaaabbbbccccdddd" mind_kopf_lauf_frisch "$P8e" >/dev/nul
 pruef "   ... eigene Sitzung: angenommen" "0" "$?"
 # ⛔ mind-all darf die ID NICHT neu rechnen, wenn sie fehlt — das wuerde den Fall decken.
 pruef "mind-all holt sie ueber mind_kopf_lauf_frisch" "ja" \
-  "$(grep -q 'LAUF=$(mind_kopf_lauf_frisch' "$R/skills/mind-all/SKILL.md" && echo ja || echo nein)"
+  "$(grep -q 'LAUF=$(mind_kopf_lauf_frisch' "$(skill_text_datei "$R" mind-all)" && echo ja || echo nein)"
 pruef "   ... und rechnet sie NICHT neu (kein date-Rueckfall)" "nein" \
-  "$(grep -q '|| LAUF="$(date' "$R/skills/mind-all/SKILL.md" && echo ja || echo nein)"
+  "$(grep -q '|| LAUF="$(date' "$(skill_text_datei "$R" mind-all)" && echo ja || echo nein)"
 
 echo
 echo "  $GRUEN gruen · $ROT rot"

@@ -46,7 +46,7 @@ for s in "$CLAUDE_PLUGIN_ROOT"/skills/*/SKILL.md; do
 done
 janein "jeder Guard hat die Rueckfall-Zeile davor (Guards == Rueckfaelle, > 0)" ja "$([ "$G" -gt 0 ] && [ "$G" -eq "$F" ] && echo ja || echo "nein ($G/$F)")"
 # die Zeile selbst, gefahren mit leerer Variable: sie findet das registrierte Paket
-Z=$(grep -m1 'v5.107.0 Rueckfall' "$CLAUDE_PLUGIN_ROOT/skills/mind-all/SKILL.md" | sed 's/^[ \t]*//; s/[ ]*# v5.107.0 Rueckfall$//')
+Z=$(grep -m1 'v5.107.0 Rueckfall' "$(skill_text_datei "$CLAUDE_PLUGIN_ROOT" mind-all)" | sed 's/^[ \t]*//; s/[ ]*# v5.107.0 Rueckfall$//')
 E=$(env -u CLAUDE_PLUGIN_ROOT bash -c "$Z"'; printf "%s" "$CLAUDE_PLUGIN_ROOT"' 2>/dev/null)
 janein "mit leerer Variable: Rueckfall liefert ein Paket mit hooks/lib.sh" ja "$([ -n "$E" ] && [ -f "$E/hooks/lib.sh" ] && echo ja || echo "nein ($E)")"
 janein "   ... und meldet WARN auf stderr" ja "$(env -u CLAUDE_PLUGIN_ROOT bash -c "$Z" 2>&1 >/dev/null | grep -q 'WARN: CLAUDE_PLUGIN_ROOT war leer' && echo ja || echo nein)"
