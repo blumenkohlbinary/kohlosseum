@@ -26,7 +26,7 @@ pruef() { if [ "$2" = "$3" ]; then GRUEN=$((GRUEN+1)); echo "  [ok ] $1"
 
 # Den Abbruch-Block woertlich aus einer SKILL.md ziehen und ausfuehrbar machen.
 ausschnitt() {  # ausschnitt <skill> <args>
-  local md="$R/skills/$1/SKILL.md" d="$TMP/a$2$1" von bis
+  local md; md="$(skill_text_datei "$R" "$1")"; local d="$TMP/a$2$1" von bis
   mkdir -p "$d"
   von=$(grep -n "^if echo \"\$ARGS\" | grep -qE '(^|\[\[:space:\]\])--dry-run" "$md" | head -1 | cut -d: -f1)
   [ -n "$von" ] || { echo "KEIN_BLOCK"; return 0; }
@@ -97,7 +97,7 @@ done
 echo "  Fall 6: ⛔ kein Zweig haengt mehr an DRY_RUN (eine immer wahre Bedingung bleibt nicht stehen)"
 for s in $SKILLS; do
   pruef "$s: kein ausfuehrbares DRY_RUN mehr" "0" \
-    "$(grep -v '^\s*#' "$R/skills/$s/SKILL.md" | grep -c 'DRY_RUN')"
+    "$(grep -v '^\s*#' "$(skill_text_datei "$R" "$s")" | grep -c 'DRY_RUN')"
 done
 
 echo "  Fall 7: ⭐ was BLEIBEN muss — der gfs-Loeschschutz ist kein Probelauf"

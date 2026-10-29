@@ -25,13 +25,18 @@ esac
 # skill_text_datei <plugin-root> <skill>  -> Pfad einer Datei: SKILL.md + bloecke/*.sh aneinander (v5.152.0)
 # ⭐ Seit Etappe 58 Hebel B steht der Code eines Skills in `skills/<s>/bloecke/*.sh`, der Text in
 #    SKILL.md. Eine Zusicherung "der Code tut X" behaelt so ihr Ziel, egal auf welcher Seite er steht.
+# ⭐ Jedes Skript wird als ```bash-Fence angehaengt — so sieht der Text aus wie vor dem Auslagern, und
+#    Pruefungen, die Aufrufe bewusst nur in Fences zaehlen (Prosa ist kein Aufruf), behalten ihr Ziel.
 # ⚠ EINE feste Datei je Skill unter <Temp>/mind-skilltext/, bei jedem Aufruf neu geschrieben —
 #    sie waechst nicht und braucht keinen trap (die Sammlungen setzen ihren eigenen).
 skill_text_datei() {
-  local d f
+  local d f b
   d="$(cygpath -m "${TEMP:-${TMP:-/tmp}}" 2>/dev/null || printf '%s' "${TMPDIR:-/tmp}")/mind-skilltext"
   mkdir -p "$d" 2>/dev/null; f="$d/$2.md"
-  cat "$1/skills/$2/SKILL.md" "$1/skills/$2/bloecke/"*.sh > "$f" 2>/dev/null \
-    || cat "$1/skills/$2/SKILL.md" > "$f" 2>/dev/null
+  cat "$1/skills/$2/SKILL.md" > "$f" 2>/dev/null
+  for b in "$1/skills/$2/bloecke/"*.sh; do
+    [ -f "$b" ] || continue
+    { printf '\n```bash\n'; cat "$b"; printf '\n```\n'; } >> "$f"
+  done
   printf '%s' "$f"
 }

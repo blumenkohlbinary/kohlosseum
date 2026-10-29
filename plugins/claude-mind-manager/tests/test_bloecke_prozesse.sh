@@ -20,6 +20,14 @@ TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 A="$R/skills/mind-all/bloecke/step2.96-abschluss.sh"
 pruef "Gegenstand: step2.96-abschluss.sh liegt im Paket" "$([ -f "$A" ] && echo ja || echo nein)" "ja"
 [ -f "$A" ] || { echo "  $ok gruen · $rot rot"; exit 1; }
+# ⛔ GEMESSEN 29.10.2026 (erster Suite-Lauf): ohne CLAUDE_PROJECT_DIR je Aufruf leitete
+#    mind_block_umgebung PROJ aus dem CLAUDE_PROJECT_DIR der SUITE her — dem echten Workspace. Der
+#    Prueffall zaehlte dort Reparatur-Paesse und wartete 492 s. Deshalb: je Aufruf das Fixture setzen,
+#    und am Ende pruefen, dass im aufrufenden Projekt nichts entstand.
+AUFRUFER="${CLAUDE_PROJECT_DIR:-}"
+rest() { [ -n "$AUFRUFER" ] || { echo keiner; return; }
+  ls "$AUFRUFER/.claude-mind/"reparatur-pass-* "$AUFRUFER/stub-meldung" 2>/dev/null | wc -l | tr -d ' ' | sed 's/^0$/keiner/'; }
+REST_VOR=$(rest)
 
 ST="$TMP/stub wurzel"; mkdir -p "$ST"
 cp -r "$R/hooks" "$R/references" "$R/skills" "$ST/" 2>/dev/null
@@ -48,7 +56,7 @@ lage() {  # Projekt mit Lauf L1 (Startzeile in der Quittung), zwei offenen Rettu
   printf '%s' "$d"
 }
 # Ein Aufruf wie im Lauf: frische bash, cwd = Projekt, KEINE uebertragene Variable
-abschluss() { ( cd "$1" && env -u PROJ -u LAUF -u SYNC_LIEF -u UMFANG -u UNGEPRUEFT -u SCOPES_FILE \
+abschluss() { ( cd "$1" && CLAUDE_PROJECT_DIR="$1" env -u PROJ -u LAUF -u SYNC_LIEF -u UMFANG -u UNGEPRUEFT -u SCOPES_FILE \
   CLAUDE_PLUGIN_ROOT="$ST" MIND_LOG_FILE="$TMP/log" bash "$ST/skills/mind-all/bloecke/step2.96-abschluss.sh" \
   > "$1/aus.txt" 2>&1 ); }
 da() { [ -e "$1" ] && echo da || echo fehlt; }
@@ -85,17 +93,20 @@ pruef "OPEN getilgt"                              "$(da "$P/.claude-mind/rescued
 echo "=== 4) 2.95: der Befund kommt an, ein fehlender Abschnitt bricht ab ==="
 L="$ST/skills/mind-all/bloecke/step2.95-liste.sh"
 P="$TMP/f4 mit leer"; mkdir -p "$P/.claude-mind" "$TMP/dbg"
-( cd "$P" && CLAUDE_PLUGIN_ROOT="$ST" MIND_LOG_FILE="$TMP/log" bash "$L" Handaufruf > "$P/aus.txt" 2>&1 ); RC=$?
+( cd "$P" && CLAUDE_PROJECT_DIR="$P" CLAUDE_PLUGIN_ROOT="$ST" MIND_LOG_FILE="$TMP/log" bash "$L" Handaufruf > "$P/aus.txt" 2>&1 ); RC=$?
 pruef "ohne Abschnitt: rc 1"                      "$RC" "1"
 pruef "   ... und sagt es"                        "$(grep -c 'fehlt oder ist leer' "$P/aus.txt")" "1"
 printf '## Lauf\n\n### Probleme in diesem Lauf\n- (keine)\n' > "$P/.claude-mind/lauf-abschnitt.md"
 printf '{"ts":"2026-10-29 19:00","projekt":"x","klasse":"sonstiges","kurz":"Prueffall-Befund","lauf":"L1"}\n' \
   > "$P/.claude-mind/lauf-befunde.jsonl"
-( cd "$P" && CLAUDE_PLUGIN_ROOT="$ST" MIND_LOG_FILE="$TMP/log" MIND_DEBUG_DIR="$TMP/dbg" bash "$L" Handaufruf > "$P/aus.txt" 2>&1 ); RC=$?
+( cd "$P" && CLAUDE_PROJECT_DIR="$P" CLAUDE_PLUGIN_ROOT="$ST" MIND_LOG_FILE="$TMP/log" MIND_DEBUG_DIR="$TMP/dbg" bash "$L" Handaufruf > "$P/aus.txt" 2>&1 ); RC=$?
 pruef "mit Abschnitt: rc 0"                       "$RC" "0"
 pruef "Abschnitt in listeverbesserungen.md"       "$(grep -c '^## Lauf' "$P/listeverbesserungen.md" 2>/dev/null)" "1"
 pruef "⛔ der Befund steht im Debug-Ordner (wurde bis 5.151.0 vorher geleert)" \
   "$(grep -rl 'Prueffall-Befund' "$TMP/dbg" 2>/dev/null | wc -l | tr -d ' ' | sed 's/^[1-9][0-9]*$/ja/')" "ja"
+
+echo "=== 5) ⛔ im aufrufenden Projekt ist nichts entstanden ==="
+pruef "kein Reparatur-Zaehler, keine Stub-Meldung im Aufrufer" "$(rest)" "$REST_VOR"
 
 echo ""
 echo "  $ok gruen · $rot rot"

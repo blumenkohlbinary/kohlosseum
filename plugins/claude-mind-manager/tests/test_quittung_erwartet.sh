@@ -155,7 +155,7 @@ echo "==========================================================================
 #   machen, nie milder. Deshalb stehen sie hier statt in einer vierten Datei:
 #   sie gehoeren thematisch zur Erwartungszahl.
 for s in mind-all mind-update; do
-  F="$CLAUDE_PLUGIN_ROOT/skills/$s/SKILL.md"
+  F="$CLAUDE_PLUGIN_ROOT/skills/$s/SKILL.md"; [ -f "$F" ] && F="$(skill_text_datei "$CLAUDE_PLUGIN_ROOT" "$s")"   # v5.152.0: Text + bloecke/
   if [ -f "$F" ]; then
     # Ein Aufruf OHNE folgende Zahl ist der Rueckfall.
     N=$(grep -cE 'mind_agent_quittung_start "\$PROJ"[[:space:]]*$' "$F")

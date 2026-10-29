@@ -73,7 +73,7 @@ print(" ".join(fehlt))
 PYEOF
 for f in "$R"/skills/*/SKILL.md; do
   s=$(basename "$(dirname "$f")")
-  ohne=$("$PY" "$(win "$TMPA/aufruf.py")" "$(win "$f")" | tr -d '\r')
+  ohne=$("$PY" "$(win "$TMPA/aufruf.py")" "$(win "$(skill_text_datei "$R" "$s")")" | tr -d '\r')
   pruef "$s: jeder erwartete Schritt wird im Skill aufgerufen" "${ohne:-keiner}" "keiner"
 done
 rm -rf "$TMPA"
