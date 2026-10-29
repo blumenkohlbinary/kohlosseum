@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# /mind-claudemd Step 1 — Bereich bestimmen und melden (v5.154.0).
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung
+. "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/_ziele.sh"   # v5.154.0: BEREICH/ZIEL_* aus Step 1
+echo "Bereich: $BEREICH  ·  Ziel: $ZIEL_MD  ·  Rules: $ZIEL_RULES  ·  Wurzel: $ZIEL_WURZEL"

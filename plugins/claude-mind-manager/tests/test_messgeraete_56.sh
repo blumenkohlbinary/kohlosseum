@@ -5,7 +5,7 @@
 #    der Test seine eigene Kopie.
 set -u
 R="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
-U="$(skill_text_datei "$R" mind-update)"; M="$R/skills/mind-memory/SKILL.md"
+U="$(skill_text_datei "$R" mind-update)"; M="$(skill_text_datei "$R" mind-memory)"
 ok=0; rot=0
 pruef() {
   if [ "$2" = "$3" ]; then echo "  [ok ] $1"; ok=$((ok+1))

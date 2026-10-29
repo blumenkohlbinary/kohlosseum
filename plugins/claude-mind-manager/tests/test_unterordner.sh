@@ -180,7 +180,7 @@ janein "⛔ kein Skill setzt PROJ mehr aus CLAUDE_PROJECT_DIR allein (nur als Ru
 janein "⛔ kein inline CLAUDE_PROJECT_DIR:-\$(pwd) mehr in den Skills" "0" \
   "$(grep -h 'CLAUDE_PROJECT_DIR:-$(pwd)}' "$WURZEL"/skills/*/SKILL.md | grep -vc 'mind_projekt_wurzel')"
 janein "mind-files installiert nach \$PROJ, nicht nach \$CLAUDE_PROJECT_DIR" "0" \
-  "$(grep -c '$CLAUDE_PROJECT_DIR/tools' "$WURZEL/skills/mind-files/SKILL.md")"
+  "$(grep -c '$CLAUDE_PROJECT_DIR/tools' "$(skill_text_datei "$WURZEL" mind-files)")"
 
 rm -rf "$T"
 echo

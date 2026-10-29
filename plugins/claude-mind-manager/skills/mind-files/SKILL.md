@@ -43,7 +43,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.153.0"
+MIND_SKILL_VERSION="5.154.0"
 mind_schritt_start "$PROJ" mind-files bestandszahlen_kandidaten cleaner_stichprobe cleaner_tor mind_check_tools_have_rules mind_hook_health mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -107,10 +107,7 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-mind_schritt_bilanz "$PROJ"
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/01-pflichtschritte-dieser.sh"
 ```
 
 ⛔ **Fehlt diese Zeile oder nennt sie `FEHLT`, ist der Bericht unvollstaendig** und
@@ -128,51 +125,7 @@ Projekttyp erkennen -> Soll-Zustand definieren -> Ist pruefen -> User-OK -> Erst
 **Autonom ist der Standard.** Fehlende Dateien werden erstellt, verbesserbare verbessert.
 
 ```bash
-ARGS="${ARGUMENTS:-}"; AUTO_MODE="yes"
-echo "$ARGS" | grep -qE '(^|[[:space:]])--(ask|interactive)([[:space:]]|$)' && AUTO_MODE="no"
-# ⛔ v5.139.0: der PROBELAUF ist ERSATZLOS entfallen (Nutzer 29.09.2026: „wieso kein
-#    richtiger lauf kostet geld", „allgemein keine Probelaeufe mehr … ich will Ergebnisse
-#    sehen"). Wer die Flagge noch mitgibt, bekommt einen ABBRUCH und keinen stillen
-#    Echtlauf: wer `--dry-run` tippt, erwartet, dass nichts geschrieben wird.
-if echo "$ARGS" | grep -qE '(^|[[:space:]])--dry-run([[:space:]]|$)'; then
-  echo "ABBRUCH: --dry-run ist entfallen (seit 5.139.0) — es gibt keinen Probelauf mehr." >&2
-  echo "         Bitte OHNE die Flagge aufrufen. Der Lauf ist dann ein echter Lauf," >&2
-  # ⛔ KEINE Backticks in diesem Text: in doppelten Anfuehrungszeichen FUEHRT BASH AUS, was
-  #    zwischen ihnen steht (shell-windows.md). Hier stand "`--ask`" — das haette bei jedem
-  #    Abbruch ein "--ask: command not found" erzeugt und das Wort aus der Meldung getilgt.
-  echo "         mit Snapshot vorher (Rueckweg). --ask fragt weiterhin vor dem Anwenden." >&2
-  exit 2
-fi
-
-# Laeuft dieser Skill innerhalb eines AKTIVEN /mind-all? (C1-Fix: drei Bedingungen, nicht nur
-# "Datei existiert" — sonst gilt nach dem ersten /mind-all JEDER spaetere Einzellauf als Kette
-# und editiert ohne Snapshot.)
-CHAIN="no"; _SC="$PROJ/.claude-mind/analyzed-scopes"
-if [ -f "$_SC" ]; then
-  _SNAP=$(grep -m1 '^snapshot=' "$_SC" 2>/dev/null | cut -d= -f2-)
-  _START=$(grep -m1 '^run_started=' "$_SC" 2>/dev/null | cut -d= -f2)
-  _AGE=$(( $(date +%s) - ${_START:-0} ))
-  # 1) Snapshot-Pfad eingetragen  2) Verzeichnis existiert wirklich  3) Lauf juenger als 2 h
-  [ -n "$_SNAP" ] && [ -d "$_SNAP" ] && [ "$_AGE" -lt 7200 ] && CHAIN="yes"
-fi
-
-# Hook-Gesundheit (NEU v5.2.1) — laeuft in JEDEM Modus, auch in der Kette.
-# Kein Abbruchgrund; aber ein toter Hook MUSS im Bericht stehen, sonst haelt der naechste
-# Befundlauf ein totes Netz fuer ein gespanntes (genau so entstand die Befundliste 2026-08-16).
-if [ -n "$CLAUDE_PLUGIN_ROOT" ] && [ -f "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" ]; then
-  source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-  mind_hook_health "$PROJ" || HOOK_WARN="ja"
-fi
-
-if [ "$CHAIN" = "no" ]; then
-  [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
-  [ -z "$CLAUDE_PLUGIN_ROOT" ] && { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
-  source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-  SNAPSHOT=$(mind_snapshot "$PROJ" "pre-files") || {
-    echo "ABBRUCH: Snapshot fehlgeschlagen — es wird NICHTS editiert." >&2; exit 1; }
-  echo "Snapshot: $SNAPSHOT"
-fi
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/02-step0-modus-snapshot.sh"
 ```
 
 `--ask` = Report + Freigabe (Verhalten vor v5.0.0).
@@ -452,43 +405,7 @@ UND User Backup-Vorschlag bestaetigt: Backup-System ins Projekt installieren.
 **Vorgehen:**
 
 ```bash
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-# 1. Tools-Dir anlegen
-mkdir -p "$PROJ/tools" "$PROJ/docs" "$PROJ/.claude-mind/backups"
-
-# 2. Templates 1:1 ins Projekt schreiben (Read aus references/, Write ins Projekt)
-# 3 Python-Files + 1 Doku-File:
-# (update_changelog.py gehoert NICHT hierher — es ist Release-Hygiene, nicht Backup;
-#  wird im Release-Hygiene-Bundle installiert, siehe Step 5b.)
-# Overwrite-Guard PFLICHT (Hard Constraint "NEVER overwrite without confirmation"):
-# existiert eine Datei schon -> SKIP + User fragen, NIE blind ueberschreiben.
-for FILE in tools/backup_tools.py tools/rollback.py tools/mutation_guard.py docs/BACKUP_USAGE.md; do
-  if [ -f "$PROJ/$FILE" ]; then
-    echo "SKIP: $FILE existiert bereits (User fragen ob ueberschreiben)"
-  else
-    cp "$CLAUDE_PLUGIN_ROOT/references/backup-system-templates/$FILE" "$PROJ/$FILE"
-  fi
-done
-
-# 3. .backupignore generieren (Standard-Defaults)
-cat > "$PROJ/.backupignore" << 'EOF'
-# .backupignore - Files die NICHT in Backups landen
-# Format aehnlich .gitignore
-node_modules/
-__pycache__/
-.venv/
-.git/
-dist/
-build/
-*.pyc
-.DS_Store
-.pytest_cache/
-.coverage
-EOF
-
-# 4. .backuprc generieren — projekt-spezifisch basierend auf project-scanner
-# (siehe Detection-Tabelle unten)
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/03-backup-system.sh"
 ```
 
 **Test-Cmd-Detection fuer `.backuprc`** (project-scanner-Output nutzen):
@@ -534,16 +451,7 @@ Etappe 27 §1). Gleiches gilt fuer `release-hygiene.md`, `wissenstransfer-pruefe
 und macht das Backup-Tool **erreichbar**.
 
 ```bash
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-mkdir -p "$PROJ/.claude/rules"
-# Overwrite-Guard: existiert die Rule schon -> NICHT ueberschreiben (ASK, default Skip)
-if [ -f "$PROJ/.claude/rules/backup-usage.md" ]; then
-  echo "SKIP: .claude/rules/backup-usage.md existiert bereits (User fragen ob ueberschreiben)"
-else
-  cp "$CLAUDE_PLUGIN_ROOT/references/rule-templates/backup-usage.md" \
-     "$PROJ/.claude/rules/backup-usage.md"
-fi
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/04-backup-system.sh"
 ```
 
 Dann **1 Pointer-Zeile** in `CLAUDE.md` (via Edit, unter einem `## Tooling`/`## Backup`-Abschnitt
@@ -584,16 +492,7 @@ KERN-Invariante durchsetzt. Gemessen am 21.08.2026 im Claude-Mind-Manager-Worksp
 kein Remote, kein Versions-Signal — das Angebot waere gekommen.
 
 ```bash
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-HAT_VERSION="nein"
-for _s in VERSION pyproject.toml package.json; do
-  [ -f "$PROJ/$_s" ] && HAT_VERSION="ja"
-done
-ls "$PROJ"/*.csproj >/dev/null 2>&1 && HAT_VERSION="ja"
-[ -n "$(git -C "$PROJ" tag 2>/dev/null | head -1)" ] && HAT_VERSION="ja"
-# HAT_VERSION=nein -> NICHT anbieten, sondern INFO: "kein Versions-Signal, der Changelog
-#                     haette hier keine Quelle"
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/05-step5b-release-hygiene.sh"
 ```
 Rule-only-Baseline fuer Commit-/Changelog-Disziplin — kein Sprach-Gate, funktioniert fuer
 Node/C#/Python/etc. (Bump laeuft ueber die native Toolchain bzw. das Versioning-Pack unten).
@@ -602,34 +501,7 @@ Node/C#/Python/etc. (Bump laeuft ueber die native Toolchain bzw. das Versioning-
 installiert, nie allein.
 
 ```bash
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-if [ -d "$PROJ/.git" ]; then
-  mkdir -p "$PROJ/tools" "$PROJ/.claude/rules"
-
-  # update_changelog.py ist ein PYTHON-Tool -> ohne Interpreter waere es ein totes Tool.
-  # Python-Detection; fehlt Python -> WARN (analog Backup-Bundle), Install laeuft trotzdem.
-  if ! (python --version >/dev/null 2>&1 || python3 --version >/dev/null 2>&1); then
-    echo "WARN: Python nicht gefunden. update_changelog.py installiert aber NICHT lauffaehig"
-    echo "      bis Python installiert ist (die Conventional-Commit-Regeln gelten trotzdem)."
-  fi
-
-  # 1. Changelog-Engine (git-basiert) — gehoert hierher, NICHT zum Backup-Bundle. Overwrite-Guard.
-  if [ -f "$PROJ/tools/update_changelog.py" ]; then
-    echo "SKIP: tools/update_changelog.py existiert bereits (User fragen ob ueberschreiben)"
-  else
-    cp "$CLAUDE_PLUGIN_ROOT/references/backup-system-templates/tools/update_changelog.py" \
-       "$PROJ/tools/update_changelog.py"
-  fi
-
-  # 2. Companion-Rule (Overwrite-Guard: nie ueberschreiben, ASK default Skip)
-  if [ -f "$PROJ/.claude/rules/release-hygiene.md" ]; then
-    echo "SKIP: .claude/rules/release-hygiene.md existiert bereits (User fragen)"
-  else
-    cp "$CLAUDE_PLUGIN_ROOT/references/rule-templates/release-hygiene.md" \
-       "$PROJ/.claude/rules/release-hygiene.md"
-  fi
-fi
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/06-step5b-release-hygiene.sh"
 ```
 
 Dann **1 Pointer-Zeile** in `CLAUDE.md`: `- Release-Hygiene: Conventional Commits + \`python tools/update_changelog.py\` — siehe \`.claude/rules/release-hygiene.md\``
@@ -653,26 +525,7 @@ totes Tool — genau der Bug den v4.0 killt). User bestaetigt ("notwendig").
 ohne `release-build.md` installiert:
 
 ```bash
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-# nur ausfuehren wenn Gating erfuellt UND User bestaetigt
-mkdir -p "$PROJ/tools" "$PROJ/.claude/rules"
-
-# 1. version.py (stdlib-only, kein PyInstaller-Teil)
-if [ -f "$PROJ/tools/version.py" ]; then
-  echo "SKIP: tools/version.py existiert bereits (User fragen ob ueberschreiben)"
-else
-  cp "$CLAUDE_PLUGIN_ROOT/references/release-templates/version.py" \
-     "$PROJ/tools/version.py"
-fi
-
-# 2. Companion-Rule release-build.md (PFLICHT, Overwrite-Guard)
-if [ -f "$PROJ/.claude/rules/release-build.md" ]; then
-  echo "SKIP: .claude/rules/release-build.md existiert bereits (User fragen)"
-else
-  cp "$CLAUDE_PLUGIN_ROOT/references/rule-templates/release-build.md" \
-     "$PROJ/.claude/rules/release-build.md"
-fi
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/07-step5c-versioning-pack.sh"
 ```
 
 Dann **1 Pointer-Zeile** in `CLAUDE.md`: `- Versionierung: \`python tools/version.py show|bump|release\` — siehe \`.claude/rules/release-build.md\``
@@ -705,26 +558,7 @@ statt Angebot: *"zu wenig Doku-Flaeche, das Gate haette hier keinen Gegenstand"*
 **Immer detect-and-OFFER, nie erzwungen.** User bestaetigt.
 
 ```bash
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-# nur ausfuehren wenn Gating erfuellt UND User bestaetigt
-mkdir -p "$PROJ/tools" "$PROJ/.claude/rules"
-
-# 1. coverage_gate.py (stdlib-only, keine Fremd-Abhaengigkeit, kein Netzzugriff)
-if [ -f "$PROJ/tools/coverage_gate.py" ]; then
-  echo "SKIP: tools/coverage_gate.py existiert bereits (User fragen ob ueberschreiben)"
-else
-  cp "$CLAUDE_PLUGIN_ROOT/references/doc-templates/coverage_gate.py" \
-     "$PROJ/tools/coverage_gate.py"
-fi
-
-# 2. Companion-Rule wissenstransfer-pruefen.md (PFLICHT, Overwrite-Guard)
-if [ -f "$PROJ/.claude/rules/wissenstransfer-pruefen.md" ]; then
-  echo "SKIP: .claude/rules/wissenstransfer-pruefen.md existiert bereits (User fragen)"
-else
-  cp "$CLAUDE_PLUGIN_ROOT/references/rule-templates/wissenstransfer-pruefen.md" \
-     "$PROJ/.claude/rules/wissenstransfer-pruefen.md"
-fi
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/08-step5d-doku-gate.sh"
 ```
 
 Dann **1 Pointer-Zeile** in `CLAUDE.md`: `- Wissenstransfer messen: \`python tools/coverage_gate.py <ziel.md> <quelle...>\` — siehe \`.claude/rules/wissenstransfer-pruefen.md\``
@@ -761,25 +595,7 @@ keinen Gegenstand"*.
 **Immer detect-and-OFFER, nie erzwungen.** User bestaetigt.
 
 ```bash
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-# nur ausfuehren wenn Gating erfuellt UND User bestaetigt
-mkdir -p "$PROJ/tools" "$PROJ/.claude/rules"
-
-if [ -f "$PROJ/tools/zaehl_gate.py" ]; then
-  echo "SKIP: tools/zaehl_gate.py existiert bereits (User fragen ob ueberschreiben)"
-else
-  cp "$CLAUDE_PLUGIN_ROOT/references/doc-templates/zaehl_gate.py" \
-     "$PROJ/tools/zaehl_gate.py"
-fi
-
-# ⛔ KERN-INVARIANTE: kein Tool ohne glob-getriggerte Companion-Rule.
-if [ -f "$PROJ/.claude/rules/zaehlwerte-pruefen.md" ]; then
-  echo "SKIP: Rule existiert bereits"
-else
-  cp "$CLAUDE_PLUGIN_ROOT/references/rule-templates/zaehlwerte-pruefen.md" \
-     "$PROJ/.claude/rules/zaehlwerte-pruefen.md"
-fi
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/09-step5e-zaehl-gate.sh"
 ```
 
 **Danach im Bericht nennen** — und den ersten Lauf gleich mitliefern, sonst weiss niemand,
@@ -916,11 +732,7 @@ Zeitstempel. Von 15 Transkripten wurde eines gewertet, und **dieses** Projekt me
 bekannt wahre Fall in der Ausgabe stand.
 
 ```bash
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-# Zaehlt die Sitzungstranskripte dieses Projekts.
-_SLUG=$(hash_project_dir "$PROJ")
-_N=$(ls -1 "$HOME/.claude/projects/$_SLUG"/*.jsonl 2>/dev/null | wc -l)
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/10-das-gate.sh"
 ```
 
 **Angeboten wird, wenn `_N >= 2` UND `.claude/rules/rollen.md` fehlt.**
@@ -929,11 +741,7 @@ _N=$(ls -1 "$HOME/.claude/projects/$_SLUG"/*.jsonl 2>/dev/null | wc -l)
 ### Das Geruest wird NICHT entworfen — es steht schon
 
 ```bash
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-python "$CLAUDE_PLUGIN_ROOT/references/rollen_geruest.py" --projekt "$PROJ"
-python "$CLAUDE_PLUGIN_ROOT/references/rollen_geruest.py" --pruefe "$PROJ/.claude/rules/rollen.md"
-python "$CLAUDE_PLUGIN_ROOT/references/rollen_geruest.py" --selbsttest
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/11-das-geruest.sh"
 ```
 
 ⛔ **Verbindlich ist Joplin `🧭 Manager-Chats` §10a** (ID
@@ -1072,41 +880,7 @@ Lies sie.** Hier nur, was für diesen Skill gilt:
 | ⛔ **Stufe 3** | der Wort-Diff wird GANZ gelesen, bevor angewendet wird. **Ohne Leser: nicht anwenden** — Ergebnis, Bericht, Diff ablegen, Pfad melden |
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-# Kandidatin: die groesste Companion-Rule, die es im Projekt gibt — v5.138.0: nicht die,
-# die in den letzten N Laeufen schon dran war (kein `head -1`, die Funktion waehlt).
-# ⛔ v5.138.0: was in DIESEM Kettenlauf schon verdichtet wurde, ist kein Kandidat.
-#    Die Zeile stand bis dahin NUR in mind-update, obwohl alle vier Traeger
-#    `verdichtet=` SCHREIBEN — ein Schreiber ohne Leser. Kosten eines doppelten
-#    Durchgangs: 274 063 Token (bestands-pass.md).
-_SCHON=$(grep '^verdichtet=' "$PROJ/.claude-mind/analyzed-scopes" 2>/dev/null | cut -d= -f2-)
-DATEI=$(ls -S "$PROJ"/.claude/rules/{backup-usage,wissenstransfer-pruefen,zaehlwerte-pruefen,release-hygiene,release-build}.md 2>/dev/null \
-        | while IFS= read -r f; do
-            case "
-$_SCHON
-" in *"
-$f
-"*) ;; *) echo "$f" ;; esac; done \
-        | mind_verdicht_kandidat "$PROJ" mind-files merken)
-[ -n "$DATEI" ] || { echo "VERDICHTEN: keine Kandidatin (keine Companion-Rule installiert)"; }
-# ... dann exakt der Lauf aus bestands-pass.md: Snapshot -> Agent (Kasten + Aufrufformen und
-#     ⛔ v5.100.0: der Agent schreibt $PROJ/.claude-mind/verdichten-mind-files.nachher.md (Zeilenenden
-#        der Quelle); Anwenden ist `cp` nach Stufe 3 — NIE nachtippen (bestands-pass.md, Schritt 1)
-#     ⭐ v5.101.0 im Auftrag: Absatz ins Archiv = seine Code-Spans, Zahlen und ALLCAPS-Woerter
-#        bleiben im Zeiger-Satz — Stufe 1 zaehlt jede Marke, auch aus Herleitungen
-#     globs: als unantastbar WOERTLICH) -> mind_verdichtung_pruefen
-#     -> mind_check_tools_have_rules "$PROJ" auf das ERGEBNIS: rc 0, sonst verwerfen
-#     -> ⛔ STUFE 3 (Wort-Diff lesen; ohne Leser NICHT anwenden, ablegen und melden)
-#     -> mind_verdichtung_anwenden "$DATEI" "$ERGEBNIS" "$PROJ/.claude-mind/verdichten-<skill>.txt" (v5.125.0:
-#        vergleicht die Live-Datei mit dem md5 der Vorher-Fassung aus dem Deponat — seitdem geaendert = rc 1,
-#        kein cp, neu verdichten; Ritas CLAUDE.md-Deponat 22:51 hinter Live 23:41 am 18.09.2026)
-#     -> mind_kontext_bilanz gegen vorher -> sonst rollback.py restore
-# ⛔ v5.140.0 (Etappe 51 §2): ueber die pruefende Funktion, nicht per `echo >>`. Sie
-#    weist ein Deponat unter `.claude-mind/` ab — Rita hat zweimal `$ERGEBNIS` gebucht
-#    statt `$DATEI`, und nichts hat den Pfad geprueft. rc 2 ist KEIN Laufabbruch.
-mind_verdichtet_merken "$PROJ" "$DATEI" || true
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/12-step5g-verdichten-die.sh"
 ```
 
 ⛔ **Der Bericht dieses Schritts sind die drei Zeilen aus `mind_verdichtung_pruefen`** plus
@@ -1142,10 +916,7 @@ User darf zurueckweisen mit "Self-Check-Block fehlt — bitte Step 1 ausfuehren"
 
 **Der Nachweis wird AUSGEFUEHRT, nicht aufgeschrieben (NEU v5.2.1):**
 ```bash
-source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-mind_check_tools_have_rules "$PROJ"; TOOLCHECK_RC=$?
-mind_ordner_hinweise "$PROJ"      # v5.127.0: HINWEIS je Top-Level-Ordner mit >= 5 ungenannten Skripten, kein Befund
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/13-step6-report-pflicht.sh"
 ```
 ⚠ **`mind_ordner_hinweise` ist ein Hinweis, kein Befund** (Etappe 38 §7, gemessen 19.09.2026:
 2 783 ungenannte Skripte in vier Projekten, 0 tote Werkzeuge — `docs/plugin/tools-have-rules-messung-20260919.md`).

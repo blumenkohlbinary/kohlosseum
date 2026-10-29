@@ -148,7 +148,7 @@ done
 # --- 12 · und die GRENZE des Werkzeugs steht dabei ----------------------
 #     Ein Werkzeug, dessen Grenze verschwiegen wird, gilt als vollstaendig.
 #     Prosa-Widersprueche ohne gemeinsame Marke findet es NICHT.
-grep -q "unsichtbar" "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/SKILL.md" && A=ja || A=nein
+grep -q "unsichtbar" "$(skill_text_datei "$CLAUDE_PLUGIN_ROOT" mind-claudemd)" && A=ja || A=nein
 janein "die Grenze des Detektors steht dabei" ja "$A"
 
 rm -rf "$D"

@@ -105,6 +105,21 @@ pruef "Abschnitt in listeverbesserungen.md"       "$(grep -c '^## Lauf' "$P/list
 pruef "⛔ der Befund steht im Debug-Ordner (wurde bis 5.151.0 vorher geleert)" \
   "$(grep -rl 'Prueffall-Befund' "$TMP/dbg" 2>/dev/null | wc -l | tr -d ' ' | sed 's/^[1-9][0-9]*$/ja/')" "ja"
 
+echo "=== 4b) ⛔ v5.154.0: mind-rules prueft wirklich — RULES_DIR war NIE gesetzt, die Schleife lief ueber /*.md ==="
+FM="$R/skills/mind-rules/bloecke/06-der-schwerste.sh"
+if [ -f "$FM" ]; then
+  P="$TMP/f6 mit leer"; mkdir -p "$P/.claude/rules"
+  printf -- '---\npaths:\n  - "**/*.py"\nnie geschlossen\n' > "$P/.claude/rules/kaputt.md"
+  printf -- '---\npaths:\n  - "**/*.md"\n---\nok\n' > "$P/.claude/rules/heil.md"
+  A=$( cd "$P" && CLAUDE_PROJECT_DIR="$P" CLAUDE_PLUGIN_ROOT="$R" MIND_LOG_FILE="$TMP/log" bash "$FM" 2>&1 )
+  pruef "das nie geschlossene Frontmatter wird gemeldet" "$(printf '%s\n' "$A" | grep -c 'CRITICAL: .*kaputt.md')" "1"
+  pruef "   ... das geschlossene nicht"                   "$(printf '%s\n' "$A" | grep -c 'CRITICAL: .*heil.md')" "0"
+  # GEGENPROBE: derselbe Block mit LEEREM RULES_DIR, wie bis 5.153.0 in einem eigenen Prozess
+  B=$( cd "$P" && bash -c 'for f in "$RULES_DIR"/*.md; do head -1 "$f" 2>/dev/null | grep -q "^---$" || continue
+         [ "$(grep -c "^---$" "$f")" -ge 2 ] || echo "CRITICAL: $f"; done' 2>&1 )
+  pruef "Gegenprobe: mit leerem RULES_DIR meldete dieselbe Schleife nichts" "$(printf '%s\n' "$B" | grep -c CRITICAL)" "0"
+fi
+
 echo "=== 5) ⛔ im aufrufenden Projekt ist nichts entstanden ==="
 pruef "kein Reparatur-Zaehler, keine Stub-Meldung im Aufrufer" "$(rest)" "$REST_VOR"
 

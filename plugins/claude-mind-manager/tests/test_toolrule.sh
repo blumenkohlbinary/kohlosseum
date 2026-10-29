@@ -143,7 +143,7 @@ pruef "tests/ ausgenommen -> still" 0 "ok" "$(printf '%s\n' "$_O" | grep -c 'Ord
 pruef "Regler MIND_ORDNER_HINWEIS_AB=50: auch vendor/ still" 0 "ok" "$(MIND_ORDNER_HINWEIS_AB=50 mind_ordner_hinweise "$H" 2>&1 | grep -c 'Ordner ')" "ok"
 printf '\nDazu `forschung/` mit Messskripten.\n' >> "$H/CLAUDE.md"
 pruef "ein Satz in CLAUDE.md (\`forschung/\`) macht den Hinweis still" 0 "ok" "$(mind_ordner_hinweise "$H" 2>&1 | grep -c 'Ordner forschung/')" "ok"
-pruef "mind-files Step 6 ruft mind_ordner_hinweise" 1 "ok" "$(grep -c '^mind_ordner_hinweise "\$PROJ"' "$CLAUDE_PLUGIN_ROOT/skills/mind-files/SKILL.md")" "ok"
+pruef "mind-files Step 6 ruft mind_ordner_hinweise" 1 "ok" "$(grep -c '^mind_ordner_hinweise "\$PROJ"' "$(skill_text_datei "$CLAUDE_PLUGIN_ROOT" mind-files)")" "ok"
 
 rm -rf "$T"
 

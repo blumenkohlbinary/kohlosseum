@@ -40,7 +40,7 @@ pruef "eine Dezimalzahl ist keine Version (1.5 ohne Einheit bleibt markenfrei)" 
   "$(printf 'Wert 1.5 hier.\n' > "$TMP/d.md"; "$PY" -c "import sys;sys.path.insert(0,sys.argv[1]);import coverage_gate as c;print(len(c.checkpoints(sys.argv[2])))" "$(win "$R/references/doc-templates")" "$(win "$TMP/d.md")")" "0"
 
 echo "=== M-D) Index-Zeiger ins Projekt: PROJEKT, nicht TOT ==="
-S="$R/skills/mind-memory/SKILL.md"
+S="$(skill_text_datei "$R" mind-memory)"
 awk '/^```bash/{f=1; b=""; next} /^```/{if(f && b ~ /echo "TOT: \$z"/){printf "%s", b; exit} f=0; next} f{b=b $0 "\n"}' "$S" \
   | tr -d '\r' > "$TMP/index.sh"
 pruef "Index-Block auffindbar" "$([ -s "$TMP/index.sh" ] && echo ja || echo nein)" "ja"

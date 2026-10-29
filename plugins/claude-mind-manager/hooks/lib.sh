@@ -1707,6 +1707,13 @@ mind_block_umgebung() {
   SCOPES_FILE="${SCOPES_FILE:-$PROJ/.claude-mind/analyzed-scopes}"
   LAUF="${LAUF:-$(mind_kopf_lauf "$PROJ" 2>/dev/null)}"
   AGENT_SOLL="${AGENT_SOLL:-4}"
+  # v5.154.0: drei Skills lasen weitere Werte, die NIE gesetzt wurden — `"$RULES_DIR"/*.md` und
+  #   `"$ZIEL_RULES"/*.md` liefen ueber `/*.md` (mind-rules: Frontmatter-Pruefung und Kontext-Tor pruefen
+  #   nichts), `--memory "$MEM_DIR"` uebers Leere (mind-memory). Vorgabe ist der Projektbereich.
+  MEMORY_DIR="${MEMORY_DIR:-$(get_memory_dir 2>/dev/null)}"
+  MEM_DIR="${MEM_DIR:-$MEMORY_DIR}"
+  RULES_DIR="${RULES_DIR:-$PROJ/.claude/rules}"
+  ZIEL_RULES="${ZIEL_RULES:-$PROJ/.claude/rules}"
   return 0
 }
 

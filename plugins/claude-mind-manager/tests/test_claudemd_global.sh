@@ -26,7 +26,7 @@
 # Aufruf:  CLAUDE_PLUGIN_ROOT=<paket> bash tests/test_claudemd_global.sh
 set -u
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { echo "CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 2; }
-SK="$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/SKILL.md"
+SK="$(skill_text_datei "$CLAUDE_PLUGIN_ROOT" mind-claudemd)"
 [ -f "$SK" ] || { echo "SKILL.md fehlt: $SK" >&2; exit 2; }
 OK=0; ROT=0
 
@@ -39,8 +39,14 @@ janein() { if [ "$2" = "$3" ]; then echo "  [ok ] $1"; OK=$((OK+1))
 #    koennte vom Original abdriften, ohne dass ein Prueffall es merkt. So laeuft
 #    hier buchstaeblich der Code, den der Skill anweist.
 SNIPPET="$(mktemp)"
+# ⭐ v5.154.0: die Herleitung ist bloecke/_ziele.sh — DIESELBE Datei, die jeder claudemd-Block laedt.
+#    Gesourct wird sie, nicht der Aufruf-Einzeiler aus Step 1 (der startet einen Unterprozess).
+if [ -f "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/_ziele.sh" ]; then
+  cp "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/_ziele.sh" "$SNIPPET"
+else
 awk '/^## Step 1: Scope bestimmen/{f=1} f&&/^```bash$/{c=1;next} c&&/^```$/{exit} c' \
   "$SK" > "$SNIPPET"
+fi
 [ -s "$SNIPPET" ] || { echo "ABBRUCH: Step-1-Block nicht aus der SKILL.md schneidbar" >&2
                        exit 2; }
 

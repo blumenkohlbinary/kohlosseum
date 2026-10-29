@@ -77,7 +77,7 @@ janein "mind-update: die Quittung im Skill-Text laeuft ueber --datei" ja \
 janein "mind-update: die alte wc-c-Form steht nicht mehr im Text" 0 \
   "$(grep -c "printf '%s' \"\$RUECKGABE\" | wc -c" "$(skill_text_datei "$R" mind-update)")"
 janein "mind-memory: 'While the agent runs' ist weg (Hintergrund-Annahme)" 0 \
-  "$(grep -c 'While the agent runs' "$R/skills/mind-memory/SKILL.md")"
+  "$(grep -c 'While the agent runs' "$(skill_text_datei "$R" mind-memory)")"
 
 echo "=============================================================================="
 echo "  2) QUITTUNG: --datei misst die Datei, fehlende Datei = 0"

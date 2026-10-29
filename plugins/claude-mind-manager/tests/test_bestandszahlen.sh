@@ -66,7 +66,7 @@ printf '# Topic\n\nEs gibt vier Gates.\n' > "$D/topic.md"
 AUS=$(python "$L" "$D" "$D/topic.md" "$D/gibtsnicht.md" 2>&1); RC=$?
 janein "Topic-Datei als weiteres Argument: 1 Kandidat, rc 0" "0|ja" "$(echo "$RC|$(printf '%s\n' "$AUS" | grep -q '1 UNGEGATET+UNDATIERT' && echo ja || echo nein)")"
 janein "   ... fehlende Datei wird still uebergangen" "ja" "$(printf '%s\n' "$AUS" | grep -q 'gibtsnicht' && echo nein || echo ja)"
-janein "mind-memory ruft den Lister mit \$MEMORY_DIR/*.md" "ja" "$(grep -q 'bestandszahlen_kandidaten.py" "\$PROJ" "\$MEMORY_DIR"/\*.md' "$WURZEL/skills/mind-memory/SKILL.md" && echo ja || echo nein)"
+janein "mind-memory ruft den Lister mit \$MEMORY_DIR/*.md" "ja" "$(grep -q 'bestandszahlen_kandidaten.py" "\$PROJ" "\$MEMORY_DIR"/\*.md' "$(skill_text_datei "$WURZEL" mind-memory)" && echo ja || echo nein)"
 rm -rf "$D"
 
 echo
@@ -74,15 +74,15 @@ echo "==========================================================================
 echo "  3) Eingebaut: mind-rules ruft ihn, bestands-pass.md fuehrt ihn"
 echo "=============================================================================="
 janein "mind-rules/SKILL.md ruft bestandszahlen_kandidaten.py" "ja" \
-  "$(grep -q 'references/bestandszahlen_kandidaten.py' "$WURZEL/skills/mind-rules/SKILL.md" && echo ja || echo nein)"
+  "$(grep -q 'references/bestandszahlen_kandidaten.py' "$(skill_text_datei "$WURZEL" mind-rules)" && echo ja || echo nein)"
 janein "mind-rules: PFLICHTSCHRITT eingetragen" "ja" \
-  "$(grep -qx 'bestandszahlen_kandidaten' "$WURZEL/skills/mind-rules/SKILL.md" && echo ja || echo nein)"
+  "$(grep -qx 'bestandszahlen_kandidaten' "$(skill_text_datei "$WURZEL" mind-rules)" && echo ja || echo nein)"
 janein "mind-rules: in mind_schritt_start genannt" "ja" \
-  "$(grep -E '^mind_schritt_start .*bestandszahlen_kandidaten' "$WURZEL/skills/mind-rules/SKILL.md" >/dev/null && echo ja || echo nein)"
+  "$(grep -E '^mind_schritt_start .*bestandszahlen_kandidaten' "$(skill_text_datei "$WURZEL" mind-rules)" >/dev/null && echo ja || echo nein)"
 janein "v5.85.0: mind-claudemd ruft den Lister (Schritt 1b)" "ja" \
-  "$(grep -q 'references/bestandszahlen_kandidaten.py' "$WURZEL/skills/mind-claudemd/SKILL.md" && echo ja || echo nein)"
+  "$(grep -q 'references/bestandszahlen_kandidaten.py' "$(skill_text_datei "$WURZEL" mind-claudemd)" && echo ja || echo nein)"
 janein "mind-claudemd: PFLICHTSCHRITT + mind_schritt_start" "2" \
-  "$(grep -cE '^bestandszahlen_kandidaten$|^mind_schritt_start .*bestandszahlen_kandidaten' "$WURZEL/skills/mind-claudemd/SKILL.md")"
+  "$(grep -cE '^bestandszahlen_kandidaten$|^mind_schritt_start .*bestandszahlen_kandidaten' "$(skill_text_datei "$WURZEL" mind-claudemd)")"
 janein "bestands-pass.md: Abschnitt 1b mit 'urteilt nie'" "ja" \
   "$(grep -q 'urteilt nie' "$WURZEL/references/bestands-pass.md" && echo ja || echo nein)"
 

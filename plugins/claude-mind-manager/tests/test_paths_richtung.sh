@@ -27,7 +27,7 @@ pruef() { if [ "$2" = "$3" ]; then GRUEN=$((GRUEN+1)); echo "  [ok ] $1"
 hat() { case "$3" in *"$2"*) GRUEN=$((GRUEN+1)); echo "  [ok ] $1";;
   *) ROT=$((ROT+1)); echo "  [ROT] $1 — '$2' fehlt";; esac; }
 
-S="$R/skills/mind-rules/SKILL.md"
+S="$(skill_text_datei "$R" mind-rules)"
 B="$R/references/budget-thresholds.md"
 G="$R/references/context-file-guide.md"
 

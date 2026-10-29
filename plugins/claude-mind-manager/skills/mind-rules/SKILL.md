@@ -43,7 +43,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.153.0"
+MIND_SKILL_VERSION="5.154.0"
 mind_schritt_start "$PROJ" mind-rules bestandsaufnahme bestandszahlen_kandidaten cleaner_duplikate cleaner_stichprobe cleaner_tor ladeprotokoll_auswertung mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -107,10 +107,7 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-mind_schritt_bilanz "$PROJ"
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/01-pflichtschritte-dieser.sh"
 ```
 
 ⛔ **Fehlt diese Zeile oder nennt sie `FEHLT`, ist der Bericht unvollstaendig** und
@@ -134,43 +131,7 @@ Provide complete management of `.claude/rules/*.md` files including syntax valid
 zu erzeugen gibt.
 
 ```bash
-ARGS="${ARGUMENTS:-}"; AUTO_MODE="yes"
-echo "$ARGS" | grep -qE '(^|[[:space:]])--(ask|interactive)([[:space:]]|$)' && AUTO_MODE="no"
-# ⛔ v5.139.0: der PROBELAUF ist ERSATZLOS entfallen (Nutzer 29.09.2026: „wieso kein
-#    richtiger lauf kostet geld", „allgemein keine Probelaeufe mehr … ich will Ergebnisse
-#    sehen"). Wer die Flagge noch mitgibt, bekommt einen ABBRUCH und keinen stillen
-#    Echtlauf: wer `--dry-run` tippt, erwartet, dass nichts geschrieben wird.
-if echo "$ARGS" | grep -qE '(^|[[:space:]])--dry-run([[:space:]]|$)'; then
-  echo "ABBRUCH: --dry-run ist entfallen (seit 5.139.0) — es gibt keinen Probelauf mehr." >&2
-  echo "         Bitte OHNE die Flagge aufrufen. Der Lauf ist dann ein echter Lauf," >&2
-  # ⛔ KEINE Backticks in diesem Text: in doppelten Anfuehrungszeichen FUEHRT BASH AUS, was
-  #    zwischen ihnen steht (shell-windows.md). Hier stand "`--ask`" — das haette bei jedem
-  #    Abbruch ein "--ask: command not found" erzeugt und das Wort aus der Meldung getilgt.
-  echo "         mit Snapshot vorher (Rueckweg). --ask fragt weiterhin vor dem Anwenden." >&2
-  exit 2
-fi
-
-# Laeuft dieser Skill innerhalb eines AKTIVEN /mind-all? (C1-Fix: drei Bedingungen, nicht nur
-# "Datei existiert" — sonst gilt nach dem ersten /mind-all JEDER spaetere Einzellauf als Kette
-# und editiert ohne Snapshot.)
-CHAIN="no"; _SC="$PROJ/.claude-mind/analyzed-scopes"
-if [ -f "$_SC" ]; then
-  _SNAP=$(grep -m1 '^snapshot=' "$_SC" 2>/dev/null | cut -d= -f2-)
-  _START=$(grep -m1 '^run_started=' "$_SC" 2>/dev/null | cut -d= -f2)
-  _AGE=$(( $(date +%s) - ${_START:-0} ))
-  # 1) Snapshot-Pfad eingetragen  2) Verzeichnis existiert wirklich  3) Lauf juenger als 2 h
-  [ -n "$_SNAP" ] && [ -d "$_SNAP" ] && [ "$_AGE" -lt 7200 ] && CHAIN="yes"
-fi
-
-if [ "$CHAIN" = "no" ]; then
-  [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
-  [ -z "$CLAUDE_PLUGIN_ROOT" ] && { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
-  source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-  SNAPSHOT=$(mind_snapshot "$PROJ" "pre-rules") || {
-    echo "ABBRUCH: Snapshot fehlgeschlagen — es wird NICHTS editiert." >&2; exit 1; }
-  echo "Snapshot: $SNAPSHOT"
-fi
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/02-step0-modus-snapshot.sh"
 ```
 
 `--ask` = Diff zeigen + Freigabe (Verhalten vor v5.0.0).
@@ -317,7 +278,7 @@ Plugin den Hook mit (`hooks/instructions-loaded.sh`, per Auto-Discovery registri
 Er laeuft in **jedem** Projekt und schreibt ein Ladeprotokoll:
 
 ```bash
-python "$CLAUDE_PLUGIN_ROOT/references/ladeprotokoll_auswertung.py"
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/03-subcommand-check.sh"
 ```
 
 *(Die frueher hier vorgeschlagene Handregistrierung riet den Feldnamen `.files` —
@@ -336,14 +297,7 @@ es braucht eine neue.
 wirklich, und wie ist der Bestand aufgebaut?
 
 ```bash
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-# 1. Was wurde tatsaechlich geladen, wann, und mit welchem Grund?
-python "$CLAUDE_PLUGIN_ROOT/references/ladeprotokoll_auswertung.py"
-
-# 2. Wie ist der Bestand aufgebaut? (Beleg / Vorfall / Code / reine Anweisung)
-python "$CLAUDE_PLUGIN_ROOT/references/bestandsaufnahme.py" \
-       --ordner "$PROJ/.claude/rules"
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/04-subcommand-budget.sh"
 ```
 
 **Danach je Regel einordnen** — nach dem Vier-Wege-Kriterium:
@@ -465,12 +419,7 @@ After:
 Bis v5.145.0 stand dieser Schritt im Pflichtkasten und in der Startzeile, aber **nirgends als Aufruf** — erwartet, nie gelaufen. So entstand Noras `FEHLT: mind-rules/cleaner_duplikate` (Palvedo, 20.09.2026), und so wurden Schritte von Hand nachgeholt. Teil von `check`: steht eine Regel schon in einer anderen Ablage (Frage B1 des Kontext-Tors)?
 
 ```bash
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-D="$PROJ/.claude-mind/schritt-mind-rules-duplikate.txt"
-python "$CLAUDE_PLUGIN_ROOT/references/cleaner_duplikate.py" --bereich "$PROJ" --nur projekt > "$D" 2>&1
-head -40 "$D"
-mind_schritt cleaner_duplikate gelaufen --datei "$D" "$PROJ"
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/05-pflichtschritt-cleaner.sh"
 ```
 
 ## ⛔ SUCHEN, BEVOR DU ERGAENZT (PFLICHT, NEU v5.20.0)
@@ -544,11 +493,7 @@ deshalb als Meldung da, nicht als Tatsache.** Der Check bleibt trotzdem richtig:
 einen realen Fehlermodus, den kein anderer sieht.
 
 ```bash
-# Die Pruefung, die gefehlt hat:
-for f in "$RULES_DIR"/*.md; do
-  head -1 "$f" | grep -q '^---$' || continue          # kein Frontmatter -> anderer Fall
-  [ "$(grep -c '^---$' "$f")" -ge 2 ] || echo "CRITICAL: $f — Frontmatter nie geschlossen"
-done
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/06-der-schwerste.sh"
 ```
 
 ⚠ **Nicht verwechseln mit „ganz ohne Frontmatter".** Eine Datei ohne jedes `---` nutzt den
@@ -612,6 +557,8 @@ diesen Schritt ausführst. Hier steht nur, was für **diesen** Command gilt:
 | **rückwärts** | über die Zieldatei, einmal je Lauf |
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.154.0: Werte frueherer Bloecke sind hier leer
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
 [ -n "$CLAUDE_PLUGIN_ROOT" ] || { echo "ERROR: CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
 TOR="$CLAUDE_PLUGIN_ROOT/references/cleaner_tor.py"
@@ -713,10 +660,7 @@ der Spalte `Ordner` des Rosters mit (fehlt die Spalte: jeder direkte Unterordner
 `CLAUDE.md`) — das ist der Dauerkontext der Arbeiter-Sitzungen. Gemessen 14.09.2026 (Creator,
 Doro): sieben Unterordner, fuenf CLAUDE.md und 17 Rules, in keinem Bericht genannt.
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-UNTER_KONTEXT=$(mind_unterordner_kontext "$PROJ" 2>/dev/null)   # leer ohne Rollen-Aufbau
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/07-step9-der-bestands.sh"
 ```
 Der Bericht nennt je Datei den Ordner (`<Ordner>/CLAUDE.md`, `<Ordner>/.claude/rules/<name>`).
 `mind_snapshot` sichert sie seit v5.106.0 von selbst mit.
@@ -798,40 +742,7 @@ Lies sie.** Hier nur, was für diesen Skill gilt:
 | ⛔ **Stufe 3** (v5.83.0) | der Wort-Diff wird GANZ gelesen, bevor angewendet wird. **Ohne Leser: nicht anwenden** — Ergebnis, Bericht, Diff ablegen, Pfad melden. Zwei Verfälschungen bei 100 % Stufe 1 gemessen (11.09.2026) |
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-# Kandidat: die groesste Rule, ohne rollen.md
-# ⛔ v5.138.0: was in DIESEM Kettenlauf schon verdichtet wurde, ist kein Kandidat.
-#    Die Zeile stand bis dahin NUR in mind-update, obwohl alle vier Traeger
-#    `verdichtet=` SCHREIBEN — ein Schreiber ohne Leser. Kosten eines doppelten
-#    Durchgangs: 274 063 Token (bestands-pass.md).
-_SCHON=$(grep '^verdichtet=' "$PROJ/.claude-mind/analyzed-scopes" 2>/dev/null | cut -d= -f2-)
-DATEI=$(ls -S "$PROJ"/.claude/rules/*.md 2>/dev/null | grep -v '/rollen\.md$' \
-        | while IFS= read -r f; do
-            head -12 "$f" | grep -qi '^paths:' && continue
-            case "
-$_SCHON
-" in *"
-$f
-"*) ;; *) echo "$f" ;; esac; done \
-        | mind_verdicht_kandidat "$PROJ" mind-rules merken)   # v5.118.0: paths:-Rules ausgeschlossen, wie die Tabelle sagt; v5.138.0: kein `break` mehr — die Rotation braucht die ganze Liste
-[ -n "$DATEI" ] || { echo "VERDICHTEN: keine Kandidatin"; }
-# ... dann exakt der Lauf aus bestands-pass.md: Snapshot -> Agent -> mind_verdichtung_pruefen
-#     ⛔ v5.100.0: der Agent schreibt $PROJ/.claude-mind/verdichten-mind-rules.nachher.md (Zeilenenden
-#        der Quelle); Anwenden ist `cp` nach Stufe 3 — NIE nachtippen (bestands-pass.md, Schritt 1)
-#     ⭐ v5.101.0 im Auftrag: Absatz ins Archiv = seine Code-Spans, Zahlen und ALLCAPS-Woerter
-#        bleiben im Zeiger-Satz — Stufe 1 zaehlt jede Marke, auch aus Herleitungen
-#     -> ⛔ STUFE 3 (Wort-Diff lesen; ohne Leser NICHT anwenden, ablegen und melden)
-#     -> mind_verdichtung_anwenden "$DATEI" "$ERGEBNIS" "$PROJ/.claude-mind/verdichten-<skill>.txt" (v5.125.0:
-#        vergleicht die Live-Datei mit dem md5 der Vorher-Fassung aus dem Deponat — seitdem geaendert = rc 1,
-#        kein cp, neu verdichten; Ritas CLAUDE.md-Deponat 22:51 hinter Live 23:41 am 18.09.2026)
-#     -> mind_kontext_bilanz gegen vorher -> sonst rollback.py restore
-# v5.90.0: im Kettenlauf merken, damit mind-update nicht dieselbe Datei nimmt
-# ⛔ v5.140.0 (Etappe 51 §2): ueber die pruefende Funktion, nicht per `echo >>`. Sie
-#    weist ein Deponat unter `.claude-mind/` ab — Rita hat zweimal `$ERGEBNIS` gebucht
-#    statt `$DATEI`, und nichts hat den Pfad geprueft. rc 2 ist KEIN Laufabbruch.
-mind_verdichtet_merken "$PROJ" "$DATEI" || true
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/08-step9b-verdichten-die.sh"
 ```
 
 ⛔ **Der Bericht dieses Schritts sind die drei Zeilen aus `mind_verdichtung_pruefen`** — oder

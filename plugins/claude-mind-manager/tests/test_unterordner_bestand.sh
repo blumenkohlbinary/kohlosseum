@@ -97,10 +97,10 @@ rm -rf "$H2"
 
 echo "== 5  Text-Gate: die drei Skills kennen den Unterordner-Bestand =="
 for s in mind-claudemd mind-rules mind-update; do
-  janein "$s nennt mind_unterordner_kontext" ja "$(grep -q 'mind_unterordner_kontext' "$CLAUDE_PLUGIN_ROOT/skills/$s/SKILL.md" && echo ja || echo nein)"
+  janein "$s nennt mind_unterordner_kontext" ja "$(grep -q 'mind_unterordner_kontext' "$(skill_text_datei "$CLAUDE_PLUGIN_ROOT" "$s")" && echo ja || echo nein)"
 done
 janein "mind-update: Roster-Rules im PROJECT_RULES" ja "$(grep -q 'PROJECT_RULES=$(ls .claude/rules/\*.md 2>/dev/null; mind_unterordner_kontext' "$(skill_text_datei "$CLAUDE_PLUGIN_ROOT" mind-update)" && echo ja || echo nein)"
-janein "mind-memory: MEMORY_DIRS aus mind_memory_dirs, nie ueber Slugs mergen" ja "$(grep -q 'MEMORY_DIRS=$(mind_memory_dirs' "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/SKILL.md" && grep -q 'NIE ueber Slugs hinweg' "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/SKILL.md" && echo ja || echo nein)"
+janein "mind-memory: MEMORY_DIRS aus mind_memory_dirs, nie ueber Slugs mergen" ja "$(grep -q 'MEMORY_DIRS=$(mind_memory_dirs' "$(skill_text_datei "$CLAUDE_PLUGIN_ROOT" mind-memory)" && grep -q 'NIE ueber Slugs hinweg' "$(skill_text_datei "$CLAUDE_PLUGIN_ROOT" mind-memory)" && echo ja || echo nein)"
 janein "mind-update: memory-Agent bekommt alle Verzeichnisse" ja "$(grep -q 'ALLE Verzeichnisse aus `mind_memory_dirs' "$(skill_text_datei "$CLAUDE_PLUGIN_ROOT" mind-update)" && echo ja || echo nein)"
 janein "mind-cleaner: memory im Rollen-Aufbau = alle Slugs" ja "$(grep -q 'ALLE Slugs: Wurzel + je Roster-Ordner' "$CLAUDE_PLUGIN_ROOT/skills/mind-cleaner/SKILL.md" && echo ja || echo nein)"
 

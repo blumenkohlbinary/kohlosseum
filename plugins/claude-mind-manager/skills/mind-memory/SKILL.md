@@ -43,7 +43,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.153.0"
+MIND_SKILL_VERSION="5.154.0"
 mind_schritt_start "$PROJ" mind-memory bestandszahlen_kandidaten cleaner_stichprobe cleaner_tor mind_debug_write mind_kontext_bilanz mind_scan_poisoning mind_snapshot verdichten
 ```
 
@@ -107,10 +107,7 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-mind_schritt_bilanz "$PROJ"
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/01-pflichtschritte-dieser.sh"
 ```
 
 ⛔ **Fehlt diese Zeile oder nennt sie `FEHLT`, ist der Bericht unvollstaendig** und
@@ -128,44 +125,7 @@ Lokalisieren -> Auditieren -> **autonom anwenden** (bzw. Freigabe bei `--ask`) -
 **Autonom ist der Standard.** Dieser Skill wendet gefundene Befunde selbstaendig an.
 
 ```bash
-ARGS="${ARGUMENTS:-}"; AUTO_MODE="yes"
-echo "$ARGS" | grep -qE '(^|[[:space:]])--(ask|interactive)([[:space:]]|$)' && AUTO_MODE="no"
-# ⛔ v5.139.0: der PROBELAUF ist ERSATZLOS entfallen (Nutzer 29.09.2026: „wieso kein
-#    richtiger lauf kostet geld", „allgemein keine Probelaeufe mehr … ich will Ergebnisse
-#    sehen"). Wer die Flagge noch mitgibt, bekommt einen ABBRUCH und keinen stillen
-#    Echtlauf: wer `--dry-run` tippt, erwartet, dass nichts geschrieben wird.
-if echo "$ARGS" | grep -qE '(^|[[:space:]])--dry-run([[:space:]]|$)'; then
-  echo "ABBRUCH: --dry-run ist entfallen (seit 5.139.0) — es gibt keinen Probelauf mehr." >&2
-  echo "         Bitte OHNE die Flagge aufrufen. Der Lauf ist dann ein echter Lauf," >&2
-  # ⛔ KEINE Backticks in diesem Text: in doppelten Anfuehrungszeichen FUEHRT BASH AUS, was
-  #    zwischen ihnen steht (shell-windows.md). Hier stand "`--ask`" — das haette bei jedem
-  #    Abbruch ein "--ask: command not found" erzeugt und das Wort aus der Meldung getilgt.
-  echo "         mit Snapshot vorher (Rueckweg). --ask fragt weiterhin vor dem Anwenden." >&2
-  exit 2
-fi
-
-# Snapshot VOR dem ersten Edit — ausgefuehrter Aufruf, kein Prosa-Versprechen.
-# Laeuft dieser Skill innerhalb eines AKTIVEN /mind-all? (C1-Fix: drei Bedingungen, nicht nur
-# "Datei existiert" — sonst gilt nach dem ersten /mind-all JEDER spaetere Einzellauf als Kette
-# und editiert ohne Snapshot.)
-CHAIN="no"; _SC="$PROJ/.claude-mind/analyzed-scopes"
-if [ -f "$_SC" ]; then
-  _SNAP=$(grep -m1 '^snapshot=' "$_SC" 2>/dev/null | cut -d= -f2-)
-  _START=$(grep -m1 '^run_started=' "$_SC" 2>/dev/null | cut -d= -f2)
-  _AGE=$(( $(date +%s) - ${_START:-0} ))
-  # 1) Snapshot-Pfad eingetragen  2) Verzeichnis existiert wirklich  3) Lauf juenger als 2 h
-  [ -n "$_SNAP" ] && [ -d "$_SNAP" ] && [ "$_AGE" -lt 7200 ] && CHAIN="yes"
-fi
-
-if [ "$CHAIN" = "no" ]; then
-  [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
-  [ -z "$CLAUDE_PLUGIN_ROOT" ] && { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
-  source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-  SNAPSHOT=$(mind_snapshot "$PROJ" "pre-memory") || {
-    echo "ABBRUCH: Snapshot fehlgeschlagen — es wird NICHTS editiert." >&2; exit 1; }
-  echo "Snapshot: $SNAPSHOT"
-fi
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/02-step0-modus-snapshot.sh"
 ```
 
 | Modus | Aufruf | Verhalten |
@@ -185,29 +145,7 @@ Compute the project hash for the memory path:
 4. Also glob topic files: `~/.claude/projects/<hash>/memory/*.md`
 
 ```bash
-# Hash + Memory-Verzeichnis (v3.2.2: zentralisiert in lib.sh)
-# Korrektes Windows-Slug-Mapping via cygpath (siehe lib.sh hash_project_dir)
-# Beispiel: C:\CD\KOHLEKTIV\Plugin - Entwicklung -> C--CD-KOHLEKTIV-Plugin---Entwicklung
-# M3-Fix: $CLAUDE_PLUGIN_ROOT Guard
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
-if [ -z "$CLAUDE_PLUGIN_ROOT" ] || [ ! -f "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" ]; then
-  echo "ERROR: \$CLAUDE_PLUGIN_ROOT nicht gesetzt oder lib.sh nicht gefunden" >&2
-  exit 1
-fi
-source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-MEMORY_DIR=$(get_memory_dir)
-# ⛔ v5.109.0 (Etappe 18, Nutzer 14.09.2026: "jedes fork hat eigenen memory"): im
-#    Rollen-Aufbau hat JEDER Roster-Unterordner sein eigenes Memory (eigener Slug).
-#    Gemessen Creator: Wurzel 3 Dateien / 5 676 B, `Creator Stimme` 7 / 39 707 B — und
-#    jeder Lauf sah nur die Wurzel. Alle Verzeichnisse, feste Reihenfolge:
-MEMORY_DIRS=$(mind_memory_dirs "$PROJ" 2>/dev/null); [ -n "$MEMORY_DIRS" ] || MEMORY_DIRS="$MEMORY_DIR"
-#    Die Schritte 1–4 laufen JE VERZEICHNIS getrennt (`while IFS= read -r MEMORY_DIR; do … done
-#    <<<"$MEMORY_DIRS"`), der Bericht nennt jede Datei als `memory[<ordner>]/<name>` (Wurzel:
-#    `memory/<name>`). ⛔ NIE ueber Slugs hinweg zusammenfuehren, deduplizieren oder
-#    auslagern — jedes Verzeichnis gehoert einer ANDEREN Sitzung. Derselbe Fakt in zwei Slugs
-#    ist ein BEFUND fuer /mind-cleaner (Duplikat), kein Merge. Die Sicherung vor dem Lauf
-#    (backup-usage.md) sichert schon alle `projects/*/memory`, `memory_gates.py` vergleicht je Slug.
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/03-step1-memory-lokalisieren.sh"
 ```
 
 **Wenn KEINE MEMORY.md gefunden:**
@@ -253,9 +191,7 @@ Sonnet-Seitenabfrage, anhand von **Dateiname und `description`**, NICHT anhand d
 Alles darueber ist pro Turn unerreichbar, egal wie relevant.
 
 ```bash
-LIMIT="${MIND_MEMORY_VISIBILITY_LIMIT:-5}"
-N=$(ls "$MEMORY_DIR"/*.md 2>/dev/null | grep -v '/MEMORY\.md$' | wc -l)
-[ "$N" -gt "$LIMIT" ] && echo "SICHTBARKEIT: $N Topic-Dateien, $LIMIT sichtbar, $((N-LIMIT)) pro Anfrage UNSICHTBAR"
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/04-sichtbarkeit-der.sh"
 ```
 
 ⚠ **`MEMORY.md` zaehlt NICHT mit** — der Index wird ohnehin immer geladen und steht nicht zur
@@ -313,12 +249,7 @@ das ist wieder ein anderer Fall und gehoert zu `mind-rules`.
 | zwei Beschreibungen zu aehnlich | Ueberlappung > 70 % | Hinweis |
 
 ```bash
-for f in "$MEMORY_DIR"/*.md; do
-  case "$f" in */MEMORY.md) continue;; esac
-  D=$(sed -n 's/^description:[[:space:]]*//p' "$f" | head -1)
-  [ -z "$D" ] && echo "BEFUND ohne description: $(basename "$f")"
-  [ -n "$D" ] && [ ${#D} -lt "${MIND_MEMORY_DESC_MIN:-40}" ] && echo "BEFUND description zu kurz (${#D}): $(basename "$f")"
-done
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/05-description-qualitaet.sh"
 ```
 
 **Dateiname ist das zweite Signal.** Generische Namen (`notes-2.md`) verschenken die Haelfte.
@@ -413,8 +344,7 @@ fremde Dinge nennt, passt auf keine Anfrage richtig.
    (`<22 KB`) · Warnung `180-195` (`22-24 KB`) · kritisch `>195` (`>24 KB`).
 
    ```bash
-   L=$(wc -l < "$MEMORY_DIR/MEMORY.md"); B=$(wc -c < "$MEMORY_DIR/MEMORY.md")
-   CCV=$(claude --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+   bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/06-zusammenfuehren-und.sh"
    ```
 
    ⚠ **Der Byte-Check gilt erst ab v2.1.198.** Bei aelterer Version als **Hinweis** ausgeben
@@ -463,23 +393,7 @@ fremde Dinge nennt, passt auf keine Anfrage richtig.
 | `VERWAIST` | Datei ohne Zeiger im Index | Zeile ergaenzen |
 
 ```bash
-# ⛔ v5.145.0 (Etappe 55 §5, Veras Befund M-D, Zustellplan 11./12.10.2026): 7 von 40 Zeilen
-#    wurden als TOT gemeldet, und ALLE SIEBEN existierten — sie zeigen auf `docs/…` im Projekt.
-#    Der vorgeschriebene Fix („Zeile entfernen") haette sieben gueltige Zeiger geloescht.
-#    Deshalb wird vor dem Urteil TOT auch relativ zur PROJEKTWURZEL aufgeloest.
-# ⚠ Eigener Bash-Aufruf: MEMORY_DIR und PROJ kommen aus Step 1 nicht mit. Ohne MEMORY_DIR
-#   waere die Schleife leer und saehe aus wie „alles in Ordnung".
-[ -n "${MEMORY_DIR:-}" ] && [ -f "$MEMORY_DIR/MEMORY.md" ] || {
-  echo "⛔ Index-Pruefung NICHT gefahren: MEMORY_DIR fehlt oder ohne MEMORY.md ('${MEMORY_DIR:-}')"; exit 2; }
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"   # v5.80.0: die Wurzel mit Roster
-grep -o '](\([^)]*\.md\))' "$MEMORY_DIR/MEMORY.md" | sed 's/](//;s/)//' | while read -r z; do
-  [ -f "$MEMORY_DIR/$z" ] && continue
-  b=$(basename "$z")
-  if [ -f "$MEMORY_DIR/$b" ]; then echo "PRAEFIX: $z -> $b"
-  elif [ -f "$PROJ/$z" ]; then echo "PROJEKT: $z (gueltig, liegt im Projekt)"
-  else echo "TOT: $z"; fi
-done
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/07-index-integritaet.sh"
 ```
 
 ⛔ **Eine reine Existenzpruefung meldet `PRAEFIX` als „fehlt"** — und ein autonomer Fix wuerde
@@ -496,7 +410,7 @@ Zustellplan-Projekt. Aus 17 von 18 Projekten zeigt das ins Leere, und der Pfad `
 ohne Projektbezug **prinzipiell nicht aufloesbar**.
 
 ```bash
-grep -rn 'memory/[a-z0-9-]*\.md' "$HOME/.claude/rules/" "$HOME/.claude/CLAUDE.md" 2>/dev/null
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/08-zeiger-von.sh"
 ```
 
 ⚠ **Hinweis, kein Befund** — die Datei liegt ausserhalb unserer Zustaendigkeit, und sie zu
@@ -571,16 +485,7 @@ Prompt-Injection **ueberdauert die Vergiftung Sitzungen**.
 Bedrohung betrifft `.claude/rules/*.md` und `CLAUDE.md`; einmal gebaut, dreifach nutzbar.
 
 ```bash
-source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-# ⛔ v5.147.0 (Etappe 56 §5): EINE ZAEHLZEILE AM ENDE. Ohne Fund gab der Scan 0 Byte aus — die
-#    Quittung war LEER, und „nichts gefunden" war von „nicht gelaufen" nicht zu trennen (zweites
-#    Auftreten, CK3). `DATEIEN=0` heisst jetzt: der Scan hatte keinen Gegenstand (MEMORY_DIR leer?).
-S="$PROJ/.claude-mind/schritt-mind-memory-poisoning.txt"; : > "$S"; _n=0
-for f in "$MEMORY_DIR"/*.md; do [ -f "$f" ] || continue; _n=$((_n+1)); mind_scan_poisoning "$f" >> "$S"; done
-echo "DATEIEN=$_n BEFUNDE=$(grep -c '^BEFUND|' "$S") HINWEISE=$(grep -c '^HINWEIS|' "$S")" >> "$S"; cat "$S"
-mind_schritt mind_scan_poisoning gelaufen --datei "$S" "$PROJ"
-# Ausgabe je Fund: BEFUND|<art>|<zeile>|<detail>  bzw.  HINWEIS|...  — danach die Zaehlzeile
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/09-sicherheit-owasp.sh"
 ```
 
 | Muster | Klasse |
@@ -780,6 +685,8 @@ diesen Schritt ausführst. Hier steht nur, was für **diesen** Command gilt:
 | **rückwärts** | über die Zieldatei, einmal je Lauf |
 
 ```bash
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung   # v5.154.0: Werte frueherer Bloecke sind hier leer
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
 [ -n "$CLAUDE_PLUGIN_ROOT" ] || { echo "ERROR: CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
 TOR="$CLAUDE_PLUGIN_ROOT/references/cleaner_tor.py"
@@ -856,7 +763,7 @@ zwingt, sondern sein Fehlen sichtbar macht.
 mehr geladen werden, keine Ausnahmen."*
 
 ```bash
-python "$CLAUDE_PLUGIN_ROOT/references/cleaner_tor.py" --memory "$MEM_DIR"
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/10-der-memory.sh"
 ```
 
 ⛔ **„Wird nicht mehr geladen" ist NICHT messbar — gemessen 30.08.2026.**
@@ -971,27 +878,7 @@ Lies sie.** Hier nur, was für Memory gilt:
 | ⛔ **Stufe 3** | der Wort-Diff wird GANZ gelesen, bevor angewendet wird. **Ohne Leser: nicht anwenden** — Ergebnis, Bericht, Diff ablegen, Pfad melden |
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-# Kandidatin: die groesste Topic-Datei, nie MEMORY.md — und v5.138.0: nicht die, die in
-# den letzten N Laeufen schon dran war. ⛔ KEIN `head -1` mehr: die Funktion braucht die
-# GANZE Liste (groesste zuerst), sonst kann sie nur die eine ablehnen, die sie bekommt.
-DATEI=$(ls -S "$MEMORY_DIR"/*.md 2>/dev/null | grep -v '/MEMORY\.md$' \
-        | mind_verdicht_kandidat "$PROJ" mind-memory merken)
-[ -n "$DATEI" ] || { echo "VERDICHTEN: keine Kandidatin"; }
-# ... dann exakt der Lauf aus bestands-pass.md: Snapshot (pre-memory sichert das Memory)
-#     ⛔ v5.100.0: der Agent schreibt $PROJ/.claude-mind/verdichten-mind-memory.nachher.md (Zeilenenden
-#        der Quelle); Anwenden ist `cp` nach Stufe 3 — NIE nachtippen (bestands-pass.md, Schritt 1)
-#     ⭐ v5.101.0 im Auftrag: Absatz ins Archiv = seine Code-Spans, Zahlen und ALLCAPS-Woerter
-#        bleiben im Zeiger-Satz — Stufe 1 zaehlt jede Marke, auch aus Herleitungen
-#     -> Agent (Kasten + Frontmatter/[[Verweise]] als unantastbar WOERTLICH im Auftrag)
-#     -> mind_verdichtung_pruefen -> Frontmatter byteweise gleich, [[Verweise]] gleich
-#     -> ⛔ STUFE 3 (Wort-Diff lesen; ohne Leser NICHT anwenden, ablegen und melden)
-#     -> mind_verdichtung_anwenden "$DATEI" "$ERGEBNIS" "$PROJ/.claude-mind/verdichten-<skill>.txt" (v5.125.0:
-#        vergleicht die Live-Datei mit dem md5 der Vorher-Fassung aus dem Deponat — seitdem geaendert = rc 1,
-#        kein cp, neu verdichten; Ritas CLAUDE.md-Deponat 22:51 hinter Live 23:41 am 18.09.2026)
-#     -> Datei kleiner, sonst rollback.py restore
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/11-step6e-verdichten-die.sh"
 ```
 
 ⛔ **Der Bericht dieses Schritts sind die drei Zeilen aus `mind_verdichtung_pruefen`** — oder
@@ -1002,16 +889,7 @@ die Zeile `verworfen: <grund>`. **Kein Bericht = der Schritt lief nicht.**
 Bis v5.145.0 stand dieser Schritt im Pflichtkasten und in der Startzeile, aber **nirgends als Aufruf** — erwartet, nie gelaufen. So entstand Noras `FEHLT: mind-rules/cleaner_duplikate` (Palvedo, 20.09.2026), und so wurden Schritte von Hand nachgeholt. Er meldet den Lauf an den zentralen Debug-Ordner (still ohne `MIND_DEBUG_DIR`). Abschnitt und Befundzeilen ERST schreiben (Aufbau wie `/mind-all` Step 2.95), dann diesen Block.
 
 ```bash
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-ABSCHNITT="$PROJ/.claude-mind/lauf-abschnitt-mind-memory.md"
-BEFUNDE="$PROJ/.claude-mind/lauf-befunde-mind-memory.jsonl"
-# ⚠ Ein Abschnitt aus einem FRUEHEREN Lauf zaehlt nicht — aelter als 2 h heisst: neu anlegen.
-[ -n "$(find "$ABSCHNITT" -mmin -120 2>/dev/null)" ] || \
-  printf '## %s — /mind-memory\n\n### Probleme in diesem Lauf\n- (keine)\n' "$(date '+%Y-%m-%d %H:%M')" > "$ABSCHNITT"
-[ -f "$BEFUNDE" ] || : > "$BEFUNDE"
-mind_debug_write "$PROJ" "mind-memory" "$ABSCHNITT" "$BEFUNDE"
-mind_schritt mind_debug_write gelaufen --datei "$ABSCHNITT" "$PROJ"
+bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/12-pflichtschritt-mind.sh"
 ```
 
 ## Step 7: Summary

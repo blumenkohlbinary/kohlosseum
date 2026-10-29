@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# /mind-claudemd — aus skills/mind-claudemd/SKILL.md ausgelagert (v5.154.0, Etappe 58 Hebel B, ZIEL 5).
+# ⛔ Jeder Block ist ein EIGENER Bash-Aufruf. Was ein frueherer Block setzte, ist hier LEER —
+#    deshalb leitet mind_block_umgebung PROJ, SCOPES_FILE, LAUF und AGENT_SOLL selbst her.
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+mind_block_umgebung
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
+PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
+A="$PROJ/.claude-mind/schritt-mind-claudemd-toolcheck.txt"
+mind_check_tools_have_rules "$PROJ" > "$A" 2>&1; echo "rc=$?" >> "$A"; cat "$A"
+mind_schritt mind_check_tools_have_rules gelaufen --datei "$A" "$PROJ"
+D="$PROJ/.claude-mind/schritt-mind-claudemd-duplikate.txt"
+python "$CLAUDE_PLUGIN_ROOT/references/cleaner_duplikate.py" --bereich "$PROJ" --nur projekt > "$D" 2>&1
+head -40 "$D"
+mind_schritt cleaner_duplikate gelaufen --datei "$D" "$PROJ"

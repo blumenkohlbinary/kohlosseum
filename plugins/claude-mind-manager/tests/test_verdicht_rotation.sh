@@ -137,7 +137,7 @@ done
 #   `$ZIEL_MD`, hat also nichts zu ueberspringen. Der Fall sichert, dass das eine
 #   Entscheidung bleibt und nicht zur vierten Luecke wird.
 pruef "mind-claudemd waehlt eine FESTE Datei (deshalb kein Leser noetig)" "ja" \
-  "$(grep -q '^DATEI="\$ZIEL_MD"' "$R/skills/mind-claudemd/SKILL.md" && echo ja || echo nein)"
+  "$(grep -q '^DATEI="\$ZIEL_MD"' "$(skill_text_datei "$R" mind-claudemd)" && echo ja || echo nein)"
 
 echo
 echo "  $GRUEN gruen · $ROT rot"
