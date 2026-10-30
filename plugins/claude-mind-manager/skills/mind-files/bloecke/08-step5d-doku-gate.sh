@@ -7,21 +7,14 @@ CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.
 mind_block_umgebung
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-# nur ausfuehren wenn Gating erfuellt UND User bestaetigt
-mkdir -p "$PROJ/tools" "$PROJ/.claude/rules"
-
-# 1. coverage_gate.py (stdlib-only, keine Fremd-Abhaengigkeit, kein Netzzugriff)
-if [ -f "$PROJ/tools/coverage_gate.py" ]; then
-  echo "SKIP: tools/coverage_gate.py existiert bereits (User fragen ob ueberschreiben)"
-else
-  cp "$CLAUDE_PLUGIN_ROOT/references/doc-templates/coverage_gate.py" \
-     "$PROJ/tools/coverage_gate.py"
+# ⛔ v5.166.0 (Etappe 65 Nachtrag 1): die Bedingung prueft der Block SELBST, angelegt wird nur ueber
+#    mind_vorlage_anlegen (Liste je Lauf, Block 13 berichtet sie). Gemessen im A/B-Lauf 30.10.2026: die Bloecke
+#    kopierten bedingungslos, das Gating stand nur im SKILL-Text — 6 Dateien angelegt, berichtet „keine“.
+# Bedingung (Step 5d, v5.3.0): Python UND (docs/ ODER >= 10 .md ausserhalb vendor-/Beispiel-Ordnern).
+_MD=$(find "$PROJ" -name '*.md' -not -path '*/node_modules/*' -not -path '*/.git/*' -not -path '*/Beispiele/*' \
+        -not -path '*/.claude-mind/*' 2>/dev/null | head -10 | wc -l | tr -d ' ')
+if ! { command -v python >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1; } || { [ ! -d "$PROJ/docs" ] && [ "${_MD:-0}" -lt 10 ]; }; then
+  echo "NICHT ANGELEGT: Doku-Gate — Python oder Doku-Flaeche fehlt (docs/ $([ -d "$PROJ/docs" ] && echo ja || echo nein), .md ${_MD:-0})"; exit 0
 fi
-
-# 2. Companion-Rule wissenstransfer-pruefen.md (PFLICHT, Overwrite-Guard)
-if [ -f "$PROJ/.claude/rules/wissenstransfer-pruefen.md" ]; then
-  echo "SKIP: .claude/rules/wissenstransfer-pruefen.md existiert bereits (User fragen)"
-else
-  cp "$CLAUDE_PLUGIN_ROOT/references/rule-templates/wissenstransfer-pruefen.md" \
-     "$PROJ/.claude/rules/wissenstransfer-pruefen.md"
-fi
+mind_vorlage_anlegen "$CLAUDE_PLUGIN_ROOT/references/doc-templates/coverage_gate.py" "tools/coverage_gate.py"
+mind_vorlage_anlegen "$CLAUDE_PLUGIN_ROOT/references/rule-templates/wissenstransfer-pruefen.md" ".claude/rules/wissenstransfer-pruefen.md"

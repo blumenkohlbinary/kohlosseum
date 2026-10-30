@@ -7,21 +7,17 @@ CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.
 mind_block_umgebung
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-# nur ausfuehren wenn Gating erfuellt UND User bestaetigt
-mkdir -p "$PROJ/tools" "$PROJ/.claude/rules"
-
-# 1. version.py (stdlib-only, kein PyInstaller-Teil)
-if [ -f "$PROJ/tools/version.py" ]; then
-  echo "SKIP: tools/version.py existiert bereits (User fragen ob ueberschreiben)"
-else
-  cp "$CLAUDE_PLUGIN_ROOT/references/release-templates/version.py" \
-     "$PROJ/tools/version.py"
+# ⛔ v5.166.0 (Etappe 65 Nachtrag 1): die Bedingung prueft der Block SELBST, angelegt wird nur ueber
+#    mind_vorlage_anlegen (Liste je Lauf, Block 13 berichtet sie). Gemessen im A/B-Lauf 30.10.2026: die Bloecke
+#    kopierten bedingungslos, das Gating stand nur im SKILL-Text — 6 Dateien angelegt, berichtet „keine“.
+# Bedingung (Step 5c, v4.0): Python UND Primary code_app (Argument 1, aus dem project-scanner) UND Build-/Versions-Signal.
+# Ohne Argument wird NICHTS angelegt — der Typ ist ein Urteil des Scanners, kein Dateimerkmal.
+PRIMARY="${1:-}"
+_SIG="nein"
+for _s in build.py pyproject.toml VERSION; do [ -f "$PROJ/$_s" ] && _SIG="ja"; done
+ls "$PROJ"/*.spec >/dev/null 2>&1 && _SIG="ja"
+if ! { command -v python >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1; } || [ "$PRIMARY" != "code_app" ] || [ "$_SIG" = "nein" ]; then
+  echo "NICHT ANGELEGT: Versioning-Pack — Primary '${PRIMARY:-(kein Argument)}', Signal $_SIG"; exit 0
 fi
-
-# 2. Companion-Rule release-build.md (PFLICHT, Overwrite-Guard)
-if [ -f "$PROJ/.claude/rules/release-build.md" ]; then
-  echo "SKIP: .claude/rules/release-build.md existiert bereits (User fragen)"
-else
-  cp "$CLAUDE_PLUGIN_ROOT/references/rule-templates/release-build.md" \
-     "$PROJ/.claude/rules/release-build.md"
-fi
+mind_vorlage_anlegen "$CLAUDE_PLUGIN_ROOT/references/release-templates/version.py" "tools/version.py"
+mind_vorlage_anlegen "$CLAUDE_PLUGIN_ROOT/references/rule-templates/release-build.md" ".claude/rules/release-build.md"

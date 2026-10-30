@@ -2412,6 +2412,23 @@ mind_pass_offen() {
   echo "   python \"\$CLAUDE_PLUGIN_ROOT/references/cleaner_stichprobe.py\" \"\$PROJ\" --quittung --skill $skill --geprueft <n> --stichprobe ${n:-<n>}"
 }
 
+# mind_vorlage_anlegen <vorlage> <ziel relativ zu PROJ>   (v5.166.0, Etappe 65 Nachtrag 1 (b))
+#   Kopiert eine Vorlage NUR, wenn das Ziel fehlt, und schreibt jede angelegte Datei in die Liste DIESES Laufs
+#   (`.claude-mind/mind-files-angelegt-<LAUF>.txt`) — der Bericht (Block 13) gibt genau diese Liste aus.
+#   ⛔ Gemessen im A/B-Lauf 30.10.2026 (5.165.0): mind-files legte 6 Dateien an und berichtete „Keine Dateien
+#   angelegt“ — die Bloecke kopierten still, der Bericht wurde von Hand geschrieben. Braucht PROJ (mind_block_umgebung).
+mind_vorlage_anlegen() {
+  local q="${1:-}" z="${2:-}" liste
+  [ -f "$q" ] && [ -n "$z" ] || { echo "⛔ mind_vorlage_anlegen <vorlage> <ziel>: Vorlage fehlt ('$q')" >&2; return 2; }
+  if [ -e "$PROJ/$z" ]; then echo "SKIP: $z existiert bereits (nie ueberschrieben)"; return 0; fi
+  mkdir -p "$(dirname "$PROJ/$z")" 2>/dev/null
+  cp "$q" "$PROJ/$z" || return 1
+  liste="$PROJ/.claude-mind/mind-files-angelegt-${LAUF:-ohne-lauf}.txt"
+  mkdir -p "$PROJ/.claude-mind" 2>/dev/null
+  printf '%s\n' "$z" >> "$liste"
+  echo "ANGELEGT: $z"
+}
+
 # mind_agent_bericht_pfad <bereich> [projekt] [skill]   (v5.162.0, Etappe 63 N3 §1; skill v5.163.0)
 #   Die EINE Datei, die der context-analyzer schreiben darf: <projekt>/.claude-mind/agent/<LAUF>-<skill>-<bereich>.md
 #   (Vorgabe skill=mind-update). ⛔ v5.163.0, Ritas Messlauf 30.10.: ohne Skill im Namen schrieb der claude-md-

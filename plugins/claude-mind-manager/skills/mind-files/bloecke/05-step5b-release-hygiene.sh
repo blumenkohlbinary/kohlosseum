@@ -7,11 +7,15 @@ CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.
 mind_block_umgebung
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
+# ⛔ v5.166.0 (Etappe 65 Nachtrag 1): die Bedingung prueft der Block SELBST, angelegt wird nur ueber
+#    mind_vorlage_anlegen (Liste je Lauf, Block 13 berichtet sie). Gemessen im A/B-Lauf 30.10.2026: die Bloecke
+#    kopierten bedingungslos, das Gating stand nur im SKILL-Text — 6 Dateien angelegt, berichtet „keine“.
+# Nur melden: hat das Projekt ein Versions-Signal? Block 06 rechnet es SELBST nach (Prozessgrenze).
 HAT_VERSION="nein"
 for _s in VERSION pyproject.toml package.json; do
   [ -f "$PROJ/$_s" ] && HAT_VERSION="ja"
 done
 ls "$PROJ"/*.csproj >/dev/null 2>&1 && HAT_VERSION="ja"
 [ -n "$(git -C "$PROJ" tag 2>/dev/null | head -1)" ] && HAT_VERSION="ja"
-# HAT_VERSION=nein -> NICHT anbieten, sondern INFO: "kein Versions-Signal, der Changelog
-#                     haette hier keine Quelle"
+echo "Versions-Signal: $HAT_VERSION"
+[ "$HAT_VERSION" = "nein" ] && echo "INFO: kein Versions-Signal, der Changelog haette hier keine Quelle"

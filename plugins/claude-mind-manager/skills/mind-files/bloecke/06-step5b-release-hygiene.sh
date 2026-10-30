@@ -7,29 +7,20 @@ CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.
 mind_block_umgebung
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-if [ -d "$PROJ/.git" ]; then
-  mkdir -p "$PROJ/tools" "$PROJ/.claude/rules"
-
-  # update_changelog.py ist ein PYTHON-Tool -> ohne Interpreter waere es ein totes Tool.
-  # Python-Detection; fehlt Python -> WARN (analog Backup-Bundle), Install laeuft trotzdem.
-  if ! (python --version >/dev/null 2>&1 || python3 --version >/dev/null 2>&1); then
-    echo "WARN: Python nicht gefunden. update_changelog.py installiert aber NICHT lauffaehig"
-    echo "      bis Python installiert ist (die Conventional-Commit-Regeln gelten trotzdem)."
-  fi
-
-  # 1. Changelog-Engine (git-basiert) — gehoert hierher, NICHT zum Backup-Bundle. Overwrite-Guard.
-  if [ -f "$PROJ/tools/update_changelog.py" ]; then
-    echo "SKIP: tools/update_changelog.py existiert bereits (User fragen ob ueberschreiben)"
-  else
-    cp "$CLAUDE_PLUGIN_ROOT/references/backup-system-templates/tools/update_changelog.py" \
-       "$PROJ/tools/update_changelog.py"
-  fi
-
-  # 2. Companion-Rule (Overwrite-Guard: nie ueberschreiben, ASK default Skip)
-  if [ -f "$PROJ/.claude/rules/release-hygiene.md" ]; then
-    echo "SKIP: .claude/rules/release-hygiene.md existiert bereits (User fragen)"
-  else
-    cp "$CLAUDE_PLUGIN_ROOT/references/rule-templates/release-hygiene.md" \
-       "$PROJ/.claude/rules/release-hygiene.md"
-  fi
+# ⛔ v5.166.0 (Etappe 65 Nachtrag 1): die Bedingung prueft der Block SELBST, angelegt wird nur ueber
+#    mind_vorlage_anlegen (Liste je Lauf, Block 13 berichtet sie). Gemessen im A/B-Lauf 30.10.2026: die Bloecke
+#    kopierten bedingungslos, das Gating stand nur im SKILL-Text — 6 Dateien angelegt, berichtet „keine“.
+# Bedingung (Step 5b, v5.7.0): Git-Repo UND Versions-Signal. Bis v5.165.0 lag HAT_VERSION in Block 05 —
+# hier war es leer, kopiert wurde bei jedem Git-Repo (Prozessgrenze, neunter Fall).
+HAT_VERSION="nein"
+for _s in VERSION pyproject.toml package.json; do
+  [ -f "$PROJ/$_s" ] && HAT_VERSION="ja"
+done
+ls "$PROJ"/*.csproj >/dev/null 2>&1 && HAT_VERSION="ja"
+[ -n "$(git -C "$PROJ" tag 2>/dev/null | head -1)" ] && HAT_VERSION="ja"
+if [ ! -d "$PROJ/.git" ] || [ "$HAT_VERSION" = "nein" ]; then
+  echo "NICHT ANGELEGT: Release-Hygiene — Git-Repo $([ -d "$PROJ/.git" ] && echo ja || echo nein), Versions-Signal $HAT_VERSION"; exit 0
 fi
+command -v python >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1 || echo "WARN: Python nicht gefunden. update_changelog.py installiert aber NICHT lauffaehig."
+mind_vorlage_anlegen "$CLAUDE_PLUGIN_ROOT/references/backup-system-templates/tools/update_changelog.py" "tools/update_changelog.py"
+mind_vorlage_anlegen "$CLAUDE_PLUGIN_ROOT/references/rule-templates/release-hygiene.md" ".claude/rules/release-hygiene.md"

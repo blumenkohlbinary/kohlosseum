@@ -56,7 +56,7 @@ mind_kontingent_pruefen "$PROJ" mind-update '$ARGUMENTS' "<5h>" "<woche>" || exi
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.165.0"
+MIND_SKILL_VERSION="5.166.0"
 mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe cleaner_tor mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
@@ -627,6 +627,9 @@ und nennt den Bericht-Pfad. Jeder Agent-Aufruf traegt `run_in_background: false`
 Gemessen im A/B-Lauf vom 30.10.2026: vier Agents wurden ohne den Block und ohne das Flag gestartet. Danach wurden
 dispatch und ergebnis in einer Sekunde nachgetragen. Die Bilanz hat das als UNGEPRUEFT erkannt; diese Bereiche
 muessen in 2.96a-R noch einmal laufen, das kostet doppelt.
+⛔ **Seit v5.166.0 verweigert der context-analyzer im Modus knowledge-sync ohne Dispatch-Zeile.** Er antwortet mit
+`UNDISPATCHED: …` und schreibt nichts. Dann fuer diesen Bereich `agent-schritt.sh` fahren und den Agent neu starten.
+⛔ NICHT nachtragen: ohne Bericht-Datei bleibt die Quittung bytes:0.
 
 **NICHT alle 4 in EINER Tool-Call-Message** (das wäre der ≥3-Burst, der das Server-Rate-Limit
 trippt — v4.0.1). Stattdessen: **einzeln nacheinander**, ODER in 2 Wellen à 2 (Welle 1 =

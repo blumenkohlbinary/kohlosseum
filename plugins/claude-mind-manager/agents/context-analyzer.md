@@ -32,6 +32,14 @@ color: green
 > Datei anlegen, aendern oder ueberschreiben — auch keine, die der Auftrag zu reparieren scheint; Befunde sind Text.
 > Nennt der Auftrag keinen Pfad: nichts schreiben.
 
+> ⛔ **`mode: knowledge-sync` — ZUERST die Dispatch-Zeile pruefen (v5.166.0, Etappe 65 Nachtrag 1, Anton-Entscheidung).**
+> Erster Werkzeugaufruf: `Read <project>/.claude-mind/agent-quittung.jsonl`. Gesucht ist nach der LETZTEN Zeile mit
+> `"ereignis":"start"` eine Zeile `"ereignis":"dispatch","bereich":"<dein scope>"`. Fehlt sie oder fehlt die Datei:
+> keine Analyse, nichts schreiben, als ganze Antwort genau diese Zeile:
+> `UNDISPATCHED: kein mind_agent_dispatch <scope> seit der letzten Start-Zeile — erst agent-schritt.sh (mind-update Step 3.5), dann erneut starten.`
+> Gemessen im A/B-Lauf vom 30.10.2026: vier Knowledge-Sync-Agents wurden ohne den Block gestartet. Die Quittung
+> wurde danach nachgetragen (UNGEPRUEFT), und ihre Befunde wurden nicht angewendet. Fuer die anderen Modi gilt das nicht.
+
 > **`maxTurns: 25`** (v5.147.0, Etappe 56 §2, vorher 20) — gemessen 28.10.2026 ueber alle Projekte:
 > 27 von 393 Knowledge-Sync-Starts (7 %) stoppten bei 20 und brauchten insgesamt 21–23 Turns, die
 > sie ueber die Fortsetzung ohnehin bekamen; vollstaendige Laeufe Median 8, p95 20, hoechstens 21.

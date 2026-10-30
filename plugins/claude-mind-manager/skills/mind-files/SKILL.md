@@ -46,7 +46,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.165.0"
+MIND_SKILL_VERSION="5.166.0"
 mind_schritt_start "$PROJ" mind-files bestandszahlen_kandidaten cleaner_stichprobe cleaner_tor mind_check_tools_have_rules mind_hook_health mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -484,7 +484,7 @@ totes Tool — genau der Bug den v4.0 killt). User bestaetigt ("notwendig").
 ohne `release-build.md` installiert:
 
 ```bash
-ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/07-step5c-versioning-pack.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/07-step5c-versioning-pack.sh" "<Primary aus dem project-scanner, z. B. code_app>"   # v5.166.0: ohne Argument legt er NICHTS an
 ```
 
 Dann **1 Pointer-Zeile** in `CLAUDE.md`: `- Versionierung: \`python tools/version.py show|bump|release\` — siehe \`.claude/rules/release-build.md\``
@@ -815,6 +815,7 @@ User darf zurueckweisen mit "Self-Check-Block fehlt — bitte Step 1 ausfuehren"
 ```bash
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/13-step6-report-pflicht.sh"
 ```
+⛔ **Die Zeile `Angelegt:` im Bericht nennt GENAU die Liste, die dieser Block ausgibt (v5.166.0).** Die Bloecke 03–09 pruefen ihre Bedingung selbst und legen nur ueber `mind_vorlage_anlegen` an. Im A/B-Lauf vom 30.10.2026 wurden 6 Dateien angelegt und „Keine Dateien angelegt“ berichtet.
 ⚠ **`mind_ordner_hinweise` ist ein Hinweis, kein Befund** (Etappe 38 §7, gemessen 19.09.2026:
 2 783 ungenannte Skripte in vier Projekten, 0 tote Werkzeuge — `docs/plugin/tools-have-rules-messung-20260919.md`).
 Die Invariante bleibt bei der Nennungs-Regel; der Hinweis nennt nur Ordner, die kein Satz in

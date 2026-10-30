@@ -7,11 +7,11 @@ CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.
 mind_block_umgebung
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-mkdir -p "$PROJ/.claude/rules"
-# Overwrite-Guard: existiert die Rule schon -> NICHT ueberschreiben (ASK, default Skip)
-if [ -f "$PROJ/.claude/rules/backup-usage.md" ]; then
-  echo "SKIP: .claude/rules/backup-usage.md existiert bereits (User fragen ob ueberschreiben)"
-else
-  cp "$CLAUDE_PLUGIN_ROOT/references/rule-templates/backup-usage.md" \
-     "$PROJ/.claude/rules/backup-usage.md"
+# ⛔ v5.166.0 (Etappe 65 Nachtrag 1): die Bedingung prueft der Block SELBST, angelegt wird nur ueber
+#    mind_vorlage_anlegen (Liste je Lauf, Block 13 berichtet sie). Gemessen im A/B-Lauf 30.10.2026: die Bloecke
+#    kopierten bedingungslos, das Gating stand nur im SKILL-Text — 6 Dateien angelegt, berichtet „keine“.
+# Companion-Rule des Backup-Systems: nur, wenn das Werkzeug da ist (No Dead Tools — und keine Rule ohne Tool).
+if [ ! -f "$PROJ/tools/backup_tools.py" ]; then
+  echo "NICHT ANGELEGT: backup-usage.md — kein tools/backup_tools.py"; exit 0
 fi
+mind_vorlage_anlegen "$CLAUDE_PLUGIN_ROOT/references/rule-templates/backup-usage.md" ".claude/rules/backup-usage.md"

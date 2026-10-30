@@ -82,6 +82,15 @@ pruef "hinter dem eigenen Kopf: rc 0" "$(blk mind-rules)" "0"
 pruef "   ... gefahren" "$([ -e "$P/lief-mind-rules" ] && echo da || echo fehlt)" "da"
 pruef "mind-all-Bloecke sind nicht gesperrt (laufen hinter mind-update)" "$(blk mind-all)" "0"
 
+echo "=== 7) v5.166.0: der Knowledge-Sync-Analyzer verweigert ohne Dispatch-Zeile (Anton, Nachtrag 1 — kein Hook) ==="
+AG="$R/agents/context-analyzer.md"
+pruef "Agent: Pruefung auf die Dispatch-Zeile nach der letzten Start-Zeile" "$(grep -c '"ereignis":"dispatch","bereich":"<dein scope>"' "$AG")" "1"
+pruef "Agent: liest agent-quittung.jsonl als ERSTES" "$(grep -c 'Erster Werkzeugaufruf: `Read <project>/.claude-mind/agent-quittung.jsonl`' "$AG")" "1"
+pruef "Agent: Antwort UNDISPATCHED, nichts schreiben" "$(grep -c '^> `UNDISPATCHED: kein mind_agent_dispatch' "$AG")" "1"
+pruef "Agent: Read im Werkzeugsatz" "$(sed -n '/^tools:/,/^disallowedTools:/p' "$AG" | grep -c '^  - Read$')" "1"
+pruef "mind-update: UNDISPATCHED heisst Block fahren, nicht nachtragen" "$(grep -c 'UNDISPATCHED: …' "$R/skills/mind-update/SKILL.md")" "1"
+pruef "agent-schritt.sh dispatcht VOR dem Agent (mind_agent_dispatch im Block)" "$(grep -c 'mind_agent_dispatch "\$n" "\$PROJ"' "$R/skills/mind-update/bloecke/agent-schritt.sh")" "1"
+
 echo ""
 echo "  $ok gruen · $rot rot"
 [ "$rot" -eq 0 ] || exit 1
