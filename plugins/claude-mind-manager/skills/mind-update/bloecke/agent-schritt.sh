@@ -98,7 +98,9 @@ auftrag() {  # <bereich>
                 echo "- Jeder Zeiger (\"Begruendung: X\", \"Details: X\"): steht der Gegenstand noch in X? Sonst UPDATE mit dem heutigen Ort." ;;
     memory)    echo "- Memory-Verzeichnis: ${MEMORY_DIR:-<get_memory_dir>}. Jedes ZITAT, das einer Datei zugeschrieben ist: steht der Wortlaut dort noch (auch ~/.claude/rules/)? Sonst UPDATE."
                 echo "- Fehlplatzierung nach ~/.claude/rules/file-handling.md (Abschnitt Context files): Architektur, Pfade, Debug-Fixes, Versionshistorie gehoeren NICHT ins Memory — je Datei Ziel nennen (INFO, Klasse misplaced)." ;;
-    rules)     echo "- Jede Rule, die ein Werkzeug nennt (tools/*.py, Learnings/*.py, references/*.py): lies dessen Aufruf-Kopf/Docstring. Fehlen dort dokumentierte Optionen, Stufen oder Rueckgabewerte in der Rule: UPDATE (Rule aelter als Werkzeug)."
+    # ⛔ v5.170.0: auch die Optionen, die das Werkzeug AUSWERTET. Gegentest 30.10.2026: `--entfernt` steht in
+    #    `coverage_gate.py` erst ab Z. 152 (Docstring endet Z. 32) — „Aufruf-Kopf lesen“ reichte nicht hin.
+    rules)     echo "- Jede Rule, die ein Werkzeug nennt (tools/*.py, Learnings/*.py, references/*.py): lies dessen Aufruf-Kopf/Docstring UND die Optionen, die es auswertet (grep -nE -- '--[a-z][a-z-]+' <werkzeug>, auch Kommentare und Argument-Teil). Fehlen dort dokumentierte Optionen, Stufen oder Rueckgabewerte in der Rule: UPDATE (Rule aelter als Werkzeug)."
                 echo "- Jeder zitierte Wortlaut einer anderen Datei: steht er dort noch? Zahlen mit Messbefehl daneben: Befehl NICHT fahren, nur als INFO melden." ;;
     custom-context)
       prio=$(grep -oE '`[^`*?]*\.md`' "$PROJ/CLAUDE.md" 2>/dev/null | tr -d '`' | sed 's#^\./##' | awk '!g[$0]++' \

@@ -147,6 +147,8 @@ pruef "   ... beide Rettungen als Pfad mit Bytes und Beitraegen (Punkt 2)" "$(pr
 pruef "   ... mit Groessen-Guard" "$(printf '%s\n' "$O10" | grep -c '^2\. Danach die Rettungen, NUR gezielt per Grep (Groessen-Guard')" "1"
 pruef "   ... Live-Auszug als Punkt 3" "$(printf '%s\n' "$O10" | grep -c '^3\. Live-Auszug: ')" "1"
 pruef "   ... ⛔ kein Inhalt der Rettung im Auftrag" "$(printf '%s\n' "$O10" | grep -c 'ASSISTANT_TEXT')" "0"
+# v5.170.0: --entfernt steht in coverage_gate.py erst ab Z. 152 — „Aufruf-Kopf lesen“ reichte nicht.
+pruef "rules (P8, Welle 2): auch die ausgewerteten Optionen greppen" "$(printf '%s\n' "$O2" | grep -c "UND die Optionen, die es auswertet (grep -nE -- '--\[a-z\]\[a-z-\]+' <werkzeug>")" "1"
 
 echo ""
 echo "  $ok gruen · $rot rot"
