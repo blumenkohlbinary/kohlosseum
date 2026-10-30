@@ -144,7 +144,13 @@ else PYTHON="python"; fi
 #    aus der Agent-Sandbox nicht erreichbar (17./18.09.2026, memory-Agent). Aufraeumen: Step 6.
 SESSION_SAMPLE_BASH=$(mind_sampler_pfad "$PROJ" mind-update)     # <PROJ>/.claude-mind/sampler/mind-update.<sid>.json
 SESSION_SAMPLE_WIN=$(cygpath -w "$SESSION_SAMPLE_BASH")
-"$PYTHON" "$SAMPLER_WIN" "$JSONL_WIN" "$SESSION_SAMPLE_WIN"
+# ⛔ v5.161.0 (Etappe 63 N1): FENSTER seit dem letzten Sync bis zum Laufbeginn. Ohne es schnitt der Sampler an
+#    der letzten GETIPPTEN /mind-all-Marke — in Ritas Sitzung vom 10.09. — und sah 0 Ereignisse des Zeitraums.
+_VON=$(sed -n 's/^utc=//p' "$PROJ/.claude-mind/rescued/letzter-sync" 2>/dev/null | tail -1)
+_BIS=""; _LTS=$(cat "$PROJ/.claude-mind/mind-all.lock/ts" 2>/dev/null)
+case "$_LTS" in ''|*[!0-9]*) ;; *) _BIS=$(date -u -d "@$_LTS" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null) ;; esac
+"$PYTHON" "$SAMPLER_WIN" "$JSONL_WIN" "$SESSION_SAMPLE_WIN" ${_VON:+--von "$_VON"} ${_BIS:+--bis "$_BIS"}
+echo "Sampler-Fenster: von ${_VON:-(Anfang)} bis ${_BIS:-(Selbst-Ausschluss)}"
 
 # Hinweis bei sehr langer Session
 TOTAL=$(grep -oE '"total_events":\s*[0-9]+' "$SESSION_SAMPLE_BASH" | grep -oE '[0-9]+')

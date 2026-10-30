@@ -1742,6 +1742,21 @@ mind_block_umgebung() {
   MEM_DIR="${MEM_DIR:-$MEMORY_DIR}"
   RULES_DIR="${RULES_DIR:-$PROJ/.claude/rules}"
   ZIEL_RULES="${ZIEL_RULES:-$PROJ/.claude/rules}"
+  # ⛔ v5.161.0 (Etappe 63 N1, Ritas Lauf 30.10.2026): der Snapshot DIESES Laufs fuer den Zeilenenden-Waechter
+  #   (mind-all 2.95). `MIND_SNAPSHOT_DIR` setzte seit Hebel B (5.152.0) NIEMAND mehr — der Waechter meldete
+  #   `UNGUELTIG` (VERGLICHEN=0). Quelle ist `snapshot=` aus analyzed-scopes; nach Step 2.9 heisst sie `.done`
+  #   und gilt NUR, wenn sie die Lauf-ID dieses Laufs traegt (`skill=…|$LAUF`) — ein fremder Snapshot ist
+  #   schlimmer als keiner. Ohne Lauf-ID bleibt es leer, der Waechter meldet weiter UNGUELTIG.
+  if [ -z "${MIND_SNAPSHOT_DIR:-}" ]; then
+    local _sf
+    for _sf in "$SCOPES_FILE" "${SCOPES_FILE}.done"; do
+      [ -f "$_sf" ] || continue
+      if [ "$_sf" = "$SCOPES_FILE" ] || { [ -n "$LAUF" ] && grep -qF "|$LAUF" "$_sf" 2>/dev/null; }; then
+        MIND_SNAPSHOT_DIR=$(grep '^snapshot=' "$_sf" 2>/dev/null | tail -1 | cut -d= -f2-)
+        break
+      fi
+    done
+  fi
   return 0
 }
 

@@ -483,13 +483,26 @@ def main(argv):
         return 2
     jsonl_path, out_path = argv[1], argv[2]
 
+    # ⛔ v5.161.0 (Etappe 63 N1, Ritas Lauf 30.10.2026): FENSTER und Selbst-Ausschluss.
+    #    `<command-name>` entsteht NUR beim GETIPPTEN Befehl; ein Start ueber das Skill-Werkzeug hinterlaesst
+    #    „Base directory for this skill: …mind-all". Ritas Sitzung (seit 10.09.) trug 3 getippte und 11
+    #    Werkzeug-Starts — geschnitten wurde am 10.09., die Stichprobe hatte 0 Ereignisse seit dem letzten Sync.
+    #    --von <ISO>  erst ab hier (letzter Sync, `utc=` aus `rescued/letzter-sync`)
+    #    --bis <ISO>  nur bis hier (Laufbeginn) — gilt VOR der Marke. Beide optional, ohne sie wie bisher.
+    def _flag(name):
+        rest = argv[3:]
+        return rest[rest.index(name) + 1] if name in rest and rest.index(name) + 1 < len(rest) else ""
+    von, bis = _flag('--von'), _flag('--bis')
+
     # Self-Exclusion: den laufenden mind-update-Aufruf nicht mitsampeln
-    self_re = re.compile(r'<command-name>/(?:[^/<]+:)?mind-(?:update|all)</command-name>')
+    self_re = re.compile(r'<command-name>/(?:[^/<]+:)?mind-(?:update|all)</command-name>'
+                         r'|Base directory for this skill: [^"\n]*?skills[\\/]+mind-(?:update|all)\b')
     exclude_from = None
-    with open(jsonl_path, encoding='utf-8', errors='replace') as f:
-        for lineno, line in enumerate(f, 1):
-            if self_re.search(line):
-                exclude_from = lineno
+    if not bis:
+        with open(jsonl_path, encoding='utf-8', errors='replace') as f:
+            for lineno, line in enumerate(f, 1):
+                if self_re.search(line):
+                    exclude_from = lineno
 
     events, menschlich, total = [], [], 0
     with open(jsonl_path, encoding='utf-8', errors='replace') as f:
@@ -501,6 +514,9 @@ def main(argv):
             except json.JSONDecodeError:
                 continue
             if obj.get('isSidechain') or obj.get('type') == 'queue-operation':
+                continue
+            ts = obj.get('timestamp', '')
+            if (von and ts and ts < von) or (bis and ts and ts >= bis):
                 continue
             msg = obj.get('message', {}) or {}
             content = msg.get('content')
@@ -559,6 +575,7 @@ def main(argv):
         "menschlich_behalten": len(menschlich),
         "long_session_hint": total > 1000,
         "self_exclusion_line": exclude_from,
+        "fenster": {"von": von or None, "bis": bis or None},
         "user_weight": USER_WEIGHT,
         # `ts` in UTC wie im Transkript (Endung `Z`) — dieselbe Uhr wie `utc=` in letzter-sync.
         "sample": [{"line": l, "role": r, "ts": ts, "text": t} for (l, r, t, _, ts) in events],
