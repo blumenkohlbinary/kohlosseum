@@ -220,8 +220,8 @@ python "$CLAUDE_PLUGIN_ROOT/references/kontext_grundlage.py" --projekt "$PROJ" $
 ⛔ **Seit v5.171.0 rechnet das Werkzeug eine Kompaktierungsgrenze je Ordner aus** (Nutzer 30.10.2026: jeder Chat
 darf und soll sich selbst kompaktieren, die Grenze je Ordner wird berechnet; ERSETZT „Information, KEINE Schwelle“
 vom 28.10.2026). Die Zeile `HERGELEITET  Kompaktierungsgrenze autoCompactWindow <n>` ist Startlast + Bedarf einer
-VOLLSTAENDIGEN Strecke (nur Strecken ohne Kompaktierung — eine abgebrochene ist zensiert) + 15 %, auf 50 000
-gerundet, 100 000–1 000 000. Teilen sich mehrere Rollen den Ordner, folgt der eine Wert der hungrigsten Sitzung.
+VOLLSTAENDIGEN Strecke (nur Strecken ohne Kompaktierung — eine abgebrochene ist zensiert) + 15 %, gerundet und
+in die erlaubte Spanne gekappt (Raster und Grenzen nennt das Werkzeug, `RASTER`/`GRENZE_MIN`/`GRENZE_MAX`). Teilen sich mehrere Rollen den Ordner, folgt der eine Wert der hungrigsten Sitzung.
 `KEINE Kompaktierungsgrenze` / `NICHT MESSBAR` heisst: globale Vorgabe lassen, keine Zahl nennen.
 ⛔ **Gesetzt wird sie nicht hier** — der manager traegt sie in `.claude/settings.local.json` ein
 (`manager-chats.md`); der Skill speichert sie mit der Antwort (`"kompaktierung"` im JSON aus Step 6).
