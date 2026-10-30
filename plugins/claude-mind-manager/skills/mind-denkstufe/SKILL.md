@@ -47,7 +47,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.170.0"
+MIND_SKILL_VERSION="5.171.0"
 mind_schritt_start "$PROJ" mind-denkstufe antwort_zuerst aufgabe_verstehen ablage_lesen eigene_erfahrung gegenprobe antwort_speichern
 
 ARGS='$ARGUMENTS'   # v5.159.0: Claude Code ersetzt beim Laden nur das blanke Argument-Token, nie die Form mit Klammern
@@ -211,15 +211,20 @@ Aenderung, Verteilung, Agenten und Workflows dieses Ordners, ZAEHLEND aus den Tr
 ```bash
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 mind_block_umgebung
-_G=$(jq -r '.autoCompactWindow // empty' "$PROJ/.claude/settings.json" 2>/dev/null)
+_G=$(jq -r '.autoCompactWindow // empty' "$PROJ/.claude/settings.local.json" 2>/dev/null)   # v5.171.0: lokal geht vor
+[ -n "$_G" ] || _G=$(jq -r '.autoCompactWindow // empty' "$PROJ/.claude/settings.json" 2>/dev/null)
 [ -n "$_G" ] || _G=$(jq -r '.autoCompactWindow // empty' "$HOME/.claude/settings.json" 2>/dev/null)
 python "$CLAUDE_PLUGIN_ROOT/references/kontext_grundlage.py" --projekt "$PROJ" ${_G:+--grenze "$_G"}
 ```
 
-⛔ **Die Ausgabe ist Information, KEINE Schwelle** (Nutzer 28.10.2026: *„das soll nicht einfach festgelegt
-sein, jeder chat an eigene aufgabe"*). Sie hilft beim Urteil, ob ein Chat seinen Verlauf braucht; eine
-Kompaktier-Zahl je Ordner wird NICHT empfohlen. Teilen sich mehrere Rollen den Ordner, sagt das Werkzeug es —
-dann gibt es nur einen Wert fuer alle. `NICHT MESSBAR` heisst: globale Vorgabe lassen, keine Zahl nennen.
+⛔ **Seit v5.171.0 rechnet das Werkzeug eine Kompaktierungsgrenze je Ordner aus** (Nutzer 30.10.2026: jeder Chat
+darf und soll sich selbst kompaktieren, die Grenze je Ordner wird berechnet; ERSETZT „Information, KEINE Schwelle“
+vom 28.10.2026). Die Zeile `HERGELEITET  Kompaktierungsgrenze autoCompactWindow <n>` ist Startlast + Bedarf einer
+VOLLSTAENDIGEN Strecke (nur Strecken ohne Kompaktierung — eine abgebrochene ist zensiert) + 15 %, auf 50 000
+gerundet, 100 000–1 000 000. Teilen sich mehrere Rollen den Ordner, folgt der eine Wert der hungrigsten Sitzung.
+`KEINE Kompaktierungsgrenze` / `NICHT MESSBAR` heisst: globale Vorgabe lassen, keine Zahl nennen.
+⛔ **Gesetzt wird sie nicht hier** — der manager traegt sie in `.claude/settings.local.json` ein
+(`manager-chats.md`); der Skill speichert sie mit der Antwort (`"kompaktierung"` im JSON aus Step 6).
 
 **Ultracode — ob er sich fuer diese Aufgabe lohnt** (Teil der Empfehlung, nicht eine dritte getrennte Antwort):
 
@@ -267,9 +272,10 @@ zurueck, gilt seine Richtung als **ungeprueft** und steht so im Bericht — nich
 Aufgabe:     <Wortlaut>
 Empfehlung:  <Modell> · <low|medium|high|xhigh|max> · Ultracode <an|aus>     (EINE Kombination, v5.155.0)
 
-VERLAUF  (Messgrundlage aus Step 4 — Information, keine Schwelle)
+VERLAUF  (Messgrundlage aus Step 4)
   BELEGT       Grundlast <n> · nach Kompaktierung <n> · Einlese-Bedarf p50/p95 <n>/<n>
   HERGELEITET  Leeren mit Uebergabe gegen Kompaktieren: <Satz aus dem Werkzeug>
+  HERGELEITET  Kompaktierungsgrenze autoCompactWindow <n> (Startlast + Bedarf + 15 %, hungrigste Sitzung) — oder KEINE
 
 EINSTELLEN  (Quelle: code.claude.com/docs/en/model-config, /workflows, /settings-reference — 29.10.2026)
   Sitzung:   /model <Modell> · /effort <Stufe> · /effort ultracode  (bzw. /effort ultracode off)

@@ -137,7 +137,36 @@ def messen(transkripte, grenze=None, projekt=None):
     if G is not None and K is not None and E is not None:
         erg["leeren"] = {"nach_leeren": G + E, "nach_kompakt": K,
                          "mehr_je_anfrage": max(0, G + E - K)}
+    erg["grenze_vorschlag"] = grenze_vorschlag(dateien, G, K)
     return erg
+
+
+# ⛔ v5.171.0 (Etappe 66, Nutzer 30.10.2026 — ersetzt „keine Schwelle“ vom 28.10.2026): jeder Ordner bekommt eine
+#    berechnete Kompaktierungsgrenze. HERGELEITET, nie BELEGT: Startlast + Bedarf einer vollstaendigen Strecke + 15 %.
+#    Gemessen wird der Bedarf NUR an Strecken, die OHNE Kompaktierung endeten — eine Strecke, die an der Grenze
+#    abbricht, ist zensiert (ihre Spitze ist die alte Grenze, nicht der Bedarf). Je Ordner die hungrigste Sitzung.
+RESERVE = 0.15
+GRENZE_MIN, GRENZE_MAX, RASTER = 100000, 1000000, 50000
+
+
+def grenze_vorschlag(dateien, grundlast, nach_kompakt):
+    je_sitzung = {}
+    for d in dateien:
+        abschn = lies_transkript(d)
+        for i, a in enumerate(abschn):
+            if i + 1 < len(abschn):      # endete in einer Kompaktierung -> zensiert
+                continue
+            je_sitzung.setdefault(d.stem, []).append(max(a["v"]) - a["v"][0])
+    alle = [b for w in je_sitzung.values() for b in w]
+    start = max(x for x in (grundlast, nach_kompakt, 0) if x is not None)
+    if len(alle) < MIN_FAELLE or not start:
+        return {"wert": None, "faelle": len(alle), "grund": "zu wenige vollstaendige Strecken (%d < %d)" % (len(alle), MIN_FAELLE)}
+    hungrig = max(je_sitzung, key=lambda s: statistics.median(je_sitzung[s]))
+    bedarf = int(statistics.median(je_sitzung[hungrig]))
+    roh = (start + bedarf) * (1 + RESERVE)
+    wert = int(min(GRENZE_MAX, max(GRENZE_MIN, -(-roh // RASTER) * RASTER)))
+    return {"wert": wert, "faelle": len(alle), "start": start, "bedarf": bedarf, "sitzung": hungrig,
+            "gekappt": wert != -(-roh // RASTER) * RASTER}
 
 
 def bericht(e):
@@ -162,9 +191,16 @@ def bericht(e):
             t(l["nach_leeren"]), t(l["nach_kompakt"]),
             "Leeren mit Uebergabe ist billiger" if l["mehr_je_anfrage"] == 0 else
             "Kompaktieren ist billiger, Leeren traegt ~%s mehr je Anfrage" % t(l["mehr_je_anfrage"])))
+    gv = e.get("grenze_vorschlag") or {}
+    if gv.get("wert"):
+        z.append("  HERGELEITET  Kompaktierungsgrenze autoCompactWindow %s = (Startlast %s + Bedarf %s) x 1,15, auf %s gerundet%s"
+                 " — hungrigste Sitzung %s, %d vollstaendige Strecken" % (
+                     t(gv["wert"]), t(gv["start"]), t(gv["bedarf"]), t(RASTER),
+                     ", auf %s–%s gekappt" % (t(GRENZE_MIN), t(GRENZE_MAX)) if gv["gekappt"] else "", gv["sitzung"][:8], gv["faelle"]))
+    else:
+        z.append("  KEINE Kompaktierungsgrenze: %s — globale Vorgabe lassen." % gv.get("grund", "nicht messbar"))
     if e.get("geteilt"):
-        z.append("  ⚠ %d Rollen teilen diesen Ordner — eine Einstellung gilt fuer alle, kein Wert je Rolle." % e["rollen"])
-    z.append("  ⛔ Information, keine Schwelle: ob ein Chat seinen Verlauf braucht, entscheidet seine Aufgabe.")
+        z.append("  ⚠ %d Rollen teilen diesen Ordner — eine Einstellung gilt fuer alle; der Wert folgt der hungrigsten Sitzung." % e["rollen"])
     return "\n".join(z)
 
 
@@ -206,7 +242,19 @@ def selbsttest():
         pruef("Agenten gezaehlt", e["agenten"], 1)
         pruef("messbar", e["messbar"], True)
         pruef("Bericht nennt BELEGT und HERGELEITET", ("BELEGT" in bericht(e), "HERGELEITET" in bericht(e)), (True, True))
-        pruef("Bericht setzt keine Schwelle", "Information, keine Schwelle" in bericht(e), True)
+        # v5.171.0: Grenze nur aus Strecken OHNE Kompaktierung (a: 1 zensiert + 1 offen, b: 1, c: 1 -> 3 Faelle)
+        gv = e["grenze_vorschlag"]
+        pruef("Grenze: zensierte Strecke zaehlt nicht (3 vollstaendige)", gv["faelle"], 3)
+        pruef("Grenze: hungrigste Sitzung b (Bedarf 220k)", (gv["sitzung"], gv["bedarf"]), ("b", 220000))
+        pruef("Grenze: (150k + 220k) x 1,15 -> 450k", gv["wert"], 450000)
+        pruef("Bericht nennt die Grenze HERGELEITET", "HERGELEITET  Kompaktierungsgrenze autoCompactWindow 450 000" in bericht(e), True)
+        pruef("Kappung oben 1 000 000", grenze_vorschlag([t / "b.jsonl", t / "c.jsonl", t / "a.jsonl"], 900000, 0)["wert"], 1000000)
+        nur_zensiert = d / "zensiert"
+        nur_zensiert.mkdir()
+        (nur_zensiert / "z.jsonl").write_text(_zeile("z1", 100000) + _zeile("z2", 600000) + json.dumps(
+            {"type": "system", "subtype": "compact_boundary"}) + "\n", encoding="utf-8")
+        gz = grenze_vorschlag(sorted(nur_zensiert.glob("*.jsonl")), 100000, None)
+        pruef("nur zensierte Strecken: KEINE Zahl", (gz["wert"], "zu wenige" in gz["grund"]), (None, True))
         leer = d / "leer"
         leer.mkdir()
         e2 = messen(leer)

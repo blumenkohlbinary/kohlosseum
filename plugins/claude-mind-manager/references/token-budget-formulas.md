@@ -54,7 +54,7 @@ Ausloeser = min( Fenster − Fenster × 0,12 ,  Fenster × Prozent/100 ,  Fenste
 
 | Stellschraube | Wo | Wirkung |
 |---|---|---|
-| `autoCompactWindow` | `~/.claude/settings.json` | **Fenstergroesse**, 100 000 – 1 000 000 |
+| `autoCompactWindow` | `settings.json` jeder Ebene (lokal vor Projekt vor Nutzer; je Modell `modelSettings`) | **Fenstergroesse**, 100 000 – 1 000 000 |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `settings.json` → `env` | Prozentsatz, `0 < n ≤ 100` |
 | `--autocompact` | CLI-Aufruf | wie `autoCompactWindow` |
 

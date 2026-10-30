@@ -28,7 +28,10 @@ pruef "   ... und sagt NICHT MESSBAR, keine Zahl" "$(printf '%s' "$A" | grep -c 
 
 D="$R/skills/mind-denkstufe/SKILL.md"
 pruef "/mind-denkstufe ruft das Werkzeug"              "$(grep -c 'references/kontext_grundlage.py" --projekt "$PROJ"' "$D")" "1"
-pruef "   ... und sagt, dass es KEINE Schwelle ist"    "$(grep -c 'Information, KEINE Schwelle' "$D")" "1"
+pruef "   ... und nennt die berechnete Grenze (v5.171.0)" "$(grep -c 'rechnet das Werkzeug eine Kompaktierungsgrenze je Ordner aus' "$D")" "1"
+pruef "   ... die alte Regel steht nicht mehr als gueltig" "$(grep -c '^⛔ \*\*Die Ausgabe ist Information, KEINE Schwelle' "$D")" "0"
+pruef "   ... Ausgabeformat traegt die Grenze"            "$(grep -c '^  HERGELEITET  Kompaktierungsgrenze autoCompactWindow <n> (Startlast' "$D")" "1"
+pruef "   ... liest settings.local.json VOR settings.json (lokal geht vor)" "$(grep -n 'autoCompactWindow // empty' "$D" | head -1 | grep -c 'settings.local.json')" "1"
 pruef "Empfehlung ist EINE Kombination mit Ultracode"   "$(grep -c '^Empfehlung:  <Modell> · <low|medium|high|xhigh|max> · Ultracode <an|aus>' "$D")" "1"
 pruef "Einstell-Zeilen nennen den Schluessel ultracode" "$(grep -c '"ultracode": true|false' "$D")" "1"
 
