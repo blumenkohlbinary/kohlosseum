@@ -56,7 +56,7 @@ mind_kontingent_pruefen "$PROJ" mind-update '$ARGUMENTS' "<5h>" "<woche>" || exi
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.167.0"
+MIND_SKILL_VERSION="5.168.0"
 mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe cleaner_tor mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
@@ -641,7 +641,7 @@ Agent 1+2 in einem Tool-Call, Welle 2 = Agent 3+4 im nächsten). Alle 4 laufen �
 
 ⛔ **`run_in_background: false` in JEDEM Agent-Aufruf (v5.94.0, Nutzer-/Anton-Entscheidung 11.09.2026).** Vorgabe des Agent-Werkzeugs ist HINTERGRUND: der `tool_result` ist dann nur das Ack „Async agent launched“ (1 151 B, nach 1–2 s), das Ergebnis kommt — wenn überhaupt — später als `<task-notification>`. Gemessen 10.09.2026 (`docs/plugin/rueckkanal-messung.md`): getrennte Tool-Calls serialisieren im Hintergrund NICHTS (vier Agenten gleichzeitig), **5 von 8** Ergebnissen kamen nie an. Mit `false` blockt der Aufruf bis zur Rückgabe, `RUECKGABE` IST der `tool_result`, ein Nachliefern mitten im Fan-out ist mechanisch unmöglich. ⚠ Preis: die Sitzung wartet je Agent 60–130 s und ist solange nicht ansprechbar.
 
-⭐ **Trifft der Agent sein Turn-Limit (`maxTurns`, 25 seit v5.147.0) VOR dem Bericht** (der `tool_result` endet ohne Ergebnis, der Agent lebt), ist die Fortsetzung `SendMessage {to: <agentId>, message: „Bericht jetzt liefern“}` — ⛔ **KEIN neuer `Agent`-Aufruf**, das wäre ein zweiter Agent gegen dieselbe Grenze (v5.96.0). Gemessen 12.09.2026 (Rita): zwei Agenten am Limit, beide lieferten nach der Nachricht vollständig. ⚠ Im Desktop-Reiter „Code“ ist `SendMessage` verzögert: erst `ToolSearch select:SendMessage`, dann ist es da.
+⭐ **Trifft der Agent sein Turn-Limit (`maxTurns`, 50 seit v5.168.0, vorher 25) VOR dem Bericht** (der `tool_result` endet ohne Ergebnis, der Agent lebt), ist die Fortsetzung `SendMessage {to: <agentId>, message: „Bericht jetzt liefern“}` — ⛔ **KEIN neuer `Agent`-Aufruf**, das wäre ein zweiter Agent gegen dieselbe Grenze (v5.96.0). Gemessen 12.09.2026 (Rita): zwei Agenten am Limit, beide lieferten nach der Nachricht vollständig. ⚠ Im Desktop-Reiter „Code“ ist `SendMessage` verzögert: erst `ToolSearch select:SendMessage`, dann ist es da.
 ⭐ **Erst damit misst die Grenze oben wieder etwas:** zwei Aufrufe in EINER Nachricht = zwei
 gleichzeitig, getrennte Nachrichten = nacheinander.
 

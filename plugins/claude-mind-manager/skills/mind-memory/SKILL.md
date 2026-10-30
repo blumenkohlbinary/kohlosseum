@@ -46,7 +46,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.167.0"
+MIND_SKILL_VERSION="5.168.0"
 mind_schritt_start "$PROJ" mind-memory bestandszahlen_kandidaten cleaner_stichprobe cleaner_tor mind_debug_write mind_kontext_bilanz mind_scan_poisoning mind_snapshot verdichten
 ```
 
@@ -145,7 +145,7 @@ Launch **context-analyzer** with scope=memory — **`run_in_background: false`**
 
 ⛔ **`run_in_background: false` in JEDEM Agent-Aufruf (v5.94.0, 11.09.2026).** Vorgabe ist HINTERGRUND: der `tool_result` ist dann nur das Ack „Async agent launched" (1 151 B), das Ergebnis kommt spaeter als `<task-notification>`. Gemessen 10.09.2026 (`docs/plugin/rueckkanal-messung.md`): getrennte Tool-Calls serialisieren im Hintergrund NICHTS, und **5 von 8** Ergebnissen kamen nie an. Mit `false` blockt der Aufruf, `RUECKGABE` IST der `tool_result`. ⚠ Preis: die Sitzung wartet je Agent 60–130 s.
 
-⭐ **Trifft der Agent sein Turn-Limit (`maxTurns`, 25 seit v5.147.0) VOR dem Bericht** (`tool_result` ohne Ergebnis, Agent lebt): `SendMessage {to: <agentId>, message: „Bericht jetzt liefern"}` — ⛔ **KEIN neuer `Agent`-Aufruf** (zweiter Agent gegen dieselbe Grenze, v5.96.0). Gemessen 12.09.2026 (Rita): zwei Agenten am Limit lieferten nach der Nachricht vollstaendig. ⚠ Im Desktop-Reiter „Code" ist `SendMessage` verzoegert: erst `ToolSearch select:SendMessage`.
+⭐ **Trifft der Agent sein Turn-Limit (`maxTurns`, 50 seit v5.168.0, vorher 25) VOR dem Bericht** (`tool_result` ohne Ergebnis, Agent lebt): `SendMessage {to: <agentId>, message: „Bericht jetzt liefern"}` — ⛔ **KEIN neuer `Agent`-Aufruf** (zweiter Agent gegen dieselbe Grenze, v5.96.0). Gemessen 12.09.2026 (Rita): zwei Agenten am Limit lieferten nach der Nachricht vollstaendig. ⚠ Im Desktop-Reiter „Code" ist `SendMessage` verzoegert: erst `ToolSearch select:SendMessage`.
 
 ## Step 4: Deterministische Inline-Checks (ergaenzend, NICHT statt Agent)
 

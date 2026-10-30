@@ -83,7 +83,7 @@ auftrag() {  # <bereich>
       echo "- Die uebrigen $(grep -c . "$(mind_sampler_pfad "$PROJ" mind-update-ccf.txt)" 2>/dev/null) Dateien der Liste $(mind_sampler_pfad "$PROJ" mind-update-ccf.txt) NUR per Grep, nicht einzeln lesen." ;;
   esac
   echo "Nenne zu JEDEM Zitat die Datei und die Zeilennummer, aus der du es gelesen hast. Was du ohne Fundstelle schreibst, kennzeichne als UNGEPRUEFT."
-  echo "Schreibe deinen VOLLEN Bericht mit Write nach $f — genau diese eine Datei, sonst nichts. Hoere erst auf, wenn er geschrieben ist."
+  echo "Lege den Bericht nach SPAETESTENS 10 Werkzeugaufrufen mit Write als Zwischenstand an ($f) und ueberschreibe ihn am Ende mit dem VOLLEN Bericht — genau diese eine Datei, sonst nichts. Hoere erst auf, wenn er geschrieben ist."
   echo "----- ENDE $n -----"
 }
 

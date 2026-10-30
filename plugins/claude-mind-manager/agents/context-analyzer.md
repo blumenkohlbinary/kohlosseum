@@ -21,7 +21,7 @@ disallowedTools:
   - Agent
   - Edit
   - Bash
-maxTurns: 25
+maxTurns: 50
 color: green
 ---
 
@@ -44,6 +44,10 @@ color: green
 > 27 von 393 Knowledge-Sync-Starts (7 %) stoppten bei 20 und brauchten insgesamt 21–23 Turns, die
 > sie ueber die Fortsetzung ohnehin bekamen; vollstaendige Laeufe Median 8, p95 20, hoechstens 21.
 > Die Grenze spart dort nichts — sie kostet eine Fortsetzungsrunde im Hauptkontext.
+> ⛔ **v5.168.0: 50** (Etappe 65 Nachtrag 3). Der Auftrag aus `agent-schritt.sh` prueft seit 5.167.0 auch den BESTAND. Im vollen Lauf
+> vom 30.10.2026 erschoepften drei von vier Knowledge-Sync-Agenten 25 Turns, bevor sie schrieben (claude-md, rules, custom-context: 0 Write).
+> ⛔ **Den Bericht FRUEH anlegen:** nach spaetestens 10 Werkzeugaufrufen einen Zwischenstand mit Write an den Bericht-Pfad,
+> danach ergaenzen bzw. ueberschreiben. Wer an die Grenze stoesst, hinterlaesst so einen Teilbericht statt nichts.
 
 Unified analysis of all context files. Replaces claude-md-analyzer + memory-auditor + context-optimizer.
 **v3.3.0:** zusaetzlicher Knowledge-Sync-Mode fuer mind-update Step 3.5.

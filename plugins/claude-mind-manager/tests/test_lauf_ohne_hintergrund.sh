@@ -119,6 +119,15 @@ pruef "letzte Welle: Befunde stehen im Kontext" "$(printf '%s\n' "$O3" | grep -c
 pruef "   ... die UPDATE-Zeile aus rules" "$(printf '%s\n' "$O3" | grep -c 'UPDATE `.claude/rules/x.md:3`')" "1"
 pruef "   ... die ENRICH-Zeile aus custom-context" "$(printf '%s\n' "$O3" | grep -c 'ENRICH ZIEL.md:2')" "1"
 
+echo "=== 9) v5.168.0: genug Turns, Bericht frueh, Anwenden ist die Vorschrift (Anton, Nachtrag 3) ==="
+# Voller Lauf 5.167.0: drei von vier KS-Agenten erschoepften 25 Turns ohne Write; „als Sync darf ich nichts aendern“ — 0 angewendet.
+pruef "Agent: maxTurns 50" "$(grep -c '^maxTurns: 50' "$AG")" "1"
+pruef "Agent: Bericht frueh anlegen" "$(grep -c 'Den Bericht FRUEH anlegen' "$AG")" "1"
+pruef "Auftrag: Zwischenstand nach spaetestens 10 Werkzeugaufrufen" "$(printf '%s\n' "$O1" | grep -c 'nach SPAETESTENS 10 Werkzeugaufrufen mit Write als Zwischenstand')" "2"
+pruef "mind-all: Anwenden IST die Vorschrift, auch im Rollen-Aufbau" "$(grep -c 'Anwenden IST die Vorschrift — auch im Rollen-Aufbau' "$R/skills/mind-all/SKILL.md")" "1"
+pruef "   ... steht in Step 2, vor den fuenf Skills" "$(awk '/^## Step 2: Ausfuehrung je Skill/{s=1} s&&/Anwenden IST die Vorschrift/{print "ja";exit} /^1\. \*\*ZUERST die SKILL.md/{if(s){print "nein";exit}}' "$R/skills/mind-all/SKILL.md")" "ja"
+pruef "keine SKILL-Zeile nennt mehr maxTurns 25 als gueltig" "$(grep -c '(`maxTurns`, 25 seit' "$R"/skills/*/SKILL.md | grep -vc ':0$')" "0"
+
 echo ""
 echo "  $ok gruen · $rot rot"
 [ "$rot" -eq 0 ] || exit 1

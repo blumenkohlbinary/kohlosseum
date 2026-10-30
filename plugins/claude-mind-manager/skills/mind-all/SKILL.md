@@ -57,7 +57,7 @@ mind_kontingent_pruefen "$PROJ" mind-all '$ARGUMENTS' "<5h>" "<woche>" || exit 1
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.167.0"
+MIND_SKILL_VERSION="5.168.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 ```
 
@@ -175,6 +175,13 @@ anderen (Anti-Burst `~/.claude/rules/shared-tools.md` (Block „Agents“): nie 
 
 ## Step 2: Ausfuehrung je Skill
 
+⛔ **Anwenden IST die Vorschrift — auch im Rollen-Aufbau (v5.168.0, Etappe 65 Nachtrag 3).** Dieser Lauf wendet an, was
+die fuenf Skills vorschreiben (`AUTO_MODE=yes`: UPDATE/ENRICH/ADD/NEW_FILE, DESIGN nie), in jeder Context-Datei, die er
+bearbeitet — egal, welche Sitzung im Roster eine Datei „besitzt“. Der Roster regelt Handarbeit der Sitzungen; „Report,
+do not fix“ der sync-Rolle betrifft Funde AUSSERHALB einer Vorschrift (`manager-chats.md`: „allowed is what a skill
+prescribes“). Gemessen im vollen Lauf 30.10.2026: „als Sync darf ich nichts aendern, was dem Arbeiter gehoert“ — 0
+angewendet (alt 4). Nicht angewendet wird nur mit Grund im Bericht (DESIGN, Stufe 3 ohne Leser, Overwrite-Guard).
+
 Fuer jeden der 5 in der Reihenfolge oben:
 
 1. **ZUERST die SKILL.md des Skills lesen** — `$CLAUDE_PLUGIN_ROOT/skills/<name>/SKILL.md` —
@@ -274,7 +281,7 @@ Lauf 2, Auszug         339 KB   rules      335 159 Tok / 20 Aufrufe -> 0 Byte
 
 **3,1x kleinere Eingabe, MEHR Tokens, vier von vier gleichfoermig tot.**
 
-⭐ **Ein Agent am Turn-Limit (`maxTurns`, 25 seit v5.147.0) ist KEIN Wiederholungsfall** (v5.96.0): der `tool_result` endet
+⭐ **Ein Agent am Turn-Limit (`maxTurns`, 50 seit v5.168.0, vorher 25) ist KEIN Wiederholungsfall** (v5.96.0): der `tool_result` endet
 ohne Bericht, der Agent lebt. Fortsetzung ist `SendMessage {to: <agentId>, message: „Bericht
 jetzt liefern“}` — kein neuer `Agent`-Aufruf (Rita 12.09.2026: beide lieferten danach). Im Desktop-Reiter „Code“ erst `ToolSearch select:SendMessage`.
 
