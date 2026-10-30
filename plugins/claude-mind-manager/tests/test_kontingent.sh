@@ -35,9 +35,15 @@ pruef "stehengebliebener Platzhalter" "$(K mind-all '' '<5h>' '<woche>')" "3"
 pruef "unbekannt" "$(K mind-cleaner '' unbekannt 5)" "3"
 pruef "nur ein Wert" "$(K mind-learnings '' 5)" "3"
 # v5.174.0 (Etappe 67 N2c): Ritas Lauf 30.10.2026 — get_usage listete das 5-h-Fenster nicht, 0 wurde eingesetzt
-pruef "fehlendes Fenster (fehlt): startet nicht" "$(K mind-all '' fehlt 23)" "3"
+# v5.175.0 (Anton 31.10.2026): fehlt NUR das 5-h-Fenster, zaehlt die Woche allein — sichtbar, nie still
+pruef "5-h-Fenster fehlt, Woche 23 %: darf" "$(K mind-all '' fehlt 23)" "0"
 M=$( ( . "$R/hooks/lib.sh"; mind_kontingent_pruefen "$P" mind-all '' fehlt 23 2>&1 ) )
+pruef "   ... und sagt es sichtbar" "$(printf '%s\n' "$M" | grep -c '5-h-Fenster nicht gemeldet, nur Woche geprueft')" "1"
+pruef "5-h-Fenster fehlt, Woche 85 %: startet nicht" "$(K mind-all '' fehlt 85)" "1"
+pruef "Woche fehlt: startet nicht" "$(K mind-all '' 23 fehlt)" "3"
+M=$( ( . "$R/hooks/lib.sh"; mind_kontingent_pruefen "$P" mind-all '' 23 fehlt 2>&1 ) )
 pruef "   ... und die Meldung sagt: fehlt ist nicht 0" "$(printf '%s\n' "$M" | grep -c 'fehlt ist nicht 0')" "1"
+pruef "beide fehlen: startet nicht" "$(K mind-all '' fehlt fehlt)" "3"
 pruef "der Kopftext verbietet die 0 in allen vier Skills" \
   "$(grep -l 'nie `0` einsetzen' "$R"/skills/mind-{all,cleaner,learnings,update}/SKILL.md | wc -l | tr -d ' ')" "4"
 

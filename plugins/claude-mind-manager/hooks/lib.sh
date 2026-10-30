@@ -3175,10 +3175,17 @@ mind_kontingent_pruefen() {
     MIND_KONTINGENT_STAND=quick; return 0
   fi
   [ "$#" -ge 2 ] || { echo "⛔ KONTINGENT NICHT MESSBAR: zwei Werte noetig (5-hour limit, Weekly · all models) — es startet nichts." >&2; return 3; }
+  # v5.175.0 (Etappe 67 N2c, Anton 31.10.2026): get_usage meldet das 5-h-Fenster oft gar nicht (gemessen 30./31.10.,
+  #   auch mitten in aktiver Nutzung) — dann zaehlt nur die Woche, und das wird SICHTBAR gesagt. Fehlt die Woche: wie bisher.
+  if [ "$1" = "fehlt" ]; then
+    echo "⚠ KONTINGENT: 5-h-Fenster nicht gemeldet, nur Woche geprueft."
+    mind_log INFO "mind_kontingent_pruefen: 5-h-Fenster fehlt, nur Woche"
+    shift
+  fi
   for v in "$@"; do
     n="${v%\%}"; n="${n%%[.,]*}"
     # v5.174.0 (Etappe 67 N2c): ein Fenster, das get_usage nicht listet, heisst `fehlt` — nie 0
-    [ "$n" = "fehlt" ] && { echo "⛔ KONTINGENT NICHT MESSBAR: get_usage listet ein Fenster nicht (fehlt) — fehlt ist nicht 0, es startet nichts (Notausgang --trotz-kontingent)." >&2
+    [ "$n" = "fehlt" ] && { echo "⛔ KONTINGENT NICHT MESSBAR: get_usage listet die Woche nicht (fehlt) — fehlt ist nicht 0, es startet nichts (Notausgang --trotz-kontingent)." >&2
       mind_log WARN "mind_kontingent_pruefen: Fenster fehlt"; return 3; }
     case "$n" in ''|*[!0-9]*)
       echo "⛔ KONTINGENT NICHT MESSBAR: '$v' ist kein Prozentwert (get_usage nicht lesbar?) — es startet nichts." >&2

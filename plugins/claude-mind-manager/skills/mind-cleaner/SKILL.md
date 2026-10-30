@@ -39,7 +39,7 @@ mind_debug_write
 mind_snapshot
 ```
 
-⛔ **ZUERST das Kontingent (v5.163.0, Nutzer 29.10.2026):** das Werkzeug `get_usage` (`mcp__ccd_session_mgmt__get_usage`) aufrufen und im Kopf-Block `<5h>` und `<woche>` durch `percentUsed` von „5-hour limit“ und „Weekly · all models“ ersetzen — nicht lesbar: `unbekannt`; ein Fenster, das `get_usage` NICHT listet: `fehlt` — ⛔ nie `0` einsetzen (30.10.2026 lief die Sperre so blind) — dann startet nichts. Ab `MIND_KONTINGENT_MAX` (Vorgabe 80 %) startet nichts; Werte und Ruecksetzzeit gehoeren in die Antwort. Notausgang: `--trotz-kontingent`.
+⛔ **ZUERST das Kontingent (v5.163.0, Nutzer 29.10.2026):** das Werkzeug `get_usage` (`mcp__ccd_session_mgmt__get_usage`) aufrufen und im Kopf-Block `<5h>` und `<woche>` durch `percentUsed` von „5-hour limit“ und „Weekly · all models“ ersetzen — nicht lesbar: `unbekannt`; ein Fenster, das `get_usage` NICHT listet: `fehlt` — ⛔ nie `0` einsetzen (30.10.2026 lief die Sperre so blind); fehlt nur das 5-h-Fenster, zaehlt die Woche allein (sichtbar gemeldet), fehlt die Woche, startet nichts. Ab `MIND_KONTINGENT_MAX` (Vorgabe 80 %) startet nichts; Werte und Ruecksetzzeit gehoeren in die Antwort. Notausgang: `--trotz-kontingent`.
 
 **Vor dem ersten Schritt, ohne Ausnahme:**
 
