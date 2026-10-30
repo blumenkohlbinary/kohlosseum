@@ -235,14 +235,16 @@ def startbestand():
              u"art": u"BELEGT", u"quelle": Q_EFFORT, u"datum": HEUTE},
             {u"text": u"Die Doku nennt Subagenten ausdruecklich als Einsatzfall fuer low "
                       u"('Simpler tasks that need the best speed and lowest costs, such "
-                      u"as subagents'). GEGENSTIMME zu unserem effort: high an den zwei "
-                      u"Pruefagenten - nicht unterschlagen, sondern danebengestellt.",
+                      u"as subagents'). GEGENSTIMME zu unserem effort: high am "
+                      u"context-analyzer - nicht unterschlagen, sondern danebengestellt.",
              u"art": u"BELEGT", u"quelle": Q_EFFORT, u"datum": HEUTE},
-            {u"text": u"Unsere zwei Pruefagenten sind keine 'simpler tasks': sie lesen "
-                      u"Kontextdateien und urteilen ueber Widersprueche. Genau dort meldet "
-                      u"ein zu schwacher Pruefer gruen. Deshalb bleibt high, bis eine "
-                      u"Messung AN DIESEN AGENTEN etwas anderes zeigt.",
-             u"art": u"HERGELEITET", u"quelle": u"", u"datum": HEUTE},
+            # v5.173.0 (Etappe 66 §7): this used to be HERGELEITET "high until measured AT THESE AGENTS".
+            {u"text": u"An den zwei Plugin-Agenten gemessen (je ein Lauf, nur effort verschieden): "
+                      u"project-scanner fand auf medium dasselbe -> medium. context-analyzer "
+                      u"verpasste auf medium im default-Modus den einzigen echten Widerspruch "
+                      u"und uebersprang im knowledge-sync eine harte Stopp-Vorschrift -> high.",
+             u"art": u"BELEGT", u"quelle": u"eigene Messung, Etappe 66 Abschnitt 7",
+             u"datum": u"2026-10-30"},
             {u"text": u"xhigh ist fuer Laeufe ueber 30 Minuten mit Token-Budgets in "
                       u"Millionen gedacht; max kann bei strukturierter Ausgabe zu "
                       u"Ueberdenken fuehren.",
