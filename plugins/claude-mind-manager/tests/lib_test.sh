@@ -31,6 +31,9 @@ unset CLAUDE_CODE_HOST_SESSION_ID
 # ⛔ v5.163.0: die Kontingent-Sperre in mind_schritt_start gilt echten Kopf-Bloecken. Die Sammlungen rufen
 #    mind_schritt_start mit Stempel direkt; test_kontingent.sh schaltet sie fuer sich wieder an.
 export MIND_KONTINGENT_PFLICHT=aus
+# ⛔ v5.165.0: ebenso die Kopf-Sperre in mind_block_umgebung — die Sammlungen fahren einzelne Skill-Bloecke
+#    ohne Kopf-Fence; test_lauf_ohne_hintergrund.sh (Abschnitt 6) schaltet sie fuer sich wieder an.
+export MIND_KOPF_PFLICHT=aus
 
 # skill_text_datei <plugin-root> <skill>  -> Pfad einer Datei: SKILL.md + bloecke/*.sh aneinander (v5.152.0)
 # ⭐ Seit Etappe 58 Hebel B steht der Code eines Skills in `skills/<s>/bloecke/*.sh`, der Text in

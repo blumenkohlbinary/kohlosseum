@@ -1757,6 +1757,23 @@ mind_block_umgebung() {
       fi
     done
   fi
+  # ⛔ v5.165.0 (Etappe 65 §2): ein Block der fuenf Ketten-Skills laeuft nur hinter SEINEM Kopf. Seine Quittungen
+  #   gehoeren der LETZTEN Startzeile — ist die eines anderen Skills, zaehlen sie dort (FORMAL). Gemessen im
+  #   A/B-Lauf 30.10.2026 (5.164.0): die Bloecke direkt aus `bloecke/` gefahren, keinen Kopf-Fence — 17/58, 1/5 echt.
+  #   MIND_KOPF_PFLICHT=aus schaltet das nur fuer die Pruefsammlungen ab (tests/lib_test.sh).
+  local _bs="${BASH_SOURCE[1]:-}" _sk _letzt
+  [ "${MIND_KOPF_PFLICHT:-an}" = "aus" ] && _bs=""
+  case "$_bs" in */skills/mind-files/bloecke/*|*/skills/mind-claudemd/bloecke/*|*/skills/mind-memory/bloecke/*|\
+                 */skills/mind-rules/bloecke/*|*/skills/mind-update/bloecke/*)
+    _sk="${_bs%/bloecke/*}"; _sk="${_sk##*/}"
+    _letzt=$(grep '"ereignis":"start"' "$PROJ/.claude-mind/schritt-quittung.jsonl" 2>/dev/null | tail -1 \
+             | sed -n 's/.*"skill":"\([^"]*\)".*/\1/p')
+    if [ "$_letzt" != "$_sk" ]; then
+      echo "⛔ KOPF FEHLT: $_sk — die letzte Startzeile gehoert '${_letzt:-keiner}'. ZUERST den Kopf-Fence aus skills/$_sk/SKILL.md (mind_schritt_start …), dann diesen Block. Nichts gefahren." >&2
+      mind_log WARN "mind_block_umgebung: Block $_bs ohne Kopf ($_letzt)" 2>/dev/null
+      exit 3
+    fi ;;
+  esac
   return 0
 }
 

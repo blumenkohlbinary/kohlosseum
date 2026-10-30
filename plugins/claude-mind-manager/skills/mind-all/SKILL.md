@@ -57,7 +57,7 @@ mind_kontingent_pruefen "$PROJ" mind-all '$ARGUMENTS' "<5h>" "<woche>" || exit 1
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.164.0"
+MIND_SKILL_VERSION="5.165.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 ```
 
@@ -179,6 +179,9 @@ Fuer jeden der 5 in der Reihenfolge oben:
 
 1. **ZUERST die SKILL.md des Skills lesen** — `$CLAUDE_PLUGIN_ROOT/skills/<name>/SKILL.md` —
    und sie dann **vollstaendig** ausfuehren (inkl. Self-Check-Bloecken und Pflicht-Schritten).
+   ⛔ **Als Erstes den Kopf-Fence des Skills ausfuehren** (`mind_schritt_start …`), erst danach seine Bloecke (v5.165.0).
+   Die Bloecke verweigern sonst den Start mit `KOPF FEHLT` (rc 3). Im A/B-Lauf vom 30.10.2026 wurden sie direkt aus
+   `bloecke/` gefahren; ihre Quittungen landeten beim falschen Skill, Ergebnis 17/58, 1/5 echt.
    Nicht aus der Beschreibung improvisieren. **Skill-Logik ausfuehren** wie dort beschrieben — mit den durchgereichten
    Flagge `AUTO_MODE`. Kein erneuter Snapshot (Step 0 hat ihn).
    ⛔ **v5.98.0 — „vollstaendig" heisst: mit seinem EIGENEN Start-Block.** Die erste Bash

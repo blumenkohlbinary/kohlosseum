@@ -62,6 +62,26 @@ O=$( ( . "$R/hooks/lib.sh"; PROJ="$P"; mind_pass_offen mind-rules ) 2>&1 )
 pruef "leere Stichprobe: nichts offen" "$(printf '%s\n' "$O" | grep -c 'nichts offen')" "1"
 pruef "kein Skill: rc 2" "$( ( . "$R/hooks/lib.sh"; PROJ="$P"; mind_pass_offen '' >/dev/null 2>&1; echo $? ) )" "2"
 
+echo "=== 6) ⛔ v5.165.0: ein Block der fuenf Ketten-Skills laeuft nur hinter SEINEM Kopf ==="
+# A/B-Lauf 30.10.2026 (5.164.0): Bloecke direkt aus bloecke/ gefahren, ohne Kopf-Fence — 17/58, 1/5 echt.
+ST="$TMP/wurzel"; mkdir -p "$ST/hooks" "$ST/skills/mind-rules/bloecke" "$ST/skills/mind-all/bloecke"
+cp "$R/hooks/lib.sh" "$ST/hooks/"
+for s in mind-rules mind-all; do
+  printf '#!/usr/bin/env bash\n. "%s/hooks/lib.sh"\nmind_block_umgebung\necho LIEF > "$PROJ/lief-%s"\n' "$ST" "$s" > "$ST/skills/$s/bloecke/probe.sh"
+done
+Q="$P/.claude-mind/schritt-quittung.jsonl"
+blk() { ( cd "$P" && env -u PROJ MIND_KOPF_PFLICHT=an CLAUDE_PROJECT_DIR="$P" MIND_LOG_FILE="$TMP/log" bash "$ST/skills/$1/bloecke/probe.sh" >/dev/null 2>"$TMP/err"; echo $? ); }
+printf '{"ereignis":"start","skill":"mind-claudemd","ts":"2026-10-30T08:00:00Z"}\n' > "$Q"
+pruef "letzte Startzeile mind-claudemd: mind-rules-Block rc 3" "$(blk mind-rules)" "3"
+pruef "   ... nichts gefahren" "$([ -e "$P/lief-mind-rules" ] && echo da || echo fehlt)" "fehlt"
+pruef "   ... Meldung nennt KOPF FEHLT und den Skill" "$(grep -c 'KOPF FEHLT: mind-rules' "$TMP/err")" "1"
+rm -f "$Q"
+pruef "gar keine Quittung: rc 3" "$(blk mind-rules)" "3"
+printf '{"ereignis":"start","skill":"mind-rules","ts":"2026-10-30T08:01:00Z"}\n{"ereignis":"schritt","name":"x","status":"gelaufen","ts":"2026-10-30T08:01:01Z"}\n' > "$Q"
+pruef "hinter dem eigenen Kopf: rc 0" "$(blk mind-rules)" "0"
+pruef "   ... gefahren" "$([ -e "$P/lief-mind-rules" ] && echo da || echo fehlt)" "da"
+pruef "mind-all-Bloecke sind nicht gesperrt (laufen hinter mind-update)" "$(blk mind-all)" "0"
+
 echo ""
 echo "  $ok gruen · $rot rot"
 [ "$rot" -eq 0 ] || exit 1
