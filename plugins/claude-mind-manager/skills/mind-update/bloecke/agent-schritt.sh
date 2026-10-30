@@ -59,13 +59,39 @@ fi
 #    den Bericht-Pfad; das Modell formulierte den Auftrag aus der Prosa-Tabelle selbst. Gemessen im vollen Lauf
 #    30.10.2026: alle Agenten ohne run_in_background, keine Bestands-Pruefung, custom-context bekam 412 Dateien
 #    (5 MB) fuer 25 Turns und schrieb zweimal keinen Bericht — 12 von 17 echten Befunden des alten Ablaufs fehlten.
+# ⛔ v5.169.0 (Etappe 65 Nachtrag 5): die Session-Quellen, wie SKILL.md Step 3.5 sie vorschreibt — ZUERST das
+#    Verlaufsbuch je Rettung, dann die Rettungen als PFAD mit Groessen-Guard, dann der Live-Auszug. 5.167.0 nannte nur
+#    den Live-Auszug; im Lauf nach einer Kompaktierung ist der fast leer, und kein Agent sah mehr eine Session-Lehre.
+#    Gegentest 30.10.2026 auf Stand e66: mit diesen Quellen fand rules `werkzeuge-zuerst.md:38/41`, das fehlende
+#    Verlaufsbuch in hooks.md und `$ARGUMENTS`, memory das Zitat in `rotes-gate` — alle vier fehlten in neu168 und n4.
+#    ⛔ Nur Pfade und Zaehlungen, nie Inhalt: die Flut-Sperre fuer `*_chat.md` gilt im Hauptkontext weiter.
+quellen() {
+  local r v
+  _N=1
+  _R=$(mind_rettungen "$PROJ" 2>/dev/null) || _R=""
+  echo "Session-Quellen (mind-update/SKILL.md Step 3.5) — in dieser Reihenfolge lesen:"
+  [ -n "$_R" ] || return 0
+  echo "$_N. ZUERST das Verlaufsbuch je Rettung (Arbeitsstand + Kompaktierungs-Zusammenfassung):"
+  while IFS= read -r r; do
+    v=$(mind_verlauf_fuer "$PROJ" "$r") || continue
+    r=$(basename "$r"); echo "   - $v ($(wc -c < "$v" | tr -d ' ') B) — Abschnitt rettung=${r%%_*}"
+  done <<< "$_R"
+  _N=$((_N + 1))
+  echo "$_N. Danach die Rettungen, NUR gezielt per Grep (Groessen-Guard: ueber 600 Zeilen oder 60 KB nicht ganz lesen, ±40 Zeilen um Treffer) — ohne Verlaufsbuch-Abschnitt die einzige Quelle:"
+  while IFS= read -r r; do
+    echo "   - $r ($(wc -c < "$r" | tr -d ' ') B, $(grep -c '^## \[' "$r") Beitraege)"
+  done <<< "$_R"
+  _N=$((_N + 1))
+}
+
 auftrag() {  # <bereich>
   local n="$1" f prio
   f=$(mind_agent_bericht_pfad "$n" "$PROJ")
   echo "----- AUFTRAG $n (woertlich als prompt uebergeben) -----"
   echo "Agent(subagent_type: \"claude-mind-manager:context-analyzer\", run_in_background: false, description: \"knowledge-sync $n\", prompt: <alles bis ----- ENDE>)"
   echo "scope: $n · mode: knowledge-sync · Projekt: $PROJ"
-  echo "Session-Auszug: $(mind_sampler_pfad "$PROJ" mind-update.json) (leer = keine neuen Ereignisse; dann zaehlt der Bestand allein)"
+  quellen
+  echo "$_N. Live-Auszug: $(mind_sampler_pfad "$PROJ" mind-update.json) (leer = keine neuen Ereignisse)"
   echo "Pruefe ZWEI Richtungen: (1) Session gegen Context-Dateien (UPDATE/ENRICH/ADD/NEW_FILE/INFO) und (2) BESTAND gegen seine Quellen:"
   case "$n" in
     claude-md) echo "- Jede NEVER/Gotcha-Zeile: nennt ihre Alternative noch den heutigen Weg? Vergleiche mit den juengsten 15 Eintraegen von docs/plugin/design-history.md (falls vorhanden) — betrifft eine neuere Faehigkeit denselben Gegenstand: ENRICH."

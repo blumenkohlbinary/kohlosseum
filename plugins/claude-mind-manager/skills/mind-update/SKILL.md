@@ -56,7 +56,7 @@ mind_kontingent_pruefen "$PROJ" mind-update '$ARGUMENTS' "<5h>" "<woche>" || exi
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.168.0"
+MIND_SKILL_VERSION="5.169.0"
 mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe cleaner_tor mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
@@ -631,7 +631,8 @@ muessen in 2.96a-R noch einmal laufen, das kostet doppelt.
 `UNDISPATCHED: …` und schreibt nichts. Dann fuer diesen Bereich `agent-schritt.sh` fahren und den Agent neu starten.
 ⛔ NICHT nachtragen: ohne Bericht-Datei bleibt die Quittung bytes:0.
 ⛔ **Seit v5.167.0 gibt `agent-schritt.sh` den Auftrag je Bereich woertlich aus** (`----- AUFTRAG <bereich>` bis `----- ENDE`).
-Er wird unveraendert als `prompt` uebergeben. Darin stehen die Bestands-Pruefung und, fuer custom-context, die kurze Lese-Liste;
+Er wird unveraendert als `prompt` uebergeben. Darin stehen die Session-Quellen (seit v5.169.0: Verlaufsbuch zuerst, Rettungen als Pfad mit
+Groessen-Guard, dann der Live-Auszug — wie oben unter „Session-Auszug“), die Bestands-Pruefung und, fuer custom-context, die kurze Lese-Liste;
 die Tabelle unten beschreibt nur noch, was darin steht.
 Nach der letzten Welle listet der Block die Befundzeilen aller Berichte, mit diesen geht es in Step 4.
 

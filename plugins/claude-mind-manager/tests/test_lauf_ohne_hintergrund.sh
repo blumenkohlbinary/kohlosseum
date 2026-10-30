@@ -128,6 +128,26 @@ pruef "mind-all: Anwenden IST die Vorschrift, auch im Rollen-Aufbau" "$(grep -c 
 pruef "   ... steht in Step 2, vor den fuenf Skills" "$(awk '/^## Step 2: Ausfuehrung je Skill/{s=1} s&&/Anwenden IST die Vorschrift/{print "ja";exit} /^1\. \*\*ZUERST die SKILL.md/{if(s){print "nein";exit}}' "$R/skills/mind-all/SKILL.md")" "ja"
 pruef "keine SKILL-Zeile nennt mehr maxTurns 25 als gueltig" "$(grep -c '(`maxTurns`, 25 seit' "$R"/skills/*/SKILL.md | grep -vc ':0$')" "0"
 
+echo "=== 10) v5.169.0: der Auftrag nennt die Session-Quellen — Verlaufsbuch zuerst, Rettungen als Pfad (Nachtrag 5) ==="
+# Gegentest 30.10.2026: 5.167.0 nannte nur den Live-Auszug; mit den Quellen fanden rules/memory vier verlorene Befunde.
+pruef "ohne Rettung (P8): kein Verlaufsbuch-Punkt" "$(printf '%s\n' "$O1" | grep -c 'ZUERST das Verlaufsbuch')" "0"
+pruef "   ... aber der Live-Auszug je Auftrag" "$(printf '%s\n' "$O1" | grep -c '^1\. Live-Auszug: ')" "2"
+P10="$TMP/ks rettung"; mkdir -p "$P10/.claude-mind/rescued" "$P10/.claude-mind/verlauf"
+printf '## [1] USER\nx\n## [2] ASSISTANT_TEXT\ny\n' > "$P10/.claude-mind/rescued/20261030-010000-111-0000beef_chat.md"
+printf '## [1] USER\nz\n' > "$P10/.claude-mind/rescued/20261030-020000-222-0000beef_chat.md"
+printf 'path=%s\npath=%s\n' "$P10/.claude-mind/rescued/20261030-010000-111-0000beef_chat.md" "$P10/.claude-mind/rescued/20261030-020000-222-0000beef_chat.md" > "$P10/.claude-mind/rescued/OPEN"
+printf '# Verlaufsbuch\n\n## Kompaktierung 2026-10-30 01:00:00 · sid=x · rettung=20261030-010000-111-0000beef\nStand\n' > "$P10/.claude-mind/verlauf/aaaa1111.md"
+printf '# P\n' > "$P10/CLAUDE.md"
+O10=$( cd "$P10" && env -u PROJ -u LAUF CLAUDE_CODE_SESSION_ID=aaaa1111-0000-0000-0000-00000000beef CLAUDE_PROJECT_DIR="$P10" \
+         MIND_LOG_FILE="$TMP/log" bash "$R/skills/mind-update/bloecke/agent-schritt.sh" start memory 2>&1 )
+pruef "mit Rettung: Verlaufsbuch ZUERST (Punkt 1)" "$(printf '%s\n' "$O10" | grep -c '^1\. ZUERST das Verlaufsbuch')" "1"
+pruef "   ... das Buch mit seinem Abschnitt" "$(printf '%s\n' "$O10" | grep -c "verlauf/aaaa1111.md (.* B) — Abschnitt rettung=20261030-010000-111-0000beef")" "1"
+pruef "   ... Rettung ohne Buch-Abschnitt NICHT als Buch" "$(printf '%s\n' "$O10" | grep -c 'Abschnitt rettung=20261030-020000-222-0000beef')" "0"
+pruef "   ... beide Rettungen als Pfad mit Bytes und Beitraegen (Punkt 2)" "$(printf '%s\n' "$O10" | grep -cE '^   - .*_chat\.md \([0-9]+ B, [12] Beitraege\)$')" "2"
+pruef "   ... mit Groessen-Guard" "$(printf '%s\n' "$O10" | grep -c '^2\. Danach die Rettungen, NUR gezielt per Grep (Groessen-Guard')" "1"
+pruef "   ... Live-Auszug als Punkt 3" "$(printf '%s\n' "$O10" | grep -c '^3\. Live-Auszug: ')" "1"
+pruef "   ... ⛔ kein Inhalt der Rettung im Auftrag" "$(printf '%s\n' "$O10" | grep -c 'ASSISTANT_TEXT')" "0"
+
 echo ""
 echo "  $ok gruen · $rot rot"
 [ "$rot" -eq 0 ] || exit 1
