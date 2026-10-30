@@ -2351,19 +2351,43 @@ mind_agent_dispatch() {
     "$bereich" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$q"
 }
 
-# mind_agent_bericht_pfad <bereich> [projekt]   (v5.162.0, Etappe 63 N3 §1)
-#   Die EINE Datei, die der context-analyzer schreiben darf: <projekt>/.claude-mind/agent/<LAUF>-<bereich>.md.
+# mind_pass_schritt <skill> <name> <befehl …>   (v5.163.0, Etappe 65 §1.5)
+#   Faehrt EIN Pflichtwerkzeug, legt die Ausgabe nach <PROJ>/.claude-mind/pass-<skill>/<name>.txt, quittiert mit
+#   Artefakt (`mind_schritt <name> gelaufen --datei`) und gibt die Ausgabe aus. Leere Ausgabe = `fehler:rc<n>-ohne-ausgabe`.
+#   ⛔ Gemessen 30.10.2026 (Ritas Messlauf): 9–10 Pflichtquittungen je Einzel-Skill von Hand mit Bytezahl getippt —
+#   je eine ein eigener Schritt und eine Fehlerquelle. Braucht PROJ (mind_block_umgebung).
+mind_pass_schritt() {
+  local skill="${1:-}" name="${2:-}" f rc
+  case "$skill" in mind-[a-z]*) ;; *) echo "⛔ mind_pass_schritt <skill> <name> <befehl …>" >&2; return 2 ;; esac
+  [ -n "$name" ] && [ $# -ge 3 ] || { echo "⛔ mind_pass_schritt <skill> <name> <befehl …>" >&2; return 2; }
+  shift 2
+  mkdir -p "$PROJ/.claude-mind/pass-$skill" 2>/dev/null
+  f="$PROJ/.claude-mind/pass-$skill/$name.txt"
+  "$@" > "$f" 2>&1; rc=$?
+  if [ -s "$f" ]; then mind_schritt "$name" gelaufen --datei "$f" "$PROJ"
+  else mind_schritt "$name" "fehler:rc$rc-ohne-ausgabe" -1 "$PROJ"; fi
+  echo "=== $name (rc $rc, $(wc -c < "$f" | tr -d ' ') B, $f)"
+  cat "$f"
+  return 0
+}
+
+# mind_agent_bericht_pfad <bereich> [projekt] [skill]   (v5.162.0, Etappe 63 N3 §1; skill v5.163.0)
+#   Die EINE Datei, die der context-analyzer schreiben darf: <projekt>/.claude-mind/agent/<LAUF>-<skill>-<bereich>.md
+#   (Vorgabe skill=mind-update). ⛔ v5.163.0, Ritas Messlauf 30.10.: ohne Skill im Namen schrieb der claude-md-
+#   Analyzer von mind-claudemd auf den Pfad, den mind-update spaeter fuer claude-md benutzt — ueberschrieben.
 #   Bis v5.161.0 tippte das Modell jeden Bericht per Write ab (Ritas Lauf: 8 Write-Schritte, ~30 KB doppelt).
 #   ⛔ Laufkennung im NAMEN (Klasse „projektweiter Merker meint einen Abschnitt", hooks.md) — ohne Kopfzeile
 #   `ohne-lauf-<sid8>`, nie ein geteilter Name. Legt nur den Ordner an, schreibt keine Datei.
 mind_agent_bericht_pfad() {
-  local bereich="${1:-}" proj lauf sid
-  _mind_args_pruefen mind_agent_bericht_pfad 'mind_agent_bericht_pfad <bereich> [projekt]' "$bereich" "${2:-}" "$_MIND_AGENT_BEREICHE" || return 2
+  local bereich="${1:-}" proj lauf sid skill="${3:-mind-update}"
+  case "$skill" in mind-[a-z]*) case "$skill" in *[!a-z-]*) skill="";; esac ;; *) skill="" ;; esac
+  [ -n "$skill" ] || { echo "⛔ mind_agent_bericht_pfad: '${3:-}' ist kein mind-Skill" >&2; return 2; }
+  _mind_args_pruefen mind_agent_bericht_pfad 'mind_agent_bericht_pfad <bereich> [projekt] [skill]' "$bereich" "${2:-}" "$_MIND_AGENT_BEREICHE" || return 2
   proj="${2:-$(mind_projekt_wurzel)}"
   lauf="${LAUF:-$(mind_kopf_lauf "$proj" 2>/dev/null)}"
   if [ -z "$lauf" ]; then sid="${CLAUDE_CODE_SESSION_ID:-unbekannt}"; lauf="ohne-lauf-${sid%%-*}"; fi
   mkdir -p "$proj/.claude-mind/agent" 2>/dev/null
-  printf '%s/.claude-mind/agent/%s-%s.md\n' "$proj" "$lauf" "$bereich"
+  printf '%s/.claude-mind/agent/%s-%s-%s.md\n' "$proj" "$lauf" "$skill" "$bereich"
 }
 
 # mind_agent_uebersprungen <bereich> <anzahl-dateien> [projekt]
@@ -2425,7 +2449,7 @@ mind_agent_ergebnis() {
     case "$_dn" in ''|*[!0-9]*) _dn=0 ;; esac
   fi
   if [ "$_dn" -eq 0 ]; then
-    echo "⛔ $bereich: dispatch fehlt — kein \`mind_agent_dispatch $bereich\` seit der letzten Start-Zeile. Agent erneut MIT Quittung fahren (dispatch VOR dem Start, ergebnis danach); nichts geschrieben (v5.126.0)." >&2
+    echo "⛔ $bereich: dispatch fehlt — kein \`mind_agent_dispatch $bereich\` seit der letzten Start-Zeile. Agent erneut MIT Quittung fahren (dispatch VOR dem Start, ergebnis danach); nichts geschrieben (v5.126.0). — ⚠ Ist es der default-Analyzer eines Einzel-Skills (mind-claudemd/mind-memory)? Der gehoert NICHT in die Quittung: nicht neu fahren." >&2
     mind_log WARN "mind_agent_ergebnis $bereich: dispatch fehlt — abgewiesen"
     return 2
   fi

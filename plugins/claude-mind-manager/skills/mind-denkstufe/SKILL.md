@@ -39,6 +39,7 @@ antwort_speichern
 ```bash
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
 [ -n "$CLAUDE_PLUGIN_ROOT" ] || { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
+export CLAUDE_PLUGIN_ROOT   # v5.163.0: sonst sehen die Bloecke sie leer (Ritas Lauf 30.10.)
 source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 # ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
@@ -237,7 +238,7 @@ Ohne Messwert ist die Ultracode-Empfehlung **HERGELEITET**.
 ## Step 5 · `gegenprobe` — zwei Agenten, JE GEGEN EINE THESE
 
 **Nur beim ERSTaufruf je Aufgabe.** Zwei Agenten, blockierend, `model: sonnet`,
-Denkstufe `low`/`medium` (`~/.claude/rules/workflow-agent-rate-limit.md`):
+Denkstufe `low`/`medium` (`~/.claude/rules/shared-tools.md` (Block „Agents“)):
 
 | Agent | Auftrag |
 |---|---|
@@ -245,7 +246,7 @@ Denkstufe `low`/`medium` (`~/.claude/rules/workflow-agent-rate-limit.md`):
 | **B** | *Finde die staerksten Gruende, dass diese Aufgabe eine HOHE Stufe braucht.* |
 
 ⛔ **Beide gegen die jeweils andere These, nicht beide fuer die eigene Vermutung** —
-`workflow-agent-rate-limit.md`: *„Bei vier Agents einer GEGEN die eigene These."* Hier
+`~/.claude/rules/shared-tools.md` (Block „Agents“): *„with four agents, one argues AGAINST your thesis"* Hier
 sind es zwei, also **einer je Richtung**. Ein Paar, das in dieselbe Richtung sucht,
 bestaetigt den Auftraggeber und misst nichts.
 

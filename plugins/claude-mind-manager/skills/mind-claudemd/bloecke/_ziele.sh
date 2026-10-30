@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." 2>/dev/null && pwd)}"; export CLAUDE_PLUGIN_ROOT   # v5.163.0: die Desktop-Bash setzt sie nicht (Ritas Lauf 30.10.)
 # /mind-claudemd — Bereich und Ziele (Step 1), EINE Stelle, gesourct von jedem Block, der
 # BEREICH/ZIEL_MD/ZIEL_RULES/ZIEL_WURZEL liest (v5.154.0, Etappe 58 Hebel B). ⛔ Jeder Block ist ein eigener
 # Prozess; bis v5.153.0 brach 4c mit „Step 1 nicht gelaufen, $ZIEL_MD leer" ab, wenn das Modell nichts uebertrug.

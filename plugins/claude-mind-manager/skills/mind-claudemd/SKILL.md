@@ -40,6 +40,7 @@ verdichten
 ```bash
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
 [ -n "$CLAUDE_PLUGIN_ROOT" ] || { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
+export CLAUDE_PLUGIN_ROOT   # v5.163.0: sonst sehen die Bloecke sie leer (Ritas Lauf 30.10.)
 source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 # ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
@@ -63,6 +64,8 @@ mind_schritt <name> "fehler:<grund>"      -1       "$PROJ"
 mind_schritt verdichten gelaufen --datei "$PROJ/.claude-mind/verdichten-<skill>.txt" "$PROJ"  # die 3 Zeilen von mind_verdichtung_pruefen
 mind_schritt verdichten "uebersprungen:kein-kandidat" 0 "$PROJ"   # schweigen = FEHLT
 ```
+
+⛔ **Selbst quittiert, NICHT nachtippen (v5.163.0):** `mind_snapshot` (Step 0) und der Bestands-Pass `mind_kontext_bilanz` · `bestandszahlen_kandidaten` · `cleaner_stichprobe` (`bloecke/pass-bestand.sh`) quittiert ihr Block mit Artefakt. Gemessen 30.10.2026: 9–10 Pflichtquittungen je Einzel-Skill von Hand.
 
 ⛔ **`uebersprungen` ist ein gueltiger Status und braucht einen GRUND.** Ein Schritt,
 der legitim entfaellt (kein Git, kein Quellbaum), ist kein Fehler — aber
@@ -237,6 +240,8 @@ Read these reference files:
 semantischen Teil (Quality-Score, Widersprueche, semantische Duplikate). Dafuer gibt
 es **keinen Inline-Ersatz** — die deterministischen Inline-Checks (Step 4c) decken nur
 Version/Pfad/Budget ab, NICHT die semantische Bewertung. Der Agent ist der einzige Weg dorthin.
+
+⛔ **Nicht in die Agent-Quittung** (v5.163.0): dieser Analyzer (mode `default`) ist KEIN Quittungsbereich — kein `mind_agent_dispatch`/`mind_agent_ergebnis`, kein Bericht-Pfad. Die vier Bereiche der Quittung sind die knowledge-sync-Agenten von `mind-update`. Gemessen 30.10.2026 (Ritas Messlauf): so quittiert, abgewiesen, neu gefahren — ~100 000 Tokens.
 
 Launch **context-analyzer** with scope=claude-md — **`run_in_background: false`**:
 "Analyze all CLAUDE.md files in this project. Scope: claude-md. Report quality score, contradictions, staleness, and optimization suggestions. Nenne zu JEDEM Zitat die Datei und die Zeilennummer, aus der du es gelesen hast. Was du ohne Fundstelle schreibst, kennzeichne als UNGEPRUEFT."
@@ -768,26 +773,16 @@ Schritt ausführst. Hier steht nur, was für **diesen** Skill gilt:
 | **neu in diesem Schritt** | `cleaner_belege` · `cleaner_aussagen --code` |
 
 ```bash
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/pass-bestand.sh"
+# Teil 1+2: mind_kontext_bilanz --vergleichen (PFLICHTZEILE woertlich in den Self-Check-Block), bestandszahlen_kandidaten,
+#           cleaner_stichprobe — der Block quittiert alle drei SELBST mit Artefakt (v5.163.0). NICHT nachtippen.
+```
+
+```bash
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
 [ -n "$CLAUDE_PLUGIN_ROOT" ] || { echo "ERROR: $CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
 source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-ARGUMENTS='$ARGUMENTS' . "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/_ziele.sh"   # v5.154.0: BEREICH/ZIEL_* aus Step 1
-
-# 1) PFLICHTZEILE — sie MUSS woertlich in den Self-Check-Block des Berichts.
-#    ⛔ Nicht nur erwaehnen: die Zeile selbst, mit beiden Zahlenpaaren.
-mind_kontext_bilanz "$PROJ" --vergleichen
-
-# 1b) Art 6 (v5.85.0): ungegatete BESTANDSZAHLEN als Kandidaten — die Meldezeile
-#     `BESTANDSZAHLEN: …` in den Bericht. ⛔ Er urteilt nie, rc immer 0. Bei `global`
-#     zaehlt ~/.claude mit (`--global`), sonst nur das Projekt.
-[ "$BEREICH" = "global" ] && _BZ="--global" || _BZ=""
-python "$CLAUDE_PLUGIN_ROOT/references/bestandszahlen_kandidaten.py" "$PROJ" $_BZ
-
-# 2) Stichprobe: 3 Einträge, die am längsten ungeprüft sind (max. 15 je Kettenlauf)
-python "$CLAUDE_PLUGIN_ROOT/references/cleaner_stichprobe.py" "$PROJ" \
-       --skill mind-claudemd "$PROJ/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
-
 # 3) je Eintrag die drei Fragen — siehe Referenz, EINE Berichtszeile je Eintrag
 
 # 4) Quittung — ohne sie gilt der Lauf als Teilsync

@@ -33,6 +33,23 @@ printf 'run_started=%s\nsnapshot=%s\n' "$(date +%s)" "$SN" > "$P/.claude-mind/an
 ( cd "$P" && PROJ="$P" CLAUDE_PROJECT_DIR="$P" bash "$R/skills/mind-update/bloecke/step0-snapshot.sh" >/dev/null 2>&1 )
 pruef "mind_snapshot quittiert mit Datei" "$(q mind_snapshot | grep -c '"quelle":"datei"')" "1"
 
+echo "=== 2b) die vier Einzel-Skills: Bestands-Pass und Snapshot selbst quittiert (v5.163.0) ==="
+mkdir -p "$TMP/mem"; printf -- '---
+name: x
+description: y
+---
+z
+' > "$TMP/mem/x.md"
+for s in mind-files mind-claudemd mind-memory mind-rules; do
+  rm -f "$SQ"
+  ( cd "$P" && PROJ="$P" MEMORY_DIR="$TMP/mem" CLAUDE_PROJECT_DIR="$P" bash "$R/skills/$s/bloecke/pass-bestand.sh" >/dev/null 2>&1 )
+  n=0; for w in mind_kontext_bilanz bestandszahlen_kandidaten cleaner_stichprobe; do q "$w" | grep -q '"quelle":"datei"' && n=$((n+1)); done
+  pruef "$s: drei Pass-Quittungen mit Datei" "$n" "3"
+  ( cd "$P" && PROJ="$P" CLAUDE_PROJECT_DIR="$P" bash "$R/skills/$s/bloecke/02-step0-modus-snapshot.sh" >/dev/null 2>&1 )
+  pruef "$s: mind_snapshot quittiert" "$(q mind_snapshot | grep -c '"name":"mind_snapshot"')" "1"
+  pruef "$s: Hinweis im Skilltext" "$(grep -c 'Selbst quittiert, NICHT nachtippen' "$R/skills/$s/SKILL.md")" "1"
+done
+
 echo "=== 3) der Skill sagt, was NICHT nachgetippt wird ==="
 pruef "Hinweis im Skilltext" "$(grep -c 'Selbst quittiert, NICHT nachtippen' "$R/skills/mind-update/SKILL.md")" "1"
 

@@ -46,6 +46,7 @@ mind_zeilenenden_waechter
 ```bash
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
 [ -n "$CLAUDE_PLUGIN_ROOT" ] || { echo "ERROR: \$CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
+export CLAUDE_PLUGIN_ROOT   # v5.163.0: sonst sehen die Bloecke sie leer (Ritas Lauf 30.10.)
 source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 # ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
@@ -167,7 +168,7 @@ eine Einheit zurueckrollbar. Die Einzel-Skills erkennen den laufenden `/mind-all
 | 5 | `mind-update` | **Zuletzt** — der uebergreifende Sweep + Knowledge-Sync; profitiert davon, dass 1-4 sauber sind, und deckt den Rest ab |
 
 **Strikt sequenziell.** Nie zwei Skills gleichzeitig, nie ein Skill parallel zu Agents eines
-anderen (Anti-Burst `~/.claude/rules/workflow-agent-rate-limit.md`: nie ≥3 Agents gleichzeitig; im Skill gilt dessen Grenze).
+anderen (Anti-Burst `~/.claude/rules/shared-tools.md` (Block „Agents“): nie ≥3 Agents gleichzeitig; im Skill gilt dessen Grenze).
 
 ## Step 2: Ausfuehrung je Skill
 
@@ -369,7 +370,7 @@ beschaedigen, Umschreiben schon):
 - `- (keine)` ist eine **zulaessige** Antwort. Ein **leerer** Abschnitt ist es nicht — ein Lauf
   ohne Eintrag gilt als nicht protokolliert.
 - **Ein gescheiterter Agent ist ein PROBLEM, kein "unauffaellig".** Ein Null-Ergebnis heisst
-  „ungeprueft", nicht „nichts gefunden" (`~/.claude/rules/workflow-agent-rate-limit.md`).
+  „ungeprueft", nicht „nichts gefunden" (`~/.claude/rules/shared-tools.md` (Block „Agents“)).
   „(keine)" bei gestorbenem Agent macht den Mechanismus wertlos.
 - Auch **eigene** Fehlgriffe gehoeren hinein (falsche Annahme, verworfener Zwischenstand) —
   die Liste ist ein Arbeitsprotokoll, keine Erfolgsmeldung.

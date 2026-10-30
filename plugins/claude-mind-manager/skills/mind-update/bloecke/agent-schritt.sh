@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." 2>/dev/null && pwd)}"; export CLAUDE_PLUGIN_ROOT   # v5.163.0: die Desktop-Bash setzt sie nicht (Ritas Lauf 30.10.)
 # /mind-update Step 3.5 — EIN Aufruf je Agentenwelle (v5.162.0, Etappe 63 N3 §1+§3).
 #
 #   bash agent-schritt.sh start <a>[,<b>]                  Quittung anlegen (3/4), dispatch der ersten Welle
