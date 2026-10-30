@@ -45,7 +45,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.160.0"
+MIND_SKILL_VERSION="5.161.0"
 mind_schritt_start "$PROJ" mind-claudemd bestandszahlen_kandidaten claudemd_pipeline cleaner_duplikate cleaner_stichprobe cleaner_tor cleaner_urteile mind_check_tools_have_rules mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -87,11 +87,9 @@ zulaessiger `uebersprungen:`-Grund — er stand in keinem Skill und ist beim Lau
 entstanden. Seit v5.67.0 macht eine Teilabdeckung den Lauf zum **Teilsync**: die
 Schuld bleibt liegen, bis wirklich alles gefahren ist.
 
-⭐ **`gelaufen:5/11` ist die TEILABDECKUNG und der Anlass dieses Baus.** Am 30.08.2026
-lief `cleaner_leitplanke.py` ueber 5 von 11 Dateien und wurde als **Bereichspruefung**
-berichtet. Der Fehler war nicht ein fehlender Aufruf, sondern ein gelaufener, der
-weniger abdeckte als der Bericht behauptete. `5/11` ist eine gueltige Antwort;
-sie als `11/11` zu berichten ist es nicht.
+⭐ **`gelaufen:5/11` ist die TEILABDECKUNG.** Am 30.08.2026 lief `cleaner_leitplanke.py`
+ueber 5 von 11 Dateien und wurde als **Bereichspruefung** berichtet: ein gelaufener Aufruf,
+der weniger abdeckte als berichtet. `5/11` ist eine gueltige Antwort; `11/11` zu berichten nicht.
 ⚠ **`X/Y` mit X=Y (`1/1`) zaehlt seit v5.113.0 als voll** — vollstaendig heisst trotzdem
 `gelaufen`, nicht `1/1` (Noras Lauf 11, 16.09.2026). ⛔ **Nachquittieren geht nur im SELBEN
 Block:** die Bilanz nimmt den letzten Eintrag je Block×Name; ein Nachtrag in einem spaeteren
@@ -101,10 +99,9 @@ gefahren** (v5.116.0, Doros Creator-Lauf 16.09.2026: 39 Schritte in 5 s nachgeti
 Die Bilanz erkennt getippte Bloecke (Starts < `MIND_SCHRITT_MIN_S` = 60 s auseinander, >= 5 Schritte
 in 10 s) als FORMAL, der Lauf ist teil.
 
-⛔ **Die Bytezahl ist Pflicht, wo ein Schritt etwas ausgeben MUSS.** Am selben Tag
-lief `cleaner_belege.py` und seine Ausgabe wurde weggegreppt — aus Sicht einer
-naiven Quittung waere das „gelaufen". `0` meldet die Bilanz als **LEER**; `-1`
-heisst „nicht gemessen" und zaehlt nicht.
+⛔ **Die Bytezahl ist Pflicht, wo ein Schritt etwas ausgeben MUSS.** Am selben Tag lief
+`cleaner_belege.py`, seine Ausgabe wurde weggegreppt — fuer eine naive Quittung „gelaufen".
+`0` meldet die Bilanz als **LEER**; `-1` heisst „nicht gemessen" und zaehlt nicht.
 
 **Im Bericht, als erste Zeile des Self-Checks:**
 
@@ -141,11 +138,10 @@ ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/02
 
 ## Step 1: Scope bestimmen — PFLICHT als VARIABLEN, nicht als Prosa (v5.23.0)
 
-⛔ **Hier standen bis v5.22.1 zwei Zeilen Fliesstext.** Sie erzeugten nichts, was ein
-spaeterer Schritt benutzen konnte — und deshalb fiel der Fix-Teil bei `global` lautlos
-auf das Projekt zurueck: Step 5a sicherte `$PROJECT_DIR/CLAUDE.md` und meldete
-`Backup OK`, waehrend das Ziel `~/.claude/CLAUDE.md` war. **Ein falscher Beleg ist
-schlimmer als gar keiner.** Gemeldet vom Nutzer am 28.08.2026.
+⛔ **Bis v5.22.1 standen hier zwei Zeilen Fliesstext** ohne nutzbares Ergebnis: der Fix-Teil
+fiel bei `global` lautlos aufs Projekt zurueck — Step 5a sicherte `$PROJECT_DIR/CLAUDE.md` und
+meldete `Backup OK`, Ziel war `~/.claude/CLAUDE.md`. **Ein falscher Beleg ist schlimmer als
+gar keiner.** Nutzer, 28.08.2026.
 
 ```bash
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/00-step1-bereich.sh"
@@ -156,18 +152,16 @@ anfasst — Pipeline (4c), Modularize (4e), Backup (5a), Edits (5b) — benutzt
 `$ZIEL_MD`, `$ZIEL_RULES` und `$ZIEL_WURZEL`. **Nie wieder ein blankes `CLAUDE.md`
 und nie wieder `$CLAUDE_PROJECT_DIR` als Wurzel.**
 
-⛔ **`$ZIEL_WURZEL` ist bei `global` `$HOME`, NICHT `$HOME/.claude`.** Der Unterschied
-ist gemessen und kostete eine falsche Null: Check 18 sucht `<wurzel>/.claude/rules`.
-Mit `$HOME/.claude` als Wurzel waere das `~/.claude/.claude/rules` — Ergebnis
-**0 rules statt 15**, auf einem Kriterium, das in Rubrik 1 mit 15 Punkten zaehlt.
+⛔ **`$ZIEL_WURZEL` ist bei `global` `$HOME`, NICHT `$HOME/.claude`.** Gemessen: Check 18 sucht
+`<wurzel>/.claude/rules`; mit `$HOME/.claude` waere das `~/.claude/.claude/rules` — **0 rules
+statt 15**, auf einem Kriterium mit 15 Punkten in Rubrik 1.
 
 ### ⛔ Ein `global`-Lauf DARF aufraeumen — und was ihn wirklich begrenzt
 
-Am 28.08.2026 hat ein Lauf die Auslagerung mit einer **erfundenen** Projektregel
-abgelehnt (*„NEVER die globalen Regeln aus diesem Ordner heraus aendern"*). Die gibt es
-nicht; sie war eine Paraphrase von **`NEVER in einem FREMDEN Projektordner editieren`** —
-und `~/.claude/` ist **kein fremder Projektordner**, sondern das Ziel dieses Aufrufs.
-Deshalb hier ausdruecklich, was gilt:
+Am 28.08.2026 lehnte ein Lauf die Auslagerung mit einer **erfundenen** Projektregel ab
+(*„NEVER die globalen Regeln aus diesem Ordner heraus aendern"*) — Paraphrase von
+**`NEVER in einem FREMDEN Projektordner editieren`**; `~/.claude/` ist
+**kein fremder Projektordner**, sondern das Ziel dieses Aufrufs. Es gilt:
 
 | | |
 |---|---|
@@ -253,7 +247,7 @@ Launch **context-analyzer** with scope=claude-md — **`run_in_background: false
 "Analyze all CLAUDE.md files in this project. Scope: claude-md. Report quality score, contradictions, staleness, and optimization suggestions. Nenne zu JEDEM Zitat die Datei und die Zeilennummer, aus der du es gelesen hast. Was du ohne Fundstelle schreibst, kennzeichne als UNGEPRUEFT."
 ⛔ **Der zweite Satz ist Pflicht, nicht Zierde** (v5.138.0, Veras Fund 26.09.2026: drei
 von vier Agenten meldeten Nichtbelegtes, keiner mit Vorbehalt). ⚠ Eine Bitte, kein Gate.
-⛔ **`run_in_background: false` in JEDEM Agent-Aufruf (v5.94.0, Nutzer-/Anton-Entscheidung 11.09.2026).** Die Vorgabe des Agent-Werkzeugs ist HINTERGRUND: der `tool_result` ist dann nur das Ack „Async agent launched“ (1 151 B, nach 1–2 s), das Ergebnis kommt — wenn überhaupt — später als `<task-notification>`. Gemessen 10.09.2026 (`docs/plugin/rueckkanal-messung.md`): getrennte Tool-Calls serialisieren im Hintergrund NICHTS (vier Agenten gleichzeitig bei „sequenziellen“ Aufrufen), und **5 von 8** Ergebnissen kamen nie an. Mit `false` blockt der Aufruf bis zur Rückgabe, `RUECKGABE` IST der `tool_result`, und ein Nachliefern mitten im Fan-out ist mechanisch unmöglich. ⚠ Preis: die Sitzung wartet je Agent 60–130 s und ist solange nicht ansprechbar — Nachrichten kommen ohnehin erst am Turn-Ende an.
+⛔ **`run_in_background: false` in JEDEM Agent-Aufruf (v5.94.0, Nutzer-/Anton-Entscheidung 11.09.2026).** Vorgabe des Agent-Werkzeugs ist HINTERGRUND: der `tool_result` ist dann nur das Ack „Async agent launched“ (1 151 B, nach 1–2 s), das Ergebnis kommt — wenn überhaupt — später als `<task-notification>`. Gemessen 10.09.2026 (`docs/plugin/rueckkanal-messung.md`): getrennte Tool-Calls serialisieren im Hintergrund NICHTS (vier Agenten gleichzeitig), und **5 von 8** Ergebnissen kamen nie an. Mit `false` blockt der Aufruf bis zur Rückgabe, `RUECKGABE` IST der `tool_result`, ein Nachliefern mitten im Fan-out ist mechanisch unmöglich. ⚠ Preis: die Sitzung wartet je Agent 60–130 s und ist solange nicht ansprechbar — Nachrichten kommen ohnehin erst am Turn-Ende an.
 
 ⭐ **Trifft der Agent sein Turn-Limit (`maxTurns`, 25 seit v5.147.0) VOR dem Bericht** (der `tool_result` endet ohne Ergebnis, der Agent lebt), ist die Fortsetzung `SendMessage {to: <agentId>, message: „Bericht jetzt liefern“}` — ⛔ **KEIN neuer `Agent`-Aufruf**, das wäre ein zweiter Agent gegen dieselbe Grenze (v5.96.0). Gemessen 12.09.2026 (Rita): zwei Agenten am Limit, beide lieferten nach der Nachricht vollständig. ⚠ Im Desktop-Reiter „Code“ ist `SendMessage` verzögert: erst `ToolSearch select:SendMessage`, dann ist es da.
 
@@ -296,10 +290,10 @@ dieselbe Groesse im selben Bericht.
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/04-step4c-deterministische-pruf.sh"
 ```
 
-⛔ **Diese Pipeline NIE nachbauen.** Sie stand von v5.4.0 bis v5.6.0 nur als Prosa hier — und
-wurde deshalb bei jedem Lauf neu geschrieben, samt der schon behobenen Fehler. Erhebung ueber
-16 Laufabschnitte in zwei `listeverbesserungen.md`: **„instrument-nachgebaut" ist mit ~25
-Vorkommen die haeufigste Ursachenklasse ueberhaupt**, dreimal in Folge derselbe Fall:
+⛔ **Diese Pipeline NIE nachbauen.** Von v5.4.0 bis v5.6.0 stand sie nur als Prosa hier und
+wurde jedes Mal samt behobener Fehler neu geschrieben. Erhebung ueber 16 Laufabschnitte in zwei
+`listeverbesserungen.md`: **„instrument-nachgebaut" ist mit ~25 Vorkommen die haeufigste
+Ursachenklasse**, dreimal in Folge derselbe Fall:
 
 | Wann | Was der Nachbau meldete | Was wirklich war |
 |---|---|---|
@@ -307,9 +301,9 @@ Vorkommen die haeufigste Ursachenklasse ueberhaupt**, dreimal in Folge derselbe 
 | 20.08.2026 | `hooks/hooks.json` tot | liegt im Nachbar-Repo, das die Datei selbst nennt |
 | 21.08.2026 | 9 tote Pfade | 8 Slash-Commands + 1 Nachbar-Repo — **echte tote Pfade: 0** |
 
-Alle drei Klassen waren seit v5.3.1 in `classify_path()` behoben. Der Nachbau kannte sie nie.
-Das Skript **portiert** die Funktion und haelt die Faelle mit `--selbsttest` fest — darunter
-ein Fixture fuer die Nachbar-Repo-Wurzel, an dem der zweite Anlauf vom 20.08. gescheitert waere.
+Alle drei Klassen waren seit v5.3.1 in `classify_path()` behoben; der Nachbau kannte sie nie.
+Das Skript **portiert** die Funktion und haelt die Faelle mit `--selbsttest` fest, darunter ein
+Fixture fuer die Nachbar-Repo-Wurzel (daran waere der zweite Anlauf vom 20.08. gescheitert).
 
 **Die Tabellen unten bleiben die SPEZIFIKATION** — sie sagen, was das Skript tut, und sind bei
 einer Aenderung die Quelle. Sie sind keine Arbeitsanweisung mehr.
@@ -382,8 +376,7 @@ wie ein autonom geloeschter „toter" Pfad.
 
 #### ⛔ Drei Checks wurden erst durch das AUSFUEHREN richtig (2026-08-19)
 
-Die Pipeline wurde auf zwei echten Dateien gefahren, bevor sie hier stand. Ergebnis im ersten
-Lauf: die **gute** Datei loeste **8 Befunde** aus. Kein einziger war ein Mangel der Datei:
+Erster Lauf auf zwei echten Dateien: die **gute** Datei loeste **8 Befunde** aus, keiner ein Mangel der Datei:
 
 | Check | Fehlverhalten | Ursache |
 |---|---|---|
@@ -413,8 +406,7 @@ Regressionsfaelle, davon **13 Gegenproben** (soll NICHT anschlagen) — alle bes
 spezifischeren Angabe entschieden — und hier sichtbar gemacht statt stillschweigend.
 
 ⛔ **Diese Liste steht genau EINMAL.** Bis v5.3.1 nannte Step 3d eine andere, kuerzere Auswahl
-(Übersicht, Gotchas und Workflow fehlten) — zwei Wahrheiten in derselben Datei, beide gleich
-glaubwuerdig. Wer sie aendert, aendert sie hier.
+(Übersicht, Gotchas und Workflow fehlten) — zwei Wahrheiten in einer Datei. Wer sie aendert, aendert sie hier.
 
 ### Step 4d: Ergebnisse konsolidieren + präsentieren
 
@@ -524,9 +516,8 @@ danach Step 6 mit Angewendet-Block.
 (Nutzer-Entscheidung 21.08.2026). Die `safe`/`all`-Trennung gilt **ausschliesslich fuer
 `--ask`**; im autonomen Lauf gibt es sie nicht.
 
-**Der Grund ist gemessen, nicht gewaehlt.** Bis v5.9.3 lag Modularize hinter `[all]` und
-war damit im autonomen Ablauf unerreichbar — waehrend Check 11 den Befund bei jedem Lauf
-neu meldete:
+**Der Grund ist gemessen.** Bis v5.9.3 lag Modularize hinter `[all]`, im autonomen Ablauf
+unerreichbar — waehrend Check 11 den Befund bei jedem Lauf neu meldete:
 
 | Projekt | gemeldet als | damals | nach 3 Laeufen |
 |---|---|---|---|
@@ -534,9 +525,8 @@ neu meldete:
 | Palvedo | `[11] "278 Zeilen kritisch"` | 278 | **284** |
 
 **Die Dateien sind gewachsen, nachdem sie als kritisch gemeldet wurden.** Ein Befund,
-dessen einziger Fix hinter einer Handfreigabe liegt, wird in einem autonomen Ablauf nie
-erledigt. Er ist dann kein Schutz, sondern Laerm — und stumpft die Aufmerksamkeit fuer
-die echten Befunde ab.
+dessen einziger Fix hinter einer Handfreigabe liegt, wird autonom nie erledigt — er ist
+Laerm statt Schutz und stumpft die Aufmerksamkeit fuer die echten Befunde ab.
 
 **Disambiguation-Regel (nur `--ask`):** Bei vagen Antworten ("ja", "ok", "update", "los")
 IMMER die `safe` Variante wählen (keine Modularization, keine Datei-Restruktur). Dem
@@ -557,16 +547,16 @@ bleibt als Befund stehen.
 | **3 · Zeiger** | in `$ZIEL_MD` bleibt eine Zeile `Details: $ZEIGER/<name>.md` zurueck — **bei `global` also `~/.claude/rules/`**, nicht `.claude/rules/` | Ohne Zeiger weiss niemand, dass es die Datei gibt. Dieselbe Kern-Invariante wie "kein Tool ohne Companion-Rule" |
 | **4 · Menge** | hoechstens **3 Sektionen je Lauf** | Ein Lauf, der eine 426-Zeilen-Datei auf einmal in acht Teile zerlegt, ist im Bericht nicht mehr nachpruefbar. Drei sind es, und der naechste Lauf macht weiter |
 
-⚠ **Ehrlich zur Wirkung: Modularize spart KEINEN Kontext.** Gemessen an CC 2.1.237
+⚠ **Modularize spart KEINEN Kontext.** Gemessen an CC 2.1.237
 (`memory/globs-laden-trotz-null-treffer.md`): eine Rule laedt auch dann, wenn ihr `globs:`
-**null** Dateien trifft. Die ausgelagerten Zeilen stehen also weiter im Fenster. Was
-Modularize verbessert, ist die **Befolgung** (Check 11: ~71 % ab 400 Zeilen Summe), nicht
-das Budget. ⛔ **Der Bericht darf keine Token-Ersparnis behaupten** — er nennt die
-Zeilenzahl der Wurzeldatei vorher/nachher und sagt dazu, dass die Summe gleich bleibt.
+**null** Dateien trifft; die ausgelagerten Zeilen stehen weiter im Fenster. Modularize
+verbessert die **Befolgung** (Check 11: ~71 % ab 400 Zeilen Summe), nicht das Budget.
+⛔ **Der Bericht darf keine Token-Ersparnis behaupten** — er nennt die Zeilenzahl der
+Wurzeldatei vorher/nachher und sagt, dass die Summe gleich bleibt.
 
 Gate 2 haengt bewusst **nicht** an dieser Messung: sie ist EINE Beobachtung an EINER
-Version in EINEM Projekt. Ohne `globs:` laedt die Rule so oder so — auch dann, wenn sich
-die Messung spaeter als versionsabhaengig erweist.
+Version in EINEM Projekt. Ohne `globs:` laedt die Rule so oder so — auch wenn die Messung
+sich als versionsabhaengig erweist.
 
 ### ⛔ Pflichtschritt `mind_check_tools_have_rules` und `cleaner_duplikate` — der Aufruf (NEU v5.146.0, Etappe 56 §3)
 
@@ -729,9 +719,8 @@ Zelle zu raten ist verboten: eine geratene Zuordnung wird spaeter zitiert.
 ihren Beleg enthaelt. Dann geht der Beleg ins Archiv und die Bremse bleibt. Nicht
 den ganzen Absatz verschieben, nicht den ganzen behalten.
 
-⚠ **Die Achse hat eine bekannte Schwaeche, und sie wird nicht verschwiegen:**
-„wann brauche ich es" ist eine Aussage ueber den **Leser**. Gemessen 07.09.2026
-brauchte der Manager `hooks.md` 8x und `architecture.md` 7x — Dateien, die nach
+⚠ **Bekannte Schwaeche der Achse:** „wann brauche ich es" ist eine Aussage ueber den
+**Leser**. Gemessen 07.09.2026 brauchte der Manager `hooks.md` 8x und `architecture.md` 7x — Dateien, die nach
 der Rollentabelle dem Arbeiter gehoeren. Ob sich das mechanisch entscheiden
 laesst, ist **UNGEMESSEN**.
 
@@ -771,7 +760,7 @@ und 138 Anweisungen — bei einer Schwelle von ~400 Zeilen und ~100–150 Anweis
 `/mind-all` trägt nach, **niemand sieht zurück**. Dieser Schritt sieht zurück.
 
 ⛔ **Er MELDET. Er schneidet nicht, verschiebt nicht, löscht nicht.** Handeln bleibt
-`/mind-cleaner`, dessen Nicht-Autonomie (Nutzer-Entscheidung 24.08.2026) unberührt bleibt.
+`/mind-cleaner` (seit v5.159.0 autonom, Nutzer 29.10.2026 — mit Snapshot, Gates und Stopp am ersten Bruch).
 
 **Die vollständige Vorschrift steht in
 [references/bestands-pass.md](../../references/bestands-pass.md)** — Bilanz, Stichprobe, die
@@ -894,17 +883,15 @@ stimme.md:1193   "`VORAB_MS = 150` ... ist fuer Qwen richtig"  — setzt ihn vor
                  1100 Zeilen auseinander, beide gleich glaubwuerdig
 ```
 
-Der Lauf nannte auch die Bilanz: **sechs von sieben** waeren mit einem `grep` auf
-den Kernbegriff vor dem Anhaengen aufgefallen. `doku-veraltet` ist mit **25
-Vorkommen** die haeufigste Projekt-Klasse im Debug-Ordner ueberhaupt.
+Bilanz des Laufs: **sechs von sieben** waeren mit einem `grep` auf den Kernbegriff vor dem
+Anhaengen aufgefallen. `doku-veraltet` ist mit **25 Vorkommen** die haeufigste Projekt-Klasse
+im Debug-Ordner.
 
-⚠ **Der Detektor ersetzt die Suche NICHT.**
-`references/cleaner_duplikate.py` findet solche Widersprueche nachtraeglich
-(`--widersprueche`), aber nur, wenn beide Stellen eine **gemeinsame Marke**
-tragen — einen Bezeichner, Pfad oder Zahlenwert. Ein Widerspruch, bei dem die eine
-Seite den Bezeichner nennt und die andere ihn nur umschreibt, ist fuer ihn
-unsichtbar. **Die Suche vor dem Schreiben ist die tragende Massnahme, das Werkzeug
-das Netz darunter.**
+⚠ **Der Detektor ersetzt die Suche NICHT.** `references/cleaner_duplikate.py` findet solche
+Widersprueche nachtraeglich (`--widersprueche`), aber nur bei einer **gemeinsamen Marke**
+(Bezeichner, Pfad, Zahlenwert). Nennt die eine Seite den Bezeichner und die andere umschreibt
+ihn nur, ist der Widerspruch unsichtbar. **Die Suche vor dem Schreiben ist die tragende
+Massnahme, das Werkzeug das Netz darunter.**
 
 ## Hard Constraints
 

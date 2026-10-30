@@ -50,7 +50,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.160.0"
+MIND_SKILL_VERSION="5.161.0"
 mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe cleaner_tor mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
@@ -92,11 +92,7 @@ zulaessiger `uebersprungen:`-Grund — er stand in keinem Skill und ist beim Lau
 entstanden. Seit v5.67.0 macht eine Teilabdeckung den Lauf zum **Teilsync**: die
 Schuld bleibt liegen, bis wirklich alles gefahren ist.
 
-⭐ **`gelaufen:5/11` ist die TEILABDECKUNG und der Anlass dieses Baus.** Am 30.08.2026
-lief `cleaner_leitplanke.py` ueber 5 von 11 Dateien und wurde als **Bereichspruefung**
-berichtet. Der Fehler war nicht ein fehlender Aufruf, sondern ein gelaufener, der
-weniger abdeckte als der Bericht behauptete. `5/11` ist eine gueltige Antwort;
-sie als `11/11` zu berichten ist es nicht.
+⭐ **`gelaufen:5/11` ist die TEILABDECKUNG.** Am 30.08.2026 deckte `cleaner_leitplanke.py` 5 von 11 Dateien ab und wurde als **Bereichspruefung** berichtet. `5/11` ist eine gueltige Antwort; als `11/11` berichtet ist sie es nicht.
 ⚠ **`X/Y` mit X=Y (`1/1`) zaehlt seit v5.113.0 als voll** — vollstaendig heisst trotzdem
 `gelaufen`, nicht `1/1` (Noras Lauf 11, 16.09.2026). ⛔ **Nachquittieren geht nur im SELBEN
 Block:** die Bilanz nimmt den letzten Eintrag je Block×Name; ein Nachtrag in einem spaeteren
@@ -106,10 +102,7 @@ gefahren** (v5.116.0, Doros Creator-Lauf 16.09.2026: 39 Schritte in 5 s nachgeti
 Die Bilanz erkennt getippte Bloecke (Starts < `MIND_SCHRITT_MIN_S` = 60 s auseinander, >= 5 Schritte
 in 10 s) als FORMAL, der Lauf ist teil.
 
-⛔ **Die Bytezahl ist Pflicht, wo ein Schritt etwas ausgeben MUSS.** Am selben Tag
-lief `cleaner_belege.py` und seine Ausgabe wurde weggegreppt — aus Sicht einer
-naiven Quittung waere das „gelaufen". `0` meldet die Bilanz als **LEER**; `-1`
-heisst „nicht gemessen" und zaehlt nicht.
+⛔ **Die Bytezahl ist Pflicht, wo ein Schritt etwas ausgeben MUSS.** Am selben Tag lief `cleaner_belege.py`, seine Ausgabe wurde weggegreppt (naive Quittung: „gelaufen"). `0` meldet die Bilanz als **LEER**; `-1` heisst „nicht gemessen" und zaehlt nicht.
 
 **Im Bericht, als erste Zeile des Self-Checks:**
 
@@ -301,12 +294,7 @@ mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 python "$CLAUDE_PLUGIN_ROOT/references/claudemd_pipeline.py" <datei.md> --projekt "$PROJ"
 ```
 
-⛔ **Genau diese Stelle ist der meistnachgebaute Fall des Plugins.** Die Klasse
-`instrument-nachgebaut` steht mit **7 Vorkommen** im Debug-Ordner; die Bilanz der
-Nachbauten lautet **~250 · 11 · 9 · 7 Fehltreffer** — *kein einziger war besser als
-das Original*. `claudemd_pipeline.py` traegt dieselbe Klassifikation samt aller
-Sonderfaelle (Slash-Commands, Formeln, Escape-Sequenzen, Interpreter-Aufrufe, Zitate
-mit Zeilennummer) und hat einen Selbsttest, der in zwei Sekunden zeigt, ob er misst.
+⛔ **Meistnachgebaute Stelle des Plugins:** Klasse `instrument-nachgebaut`, **7 Vorkommen** im Debug-Ordner; Nachbauten **~250 · 11 · 9 · 7 Fehltreffer**, *kein einziger besser als das Original*. `claudemd_pipeline.py` traegt alle Sonderfaelle (Slash-Commands, Formeln, Escape-Sequenzen, Interpreter-Aufrufe, Zitate mit Zeilennummer) und hat einen Selbsttest (zwei Sekunden).
 
 <details><summary>Das Muster — nur zum Nachlesen, nicht zum Abtippen</summary>
 
@@ -320,9 +308,7 @@ pattern = r'`([^`\n]*[/\\][^`\n]+)`'
 Zeilengrenzen und erfindet Pfade aus zwei benachbarten Saetzen. Gemessen 26.08.2026 in
 `Pc Forschung`: **2 der 58** gemeldeten toten Pfade entstanden genau so.
 
-⚠ Die Prosa-Fassung hier war falsch, waehrend `claudemd_pipeline.py:273,303` es richtig
-hatte — **ein Modell schreibt aber ab, was im Skill steht.** Dritter Fall desselben
-Musters an einem Tag: eine Vorschrift als Prosa im Skill statt als Code im Werkzeug.
+⚠ Die Prosa-Fassung hier war falsch, `claudemd_pipeline.py:273,303` richtig — **ein Modell schreibt ab, was im Skill steht.** Dritter Fall an einem Tag: Vorschrift als Prosa im Skill statt als Code im Werkzeug.
 
 </details>
 
@@ -390,31 +376,21 @@ klasse=$(mind_classify_path "$p")
 
 ### 3c: Commit-Coverage-Gate (deterministisch — objektiver Knowledge-Gap)
 
-⛔ **„0 Luecken" und „nicht anwendbar" sind zwei verschiedene Ergebnisse (NEU v5.7.1).**
-Gemeldet aus dem Palvedo-Lauf vom 21.08.2026: Das Gate sucht nach
-`feat:`/`fix:`/`refactor:`/`perf:`. Palvedo schreibt seine Commits bewusst als `Lauf N: …` —
-das Gate fand also **nie** etwas und meldete jedes Mal „0 Luecken".
+⛔ **„0 Luecken" und „nicht anwendbar" sind zwei verschiedene Ergebnisse (NEU v5.7.1).** Palvedo-Lauf 21.08.2026: Das Gate sucht `feat:`/`fix:`/`refactor:`/`perf:`, Palvedo schreibt Commits bewusst als `Lauf N: …` — es fand **nie** etwas und meldete jedes Mal „0 Luecken".
 
-**Der Unterschied ist der zwischen *ungeprueft* und *sauber* — und der ist der ganze Zweck
-dieses Schritts.**
+**Der Unterschied zwischen *ungeprueft* und *sauber* ist der ganze Zweck dieses Schritts.**
 
 ```bash
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3c-commits.sh"
 ```
 
-**Zweck (v3.3.2):** Dies ist der DETERMINISTISCHE Kern der Knowledge-Gap-Erkennung.
-Er entwertet die "ich kenne den Stand schon"-Ausrede: wenn Commit X nachweislich
-in keiner Context-Datei steht, IST das ein Gap — unabhaengig davon was Claude
-zu wissen glaubt. Diese Findings speisen Step 3.5 mit konkreten Pruef-Punkten.
+**Zweck (v3.3.2):** DETERMINISTISCHER Kern der Knowledge-Gap-Erkennung. Er entwertet die "ich kenne den Stand schon"-Ausrede: steht Commit X nachweislich in keiner Context-Datei, IST das ein Gap. Die Findings speisen Step 3.5 mit konkreten Pruef-Punkten.
 
 - Nur wenn `.git/` existiert.
-- **KEIN Git (v5.0.0, Befund 7): NICHT stillschweigend ueberspringen.** Der Self-Check MUSS
-  dann diese Zeile enthalten:
+- **KEIN Git (v5.0.0, Befund 7): NICHT stillschweigend ueberspringen.** Der Self-Check MUSS dann diese Zeile enthalten:
   `[Step 3c] KEIN GIT — kein objektives Gate verfuegbar; alle Befunde beruhen allein auf
   semantischem Abgleich`. Gleiches gilt fuer Step 3c.1 (Datei-Targeting faellt aus → es
-  greift der Groessen-Guard). Grund: 3c ist laut diesem Skill "der DETERMINISTISCHE Kern",
-  der die "ich kenne den Stand"-Ausrede entwertet. Faellt er weg, ist die Beweislage eine
-  andere — der Bericht darf das nicht verschweigen.
+  greift der Groessen-Guard). Ohne das Gate ist die Beweislage eine andere, und der Bericht darf das nicht verschweigen.
 - `git log --oneline -30` (oder seit letztem doc-beruehrenden Commit).
 - Pro `feat:`/`fix:`/`refactor:`/`perf:` Commit: Scope + Subject-Stichworte gegen
   **CLAUDE.md UND MEMORY.md** greppen.
@@ -464,33 +440,15 @@ git log --oneline -30 | grep -iE '^[0-9a-f]+ (feat|fix|refactor|perf|docs)(\(|:)
 done
 ```
 
-**N1-Hinweis (neu gefasst v5.5.2 — die alte Zusicherung war teuer erkauft):** Der enge Weg
-bis v5.5.1 konnte einen Gap *übersehen*, aber nie einen *erfinden*. Der Preis dafür war, in
-einem Doku-Workspace **gar nichts** zu sehen: `docs:` fiel durch den Filter, und damit blieben
-dort **0 von 17** Commits ungeprüft — gemeldet wurde trotzdem „keine Lücken".
-
-Der neue Weg hält die Zusicherung anders: Ein Stichwort wird nur genommen, wenn es **belastbar**
-ist (Version · `dev.NN` · Scope). Gibt es keines, wird geraten — nein: wird der Commit als
-`KEIN-STICHWORT` **ausgewiesen**. Der Rückfall auf ein beliebiges Subject-Token ist entfallen;
-deutsche Subjects lieferten dort Verben („vereinheitlichen", „protokollieren"), die per
-Konstruktion nie in der Doku stehen und damit garantierte Fehlalarme waren.
+**N1-Hinweis (v5.5.2):** Der enge Weg bis v5.5.1 konnte einen Gap *uebersehen*, nie *erfinden* — um den Preis, in einem Doku-Workspace **gar nichts** zu sehen: `docs:` fiel durch den Filter, **0 von 17** Commits blieben ungeprueft, gemeldet wurde trotzdem „keine Lücken". Jetzt zaehlt ein Stichwort nur, wenn es **belastbar** ist (Version · `dev.NN` · Scope); sonst wird der Commit als `KEIN-STICHWORT` **ausgewiesen**. Der Rückfall auf ein beliebiges Subject-Token ist entfallen (deutsche Subjects lieferten Verben wie „vereinheitlichen", „protokollieren", garantierte Fehlalarme).
 
 ⛔ **`KEIN-STICHWORT` ist ein Ergebnis, kein Rauschen.** Es heißt „dieser Commit wurde nicht
 geprüft" — nicht „dieser Commit ist in Ordnung". Wer die Zeilen wegblendet, stellt genau die
 Stille wieder her, die der Defekt war.
 
-**Belege (2026-08-20, alle gegen echte Git-Historie, nicht gegen Kunstbeispiele):**
-Reproduktion am eigenen Repo — altes Gate **0** betrachtete Commits und **0** GAPs, während
-`v5.5.1` nachweislich in *keiner* Context-Datei stand; das neue Gate findet genau diesen Commit.
-**Negativkontrolle:** am Stand nach dem Nachtrag meldet es ihn nicht mehr — die Messung schlägt
-in beide Richtungen aus. Stichwort-Erkennung gegen **14 synthetische Subjects inkl. 3
-Gegenproben** (`95 -> 79`, `12.30 Uhr`, `3.2x` dürfen NICHT als Version durchgehen).
-**Flut-Kontrolle** in zwei realen Projekten: Zustellplan 23 → 28 betrachtete Commits bei
-weiterhin **0** GAPs, Grep-Ziele 2 → 17.
+**Belege (2026-08-20, echte Git-Historie):** altes Gate **0** betrachtete Commits und **0** GAPs, obwohl `v5.5.1` in *keiner* Context-Datei stand; das neue findet genau diesen Commit. **Negativkontrolle:** am Stand nach dem Nachtrag meldet es ihn nicht mehr — die Messung schlägt in beide Richtungen aus. Stichwort-Erkennung gegen **14 synthetische Subjects inkl. 3 Gegenproben** (`95 -> 79`, `12.30 Uhr`, `3.2x` dürfen NICHT als Version durchgehen). **Flut-Kontrolle:** Zustellplan 23 → 28 betrachtete Commits bei weiterhin **0** GAPs, Grep-Ziele 2 → 17.
 
-⚠ **Was weiterhin blind bleibt:** Repos ohne Conventional-Commit-Präfixe. In `APP - Palvedo`
-trifft der Filter **0 von 30** Commits — vorher wie nachher. Das ist keine Regression, aber auch
-keine Lösung; es steht hier, damit niemand das Gate für vollständig hält.
+⚠ **Weiterhin blind:** Repos ohne Conventional-Commit-Präfixe. In `APP - Palvedo` trifft der Filter **0 von 30** Commits, vorher wie nachher — keine Regression, aber keine Lösung; es steht hier, damit niemand das Gate für vollständig hält.
 
 - Jeder `GAP:` = **objektives Knowledge-Gap-Finding** (Commit-Hash + Subject + fehlendes Stichwort).
 - Jedes `KEIN-STICHWORT:` = **ungeprueft** (v5.5.2). Zaehlt NICHT als Gap, darf aber auch nicht
@@ -500,26 +458,15 @@ keine Lösung; es steht hier, damit niemand das Gate für vollständig hält.
 
 ### 3c.1: Datei-Targeting — welche Rules hat die Session berührt? (v4.1.0 — Skalierung)
 
-**Zweck:** Bei Projekten mit vielen/großen Rules (Zustellplan: ~118k Tokens in 11 Files, 2 davon
->1200 Zeilen) kann ein einzelner semantischer Agent NICHT alle Rules lesen — er läuft über (0 Output).
-Lösung: der semantische Pass (Step 3.5) prüft nur die **session-berührten** Rules. Diese hier
-deterministisch bestimmen — aus den Commit-Scopes (die mappen auf Datei-Inhalte).
+**Zweck:** Bei vielen/großen Rules (Zustellplan: ~118k Tokens in 11 Files, 2 davon >1200 Zeilen) läuft ein einzelner semantischer Agent über (0 Output). Der semantische Pass (Step 3.5) prüft deshalb nur **session-berührte** Rules, deterministisch bestimmt aus den Commit-Scopes (die auf Datei-Inhalte mappen).
 
 ```bash
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3c1-targeting.sh"
 ```
 
-- **Erring broad = sicher:** ein zu breiter Treffer prüft nur ein paar Files extra; ein *verpasster*
-  wäre schlimm — die `{3,}`/`{4,}`-Guards halten Keys ≥3-4 Zeichen (kein 2-Zeichen-Scope-Explosion).
-- **Targeting ≠ Skip (ehrlich, Skill-Review C):** Der DETERMINISTISCHE Rules-Sicherungsnetz ist
-  **Step 3e (Syntax) + 3e.2 (Content-Drift)** — die laufen über ALLE Project+Global-Rules, PFLICHT,
-  unabhängig vom Targeting. (Das Commit-Coverage-Gate 3c prüft CLAUDE.md+MEMORY, NICHT die Rules.)
-  Das Targeting fokussiert NUR den *semantischen* Re-Read.
-- **Ehrlicher Rest:** „untouched" heißt „diese Session hat die Datei nicht per Commit berührt" —
-  NICHT „da ist garantiert nichts zu ergänzen". Eine ADD-würdige Session-Erkenntnis, die in eine
-  *unberührte* große Rule gehört, fällt aus dem gezielten semantischen Pass → sie wird über 3e.2
-  (falls Versions-/Muster-Drift) ODER über die Report-Offenlegung (`TARGET_MODE`/deterministisch-only
-  + `/mind-rules`-Pointer) sichtbar, nicht stillschweigend geschluckt.
+- **Erring broad = sicher:** ein zu breiter Treffer prüft nur ein paar Files extra; ein *verpasster* wäre schlimm — die `{3,}`/`{4,}`-Guards halten Keys ≥3-4 Zeichen (kein 2-Zeichen-Scope-Explosion).
+- **Targeting ≠ Skip:** Das DETERMINISTISCHE Rules-Sicherungsnetz ist **Step 3e (Syntax) + 3e.2 (Content-Drift)** — über ALLE Project+Global-Rules, PFLICHT, unabhängig vom Targeting (3c prüft CLAUDE.md+MEMORY, NICHT die Rules). Das Targeting fokussiert NUR den *semantischen* Re-Read.
+- **Ehrlicher Rest:** „untouched" heißt „nicht per Commit berührt", NICHT „da ist garantiert nichts zu ergänzen". Eine ADD-würdige Erkenntnis in einer *unberührten* großen Rule wird über 3e.2 (Versions-/Muster-Drift) ODER die Report-Offenlegung (`TARGET_MODE`/deterministisch-only + `/mind-rules`-Pointer) sichtbar, nicht geschluckt.
 
 ### 3d: MEMORY.md Budget
 - Count lines in MEMORY.md
@@ -585,15 +532,7 @@ Inline-Ersatz — der semantische Abgleich Session<->Context laeuft NUR ueber di
 Agents. Wenn Step 3c Commit-Coverage-Gaps gefunden hat, ist "alles synchron / ich
 kenne den Stand" objektiv widerlegt → dispatchen ist Pflicht, nicht Ermessen.
 
-**WICHTIG — Methode ≠ Mandat (Anti-Burst, v4.0.1):** Alle 4 Bereiche sind PFLICHT und
-werden IMMER abgedeckt. Aber sie werden **SEQUENZIELL** (einer nach dem anderen) bzw.
-**maximal 2 gleichzeitig** dispatcht — **NIE 3-4 im selben Tool-Call**. Grund: ein Burst
-aus ≥3 gleichzeitigen Agents trippt reproduzierbar Anthropics **server-seitiges
-Rate-Limit** ("Server is temporarily limiting requests — not your usage limit", 429/529)
-→ ALLE Agents scheitern, 0 Ergebnisse (3× gemessen: 2026-06-15/29 + 2026-07-04, schon 3
-gleichzeitig reichten). Das gilt **auch unter Ultracode**. **`sequenziell` heißt NICHT
-`optional`** — alle 4 laufen, nur nicht im selben Tool-Call. Diese Staffelung NIE
-"aus Performance-Gründen" zu einem Parallel-Burst zurückdrehen.
+**WICHTIG — Methode ≠ Mandat (Anti-Burst, v4.0.1):** Alle 4 Bereiche sind PFLICHT und werden IMMER abgedeckt, aber **SEQUENZIELL** bzw. **maximal 2 gleichzeitig** — **NIE 3-4 im selben Tool-Call**. Ein Burst aus ≥3 gleichzeitigen Agents trippt reproduzierbar Anthropics **server-seitiges Rate-Limit** ("Server is temporarily limiting requests — not your usage limit", 429/529) → ALLE Agents scheitern, 0 Ergebnisse (3× gemessen: 2026-06-15/29 + 2026-07-04, schon 3 gleichzeitig reichten), **auch unter Ultracode**. **`sequenziell` heißt NICHT `optional`.** Diese Staffelung NIE "aus Performance-Gründen" zu einem Parallel-Burst zurückdrehen.
 
 Dispatch die 4 `context-analyzer` Agents **nacheinander** (oder in 2 Wellen à 2 —
 Welle 1: claude-md + memory, Welle 2: rules + custom-context; jede Welle ihr eigener
@@ -632,11 +571,7 @@ Jeder bekommt:
   ALLE Unterordner gilt, gehoert in die Wurzel-`CLAUDE.md`/-Rules (die laden ueberall),
   nicht in neun Memories.
 - Mode: `knowledge-sync`
-- ⛔ **DRITTER AGENT-AUFTRAG: Context gegen Context (NEU v5.7.1).** Die bisherigen Agents
-fragen alle „Session gegen Datei". Der teuerste Fehler des Palvedo-Laufs vom 21.08.2026 war
-aber ein Widerspruch **zwischen zwei Context-Dateien** (`ARBEITSLISTE.md` gegen
-`ENTSCHEIDUNGEN.md`) — den beide Agents auftragsgemaess ignoriert haben, weil er in der
-Session gar nicht vorkam.
+- ⛔ **DRITTER AGENT-AUFTRAG: Context gegen Context (NEU v5.7.1).** Die bisherigen Agents fragen „Session gegen Datei". Der teuerste Fehler des Palvedo-Laufs vom 21.08.2026 war aber ein Widerspruch **zwischen zwei Context-Dateien** (`ARBEITSLISTE.md` gegen `ENTSCHEIDUNGEN.md`), den beide Agents ignorierten, weil er in der Session nicht vorkam.
 
 **Auftrag des dritten Agenten, woertlich:** *„Widersprechen sich zwei Context-Dateien dieses
 Projekts? Vergleiche CLAUDE.md, die Rules und die Memory-Topics PAARWEISE gegeneinander —
@@ -652,14 +587,8 @@ zaehlt gegen die Obergrenze.
   ```bash
   bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3.5-zuschnitt.sh"
   ```
-  **NUR bei gleichem Modus ueberspringen (M3-Fix):** Der Eintrag traegt den Modus
-  (`claude-md=mind-claudemd:default`). `mode: default` ist eine **andere Analyse** als
-  `mode: knowledge-sync` (letztere vergleicht den Session-Auszug). Ein `:default`-Eintrag
-  darf einen `knowledge-sync`-Dispatch **nicht** unterdruecken — sonst faellt der
-  semantische Session-Abgleich still aus, den dieser Skill selbst als nicht-ueberspringbar
-  fuehrt. **Ersparnis ist kein Skip-Grund.** **Gilt NUR fuer die Kette** — bei
-  einem einzelnen `/mind-update` ohne vorherige Skills ist die Datei leer/alt und alle
-  4 Scopes laufen normal. `custom-context` wird nie uebersprungen (kein anderer Skill deckt ihn ab).
+  **NUR bei gleichem Modus ueberspringen (M3-Fix):** Der Eintrag traegt den Modus (`claude-md=mind-claudemd:default`). `mode: default` ist eine **andere Analyse** als `mode: knowledge-sync`; ein `:default`-Eintrag darf einen `knowledge-sync`-Dispatch **nicht** unterdruecken, sonst faellt der semantische Session-Abgleich still aus. **Ersparnis ist kein Skip-Grund.** **Gilt NUR fuer die Kette** — bei einem einzelnen `/mind-update` ist die Datei leer/alt und alle
+  4 Scopes laufen. `custom-context` wird nie uebersprungen (kein anderer Skill deckt ihn ab).
 - Bereich-Files (Read-only) — **rules-scope: die `SEM_RULES` aus Step 3c.1** (je nach `TARGET_MODE`:
   `all` = alle Project-Rules wenn Satz klein; `targeted` = nur session-berührte wenn groß; `unscopable`/
   `none` = leer). **Plus die Global-Rules `~/.claude/rules/*.md`** — die werden IMMER mit übergeben
@@ -679,28 +608,24 @@ zaehlt gegen die Obergrenze.
     vor der Kompaktierung, ungekuerzt). Bei >600 Zeilen/60 KB gilt der Groessen-Guard des
     Agenten — er greppt gezielt statt blind zu lesen.
     > ⛔ **KONTEXT-FLUT-SPERRE (NEU v5.2.1):** Dem Agenten wird der **PFAD** uebergeben, nie der
-    > Inhalt. Im **Hauptkontext** wird `*_chat.md` **nie** gelesen — kein `Read`, kein `cat`,
-    > kein `sed`/`head` auf den Inhalt; erlaubt sind nur zaehlende Aufrufe (`grep -c`, `wc`).
-    > **Warum das eine Invariante ist:** Der Lauf wird per Stop-Hook direkt nach einer
-    > Kompaktierung erzwungen. Die Datei ist mehrere hundert KB (gemessen 417 KB / 555 Beitraege);
-    > wer sie in den frisch geleerten Kontext liest, loest sofort die naechste Kompaktierung aus,
-    > die eine neue Rettung erzeugt, die den naechsten Zwangslauf ausloest. Ein `Read` darauf im
-    > Hauptfluss ist **Abbruchgrund**.
+    > Inhalt. Im **Hauptkontext** wird `*_chat.md` **nie** gelesen — kein `Read`, `cat`, `sed`/`head`;
+    > erlaubt nur zaehlende Aufrufe (`grep -c`, `wc`). **Invariante:** der Lauf wird per Stop-Hook direkt nach einer
+    > Kompaktierung erzwungen; die Datei hat mehrere hundert KB (gemessen 417 KB / 555 Beitraege) und loest im frisch
+    > geleerten Kontext sofort die naechste Kompaktierung aus, die eine neue Rettung erzeugt, die den naechsten
+    > Zwangslauf ausloest. Ein `Read` darauf im Hauptfluss ist **Abbruchgrund**.
   - `live`: der Sampler-Auszug wie bisher (USER + ASSISTANT_TEXT, 3-stufiges Sampling).
   - **`gerettet+live` (NEU v5.2.2, der Normalfall nach einer Kompaktierung): BEIDE.** Dem
     Agenten werden **zwei** Quellen genannt — der Rettungspfad (vollstaendig, aber nur bis zur
     Kompaktierung) **und** der Live-Sampler-Auszug (deckt die Zeit danach ab).
-    > **Warum das keine Doppelung ist:** Die Rettung endet zwangslaeufig am
-    > Kompaktierungs-Zeitpunkt. Der Lauf, den der Stop-Hook danach erzwingt, soll aber gerade
-    > die Arbeit einspeisen, die seitdem passiert ist. Mit nur einer der beiden Quellen fehlt
-    > entweder die Tiefe (live ist gesampelt) oder die Aktualitaet (Rettung ist alt).
+    > **Keine Doppelung:** Die Rettung endet am Kompaktierungs-Zeitpunkt, der erzwungene Lauf soll aber die Arbeit
+    > seitdem einspeisen. Mit nur einer Quelle fehlt entweder die Tiefe (live ist gesampelt) oder die Aktualitaet (Rettung ist alt).
 - ⛔ **Der Agent MUSS die uebergebenen kanonischen Zahlen ZURUECKGEBEN (NEU v5.7.0).**
-  Zwei Fehlberichte sind belegt: „14 Topic-Dateien" bei uebergebenen **10**, und
+  Zwei Fehlberichte belegt: „14 Topic-Dateien" bei uebergebenen **10**, und
   „`stop.sh` und `session-start.sh` sourcen `lib.sh` nicht (0 von 2)" — gemessen sourct
-  `session-start.sh` sie sehr wohl. Beide klangen plausibel und waren falsch.
+  `session-start.sh` sie sehr wohl. Beide klangen plausibel.
   Deshalb endet jeder Agent-Prompt mit: *„Gib in der ersten Zeile die dir uebergebenen Zahlen
   woertlich zurueck."* Weicht die Rueckgabe ab, ist der ganze Agentenbericht **ungeprueft** —
-  nicht teilweise gueltig. Kostet eine Zeile und macht den Unterschied zwischen Hinweis und Beleg.
+  nicht teilweise gueltig. Eine Zeile Kosten, der Unterschied zwischen Hinweis und Beleg.
 - **Im Self-Check MUSS die Quelle stehen** (`Session-Quelle: gerettet+live <pfad>` bzw.
   `gerettet <pfad>` bzw. `live`) — sonst ist nicht erkennbar, ob der Sync auf dem vollen Chat,
   auf Resten oder auf beidem lief. **`gerettet` allein nach einer Kompaktierung ist ab v5.2.2
@@ -721,7 +646,7 @@ ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step
 trippt — v4.0.1). Stattdessen: **einzeln nacheinander**, ODER in 2 Wellen à 2 (Welle 1 =
 Agent 1+2 in einem Tool-Call, Welle 2 = Agent 3+4 im nächsten). Alle 4 laufen — nur nie 3-4 auf einmal.
 
-⛔ **`run_in_background: false` in JEDEM Agent-Aufruf (v5.94.0, Nutzer-/Anton-Entscheidung 11.09.2026).** Die Vorgabe des Agent-Werkzeugs ist HINTERGRUND: der `tool_result` ist dann nur das Ack „Async agent launched“ (1 151 B, nach 1–2 s), das Ergebnis kommt — wenn überhaupt — später als `<task-notification>`. Gemessen 10.09.2026 (`docs/plugin/rueckkanal-messung.md`): getrennte Tool-Calls serialisieren im Hintergrund NICHTS (vier Agenten gleichzeitig bei „sequenziellen“ Aufrufen), und **5 von 8** Ergebnissen kamen nie an. Mit `false` blockt der Aufruf bis zur Rückgabe, `RUECKGABE` IST der `tool_result`, und ein Nachliefern mitten im Fan-out ist mechanisch unmöglich. ⚠ Preis: die Sitzung wartet je Agent 60–130 s und ist solange nicht ansprechbar — Nachrichten kommen ohnehin erst am Turn-Ende an.
+⛔ **`run_in_background: false` in JEDEM Agent-Aufruf (v5.94.0, Nutzer-/Anton-Entscheidung 11.09.2026).** Vorgabe des Agent-Werkzeugs ist HINTERGRUND: der `tool_result` ist dann nur das Ack „Async agent launched“ (1 151 B, nach 1–2 s), das Ergebnis kommt — wenn überhaupt — später als `<task-notification>`. Gemessen 10.09.2026 (`docs/plugin/rueckkanal-messung.md`): getrennte Tool-Calls serialisieren im Hintergrund NICHTS (vier Agenten gleichzeitig), **5 von 8** Ergebnissen kamen nie an. Mit `false` blockt der Aufruf bis zur Rückgabe, `RUECKGABE` IST der `tool_result`, ein Nachliefern mitten im Fan-out ist mechanisch unmöglich. ⚠ Preis: die Sitzung wartet je Agent 60–130 s und ist solange nicht ansprechbar.
 
 ⭐ **Trifft der Agent sein Turn-Limit (`maxTurns`, 25 seit v5.147.0) VOR dem Bericht** (der `tool_result` endet ohne Ergebnis, der Agent lebt), ist die Fortsetzung `SendMessage {to: <agentId>, message: „Bericht jetzt liefern“}` — ⛔ **KEIN neuer `Agent`-Aufruf**, das wäre ein zweiter Agent gegen dieselbe Grenze (v5.96.0). Gemessen 12.09.2026 (Rita): zwei Agenten am Limit, beide lieferten nach der Nachricht vollständig. ⚠ Im Desktop-Reiter „Code“ ist `SendMessage` verzögert: erst `ToolSearch select:SendMessage`, dann ist es da.
 ⭐ **Erst damit misst die Grenze oben wieder etwas:** zwei Aufrufe in EINER Nachricht = zwei
@@ -743,21 +668,13 @@ Agent(subagent_type: "claude-mind-manager:context-analyzer", run_in_background: 
 ⛔ **In JEDEN der vier Aufträge gehört dieser Satz wörtlich (v5.138.0, beide Sätze):**
 > „Nenne zu JEDEM Zitat die Datei und die Zeilennummer, aus der du es gelesen hast. Was du ohne Fundstelle schreibst, kennzeichne als UNGEPRUEFT.“
 
-⭐ **Warum er wirkt — gemessen (Vera, Zustellplan 26.09.2026):** drei von vier
-Wissens-Sync-Agenten meldeten je einen Befund, der bei der Gegenprobe fiel (ein
-erfundenes Zitat mit 0 Grep-Treffern, zwei Pfade ab falscher Wurzel geglobt, ein
-„kommt nirgends vor" nach halbem Bestand) — **keiner mit Vorbehalt.** Der Agent, der
-den Satz bekam, stellte als einziger seine unsicheren Stellen selbst unter
+⭐ **Warum er wirkt — gemessen (Vera, Zustellplan 26.09.2026):** drei von vier Wissens-Sync-Agenten meldeten je einen Befund, der bei der Gegenprobe fiel (ein erfundenes Zitat mit 0 Grep-Treffern, zwei Pfade ab falscher Wurzel geglobt, ein „kommt nirgends vor" nach halbem Bestand) — **keiner mit Vorbehalt.** Der Agent, der den Satz bekam, stellte als einziger seine unsicheren Stellen selbst unter
 NICHT GEPRÜFT.
-⛔ **Er ist eine BITTE, kein Gate.** Nichts prüft die Fundstelle nachträglich (Stand
-v5.138.0) — und die halbe Forderung („nenne file:line") stand in
-`agents/context-analyzer.md` schon seit v4.1.0; gefangen hat Vera die drei Befunde durch
-das **Nachlesen jeder Zeilenangabe**, die Angaben waren also da.
+⛔ **Er ist eine BITTE, kein Gate.** Nichts prüft die Fundstelle nachträglich (Stand v5.138.0); die halbe Forderung („nenne file:line") stand in `agents/context-analyzer.md` seit v4.1.0. Vera fing die drei Befunde durch das **Nachlesen jeder Zeilenangabe**.
 **Eine Regel stellt das Wissen bereit, sie verhindert den Fehler
 nicht** (Anton, 29.09.2026). Wirksam war erst die Aufforderung, das Ungedeckte selbst
 zu KENNZEICHNEN.
-⚠ **Deckel: 0 B** — Skill- und Agent-Texte laden nicht im Startkontext, sie kommen mit
-dem Aufruf. Ausgewiesen wird es trotzdem, weil „kostet nichts" sonst niemand nachprüft.
+⚠ **Deckel: 0 B** — Skill- und Agent-Texte laden nicht im Startkontext, sondern mit dem Aufruf; ausgewiesen, weil „kostet nichts" sonst niemand nachprüft.
 
 **Skip-Logik pro Agent:**
 - Agent 4 (`custom-context`) skippen wenn `${#CUSTOM_CONTEXT_FILES[@]} == 0` (Plan EC4) — das ist die EINZIGE erlaubte Auslassung; die anderen 3 sind unbedingt Pflicht.
@@ -766,15 +683,14 @@ dem Aufruf. Ausgewiesen wird es trotzdem, weil „kostet nichts" sonst niemand n
   nur bei 0 Dateien, die Bilanz weist `UEBERSPRUNGEN: custom-context` aus und zieht es von
   ERWARTET ab. ⛔ **Ein `mind_agent_dispatch custom-context` bei 0 Dateien ist ab jetzt selbst
   ein Befund** (UNGEPRUEFT „dispatcht ohne Dateien") — gemessen 13.09.2026 in Palvedo: der
-  vierte Agent wurde vorgetaeuscht (Zahl in derselben Sekunde, dann eine 167-B-Handdatei),
+  vierte Agent wurde vorgetäuscht (Zahl in derselben Sekunde, dann eine 167-B-Handdatei),
   weil der Skill keinen anderen Weg zu „voll" liess.
 
 ### ⛔ Die Agentenzahl kommt aus dem Kontextstand, nicht aus dem Ermessen (NEU v5.19.0)
 
-**Der Anlass ist gemessen, dreimal an zwei Tagen:** bei 888k–914k Kontext wuerden vier
-Agents die Kompaktierung **mitten im Lauf** ausloesen. In allen drei Faellen wurde deshalb
-gekuerzt — und jedes Mal war das eine **stille Ermessensentscheidung**, die nirgends
-auftauchte. Der Creator-Lauf hat den Ausweg selbst benannt:
+**Anlass, dreimal an zwei Tagen gemessen:** bei 888k–914k Kontext würden vier
+Agents die Kompaktierung **mitten im Lauf** auslösen. Jedes Mal wurde deshalb gekürzt — als
+**stille Ermessensentscheidung**, die nirgends auftauchte. Der Creator-Lauf benannte den Ausweg selbst:
 
 > *„`mind-all` koennte den Kontextstand VOR dem Agent-Dispatch pruefen und die Zahl der
 > Agents daran anpassen, statt sie fest auf vier zu setzen — dann bleibt die Entscheidung
@@ -784,11 +700,8 @@ auftauchte. Der Creator-Lauf hat den Ausweg selbst benannt:
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step3.5-agentzahl.sh"
 ```
 
-⛔ **Hier stand bis v5.54.0 die Begruendung fuer einen halben Lauf** — *„das senkt
-den Anspruch nicht, es macht ihn ehrlich“*, und daneben die Vorschrift, was bei
-`AGENT_MAX=0` zu tun sei. **Beides ist gegenstandslos:** es gibt keinen halben Lauf mehr.
-Der Text bleibt als Historie stehen, weil er erklaert, warum die Schwelle ueberhaupt
-existiert — nicht als geltende Anweisung.
+⛔ **Hier stand bis v5.54.0 die Begründung für einen halben Lauf** — *„das senkt
+den Anspruch nicht, es macht ihn ehrlich“* — samt Vorschrift für `AGENT_MAX=0`. **Beides ist gegenstandslos:** es gibt keinen halben Lauf mehr; der Text bleibt als Historie stehen, weil er erklärt, warum die Schwelle existierte, keine geltende Anweisung.
 
 ⛔ **Was heute gilt (v5.64.0):** der Lauf faehrt **immer** und versucht **immer alle 4**
 Agents. Es gibt **keine Schwelle mehr**, an der er vorher aussteigt. Der grep-Rueckfall
@@ -807,13 +720,11 @@ das ist ein anderer Fall als „er wurde nie gestartet“.
 danebenliegen; die Quittung zaehlt, was wirklich zurueckkam. Ein Agent mit `bytes:0` war
 schon immer ein Teilsync, und `mind_sync_voll` sieht ihn.
 
-⛔ **Warum die Vorhersage weg musste — gemessen, nicht vermutet.** Der Tokenstand kam
-aus `mind_transkript_pfad`: **eine** Merkerdatei je Projekt fuer **mehrere** Sitzungen im
-selben Ordner, der Letzte gewinnt. In `APP - Palvedo` am 10.09.2026 lagen fuenf aktive
+⛔ **Warum die Vorhersage weg musste — gemessen.** Der Tokenstand kam
+aus `mind_transkript_pfad`: **eine** Merkerdatei je Projekt für **mehrere** Sitzungen, der Letzte gewinnt. In `APP - Palvedo` lagen am 10.09.2026 fünf aktive
 Transkripte nebeneinander (169 971 · 472 250 · 650 698 · **721 405** · 867 259); der
-Merker zeigte auf das vierte, waehrend die abgewiesene Sitzung bei **~130 000** stand.
-⚠ Der Kommentar in `lib.sh` nannte diesen Rest seit v5.38.0 selbst. Solange er eine
-Mahnung kostete, war er tragbar — als er den ganzen Lauf kostete, nicht mehr.
+Merker zeigte auf das vierte, die abgewiesene Sitzung stand bei **~130 000**.
+⚠ `lib.sh` nannte diesen Rest seit v5.38.0 selbst; tragbar, solange er eine Mahnung kostete, nicht mehr, als er den ganzen Lauf kostete.
 Nutzer-Entscheidung 10.09.2026: *„die sollen garnicht mehr tokens messen das soll
 komplett raus“*.
 
@@ -866,14 +777,13 @@ mind_agent_ergebnis "<bereich>" --datei "$PROJ/.claude-mind/agent-<bereich>.md" 
 
 ⛔ **Ein geschaetzter Bytewert ist die Fehlzahl, an der Lauf 14:50 (10.09.2026) als
 vollstaendig durchging:** `claude-md` hatte kein gelesenes Ergebnis, die Quittung trug
-`bytes:800`, die Bilanz sagte 4/4. Deshalb `--datei`: die Zahl ist die Groesse einer Datei,
-die es gibt, oder 0. Die Zahlform `mind_agent_ergebnis <bereich> <n>` bleibt fuer
-Prueffaelle erlaubt und traegt `quelle:zahl` — im Lauf hat sie nichts zu suchen.
+`bytes:800`, die Bilanz sagte 4/4. Deshalb `--datei`: die Zahl ist die Groesse einer vorhandenen
+Datei, oder 0. Die Zahlform `mind_agent_ergebnis <bereich> <n>` bleibt fuer Prueffaelle erlaubt
+und traegt `quelle:zahl` — im Lauf nicht.
 
-⛔ **Der Anleger sass bis v5.18.0 AUSSCHLIESSLICH hier — also in genau dem Schritt,
-den ein Lauf bei hohem Kontext auslaesst.** Fiel Step 3.5 aus, entstand keine Quittung,
-und ihr **Fehlen war von ihrem Schweigen nicht zu unterscheiden**. Dreimal gemessen
-(23.08. + 24.08. Claude Mind Manager, 24.08. Creator mit 2 von 4 Agents). Seit v5.19.0
+⛔ **Der Anleger sass bis v5.18.0 AUSSCHLIESSLICH hier — im Schritt, den ein Lauf bei hohem Kontext auslaesst.**
+Fiel Step 3.5 aus, entstand keine Quittung, und ihr **Fehlen war von ihrem Schweigen nicht zu
+unterscheiden**. Dreimal gemessen (23.08. + 24.08. Claude Mind Manager, 24.08. Creator mit 2 von 4 Agents). Seit v5.19.0
 legt `mind-all` Step 0 sie an, bevor die Kette startet.
 
 **Der `dispatch`-Eintrag steht VOR dem Start.** Das ist der ganze Punkt: ein Agent, der
@@ -881,10 +791,9 @@ stirbt, hinterlaesst dann einen Merker, den nur er selbst aufloesen kann. Wer er
 Rueckkehr protokolliert, protokolliert **nur die Ueberlebenden**.
 
 ⛔ **Ein Agent, der stirbt, und ein Agent, der nichts findet, sehen im Bericht identisch
-aus.** Das sind die Debug-Klassen `agent-gestorben` (4×) und `agent-fehlbericht` (6×) —
-zusammen 10 Vorkommen. Der Umgang damit stand bisher als **Prosa** („den Bereich als
-UNGEPRUEFT in den Bericht schreiben"), und Prosa hat es nicht verhindert: am 23.08.2026
-wurden die Agents **gar nicht erst losgeschickt**, und der Lauf lief durch.
+aus** (Debug-Klassen `agent-gestorben` 4× und `agent-fehlbericht` 6×, zusammen 10 Vorkommen). Der Umgang stand als **Prosa**
+(„den Bereich als UNGEPRUEFT in den Bericht schreiben"), und Prosa hat es nicht verhindert: am 23.08.2026
+wurden die Agents **gar nicht erst losgeschickt**, der Lauf lief durch.
 
 ⚠ **`0 Byte` ist ein `ergebnis`-Eintrag, kein fehlender.** „Leer zurueckgekommen" und „nie
 zurueckgekommen" sind verschiedene Befunde und werden getrennt gezaehlt.
@@ -1054,12 +963,10 @@ For each fix, log what was changed (file, line, before/after).
 
 ## Step 5: ⭐ VERDICHTEN — nach der Vorschrift, nicht nach Gefühl (v5.90.0, ersetzt „Lossless Compression“)
 
-⛔ **Hier stand bis v5.89.0 „Lossless Compression“: Zeilen von Hand kürzen, „only where meaning is
-100% preserved“ — ohne Gate, ohne Zählung, ohne Leser.** Genau das, was drei echte Läufe als
-unsicher gemessen haben (`docs/plugin/verdichten-kalibrierung.md`: drei Verfälschungen bei 100 %
+⛔ **Hier stand bis v5.89.0 „Lossless Compression“:** Zeilen von Hand kürzen, „only where meaning is
+100% preserved“ — ohne Gate, Zählung, Leser. Drei echte Läufe massen das als unsicher (`docs/plugin/verdichten-kalibrierung.md`: drei Verfälschungen bei 100 %
 Stufe 1). Der Schritt bleibt, sein Verfahren ist ersetzt. Vierter Träger nach `mind-rules`,
-`mind-claudemd`, `mind-memory`; `mind-update` fährt nach jeder Kompaktierung und ist damit der
-häufigste.
+`mind-claudemd`, `mind-memory`; `mind-update` fährt nach jeder Kompaktierung und ist der häufigste.
 
 **Die vollständige Vorschrift — Agent, Kasten, Gate, Stufe 3, Bericht — steht in
 [references/bestands-pass.md](../../references/bestands-pass.md), Abschnitt „VERDICHTEN“.
@@ -1123,10 +1030,7 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_einordnung.py" --wohin "$PROJ/CLA
 ## ⛔ D1 — die neunte Frage: WOHIN gehoert diese Aussage?
 
 **Die Pruefliste oben prueft, OB etwas hinein darf; B4 fragt nur, wie OFT es gebraucht wird. WOHIN genau, sagt D1.**
-B3 prueft, ob eine Aussage am **schon gewaehlten** Ort wirkt — es kann zustimmen
-oder ablehnen, nicht umleiten. Ein Tuersteher, kein Wegweiser. Wer durchkommt,
-landet dort, wo der Schreiber gerade steht, und das ist fast immer eine
-immer-ladende Datei.
+B3 prueft nur den **schon gewaehlten** Ort (zustimmen oder ablehnen, nicht umleiten) — ein Tuersteher, kein Wegweiser. Wer durchkommt, landet fast immer in einer immer-ladenden Datei.
 
 | Klasse | wann man es braucht | Ort |
 |---|---|---|
@@ -1144,10 +1048,7 @@ Zelle zu raten ist verboten: eine geratene Zuordnung wird spaeter zitiert.
 ⭐ **Der haeufigste echte Fall ist TEILBAR** — ein Absatz mit einer Bremse UND
 ihrem Beleg. Dann geht der Beleg ins Archiv und die Bremse bleibt.
 
-⚠ **Bekannte Schwaeche, nicht verschwiegen:** „wann brauche ich es" ist eine
-Aussage ueber den **Leser**. Gemessen 07.09.2026 brauchte der Manager `hooks.md`
-8x und `architecture.md` 7x — Dateien, die nach der Rollentabelle dem Arbeiter
-gehoeren. Ob das mechanisch entscheidbar ist, ist **UNGEMESSEN**.
+⚠ **Bekannte Schwaeche, nicht verschwiegen:** „wann brauche ich es" ist eine Aussage ueber den **Leser**. Gemessen 07.09.2026 brauchte der Manager `hooks.md` 8x und `architecture.md` 7x — Dateien des Arbeiters laut Rollentabelle. Mechanisch entscheidbar? **UNGEMESSEN**.
 
 ⛔ **Die Quittung wird um `D1` erweitert** — sonst ist nicht unterscheidbar, ob D1
 lief und nichts fand oder gar nicht lief:
@@ -1183,10 +1084,10 @@ kann das weg, steht das schon woanders."*
 
 Gemessen: der **immer geladene** Kontext wuchs an EINEM Tag um **+21 %** auf 2 601 Zeilen
 und 138 Anweisungen — bei einer Schwelle von ~400 Zeilen und ~100–150 Anweisungen.
-`/mind-all` trägt nach, **niemand sieht zurück**. Dieser Schritt sieht zurück.
+`/mind-all` trägt nach, **niemand sieht zurück**; dieser Schritt schon.
 
 ⛔ **Er MELDET. Er schneidet nicht, verschiebt nicht, löscht nicht.** Handeln bleibt
-`/mind-cleaner`, dessen Nicht-Autonomie (Nutzer-Entscheidung 24.08.2026) unberührt bleibt.
+`/mind-cleaner` (seit v5.159.0 autonom, Nutzer 29.10.2026 — mit Snapshot, Gates und Stopp am ersten Bruch).
 
 **Die vollständige Vorschrift steht in
 [references/bestands-pass.md](../../references/bestands-pass.md)** — Bilanz, Stichprobe, die
@@ -1240,7 +1141,7 @@ gemeldet und der Skill **läuft weiter**. Ein Bestands-Pass darf nie einen Sync 
 
 ### ⛔ Pflichtschritt `mind_agent_bilanz` — der Aufruf (NEU v5.146.0, Etappe 56 §3)
 
-Bis v5.145.0 stand dieser Schritt im Pflichtkasten und in der Startzeile, aber **nirgends als Aufruf** — erwartet, nie gelaufen. So entstand Noras `FEHLT: mind-rules/cleaner_duplikate` (Palvedo, 20.09.2026), und so wurden Schritte von Hand nachgeholt. Ihre Ausgabe ist die Zeile `Agent-Quittung:` im Self-Check-Block unten.
+Bis v5.145.0 stand dieser Schritt im Pflichtkasten und in der Startzeile, aber **nirgends als Aufruf** — erwartet, nie gelaufen (Noras `FEHLT: mind-rules/cleaner_duplikate`, Palvedo, 20.09.2026; Schritte wurden von Hand nachgeholt). Ihre Ausgabe ist die Zeile `Agent-Quittung:` im Self-Check-Block unten.
 
 ```bash
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/agent-bilanz.sh"
@@ -1405,13 +1306,10 @@ mind_sampler_aufraeumen "$PROJ"    # loescht .claude-mind/sampler/*.<sid>.*
 
 ### Agent-Parallelitaets-Limit (verschaerft v4.0.1 — Anti-Burst)
 
-- **NIE ≥3 context-analyzer gleichzeitig.** Die 4 Step-3.5-Agents laufen SEQUENZIELL bzw.
-  in 2 Wellen à 2 (max 2 pro Tool-Call). Grund: ein Burst aus ≥3 gleichzeitigen Agents trippt
-  Anthropics **server-seitiges Rate-Limit** ("Server is temporarily limiting requests — not your
-  usage limit", 429/529) → ALLE scheitern, 0 Ergebnisse. 3× real gemessen (2026-06-15/29 +
-  2026-07-04, schon 3 gleichzeitig reichten). **Gilt auch unter Ultracode** (stehende User-Regel,
-  siehe globale Rule `workflow-agent-rate-limit.md`). **Alle 4 Bereiche bleiben Pflicht** — nur
-  gestaffelt, nicht als Burst. (Frueher stand hier faelschlich "MAX 4 parallel" — das war genau
+- **NIE ≥3 context-analyzer gleichzeitig** (Begründung und Messungen: Step 3.5, Anti-Burst). Die 4 Step-3.5-Agents laufen SEQUENZIELL bzw.
+  in 2 Wellen à 2 (max 2 pro Tool-Call); **gilt auch unter Ultracode** (stehende User-Regel,
+  siehe globale Rule `workflow-agent-rate-limit.md`). **Alle 4 Bereiche bleiben Pflicht**, nur
+  gestaffelt. (Früher stand hier fälschlich "MAX 4 parallel" — genau
   der brechende Burst.)
 - Skills duerfen NICHT andere Skills dispatchen die ihrerseits Agents starten.
 - **Parallel-Bash-Limit (NEU v3.2.2):** Skill startet MAX 2 Bash-Tools parallel,

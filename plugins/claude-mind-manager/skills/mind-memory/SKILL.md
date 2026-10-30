@@ -43,7 +43,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.160.0"
+MIND_SKILL_VERSION="5.161.0"
 mind_schritt_start "$PROJ" mind-memory bestandszahlen_kandidaten cleaner_stichprobe cleaner_tor mind_debug_write mind_kontext_bilanz mind_scan_poisoning mind_snapshot verdichten
 ```
 
@@ -67,42 +67,21 @@ mind_schritt verdichten gelaufen --datei "$PROJ/.claude-mind/verdichten-<skill>.
 mind_schritt verdichten "uebersprungen:kein-kandidat" 0 "$PROJ"   # schweigen = FEHLT
 ```
 
-⛔ **`uebersprungen` ist ein gueltiger Status und braucht einen GRUND.** Ein Schritt,
-der legitim entfaellt (kein Git, kein Quellbaum), ist kein Fehler — aber
-sein Entfallen gehoert in den Bericht statt zu verschwinden.
+⛔ **`uebersprungen` ist ein gueltiger Status und braucht einen GRUND.** Ein legitim entfallender Schritt (kein Git, kein Quellbaum) ist kein Fehler, gehoert aber in den Bericht.
 
-⛔ **v5.67.0: EINEN PFLICHTSCHRITT AUSZULASSEN, WEIL ER TEUER AUSSIEHT, IST VERBOTEN.**
-Nutzer-Auftrag 10.09.2026: *„die sollen alles fahren"*. ⭐ Die Trennlinie:
-
+⛔ **v5.67.0: EINEN PFLICHTSCHRITT AUSZULASSEN, WEIL ER TEUER AUSSIEHT, IST VERBOTEN.** Nutzer-Auftrag 10.09.2026: *„die sollen alles fahren"*. ⭐ Die Trennlinie:
 | | |
 |---|---|
 | ⛔ **verboten** | gar nicht **starten**, aus Ruecksicht auf Kontext, Zeit oder Kosten |
 | ✅ **erlaubt** | starten und **scheitern lassen** — `bytes:0` faengt die Bilanz |
 
-Ein gestarteter Agent, der stirbt, ist ein **Befund**. Ein nie gestarteter ist eine
-**Luecke, die wie ein Ergebnis aussieht**. ⚠ „Ressourcengrund" ist deshalb **kein**
-zulaessiger `uebersprungen:`-Grund — er stand in keinem Skill und ist beim Lauf
-entstanden. Seit v5.67.0 macht eine Teilabdeckung den Lauf zum **Teilsync**: die
-Schuld bleibt liegen, bis wirklich alles gefahren ist.
+Ein gestarteter, sterbender Agent ist ein **Befund**; ein nie gestarteter eine **Luecke, die wie ein Ergebnis aussieht**. ⚠ „Ressourcengrund" ist **kein** zulaessiger `uebersprungen:`-Grund (entstand beim Lauf, stand in keinem Skill). Seit v5.67.0 macht Teilabdeckung den Lauf zum **Teilsync**: die Schuld bleibt liegen, bis alles gefahren ist.
 
-⭐ **`gelaufen:5/11` ist die TEILABDECKUNG und der Anlass dieses Baus.** Am 30.08.2026
-lief `cleaner_leitplanke.py` ueber 5 von 11 Dateien und wurde als **Bereichspruefung**
-berichtet. Der Fehler war nicht ein fehlender Aufruf, sondern ein gelaufener, der
-weniger abdeckte als der Bericht behauptete. `5/11` ist eine gueltige Antwort;
-sie als `11/11` zu berichten ist es nicht.
-⚠ **`X/Y` mit X=Y (`1/1`) zaehlt seit v5.113.0 als voll** — vollstaendig heisst trotzdem
-`gelaufen`, nicht `1/1` (Noras Lauf 11, 16.09.2026). ⛔ **Nachquittieren geht nur im SELBEN
-Block:** die Bilanz nimmt den letzten Eintrag je Block×Name; ein Nachtrag in einem spaeteren
-Block heilt nichts — den Block erneut fahren (mind-all 2.96a-R).
-⛔ **Eine geloeschte oder leere Schritt-Quittung wird nicht nachgetippt — der Block wird neu
-gefahren** (v5.116.0, Doros Creator-Lauf 16.09.2026: 39 Schritte in 5 s nachgetippt, Bilanz 39/39).
-Die Bilanz erkennt getippte Bloecke (Starts < `MIND_SCHRITT_MIN_S` = 60 s auseinander, >= 5 Schritte
-in 10 s) als FORMAL, der Lauf ist teil.
+⭐ **`gelaufen:5/11` ist die TEILABDECKUNG.** Am 30.08.2026 lief `cleaner_leitplanke.py` ueber 5 von 11 Dateien und wurde als **Bereichspruefung** berichtet: ein gelaufener Aufruf, der weniger abdeckte als berichtet. `5/11` ist gueltig; als `11/11` berichtet nicht.
+⚠ **`X/Y` mit X=Y (`1/1`) zaehlt seit v5.113.0 als voll** — vollstaendig heisst trotzdem `gelaufen` (Noras Lauf 11, 16.09.2026). ⛔ **Nachquittieren nur im SELBEN Block:** die Bilanz nimmt den letzten Eintrag je Block×Name; ein Nachtrag in einem spaeteren Block heilt nichts — Block erneut fahren (mind-all 2.96a-R).
+⛔ **Eine geloeschte oder leere Schritt-Quittung wird nicht nachgetippt — der Block wird neu gefahren** (v5.116.0, Doro 16.09.2026: 39 Schritte in 5 s nachgetippt, Bilanz 39/39). Getippte Bloecke (Starts < `MIND_SCHRITT_MIN_S` = 60 s auseinander, >= 5 Schritte in 10 s) gelten als FORMAL, der Lauf ist teil.
 
-⛔ **Die Bytezahl ist Pflicht, wo ein Schritt etwas ausgeben MUSS.** Am selben Tag
-lief `cleaner_belege.py` und seine Ausgabe wurde weggegreppt — aus Sicht einer
-naiven Quittung waere das „gelaufen". `0` meldet die Bilanz als **LEER**; `-1`
-heisst „nicht gemessen" und zaehlt nicht.
+⛔ **Die Bytezahl ist Pflicht, wo ein Schritt etwas ausgeben MUSS.** Am 30.08.2026 lief `cleaner_belege.py`, die Ausgabe wurde weggegreppt — eine naive Quittung haette „gelaufen" gesagt. `0` meldet die Bilanz als **LEER**; `-1` = „nicht gemessen", zaehlt nicht.
 
 **Im Bericht, als erste Zeile des Self-Checks:**
 
@@ -110,13 +89,9 @@ heisst „nicht gemessen" und zaehlt nicht.
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/01-pflichtschritte-dieser.sh"
 ```
 
-⛔ **Fehlt diese Zeile oder nennt sie `FEHLT`, ist der Bericht unvollstaendig** und
-darf zurueckgewiesen werden. Rueckgabe **2 heisst: gar keine Quittung** — der Lauf
-hat nie begonnen zu quittieren, und das ist NICHT „nichts zu melden".
+⛔ **Fehlt diese Zeile oder nennt sie `FEHLT`, ist der Bericht unvollstaendig** und darf zurueckgewiesen werden. Rueckgabe **2 = gar keine Quittung**: der Lauf hat nie begonnen zu quittieren, NICHT „nichts zu melden".
 
-⚠ **Was die Quittung nicht kann:** sie erzwingt keinen Schritt, sie macht sein Fehlen
-sichtbar — wie `decision:block` und die Agent-Quittung. Und sie misst nicht die GUETE:
-ein Werkzeug, das laeuft und Unsinn liefert, quittiert als `gelaufen`.
+⚠ **Was die Quittung nicht kann:** sie erzwingt keinen Schritt, sie macht sein Fehlen sichtbar (wie `decision:block` und die Agent-Quittung), und sie misst nicht die GUETE — ein laufendes Werkzeug mit Unsinn quittiert `gelaufen`.
 
 Lokalisieren -> Auditieren -> **autonom anwenden** (bzw. Freigabe bei `--ask`) -> Bericht.
 
@@ -162,57 +137,39 @@ Read these reference files for quality criteria and budget data:
 
 ## Step 3: Dispatch context-analyzer Agent (directive, v3.3.2)
 
-**Identitaet:** Dieser Skill dispatcht IMMER context-analyzer fuer den semantischen Teil
-(exakte + semantische Duplikate, fehlplatzierte Inhalte). Dafuer gibt es **keinen
-Inline-Ersatz** — die deterministischen Inline-Checks (Step 4) decken nur Budget/
-Cross-File-Exakt-Duplikate/Stale-Pfade ab, NICHT die semantische Deduplizierung.
-Der Agent ist der einzige Weg dorthin.
+**Identitaet:** Dieser Skill dispatcht IMMER context-analyzer fuer den semantischen Teil (Duplikate, fehlplatzierte Inhalte). Es gibt dafuer **keinen Inline-Ersatz** — die Inline-Checks (Step 4) decken nur Budget/Cross-File-Exakt-Duplikate/Stale-Pfade ab.
 
 Launch **context-analyzer** with scope=memory — **`run_in_background: false`**:
 "Analyze all memory files in this project. Scope: memory. Report duplicates (exact and semantic), stale entries, budget issues, misplaced content, and optimization suggestions. Nenne zu JEDEM Zitat die Datei und die Zeilennummer, aus der du es gelesen hast. Was du ohne Fundstelle schreibst, kennzeichne als UNGEPRUEFT."
-⛔ **Der zweite Satz ist Pflicht, nicht Zierde** (v5.138.0, Veras Fund 26.09.2026: drei
-von vier Agenten meldeten Nichtbelegtes, keiner mit Vorbehalt). ⚠ Eine Bitte, kein Gate.
+⛔ **Der zweite Satz ist Pflicht** (v5.138.0, Veras Fund 26.09.2026: drei von vier Agenten meldeten Nichtbelegtes ohne Vorbehalt). ⚠ Eine Bitte, kein Gate.
 
-⛔ **`run_in_background: false` in JEDEM Agent-Aufruf (v5.94.0, Nutzer-/Anton-Entscheidung 11.09.2026).** Die Vorgabe des Agent-Werkzeugs ist HINTERGRUND: der `tool_result` ist dann nur das Ack „Async agent launched“ (1 151 B, nach 1–2 s), das Ergebnis kommt — wenn überhaupt — später als `<task-notification>`. Gemessen 10.09.2026 (`docs/plugin/rueckkanal-messung.md`): getrennte Tool-Calls serialisieren im Hintergrund NICHTS (vier Agenten gleichzeitig bei „sequenziellen“ Aufrufen), und **5 von 8** Ergebnissen kamen nie an. Mit `false` blockt der Aufruf bis zur Rückgabe, `RUECKGABE` IST der `tool_result`, und ein Nachliefern mitten im Fan-out ist mechanisch unmöglich. ⚠ Preis: die Sitzung wartet je Agent 60–130 s und ist solange nicht ansprechbar — Nachrichten kommen ohnehin erst am Turn-Ende an.
+⛔ **`run_in_background: false` in JEDEM Agent-Aufruf (v5.94.0, 11.09.2026).** Vorgabe ist HINTERGRUND: der `tool_result` ist dann nur das Ack „Async agent launched" (1 151 B), das Ergebnis kommt spaeter als `<task-notification>`. Gemessen 10.09.2026 (`docs/plugin/rueckkanal-messung.md`): getrennte Tool-Calls serialisieren im Hintergrund NICHTS, und **5 von 8** Ergebnissen kamen nie an. Mit `false` blockt der Aufruf, `RUECKGABE` IST der `tool_result`. ⚠ Preis: die Sitzung wartet je Agent 60–130 s.
 
-⭐ **Trifft der Agent sein Turn-Limit (`maxTurns`, 25 seit v5.147.0) VOR dem Bericht** (der `tool_result` endet ohne Ergebnis, der Agent lebt), ist die Fortsetzung `SendMessage {to: <agentId>, message: „Bericht jetzt liefern“}` — ⛔ **KEIN neuer `Agent`-Aufruf**, das wäre ein zweiter Agent gegen dieselbe Grenze (v5.96.0). Gemessen 12.09.2026 (Rita): zwei Agenten am Limit, beide lieferten nach der Nachricht vollständig. ⚠ Im Desktop-Reiter „Code“ ist `SendMessage` verzögert: erst `ToolSearch select:SendMessage`, dann ist es da.
+⭐ **Trifft der Agent sein Turn-Limit (`maxTurns`, 25 seit v5.147.0) VOR dem Bericht** (`tool_result` ohne Ergebnis, Agent lebt): `SendMessage {to: <agentId>, message: „Bericht jetzt liefern"}` — ⛔ **KEIN neuer `Agent`-Aufruf** (zweiter Agent gegen dieselbe Grenze, v5.96.0). Gemessen 12.09.2026 (Rita): zwei Agenten am Limit lieferten nach der Nachricht vollstaendig. ⚠ Im Desktop-Reiter „Code" ist `SendMessage` verzoegert: erst `ToolSearch select:SendMessage`.
 
 ## Step 4: Deterministische Inline-Checks (ergaenzend, NICHT statt Agent)
 
-Nach der Rueckkehr des Agenten (er blockt — v5.94.0; bis dahin hiess es hier *„While the
-agent runs"*, und das war die Hintergrund-Annahme) diese Checks direkt fahren:
+Nach der Rueckkehr des Agenten (er blockt — v5.94.0) diese Checks direkt fahren:
 
 ---
 
 ### 4.0 SICHTBARKEIT — der wichtigste Check (NEU v6)
 
-⛔ **Der Abruf waehlt pro Anfrage hoechstens FUENF Topic-Dateien aus** — ueber eine
-Sonnet-Seitenabfrage, anhand von **Dateiname und `description`**, NICHT anhand des Inhalts.
-Alles darueber ist pro Turn unerreichbar, egal wie relevant.
+⛔ **Der Abruf waehlt pro Anfrage hoechstens FUENF Topic-Dateien** — per Sonnet-Seitenabfrage, anhand von **Dateiname und `description`**, NICHT des Inhalts. Alles darueber ist pro Turn unerreichbar.
 
 ```bash
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/04-sichtbarkeit-der.sh"
 ```
 
-⚠ **`MEMORY.md` zaehlt NICHT mit** — der Index wird ohnehin immer geladen und steht nicht zur
-Auswahl. Wer ihn mitzaehlt, meldet eine Datei zu viel.
+⚠ **`MEMORY.md` zaehlt NICHT mit** — der Index laedt immer und steht nicht zur Auswahl; mitgezaehlt meldet man eine Datei zu viel.
 
-✅ **Die Zahl 5 ist am installierten Binaerprogramm VERIFIZIERT** (Claude Code 2.1.237,
-21.08.2026). Der Anweisungstext des Auswaehlers steht dort woertlich, direkt daneben sein
-Modell (`claude-opus-5`): *„Return a list of filenames for the memories that will clearly be
+✅ **Die Zahl 5 ist am installierten Binaerprogramm VERIFIZIERT** (Claude Code 2.1.237, 21.08.2026): der Anweisungstext des Auswaehlers steht dort woertlich, daneben sein Modell (`claude-opus-5`): *„Return a list of filenames for the memories that will clearly be
 useful … **(up to 5)**. Only include memories that you are certain will be helpful **based on
-their name and description**."* Der Regler `MIND_MEMORY_VISIBILITY_LIMIT` bleibt, falls sich
-die Zahl in einer kuenftigen Version aendert. **Nachpruefbar mit `/context`** — dort steht
-unter „Memory files", welche Dateien wirklich geladen wurden.
+their name and description**."* Der Regler `MIND_MEMORY_VISIBILITY_LIMIT` bleibt fuer kuenftige Aenderungen. **Nachpruefbar mit `/context`** (Abschnitt „Memory files").
 
-⚠ **Die Grenze gilt PRO ANFRAGE, nicht pro Sitzung.** Derselbe Anweisungstext sagt: *„Do not
-re-select memories you already returned for an earlier query in this conversation."* Ueber ein
-langes Gespraech sammelt sich die Abdeckung also an. Die Rechnung „40 Dateien, Grenze 5, also
-88 % unerreichbar" ist fuer den einzelnen Prompt richtig und fuer den Tag falsch — **der
-Bericht muss das dazusagen**, sonst treibt er zu einer Verdichtung, die niemand braucht.
+⚠ **Die Grenze gilt PRO ANFRAGE, nicht pro Sitzung.** Derselbe Text sagt: *„Do not re-select memories you already returned for an earlier query in this conversation."* Die Abdeckung sammelt sich ueber ein Gespraech an. „40 Dateien, Grenze 5, also 88 % unerreichbar" gilt fuer den Prompt, nicht den Tag — **der Bericht muss das dazusagen**, sonst treibt er zu unnoetiger Verdichtung.
 
-**Schwellen fuer die Dateizahl** (bis v5.9.3 gab es dafuer gar keine — deshalb wuchs der
-Bestand ungebremst):
+**Schwellen fuer die Dateizahl** (bis v5.9.3 gab es keine — der Bestand wuchs ungebremst):
 
 | Anzahl Topic-Dateien | Stufe | Was der Skill tut |
 |---|---|---|
@@ -221,25 +178,18 @@ Bestand ungebremst):
 | bis 6x`LIMIT` (30) | Warnung | Zusammenfuehrungs-Gruppen **vorschlagen** |
 | ueber 6x`LIMIT` (30) | kritisch | Zusammenfuehren **anwenden**, Gates aus 4.0c, max 5 je Lauf |
 
-⛔ **Sichtbarkeit ist notwendig, nicht hinreichend.** GitHub-Issue #37586: eine Erinnerung war
-geladen und trotzdem wirkungslos — Memory ist *„context, not enforced configuration"*. Fuer
-erzwingbares Verhalten braucht es `PreToolUse`-Hooks. **Der Bericht darf keine Garantie
-behaupten, die es nicht gibt.**
+⛔ **Sichtbarkeit ist notwendig, nicht hinreichend.** GitHub-Issue #37586: eine geladene Erinnerung blieb wirkungslos — Memory ist *„context, not enforced configuration"*. Erzwingen braucht `PreToolUse`-Hooks. **Der Bericht darf keine Garantie behaupten, die es nicht gibt.**
 
 ### 4.0b `description`-Qualitaet — der einzige Hebel auf Sichtbarkeit
 
-⛔ **Zwei Klassen trennen (NEU v5.7.1, gemeldet aus dem Zustellplan-Lauf).** Bis dahin wurde
-eine Datei **ganz ohne Frontmatter** einfach als „ohne `description`" gezaehlt. Das ist der
-schwerere Fall und gehoert getrennt ausgewiesen:
+⛔ **Zwei Klassen trennen (NEU v5.7.1, Zustellplan-Lauf).** Bis dahin zaehlte eine Datei **ganz ohne Frontmatter** als „ohne `description`" — der schwerere Fall, getrennt auszuweisen:
 
 | Fall | Folge |
 |---|---|
 | `description` fehlt, Frontmatter vorhanden | schwaches Signal fuer den Auswaehler |
 | **gar kein Frontmatter** | die Datei zaehlt **voll gegen das Byte-Budget** — nichts wird abgeschnitten, und der Auswaehler hat ueberhaupt kein Signal |
 
-**Im Bericht beide Zahlen getrennt nennen.** Eine Summe verdeckt, dass der zweite Fall teurer
-ist. ⚠ Nicht mit einem **offenen** Frontmatter verwechseln (erste Zeile `---`, keine zweite) —
-das ist wieder ein anderer Fall und gehoert zu `mind-rules`.
+**Im Bericht beide Zahlen getrennt nennen** — eine Summe verdeckt den teureren zweiten Fall. ⚠ Nicht mit einem **offenen** Frontmatter verwechseln (erste Zeile `---`, keine zweite) — das gehoert zu `mind-rules`.
 
 | Pruefung | Schwelle | Klasse |
 |---|---|---|
@@ -257,8 +207,7 @@ ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/05-d
 
 ## ⛔ ZIEL 3 (v5.39.0): eine Topic-Datei ist NICHT das einzige Ziel
 
-**Nutzer-Entscheidung 07.09.2026.** Bis v5.38.0 kannte dieser Skill genau EIN Auslager-Ziel:
-eine weitere Topic-Datei. Das ist oft das **schlechteste** der drei.
+**Nutzer-Entscheidung 07.09.2026.** Bis v5.38.0 kannte der Skill nur EIN Auslager-Ziel: eine weitere Topic-Datei — oft das **schlechteste** der drei.
 
 | Ziel | was davon dauerhaft geladen wird | Deckel |
 |---|---|---|
@@ -266,9 +215,7 @@ eine weitere Topic-Datei. Das ist oft das **schlechteste** der drei.
 | **Command** (`~/.claude/skills/<name>/`) | nur die `description` | keiner — auf Abruf, **Volltext vollstaendig** |
 | **`docs/` im Projekt** | **nichts** | keiner — erreichbar nur ueber einen Zeiger |
 
-⭐ **Gemessen am eigenen Bestand, 07.09.2026:** 5 Commands halten **90 508 B** Volltext
-bereit und kosten dauerhaft **5 116 B** — 5,7 %. Dieselbe Textmenge in `.claude/rules/`
-kostet **91 879 B**, also das **18-fache**.
+⭐ **Gemessen 07.09.2026:** 5 Commands halten **90 508 B** Volltext bereit und kosten dauerhaft **5 116 B** — 5,7 %. Dieselbe Textmenge in `.claude/rules/` kostet **91 879 B**, das **18-fache**.
 
 **Die Wahl trifft die Frage, WANN es gebraucht wird** (`PLAN-wohin-gehoert-es.md`):
 
@@ -278,42 +225,27 @@ ANLEITUNG  waehrend der Arbeit          -> Command  + Doppelzeiger
 BELEG      nur zum Nachweis             -> docs/    + Doppelzeiger
 ```
 
-⛔ **Jeder Auslager-Vorschlag nennt BEIDE Zeiger** — die Bauform stammt vom Nutzer und
-steht fuenfmal in seinen globalen Regeln:
+⛔ **Jeder Auslager-Vorschlag nennt BEIDE Zeiger** (Bauform vom Nutzer, fuenfmal in seinen globalen Regeln):
 
 ```
 > Alles Weitere steht im Command `/name`.
 > Wird er nicht angeboten: `~/.claude/skills/<name>/SKILL.md` direkt lesen.
 ```
 
-Gemessen: Pfad **4 von 4** gefolgt, Command **20 %** ohne Hook. Der Pfad ist zuverlaessig
-und unbequem, der Command bequem und unzuverlaessig — **erst beide zusammen tragen.**
-`cleaner_umzug.py` prueft das seit v5.39.0 als **Gate**, nicht mehr als Hinweis.
+Gemessen: Pfad **4 von 4** gefolgt, Command **20 %** ohne Hook — der Pfad zuverlaessig und unbequem, der Command bequem und unzuverlaessig: **erst beide zusammen tragen.** `cleaner_umzug.py` prueft das seit v5.39.0 als **Gate**.
 
-⚠ **`docs/` ist der Ort JE PROJEKT** (Nutzer-Entscheidung 07.09.2026), nicht ein
-gemeinsamer. Die konkurrierenden Namen `knowledge/` und `Wissen/` meinten dasselbe und
-sind am 07.09.2026 zusammengefuehrt worden — **ein Ort, ein Name.**
-⚠ In FREMDEN Projekten koennen weiterhin alle drei Namen vorkommen; `cleaner_audit.py`
-nennt sie ausdruecklich. Dort wird gelesen, nicht umbenannt.
+⚠ **`docs/` ist der Ort JE PROJEKT** (Nutzer-Entscheidung 07.09.2026); `knowledge/` und `Wissen/` meinten dasselbe und wurden am 07.09.2026 zusammengefuehrt — **ein Ort, ein Name.**
+⚠ In FREMDEN Projekten koennen alle drei Namen vorkommen; `cleaner_audit.py` nennt sie. Dort wird gelesen, nicht umbenannt.
 
 ---
 
-⛔ **Folge fuer den Fix-Typ „Offload to topic file":** Auslagern **erhoeht** die Dateizahl.
-Liegt der Bestand ueber dem Limit, muss der Vorschlag die **neue `description` mitliefern** —
-sonst verschiebt er Inhalt in die Unsichtbarkeit. Oberhalb des Limits ist **Zusammenfuehren**
-oft besser.
+⛔ **Folge fuer „Offload to topic file":** Auslagern **erhoeht** die Dateizahl. Ueber dem Limit muss der Vorschlag die **neue `description` mitliefern** — sonst verschiebt er Inhalt in die Unsichtbarkeit. Oberhalb des Limits ist **Zusammenfuehren** oft besser.
 
-✅ **Seit v5.10.0 fuehrt der Skill autonom zusammen** (Nutzer-Entscheidung 21.08.2026),
-gegen die vier Gates in 4.0c. Bis dahin galt „nur Vorschlag" — und das Ergebnis war eine
-**Einbahnstrasse**: gemessen im Zustellplan **40 Topic-Dateien bei gruenem Budget**
-(MEMORY.md 66/200 Zeilen, 16,9 KB/25 KB). Weil MEMORY.md gesund war, entstand nirgends
-Druck; der einzige Hebel, der die Dateizahl bewegte, war `Offload` — **und der erhoeht
-sie**. Jeder Lauf konnte hinzufuegen, keiner wegnehmen.
+✅ **Seit v5.10.0 fuehrt der Skill autonom zusammen** (Nutzer-Entscheidung 21.08.2026), gegen die vier Gates in 4.0c. Vorher galt „nur Vorschlag" — eine **Einbahnstrasse**: im Zustellplan **40 Topic-Dateien bei gruenem Budget** (MEMORY.md 66/200 Zeilen, 16,9 KB/25 KB), kein Druck; der einzige Hebel, `Offload`, **erhoeht** die Dateizahl. Jeder Lauf konnte hinzufuegen, keiner wegnehmen.
 
 ### 4.0c Zusammenfuehren und Aufteilen — die vier Gates (NEU v5.10.0)
 
-Beides ist **inhaltliche** Arbeit, kein Textverschieben. Autonom deshalb nur, wenn **alle
-vier** Gates halten; bricht eines, bleibt es beim Vorschlag.
+Beides ist **inhaltliche** Arbeit. Autonom nur, wenn **alle vier** Gates halten; bricht eines, bleibt es beim Vorschlag.
 
 | Gate | Pruefung | Warum |
 |---|---|---|
@@ -322,14 +254,9 @@ vier** Gates halten; bricht eines, bleibt es beim Vorschlag.
 | **3 · Verweise** | nach dem Lauf zeigt **kein** `[[name]]` mehr auf eine entfernte Datei — weder im Bestand noch in MEMORY.md | Ein toter Wikilink ist genau die Unsichtbarkeit, die der Fix beseitigen sollte |
 | **4 · Beschreibung** | die ueberlebende `description` nennt **beide** Themen, 40-200 Zeichen | Der Auswaehler sieht **nur** Name und Beschreibung. Nennt sie nur das eine Thema, ist das andere unauffindbar — dann ist der Merge ein Verlust, kein Aufraeumen |
 
-⛔ **Zusammengefuehrt wird, was thematisch zusammengehoert — nie, um eine Zahl zu druecken.**
-Das Urteil darueber traut der autonome Modus dem Skill ausdruecklich zu; die Zahl allein ist
-kein Grund. Zwei unverwandte Erinnerungen in einer Datei sind **schlechter** auffindbar als
-zwei getrennte: der Auswaehler liest eine Beschreibung, und eine Beschreibung, die zwei
-fremde Dinge nennt, passt auf keine Anfrage richtig.
+⛔ **Zusammengefuehrt wird, was thematisch zusammengehoert — nie, um eine Zahl zu druecken.** Das Urteil traut der autonome Modus dem Skill zu. Zwei unverwandte Erinnerungen in einer Datei sind **schlechter** auffindbar als zwei getrennte: eine Beschreibung, die zwei fremde Dinge nennt, passt auf keine Anfrage richtig.
 
-**Mengenbegrenzung: hoechstens 5 Zusammenfuehrungen je Lauf.** Ein Lauf, der 40 Dateien auf
-12 zusammenzieht, ist im Bericht nicht mehr pruefbar — und der naechste Lauf macht weiter.
+**Hoechstens 5 Zusammenfuehrungen je Lauf.** 40 Dateien auf 12 sind im Bericht nicht mehr pruefbar — der naechste Lauf macht weiter.
 
 ---
 
@@ -347,12 +274,9 @@ fremde Dinge nennt, passt auf keine Anfrage richtig.
    bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/06-zusammenfuehren-und.sh"
    ```
 
-   ⚠ **Der Byte-Check gilt erst ab v2.1.198.** Bei aelterer Version als **Hinweis** ausgeben
-   („greift in dieser Version noch nicht"), nicht als Befund — sonst meldet der Skill ein
-   Limit, das die laufende Version gar nicht hat.
+   ⚠ **Der Byte-Check gilt erst ab v2.1.198.** Bei aelterer Version als **Hinweis** ausgeben („greift in dieser Version noch nicht"), nicht als Befund.
 
-   ⚠ **Ab v2.1.211** werden YAML-Frontmatter und Block-HTML-Kommentare vor dem Laden entfernt
-   und zaehlen nicht mit. Bei Zweifel **beide** Rechnungen ausweisen.
+   ⚠ **Ab v2.1.211** werden YAML-Frontmatter und Block-HTML-Kommentare vor dem Laden entfernt und zaehlen nicht mit. Bei Zweifel **beide** Rechnungen ausweisen.
 
    - Also count topic files and their line counts
 
@@ -376,12 +300,7 @@ fremde Dinge nennt, passt auf keine Anfrage richtig.
    - Version numbers that don't match current package.json/plugin.json
    - Features/tools that are no longer in the project
 
-   ⚠ **Claude Code kennzeichnet alte Erinnerungen SELBST** (NEU v6). Beim Lesen wird ab
-   mehr als einem Tag vorangestellt: *„This memory is N days old. Memories are point-in-time
-   observations, not live state — claims about code behavior or file:line citations may be
-   outdated."* **Nicht melden, was das System schon kennzeichnet.** Der Check zielt auf das,
-   was die Warnung NENNT, aber nicht prueft: **`file:line`-Zitate und Versionsnummern in
-   Dateien aelter als `MIND_MEMORY_STALE_DAYS` (Vorgabe 14)** — und ob sie noch stimmen.
+   ⚠ **Claude Code kennzeichnet alte Erinnerungen SELBST** (NEU v6): ab mehr als einem Tag steht voran *„This memory is N days old. Memories are point-in-time observations, not live state — claims about code behavior or file:line citations may be outdated."* **Nicht melden, was das System kennzeichnet.** Der Check zielt auf **`file:line`-Zitate und Versionsnummern in Dateien aelter als `MIND_MEMORY_STALE_DAYS` (Vorgabe 14)** — ob sie noch stimmen.
 
 ### 6. Index-Integritaet — VIER Klassen (v6: drei; `PROJEKT` seit v5.145.0)
 
@@ -396,25 +315,19 @@ fremde Dinge nennt, passt auf keine Anfrage richtig.
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/07-index-integritaet.sh"
 ```
 
-⛔ **Eine reine Existenzpruefung meldet `PRAEFIX` als „fehlt"** — und ein autonomer Fix wuerde
-die Zeile dann **loeschen** statt sie zu reparieren. Dieselbe Fehlerklasse wie der
-v5.3.1-Beinahe-Schaden bei den Pfaden.
+⛔ **Eine reine Existenzpruefung meldet `PRAEFIX` als „fehlt"** — ein autonomer Fix wuerde die Zeile **loeschen** statt reparieren (gleiche Fehlerklasse wie der v5.3.1-Beinahe-Schaden bei den Pfaden).
 
 **Nach jedem Index-Umbau die Zeiger nachpruefen — ein Arbeitsschritt, nicht zwei.**
 
 ### 7. Zeiger von AUSSERHALB (NEU v6)
 
-Globale Regeln koennen auf Erinnerungen zeigen, die nur in EINEM Projekt existieren:
-`~/.claude/rules/plan-mode.md` verweist auf `memory/km-dynamic-must-stay.md` — vorhanden nur im
-Zustellplan-Projekt. Aus 17 von 18 Projekten zeigt das ins Leere, und der Pfad `memory/…` ist
-ohne Projektbezug **prinzipiell nicht aufloesbar**.
+Globale Regeln koennen auf Erinnerungen zeigen, die nur in EINEM Projekt existieren: `~/.claude/rules/plan-mode.md` verweist auf `memory/km-dynamic-must-stay.md` — nur im Zustellplan vorhanden; aus 17 von 18 Projekten ins Leere, der Pfad `memory/…` ist ohne Projektbezug **nicht aufloesbar**.
 
 ```bash
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/08-zeiger-von.sh"
 ```
 
-⚠ **Hinweis, kein Befund** — die Datei liegt ausserhalb unserer Zustaendigkeit, und sie zu
-aendern ist eine Nutzerentscheidung.
+⚠ **Hinweis, kein Befund** — die Datei liegt ausserhalb unserer Zustaendigkeit; Aenderung ist Nutzerentscheidung.
 
 ### 8. Frontmatter (NEU v6)
 
@@ -423,21 +336,13 @@ aendern ist eine Nutzerentscheidung.
 | `name`, `description`, `type` (aus `user`/`feedback`/`project`/`reference`) | **Befund** |
 | `node_type`, `originSessionId`, `modified` | **Hinweis** |
 
-⛔ **`node_type` und `originSessionId` sind NICHT offiziell dokumentiert** — nur durch
-Datei-Lektuere belegt (91 von 91 realen Dateien). Auch die vier `type`-Werte sind nicht
-offiziell enumeriert. **Kein Punktabzug**, solange ihre Rolle ungeprueft ist.
+⛔ **`node_type` und `originSessionId` sind NICHT offiziell dokumentiert** — nur durch Datei-Lektuere belegt (91 von 91 Dateien); auch die vier `type`-Werte nicht. **Kein Punktabzug**, solange ihre Rolle ungeprueft ist.
 
 ### ✅ Frontmatter ergaenzen — autonom seit v5.11.0
 
-Bis v5.10.0 wurde das nur **gemeldet**. Die Fix-Tabelle hatte acht Eintraege und keinen
-dafuer — **gemessen lagen in `APP - Zustellplan` 7 Dateien ohne jedes Frontmatter**:
-dauerhaft unsichtbar, und kein Skill konnte sie sichtbar machen. Das ist die haertere
-Haelfte eines ueberfuellten Bestands: Zusammenfuehren hilft den Dateien **mit**
-Beschreibung, diesen nicht.
+Bis v5.10.0 nur **gemeldet**; die Fix-Tabelle hatte keinen Eintrag dafuer — **gemessen 7 Dateien ohne jedes Frontmatter in `APP - Zustellplan`**: dauerhaft unsichtbar. Zusammenfuehren hilft nur Dateien **mit** Beschreibung.
 
-⛔ **Der Rumpf wird NICHT angefasst.** Es wird ausschliesslich ein Kopf vorangestellt;
-nach dem Fix muss der Inhalt ab der ersten Nicht-Frontmatter-Zeile **byte-gleich** sein.
-Das ist mechanisch pruefbar und die Bedingung dafuer, dass dieser Fix autonom laufen darf.
+⛔ **Der Rumpf wird NICHT angefasst.** Nur ein Kopf wird vorangestellt; der Inhalt ab der ersten Nicht-Frontmatter-Zeile muss **byte-gleich** sein — mechanisch pruefbar, Bedingung fuer den autonomen Lauf.
 
 | Feld | woher |
 |---|---|
@@ -445,19 +350,11 @@ Das ist mechanisch pruefbar und die Bedingung dafuer, dass dieser Fix autonom la
 | `description` | aus dem Inhalt, **40-200 Zeichen**, sagt WORUM es geht. Der Auswaehler sieht nur dies |
 | `metadata.type` | `user` \| `feedback` \| `project` \| `reference` — nach dem Inhalt, nicht nach dem Ordner |
 
-⚠ **Beim `type` zurueckhaltend sein.** `[user]` und `[project]` werden vom Auswaehler
-**extra** zurueckhaltend behandelt (am Binaerprogramm belegt, v5.8.1). Eine Methoden-Lehre,
-die in jedem Projekt gilt, ist `feedback`; ein blosser Zeiger auf eine externe Quelle ist
-`reference`. Im Zweifel `project` — das ist die Vorgabe fuer Projektwissen.
+⚠ **Beim `type` zurueckhaltend sein.** `[user]` und `[project]` behandelt der Auswaehler **extra** zurueckhaltend (Binaerprogramm, v5.8.1). Methoden-Lehre fuer jedes Projekt = `feedback`; Zeiger auf externe Quelle = `reference`. Im Zweifel `project` (Vorgabe fuer Projektwissen).
 
-⛔ **Nur bei GAR KEINEM Frontmatter.** Ein vorhandener Kopf mit schwacher `description`
-wird **verbessert** (eigener Fix-Typ), nicht ersetzt — und ein Kopf, der Felder traegt,
-die dieser Skill nicht kennt (`originSessionId`, `node_type`, `modified`), bleibt
-unangetastet.
+⛔ **Nur bei GAR KEINEM Frontmatter.** Ein Kopf mit schwacher `description` wird **verbessert** (eigener Fix-Typ), nicht ersetzt; Felder, die der Skill nicht kennt (`originSessionId`, `node_type`, `modified`), bleiben unangetastet.
 
-**Datei ganz ohne Frontmatter = eigener Befundtyp:** Claude Code fuegt **nie** welches hinzu,
-wo keines ist. Solche Dateien zaehlen **voll** gegen das Limit (kein Stripping) **und** sind
-fuer den Auswaehler fast unsichtbar (keine `description`). **Fix ist ergaenzen, nicht loeschen.**
+**Datei ganz ohne Frontmatter = eigener Befundtyp:** Claude Code fuegt **nie** welches hinzu. Sie zaehlt **voll** gegen das Limit (kein Stripping) **und** ist fuer den Auswaehler fast unsichtbar. **Fix ist ergaenzen, nicht loeschen.**
 
 ### 9. Sammeldateien (NEU v6)
 
@@ -466,23 +363,16 @@ Fuer Topic-Dateien gibt es **kein hartes Limit** — nur die Empfehlung „< 200
 **Befund ab > 200 Zeilen ODER > 20 KB** (beide Zweige pruefen, nicht nur einen), mit
 Aufteilungsvorschlag.
 
-✅ **Autonom seit v5.10.0** — ueber dieselben vier Gates wie das Zusammenfuehren (4.0c),
-**plus eine fuenfte Bedingung**: aufgeteilt wird nur, wenn die Datei wirklich **zwei
-unterscheidbare Themen** traegt, und nur, wenn der Bestand danach unter der kritischen
-Schwelle bleibt (4.0). Sonst verschlechtert Aufteilen die Sichtbarkeit, ohne etwas zu
-gewinnen — es erhoeht die Dateizahl, und die Grenze von 5 gilt pro Anfrage.
+✅ **Autonom seit v5.10.0** — ueber dieselben vier Gates (4.0c), **plus eine fuenfte Bedingung**: aufgeteilt wird nur bei wirklich **zwei unterscheidbaren Themen** und nur, wenn der Bestand danach unter der kritischen Schwelle (4.0) bleibt — sonst steigt die Dateizahl ohne Gewinn (Grenze 5 je Anfrage).
 
 ⚠ **Im Zweifel nicht aufteilen.** Eine 220-Zeilen-Datei zu einem Thema ist ein kleineres
 Problem als zwei 110-Zeilen-Dateien zu anderthalb Themen.
 
 ### 10. Sicherheit — OWASP ASI06 (NEU v6)
 
-Der ungeprueft bei jedem Start geladene Speicher faellt unter **ASI06 „Memory and Context
-Poisoning"** (OWASP Top 10 for Agentic Applications 2026). Anders als klassische
-Prompt-Injection **ueberdauert die Vergiftung Sitzungen**.
+Der ungeprueft bei jedem Start geladene Speicher faellt unter **ASI06 „Memory and Context Poisoning"** (OWASP Top 10 for Agentic Applications 2026). Anders als Prompt-Injection **ueberdauert die Vergiftung Sitzungen**.
 
-**Umsetzung: `mind_scan_poisoning <datei>` aus `lib.sh`** — nicht hier inline. Dieselbe
-Bedrohung betrifft `.claude/rules/*.md` und `CLAUDE.md`; einmal gebaut, dreifach nutzbar.
+**Umsetzung: `mind_scan_poisoning <datei>` aus `lib.sh`** — nicht inline; dieselbe Bedrohung betrifft `.claude/rules/*.md` und `CLAUDE.md`.
 
 ```bash
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/09-sicherheit-owasp.sh"
@@ -495,12 +385,7 @@ ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/09-s
 | `curl`/`wget` auf fremde Hosts, `data:`-URLs mit base64 | **Befund** |
 | Anweisungs-Formulierungen **am Zeilenanfang** („ignoriere", „vergiss", „ab jetzt gilt", „system:") | **Hinweis** |
 
-⛔ **Die Wortliste ist bewusst nur ein HINWEIS und ankert am ZEILENANFANG.** Formulierungen
-wie „NIEMALS" mitten im Satz sind in anweisungsreichen deutschen Regeldateien Alltag — ohne
-Anker waere eine Fehlalarm-Flut der wahrscheinlichste Fehlschlag des ganzen Checks.
-**Gemessen 20.08.2026:** ueber alle 18 Bestaende **und** die globalen `~/.claude/rules/*.md`
-zusammen **0 Befunde, 0 Hinweise** — bei nachgewiesener Trefferfaehigkeit (eingefuegtes
-`U+200B`, `sk-ant-`, `curl https://…` und eine Anweisungszeile wurden alle gefunden).
+⛔ **Die Wortliste ist bewusst nur ein HINWEIS und ankert am ZEILENANFANG.** „NIEMALS" mitten im Satz ist in deutschen Regeldateien Alltag — ohne Anker waere eine Fehlalarm-Flut der wahrscheinlichste Fehlschlag. **Gemessen 20.08.2026:** ueber alle 18 Bestaende **und** die globalen `~/.claude/rules/*.md` **0 Befunde, 0 Hinweise** — bei nachgewiesener Trefferfaehigkeit (eingefuegtes `U+200B`, `sk-ant-`, `curl https://…` und eine Anweisungszeile wurden gefunden).
 
 ⛔ **Nur melden, nie automatisch entfernen.** Ein Fehltreffer, der autonom Inhalt loescht,
 waere schlimmer als der Fund.
@@ -510,16 +395,12 @@ waere schlimmer als der Fund.
 Es gibt **keine Vorrangregel** — offizielle Doku: *„if two rules contradict each other,
 Claude may pick one arbitrarily"*. Beide sind *„context, not enforced configuration"*.
 
-⚠ **Anthropic hat den Auftrag selbst formuliert**, im Auto-Dream-Prompt (Flag
-`tengu_onyx_plover`, Vorgabe aus): *„Resolve contradictions — if two files disagree, fix the
-wrong one."* Wir bauen also keinen neuen Begriff, sondern aktivieren einen vorhandenen.
+⚠ **Anthropic hat den Auftrag selbst formuliert** (Auto-Dream-Prompt, Flag `tengu_onyx_plover`, Vorgabe aus): *„Resolve contradictions — if two files disagree, fix the wrong one."* Wir aktivieren einen vorhandenen Begriff.
 
 **Umsetzung:** Aufgabe des `context-analyzer` (Step 3) — semantisch, nicht mechanisch.
 Eigene Befundklasse **`KONFLIKT`**, mit **beiden** Fundstellen.
 
-⛔ **NIE autonom aufloesen.** Ein Widerspruch zwischen einer vom Nutzer geschriebenen Regel
-und einer von Claude gelernten Erinnerung ist eine inhaltliche Frage, keine mechanische.
-Nur melden.
+⛔ **NIE autonom aufloesen.** Ein Widerspruch zwischen Nutzer-Regel und gelernter Erinnerung ist eine inhaltliche Frage. Nur melden.
 
 **Abgrenzung zu Check 3/4 (Duplikate):** Ein Duplikat sagt zweimal dasselbe, ein Konflikt sagt
 zweimal Verschiedenes. „nutze vitest" gegen „User bevorzugt jest" ist **kein** Duplikat.
@@ -535,12 +416,9 @@ zweimal Verschiedenes. „nutze vitest" gegen „User bevorzugt jest" ist **kein
 Sind solche Marker vorhanden, fassen autonome Fixes **ausschliesslich** den Bereich dazwischen
 an. Alles davor und danach bleibt unberuehrt.
 
-⚠ **Rueckwaertskompatibel:** Ohne Marker verhaelt sich der Skill wie bisher (ganze Datei) —
-**meldet das aber im Bericht**, damit der Unterschied sichtbar ist.
+⚠ **Rueckwaertskompatibel:** Ohne Marker verhaelt sich der Skill wie bisher (ganze Datei) — **meldet das im Bericht**.
 
-⛔ **Der Skill legt die Marker NICHT selbst an.** Das waere eine Formatanderung an einer Datei,
-die Claudes internes System schreibt. Er schlaegt sie vor, wenn eine `MEMORY.md` von Hand
-gepflegte Abschnitte enthaelt (erkennbar an Fliesstext ausserhalb der Zeiger-Liste).
+⛔ **Der Skill legt die Marker NICHT selbst an** (Formataenderung an einer von Claudes System geschriebenen Datei). Er schlaegt sie vor, wenn eine `MEMORY.md` von Hand gepflegte Abschnitte enthaelt (Fliesstext ausserhalb der Zeiger-Liste).
 
 ## Step 5: Ergebnisse konsolidieren + praesentieren
 
@@ -595,9 +473,7 @@ BUDGET
 [H3] KONFLIKT: CLAUDE.md:12 "nutze vitest" <-> memory/tools.md:4 "User bevorzugt jest"
 ```
 
-⛔ **Befunde und Hinweise nie in einer Liste mischen** — sonst stehen harte Messungen neben
-Verdachtsmomenten, und der Leser kann beides nicht trennen. Dieselbe Regel wie in
-`/mind-claudemd` v5.4.0.
+⛔ **Befunde und Hinweise nie in einer Liste mischen** — harte Messungen neben Verdachtsmomenten sind nicht trennbar (wie `/mind-claudemd` v5.4.0).
 
 ```
 === MEMORY.md Audit Report ===
@@ -636,17 +512,13 @@ Step 7 mit Angewendet-Block. Geloeschte Zeilen woertlich melden.
 
 ### Step 6a: Pre-Edit Read (MUST, praezisiert v3.2.2)
 
-**1× Read der Ziel-Datei VOR dem ersten Edit** — reicht fuer N sequentielle
-Edits (Edit-Tool garantiert "file state is current — no need to Read it back").
-**Re-Read nur** wenn anderes Tool die Datei zwischendurch modifiziert.
+**1× Read der Ziel-Datei VOR dem ersten Edit** — reicht fuer N sequentielle Edits. **Re-Read nur**, wenn anderes Tool die Datei modifiziert.
 
-Auch wenn der context-analyzer-Agent in Step 3 die Datei gelesen hat: **das
-zaehlt nicht** — Read muss im SELBEN Tool-Call-Kontext wie Edit erfolgen.
+Auch wenn der context-analyzer-Agent in Step 3 die Datei las: **das zaehlt nicht** — Read muss im SELBEN Tool-Call-Kontext wie Edit erfolgen.
 
-Reihenfolge pro Datei: 1× Read → beliebig viele Edits → (ggf. Re-Read nach
-externer Modifikation).
+Reihenfolge pro Datei: 1× Read → beliebig viele Edits → ggf. Re-Read.
 
-Write fuer NEUE Topic-Files: kein Read noetig (neue Datei).
+Write fuer NEUE Topic-Files: kein Read noetig.
 
 ### Step 6b: Fixes anwenden
 
@@ -670,13 +542,9 @@ For each confirmed fix:
 selbsterklärend, ist es im Code schon erklärt. … in den Context-Dateien soll
 kein unwichtiger Müll stehen, er ist begrenzt, wertvoll und kostet Geld."*
 
-Bis v5.25.0 arbeitete dieser Command nur **rückwärts** — er prüfte, was schon da
-ist. **Es gab kein Tor beim Hineinschreiben.** Deshalb wächst alles.
+Bis v5.25.0 arbeitete der Command nur **rückwärts**; **es gab kein Tor beim Hineinschreiben.** Deshalb wächst alles.
 
-**Die vollständige Vorschrift steht in
-[references/kontext-tor.md](../../references/kontext-tor.md)** — die Pruefliste
-A1–D10, beide Richtungen, die Quittung, die Grenzen. **Lies sie**, bevor du
-diesen Schritt ausführst. Hier steht nur, was für **diesen** Command gilt:
+**Die vollständige Vorschrift steht in [references/kontext-tor.md](../../references/kontext-tor.md)** — Pruefliste A1–D10, beide Richtungen, Quittung, Grenzen. **Lies sie** vor diesem Schritt. Hier nur, was für **diesen** Command gilt:
 
 | | |
 |---|---|
@@ -704,11 +572,7 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_einordnung.py" --wohin "$MEM_DIR/
 
 ## ⛔ D1 — die neunte Frage: WOHIN gehoert diese Aussage?
 
-**Die Pruefliste oben prueft, OB etwas hinein darf; B4 fragt nur, wie OFT es gebraucht wird. WOHIN genau, sagt D1.**
-B3 prueft, ob eine Aussage am **schon gewaehlten** Ort wirkt — es kann zustimmen
-oder ablehnen, nicht umleiten. Ein Tuersteher, kein Wegweiser. Wer durchkommt,
-landet dort, wo der Schreiber gerade steht, und das ist fast immer eine
-immer-ladende Datei.
+**Die Pruefliste oben prueft, OB etwas hinein darf; B4 fragt nur, wie OFT es gebraucht wird. WOHIN genau, sagt D1.** B3 prueft, ob eine Aussage am **schon gewaehlten** Ort wirkt — ein Tuersteher, kein Wegweiser. Wer durchkommt, landet dort, wo der Schreiber steht: fast immer eine immer-ladende Datei.
 
 | Klasse | wann man es braucht | Ort |
 |---|---|---|
@@ -717,44 +581,28 @@ immer-ladende Datei.
 | **BELEG** | nur wenn jemand die Regel anzweifelt | Archiv oder `docs/`, laedt nie |
 | **UNBESTIMMT** | kein Formmerkmal greift | ⛔ **Ort bleibt, wo er war** |
 
-⛔ **D1 MELDET, es entscheidet nicht.** Die Merkmale sind Formmerkmale und liefern
-**Kandidaten** — dieselbe Doktrin wie `cleaner_leitplanke.py` und wie `art()` in
-`debug_auswertung.py`. Ist BREMSE gegen ANLEITUNG nicht eindeutig, kommt
-**UNBESTIMMT** heraus und der Ort **bleibt unveraendert**. Die wahrscheinlichere
-Zelle zu raten ist verboten: eine geratene Zuordnung wird spaeter zitiert.
+⛔ **D1 MELDET, es entscheidet nicht.** Formmerkmale liefern **Kandidaten** (wie `cleaner_leitplanke.py` und `art()` in `debug_auswertung.py`). Ist BREMSE gegen ANLEITUNG nicht eindeutig, kommt **UNBESTIMMT** und der Ort **bleibt**. Die wahrscheinlichere Zelle zu raten ist verboten: eine geratene Zuordnung wird spaeter zitiert.
 
 ⭐ **Der haeufigste echte Fall ist TEILBAR** — ein Absatz mit einer Bremse UND
 ihrem Beleg. Dann geht der Beleg ins Archiv und die Bremse bleibt.
 
-⚠ **Bekannte Schwaeche, nicht verschwiegen:** „wann brauche ich es" ist eine
-Aussage ueber den **Leser**. Gemessen 07.09.2026 brauchte der Manager `hooks.md`
-8x und `architecture.md` 7x — Dateien, die nach der Rollentabelle dem Arbeiter
-gehoeren. Ob das mechanisch entscheidbar ist, ist **UNGEMESSEN**.
+⚠ **Bekannte Schwaeche:** „wann brauche ich es" ist eine Aussage ueber den **Leser**. Gemessen 07.09.2026 brauchte der Manager `hooks.md` 8x und `architecture.md` 7x — nach der Rollentabelle Dateien des Arbeiters. Mechanisch entscheidbar? **UNGEMESSEN**.
 
-⛔ **Die Quittung wird um `D1` erweitert** — sonst ist nicht unterscheidbar, ob D1
-lief und nichts fand oder gar nicht lief:
-
+⛔ **Die Quittung wird um `D1` erweitert** — sonst ist nicht unterscheidbar, ob D1 nichts fand oder nicht lief:
 ```
 tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>
 ```
 
 
-⛔ **Die Quittung MUSS in den Self-Check-Block des Berichts**, eine Zeile je
-`ADD`. Fehlt sie, ist der Lauf ein **Teilsync** — dieselbe Kopplung wie
-Bestands-Pass (v5.22.0) und Schritt-Quittung (v5.25.0).
+⛔ **Die Quittung MUSS in den Self-Check-Block des Berichts**, eine Zeile je `ADD`. Fehlt sie, ist der Lauf ein **Teilsync** (Kopplung wie Bestands-Pass v5.22.0 und Schritt-Quittung v5.25.0).
 
 ```
 tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10
 ```
 
-⛔ **A1 (Code, andere Datei), B4, C8 und D10 beantwortet `cleaner_tor` NICHT — es nennt sie.** Dafür gibt es
-`cleaner_duplikate`, `cleaner_aussagen --code` und `cleaner_grenzen`. Die Klasse
-`instrument-nachgebaut` steht mit 7 Vorkommen im Debug-Ordner, und **kein
-einziger Nachbau war besser als das Original** (`werkzeuge-zuerst.md`).
+⛔ **A1 (Code, andere Datei), B4, C8 und D10 beantwortet `cleaner_tor` NICHT — es nennt sie.** Dafür gibt es `cleaner_duplikate`, `cleaner_aussagen --code` und `cleaner_grenzen`. Klasse `instrument-nachgebaut`: 7 Vorkommen im Debug-Ordner, **kein einziger Nachbau war besser als das Original** (`werkzeuge-zuerst.md`).
 
-⚠ **A1, A2, A3, B6, C7b und C9 bleiben Urteile.** Das Tor erzwingt eine **Antwort**, nicht die
-richtige — wie die Agent-Quittung (v5.19.0), die keinen Agenten zur Arbeit
-zwingt, sondern sein Fehlen sichtbar macht.
+⚠ **A1, A2, A3, B6, C7b und C9 bleiben Urteile.** Das Tor erzwingt eine **Antwort**, nicht die richtige — wie die Agent-Quittung (v5.19.0): sie macht Fehlen sichtbar, erzwingt keine Arbeit.
 
 
 ### ⛔ Der Memory-Deckel — „keine Ausnahmen"
@@ -766,11 +614,7 @@ mehr geladen werden, keine Ausnahmen."*
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/10-der-memory.sh"
 ```
 
-⛔ **„Wird nicht mehr geladen" ist NICHT messbar — gemessen 30.08.2026.**
-139 Topic-Dateien über 14 Projekte, **0** auffindbare Abrufe — aber die
-**Positivkontrolle fällt durch** (`claudeMd`, `auto-memory` ebenfalls 0). Der
-eingespielte Kontext steht gar nicht im Transkript. Ein Deckel auf beobachteten
-Ladungen wäre ein Instrument, das nichts misst.
+⛔ **„Wird nicht mehr geladen" ist NICHT messbar — gemessen 30.08.2026.** 139 Topic-Dateien über 14 Projekte, **0** auffindbare Abrufe — aber die **Positivkontrolle fällt durch** (`claudeMd`, `auto-memory` ebenfalls 0): der eingespielte Kontext steht nicht im Transkript. Ein Deckel auf beobachteten Ladungen wäre ein Instrument, das nichts misst.
 
 Er stützt sich auf die **belegte** Grenze (wörtlich in `claude.exe` 2.1.237):
 *„… (up to 5) … based on their name and description."*
@@ -790,17 +634,12 @@ Zusammenführen **löscht eine Datei**.
 ähnlich wie der mind cleaner — nicht immer mehr und mehr. Auch gucken: braucht man das,
 kann das weg, steht das schon woanders."*
 
-Gemessen: der **immer geladene** Kontext wuchs an EINEM Tag um **+21 %** auf 2 601 Zeilen
-und 138 Anweisungen — bei einer Schwelle von ~400 Zeilen und ~100–150 Anweisungen.
-`/mind-all` trägt nach, **niemand sieht zurück**. Dieser Schritt sieht zurück.
+Gemessen: der **immer geladene** Kontext wuchs an EINEM Tag um **+21 %** auf 2 601 Zeilen und 138 Anweisungen (Schwelle ~400 Zeilen, ~100–150 Anweisungen). `/mind-all` trägt nach, **niemand sieht zurück**. Dieser Schritt sieht zurück.
 
 ⛔ **Er MELDET. Er schneidet nicht, verschiebt nicht, löscht nicht.** Handeln bleibt
-`/mind-cleaner`, dessen Nicht-Autonomie (Nutzer-Entscheidung 24.08.2026) unberührt bleibt.
+`/mind-cleaner` (seit v5.159.0 autonom, Nutzer 29.10.2026 — mit Snapshot, Gates und Stopp am ersten Bruch).
 
-**Die vollständige Vorschrift steht in
-[references/bestands-pass.md](../../references/bestands-pass.md)** — Bilanz, Stichprobe, die
-drei Fragen, Urteilsbuch, Quittung, Fehlerszenarien, Risiko. **Lies sie**, bevor du diesen
-Schritt ausführst. Hier steht nur, was für **diesen** Skill gilt:
+**Die vollständige Vorschrift steht in [references/bestands-pass.md](../../references/bestands-pass.md)** — Bilanz, Stichprobe, drei Fragen, Urteilsbuch, Quittung, Fehlerszenarien, Risiko. **Lies sie** vor diesem Schritt. Hier nur, was für **diesen** Skill gilt:
 
 | | |
 |---|---|
@@ -835,25 +674,16 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_stichprobe.py" "$PROJ" \
        --quittung --skill mind-memory --geprueft <n> --stichprobe <n>
 ```
 
-⛔ **Hier gilt die Inhaltssperre besonders scharf.** Dieser Skill liest fremde
-Memory-Bestände; in `APP - Zustellplan` stehen dort **Abonnenten-, Routen- und
-Geschäftsdaten**, und `mind_debug_write` schickt Befundtexte in den **gemeinsamen**
-Debug-Ordner aller Projekte.
+⛔ **Hier gilt die Inhaltssperre besonders scharf.** Dieser Skill liest fremde Memory-Bestände (in `APP - Zustellplan`: **Abonnenten-, Routen- und Geschäftsdaten**), und `mind_debug_write` schickt Befundtexte in den **gemeinsamen** Debug-Ordner aller Projekte.
 
 > **Ort und Klasse melden, nie Inhalt.** `thema-x.md:12 doppelt zu thema-y.md:4` —
 > **niemals die Zeile selbst.** `cleaner_stichprobe.py` kennt ausschließlich Pfade
 > und hat auf Inhalte gar keinen Zugriff; das ist die mechanische Hälfte. Die andere
 > Hälfte bist du.
 
-⚠ **Topic-Dateien zählen NICHT in die Dauerkontext-Bilanz** — sie laden höchstens 5
-pro Anfrage. Ihr Wuchs kostet **Auffindbarkeit**, nicht Tokens. Für sie ist die
-richtige Frage nicht *wie groß*, sondern: **ist die `description` scharf genug, dass
-der Auswähler sie findet?** Er sieht **nur** Name und Beschreibung, nie den Inhalt.
+⚠ **Topic-Dateien zählen NICHT in die Dauerkontext-Bilanz** — sie laden höchstens 5 pro Anfrage; ihr Wuchs kostet **Auffindbarkeit**, nicht Tokens. Die Frage ist: **ist die `description` scharf genug?** Der Auswähler sieht **nur** Name und Beschreibung.
 
-⛔ **Ein FEHLENDER Block macht den Lauf zum Teilsync.** `(nichts)` ist eine gültige
-Antwort — leerer Bestand, neues Projekt, Laufbudget erschöpft. **Schweigen ist es nicht.**
-Ein Skill, der schweigt weil sein Bestand sauber ist, und einer, der schweigt weil der Pass
-ausfiel, sehen von außen identisch aus. Dieselbe Lehre wie v5.3.1 und die Agent-Quittung.
+⛔ **Ein FEHLENDER Block macht den Lauf zum Teilsync.** `(nichts)` ist gültig (leerer Bestand, neues Projekt, Laufbudget erschöpft). **Schweigen nicht** — ein Skill, der schweigt weil sauber, und einer, der schweigt weil der Pass ausfiel, sehen identisch aus (Lehre v5.3.1, Agent-Quittung).
 
 ⚠ **Fail-open:** fehlt ein Werkzeug oder stürzt es ab, wird `UNGEPRUEFT: <werkzeug>`
 gemeldet und der Skill **läuft weiter**. Ein Bestands-Pass darf nie einen Sync töten.
@@ -864,8 +694,7 @@ gemeldet und der Skill **läuft weiter**. Ein Bestands-Pass darf nie einen Sync 
 und genauer"*. Dritter Träger nach `mind-rules` (v5.78.0) und `mind-claudemd` (v5.85.0).
 
 **Die vollständige Vorschrift — Agent, Kasten, Gate, Stufe 3, Bericht — steht in
-[references/bestands-pass.md](../../references/bestands-pass.md), Abschnitt „VERDICHTEN".
-Lies sie.** Hier nur, was für Memory gilt:
+[references/bestands-pass.md](../../references/bestands-pass.md), Abschnitt „VERDICHTEN". Lies sie.** Hier nur Memory:
 
 | | |
 |---|---|
@@ -886,7 +715,7 @@ die Zeile `verworfen: <grund>`. **Kein Bericht = der Schritt lief nicht.**
 
 ### ⛔ Pflichtschritt `mind_debug_write` — der Aufruf (NEU v5.146.0, Etappe 56 §3)
 
-Bis v5.145.0 stand dieser Schritt im Pflichtkasten und in der Startzeile, aber **nirgends als Aufruf** — erwartet, nie gelaufen. So entstand Noras `FEHLT: mind-rules/cleaner_duplikate` (Palvedo, 20.09.2026), und so wurden Schritte von Hand nachgeholt. Er meldet den Lauf an den zentralen Debug-Ordner (still ohne `MIND_DEBUG_DIR`). Abschnitt und Befundzeilen ERST schreiben (Aufbau wie `/mind-all` Step 2.95), dann diesen Block.
+Bis v5.145.0 stand dieser Schritt im Pflichtkasten und in der Startzeile, aber **nirgends als Aufruf** — erwartet, nie gelaufen (Noras `FEHLT: mind-rules/cleaner_duplikate`, Palvedo, 20.09.2026; Schritte wurden von Hand nachgeholt). Er meldet den Lauf an den zentralen Debug-Ordner (still ohne `MIND_DEBUG_DIR`). Abschnitt und Befundzeilen ERST schreiben (Aufbau wie `/mind-all` Step 2.95), dann diesen Block.
 
 ```bash
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/12-pflichtschritt-mind.sh"
@@ -917,12 +746,7 @@ Topic files: 3 (was 2, created api-patterns.md)
 
 ### NEU v6
 
-- ⛔ **NIEMALS eine Umgebungsvariable oder einen `settings.json`-Schluessel schreiben** — auch
-  nicht „hilfsweise", auch nicht bei `--auto`. **Warum das eine harte Regel ist:** Das Plugin
-  `claude-mem` setzte bei der Installation still `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`
-  (Issue #2836) — **75 native Memory-Dateien waren ueber Nacht unsichtbar**, nicht geloescht,
-  aber nicht mehr geladen, ohne Rueckfrage. Ein Memory-Werkzeug, das die Memory-Umgebung
-  still umstellt, ist die schlimmste Form von Nebenwirkung.
+- ⛔ **NIEMALS eine Umgebungsvariable oder einen `settings.json`-Schluessel schreiben** — auch nicht „hilfsweise", auch nicht bei `--auto`. **Warum:** `claude-mem` setzte bei der Installation still `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` (Issue #2836) — **75 native Memory-Dateien waren ueber Nacht unsichtbar**, nicht geloescht, nur nicht geladen, ohne Rueckfrage. Ein Memory-Werkzeug, das die Memory-Umgebung still umstellt, ist die schlimmste Form von Nebenwirkung.
 - **Zusammenfuehren und Aufteilen sind seit v5.10.0 autonom erlaubt** — aber **nur** gegen
   die vier Gates aus 4.0c (Erhaltung · kein Umbenennen · keine toten `[[Verweise]]` ·
   Beschreibung nennt beide Themen), hoechstens 5 je Lauf. ⛔ **Bricht ein Gate, bleibt es

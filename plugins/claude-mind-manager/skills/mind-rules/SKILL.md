@@ -43,7 +43,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.160.0"
+MIND_SKILL_VERSION="5.161.0"
 mind_schritt_start "$PROJ" mind-rules bestandsaufnahme bestandszahlen_kandidaten cleaner_duplikate cleaner_stichprobe cleaner_tor ladeprotokoll_auswertung mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -67,9 +67,7 @@ mind_schritt verdichten gelaufen --datei "$PROJ/.claude-mind/verdichten-<skill>.
 mind_schritt verdichten "uebersprungen:kein-kandidat" 0 "$PROJ"   # schweigen = FEHLT
 ```
 
-⛔ **`uebersprungen` ist ein gueltiger Status und braucht einen GRUND.** Ein Schritt,
-der legitim entfaellt (kein Git, kein Quellbaum), ist kein Fehler — aber
-sein Entfallen gehoert in den Bericht statt zu verschwinden.
+⛔ **`uebersprungen` ist ein gueltiger Status und braucht einen GRUND.** Ein legitim entfallener Schritt (kein Git, kein Quellbaum) ist kein Fehler, gehoert aber in den Bericht.
 
 ⛔ **v5.67.0: EINEN PFLICHTSCHRITT AUSZULASSEN, WEIL ER TEUER AUSSIEHT, IST VERBOTEN.**
 Nutzer-Auftrag 10.09.2026: *„die sollen alles fahren"*. ⭐ Die Trennlinie:
@@ -79,30 +77,15 @@ Nutzer-Auftrag 10.09.2026: *„die sollen alles fahren"*. ⭐ Die Trennlinie:
 | ⛔ **verboten** | gar nicht **starten**, aus Ruecksicht auf Kontext, Zeit oder Kosten |
 | ✅ **erlaubt** | starten und **scheitern lassen** — `bytes:0` faengt die Bilanz |
 
-Ein gestarteter Agent, der stirbt, ist ein **Befund**. Ein nie gestarteter ist eine
-**Luecke, die wie ein Ergebnis aussieht**. ⚠ „Ressourcengrund" ist deshalb **kein**
-zulaessiger `uebersprungen:`-Grund — er stand in keinem Skill und ist beim Lauf
-entstanden. Seit v5.67.0 macht eine Teilabdeckung den Lauf zum **Teilsync**: die
-Schuld bleibt liegen, bis wirklich alles gefahren ist.
+Ein gestarteter, gestorbener Agent ist ein **Befund**; ein nie gestarteter eine **Luecke, die wie ein Ergebnis aussieht**. ⚠ „Ressourcengrund" ist **kein** zulaessiger `uebersprungen:`-Grund (stand in keinem Skill, entstand beim Lauf). Seit v5.67.0 macht Teilabdeckung den Lauf zum **Teilsync**: die Schuld bleibt liegen, bis alles gefahren ist.
 
-⭐ **`gelaufen:5/11` ist die TEILABDECKUNG und der Anlass dieses Baus.** Am 30.08.2026
-lief `cleaner_leitplanke.py` ueber 5 von 11 Dateien und wurde als **Bereichspruefung**
-berichtet. Der Fehler war nicht ein fehlender Aufruf, sondern ein gelaufener, der
-weniger abdeckte als der Bericht behauptete. `5/11` ist eine gueltige Antwort;
-sie als `11/11` zu berichten ist es nicht.
-⚠ **`X/Y` mit X=Y (`1/1`) zaehlt seit v5.113.0 als voll** — vollstaendig heisst trotzdem
-`gelaufen`, nicht `1/1` (Noras Lauf 11, 16.09.2026). ⛔ **Nachquittieren geht nur im SELBEN
-Block:** die Bilanz nimmt den letzten Eintrag je Block×Name; ein Nachtrag in einem spaeteren
-Block heilt nichts — den Block erneut fahren (mind-all 2.96a-R).
+⭐ **`gelaufen:5/11` ist die TEILABDECKUNG.** Anlass 30.08.2026: `cleaner_leitplanke.py` lief ueber 5 von 11 Dateien und wurde als **Bereichspruefung** berichtet — ein gelaufener Aufruf, der weniger abdeckte als behauptet. `5/11` ist eine gueltige Antwort, `11/11` zu berichten nicht.
+⚠ **`X/Y` mit X=Y (`1/1`) zaehlt seit v5.113.0 als voll** — vollstaendig heisst trotzdem `gelaufen` (Noras Lauf 11, 16.09.2026). ⛔ **Nachquittieren geht nur im SELBEN Block:** die Bilanz nimmt den letzten Eintrag je Block×Name; ein spaeterer Nachtrag heilt nichts — Block erneut fahren (mind-all 2.96a-R).
 ⛔ **Eine geloeschte oder leere Schritt-Quittung wird nicht nachgetippt — der Block wird neu
 gefahren** (v5.116.0, Doros Creator-Lauf 16.09.2026: 39 Schritte in 5 s nachgetippt, Bilanz 39/39).
-Die Bilanz erkennt getippte Bloecke (Starts < `MIND_SCHRITT_MIN_S` = 60 s auseinander, >= 5 Schritte
-in 10 s) als FORMAL, der Lauf ist teil.
+Die Bilanz erkennt getippte Bloecke (Starts < `MIND_SCHRITT_MIN_S` = 60 s auseinander, >= 5 Schritte in 10 s) als FORMAL, der Lauf ist teil.
 
-⛔ **Die Bytezahl ist Pflicht, wo ein Schritt etwas ausgeben MUSS.** Am selben Tag
-lief `cleaner_belege.py` und seine Ausgabe wurde weggegreppt — aus Sicht einer
-naiven Quittung waere das „gelaufen". `0` meldet die Bilanz als **LEER**; `-1`
-heisst „nicht gemessen" und zaehlt nicht.
+⛔ **Die Bytezahl ist Pflicht, wo ein Schritt etwas ausgeben MUSS.** Am 30.08.2026 lief `cleaner_belege.py`, die Ausgabe wurde weggegreppt — eine naive Quittung haette „gelaufen" gesagt. `0` meldet die Bilanz als **LEER**; `-1` heisst „nicht gemessen" und zaehlt nicht.
 
 **Im Bericht, als erste Zeile des Self-Checks:**
 
@@ -111,12 +94,9 @@ ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/01-pf
 ```
 
 ⛔ **Fehlt diese Zeile oder nennt sie `FEHLT`, ist der Bericht unvollstaendig** und
-darf zurueckgewiesen werden. Rueckgabe **2 heisst: gar keine Quittung** — der Lauf
-hat nie begonnen zu quittieren, und das ist NICHT „nichts zu melden".
+darf zurueckgewiesen werden. Rueckgabe **2 heisst: gar keine Quittung** (nie begonnen zu quittieren) — NICHT „nichts zu melden".
 
-⚠ **Was die Quittung nicht kann:** sie erzwingt keinen Schritt, sie macht sein Fehlen
-sichtbar — wie `decision:block` und die Agent-Quittung. Und sie misst nicht die GUETE:
-ein Werkzeug, das laeuft und Unsinn liefert, quittiert als `gelaufen`.
+⚠ **Was die Quittung nicht kann:** sie erzwingt keinen Schritt, sie macht sein Fehlen sichtbar (wie `decision:block` und die Agent-Quittung), und sie misst nicht die GUETE — ein Werkzeug, das Unsinn liefert, quittiert als `gelaufen`.
 
 Manage, validate, create, and fix Claude Code rule files.
 
@@ -126,8 +106,8 @@ Provide complete management of `.claude/rules/*.md` files including syntax valid
 
 ## Step 0: Modus + Snapshot (PFLICHT, NEU v5.0.0)
 
-**Autonom ist der Standard.** `check`/`migrate` wenden Fixes selbstaendig an (Syntax,
-`paths:`→`globs:`); `create` fragt weiterhin nach Inhalt, weil es ohne Vorgabe nichts
+**Autonom ist der Standard.** `check` wendet Syntax-Fixes selbstaendig an; `migrate` schreibt seit v5.43.0
+nichts um (meldet `globs:`, Tausch nach `paths:` ueber `/mind-cleaner --paths-sonde`); `create` fragt weiterhin nach Inhalt, weil es ohne Vorgabe nichts
 zu erzeugen gibt.
 
 ```bash
@@ -136,9 +116,7 @@ ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/02-st
 
 `--ask` = Diff zeigen + Freigabe (Verhalten vor v5.0.0).
 
-**DESIGN-Befunde werden NIE automatisch angewendet** — markiert eine Rule sich selbst oder
-eine andere als "niemals anfassen"/"by design", nur listen. Gilt auch fuer `migrate` auf
-**globalen** User-Rules (`~/.claude/rules/`): die sind im Snapshot, aber besonders wertvoll.
+**DESIGN-Befunde werden NIE automatisch angewendet** — markiert eine Rule sich selbst oder eine andere als "niemals anfassen"/"by design", nur listen. Gilt auch fuer `migrate` auf **globalen** User-Rules (`~/.claude/rules/`): im Snapshot, aber besonders wertvoll.
 **Bei Snapshot-Fehlschlag wird NICHT editiert.**
 
 ## Workflow
@@ -157,20 +135,10 @@ Optional flag: `--debug` (nur mit `check`) — Ladeprotokoll auswerten
 
 ### ⛔ P1 (v5.43.0): die Migration lief FUENF MONATE in die falsche Richtung
 
-⭐ **v5.118.0 — der Versuch ist gemacht, die Frage ist entschieden:** Zustellplan, 16.09.2026
-(Vera, `cleaner_paths_sonde.py --auswerten`): 13 Rules auf `paths:` umgestellt, in der
-naechsten Sitzung **13 von 13 nicht beim Start geladen**, `path_glob_match` **11x** bei
-Dateiberuehrung, Dauerkontext **961 kB → 131 kB**. `paths:` filtert; `globs:` laedt immer.
-Der Abschnitt darunter ist damit Historie — er erklaert, warum die Doku allein nicht reichte.
-⛔ **Bis zum Trennstrich ist alles VERGANGENHEIT, auch wo ein Satz im Praesens stand** (v5.145.0,
-Veras Befund M-I, Zustellplan 12.10.2026 — sie haette den Pflichtschritt beinahe ausgelassen):
-`migrate` schreibt seit v5.43.0 **nichts** um · die Richtung ist seit v5.118.0 `globs:` → `paths:`
-· `ladeprotokoll_auswertung` misst `path_glob_match` (in Veras Lauf 184x). Ein Satz im Praesens
-ist eine Anweisung — deshalb stehen die Saetze unten jetzt in der Vergangenheit.
+⭐ **v5.118.0 — entschieden:** Zustellplan, 16.09.2026 (Vera, `cleaner_paths_sonde.py --auswerten`): 13 Rules auf `paths:` umgestellt, in der naechsten Sitzung **13 von 13 nicht beim Start geladen**, `path_glob_match` **11x** bei Dateiberuehrung, Dauerkontext **961 kB → 131 kB**. `paths:` filtert; `globs:` laedt immer. Der Abschnitt darunter ist Historie.
+⛔ **Bis zum Trennstrich ist alles VERGANGENHEIT, auch wo ein Satz im Praesens stand** (v5.145.0, Veras Befund M-I, Zustellplan 12.10.2026 — sie haette den Pflichtschritt beinahe ausgelassen): `migrate` schreibt seit v5.43.0 **nichts** um · die Richtung ist seit v5.118.0 `globs:` → `paths:` · `ladeprotokoll_auswertung` misst `path_glob_match` (in Veras Lauf 184x). Ein Satz im Praesens ist eine Anweisung, deshalb steht der Rest jetzt in der Vergangenheit.
 
-**Bis v5.42.0 schrieb dieser Skill AUTONOM `paths:` nach `globs:` um** — auch in
-fremden Projekten. Die Begruendung stammte aus dem Januar 2026, als `paths:`
-tatsaechlich kaputt war.
+**Bis v5.42.0 schrieb dieser Skill AUTONOM `paths:` nach `globs:` um**, auch in fremden Projekten (Begruendung Januar 2026: `paths:` war tatsaechlich kaputt).
 
 ⛔ **Was seither gemessen ist:**
 
@@ -186,20 +154,11 @@ eigene Messung 03.-08.09.2026:
    /context zeigt ALLE 23 Regeldateien im Fenster, auch jede mit `globs:`
 ```
 
-⭐ **Die Folge der alten Richtung:** eine funktionierende Pfad-Eingrenzung wurde in
-eine Regel verwandelt, die **bedingungslos laedt**. Das Plugin vergroesserte damit
-genau den Dauerkontext, den es verkleinern soll.
+⭐ **Folge der alten Richtung:** eine funktionierende Pfad-Eingrenzung wurde zur Regel, die **bedingungslos laedt** — das Plugin vergroesserte den Dauerkontext, den es verkleinern soll.
 
-⛔ **WAS NICHT GETAN WIRD, und warum:** die Gegenrichtung (`globs:` -> `paths:`)
-wird **nicht** automatisch gefahren. Gemessen ist, dass `globs:` **nicht** filtert;
-**nicht** gemessen ist, dass `paths:` es hier **tut** — dafuer gibt es nur die
-Doku. Eine autonome Umschreibung auf eine ungepruefte Annahme waere derselbe
-Fehler noch einmal, nur in die andere Richtung.
+⛔ **WAS NICHT GETAN WIRD:** die Gegenrichtung (`globs:` -> `paths:`) wird **nicht** automatisch gefahren. Gemessen: `globs:` filtert **nicht**; **nicht** gemessen: dass `paths:` es hier **tut** (nur Doku). Eine autonome Umschreibung auf eine ungepruefte Annahme waere derselbe Fehler in die andere Richtung.
 
-⚠ **Der Versuch, der es entscheiden wuerde:** EINE Projektregel auf `paths:`
-umstellen, frische Sitzung, `/context`. Stehen dort weniger Dateien, filtert es.
-**Nur der Mensch kann das ausloesen** — `/context` ist fuer den Assistenten nicht
-aufrufbar.
+⚠ **Der Versuch, der es entscheiden wuerde:** EINE Projektregel auf `paths:` umstellen, frische Sitzung, `/context` — weniger Dateien heisst: es filtert. **Nur der Mensch kann das ausloesen** (`/context` ist fuer den Assistenten nicht aufrufbar).
 
 Dieser Skill migrierte bis v5.42.0 `paths:` → `globs:` und stufte `paths:` als *„won't work"* ein.
 **Die offizielle Doku sagt das Gegenteil** (Recherche 21.08.2026):
@@ -211,13 +170,9 @@ Dieser Skill migrierte bis v5.42.0 `paths:` → `globs:` und stufte `paths:` als
 | `[ISSUE]` #13905 · #16853 · #24112 · #63142 | konkrete `paths:`-Ausfaelle (Invalid-YAML bei `{`/`*`; feuert beim ANLEGEN einer Datei nicht) |
 | `[ISSUE]` #21858 · #22170 (**offen**) | fuer `~/.claude/rules/` (global) laedt `paths:` **gar nicht**; im Projekt funktioniert dieselbe Regel |
 
-⛔ **Der Widerspruch wird hier NICHT aufgeloest.** Beide Seiten haben Belege, keine
-hatte damals eine Messung an dieser Maschine. Damals blieb `migrate`, wie es war — es folgte
-den Nutzerberichten. *(Ueberholt: seit v5.43.0 schreibt `migrate` nichts, seit v5.118.0 ist gemessen.)*
+⛔ **Der Widerspruch wird hier NICHT aufgeloest.** Beide Seiten haben Belege, keine hatte damals eine Messung an dieser Maschine; `migrate` blieb damals, wie es war (folgte den Nutzerberichten). *(Ueberholt: seit v5.43.0 schreibt `migrate` nichts, seit v5.118.0 ist gemessen.)*
 
-**Was ihn aufloesen wuerde:** eine Sonde, die beide Feldnamen auf eine wirklich
-gelesene Datei setzt, plus das Ladeprotokoll (`budget`). Taucht `path_glob_match`
-auf, traegt `paths:` hier. *(Diese Sonde ist seit v5.118.0 gefahren — Ergebnis oben in P1.)*
+**Was ihn aufloesen wuerde:** eine Sonde, die beide Feldnamen auf eine wirklich gelesene Datei setzt, plus Ladeprotokoll (`budget`). Taucht `path_glob_match` auf, traegt `paths:` hier. *(Diese Sonde ist seit v5.118.0 gefahren — Ergebnis oben in P1.)*
 
 ---
 
@@ -273,28 +228,21 @@ Output:
 Fixable: 2 issues (run /mind-rules migrate)
 ```
 
-**Mit `--debug`:** ⛔ **Nichts mehr von Hand eintragen.** Seit v5.12.0 liefert das
-Plugin den Hook mit (`hooks/instructions-loaded.sh`, per Auto-Discovery registriert).
-Er laeuft in **jedem** Projekt und schreibt ein Ladeprotokoll:
+**Mit `--debug`:** ⛔ **Nichts mehr von Hand eintragen.** Seit v5.12.0 liefert das Plugin den Hook mit (`hooks/instructions-loaded.sh`, Auto-Discovery); er laeuft in **jedem** Projekt und schreibt ein Ladeprotokoll:
 
 ```bash
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/03-subcommand-check.sh"
 ```
 
-*(Die frueher hier vorgeschlagene Handregistrierung riet den Feldnamen `.files` —
-die Feldnamen des Ereignisses sind **undokumentiert**. Der mitgelieferte Hook
-probiert mehrere Kandidaten und haengt bei Misserfolg die ROHE Zeile an, statt
-still leere zu schreiben.)*
+*(Die fruehere Handregistrierung riet den Feldnamen `.files`; die Feldnamen des Ereignisses sind **undokumentiert**. Der Hook probiert mehrere Kandidaten und haengt bei Misserfolg die ROHE Zeile an, statt still leere zu schreiben.)*
 
-⚠ Der Hook feuert beim **Sitzungsstart**. Die laufende Sitzung zeigt nichts —
-es braucht eine neue.
+⚠ Der Hook feuert beim **Sitzungsstart** — die laufende Sitzung zeigt nichts, es braucht eine neue.
 
 ---
 
 ### Subcommand: budget (NEU v5.12.0)
 
-**Beantwortet zwei Fragen, die bis v5.11.0 nur zu raten waren:** was laedt hier
-wirklich, und wie ist der Bestand aufgebaut?
+**Beantwortet zwei bis v5.11.0 nur geratene Fragen:** was laedt hier wirklich, wie ist der Bestand aufgebaut?
 
 ```bash
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/04-subcommand-budget.sh"
@@ -309,10 +257,7 @@ ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/04-su
 | **der Nutzer ruft es beim Namen** | **Slash-Command** | ~1 Zeile, deterministisch |
 | **gar nicht** — gilt vor jedem Eingriff | **bleibt Rule** | volle Groesse |
 
-⛔ **Bei jedem Umzug bleibt die Leitplanke als Kurz-Rule zurueck und zeigt auf Hook
-oder Skill.** Ein Skill feuert nur, wenn er erkannt wird — *„nie auf dem Desktop des
-Nutzers starten"* muss man wissen, **bevor** man etwas startet. Ohne diesen Rest ist
-der Umzug ein Rueckschritt.
+⛔ **Bei jedem Umzug bleibt die Leitplanke als Kurz-Rule zurueck und zeigt auf Hook oder Skill.** Ein Skill feuert nur, wenn er erkannt wird — *„nie auf dem Desktop des Nutzers starten"* muss man wissen, **bevor** man etwas startet. Ohne diesen Rest ist der Umzug ein Rueckschritt.
 
 ### ⛔ Was der Bericht NICHT behaupten darf
 
@@ -360,37 +305,25 @@ Zusatz-Regeln:
   - Backup-Tool (immer relevant vor Datei-Ops) -> kein Feld, laedt bei jedem Start.
   - Versions-Tool -> `paths: ["build.py", "*.spec", "**/*.py", "pyproject.toml", "VERSION"]`.
   - Doku-Gate (relevant sobald Wissen uebertragen wird) -> kein Feld.
-  ⛔ Bis v5.118.0 stand hier `globs: ["**/*"]` (always-on) — das Cursor-Feld, wirkungslos:
-  es filterte nie, und es sah aus wie eine Ladebedingung. `check` meldet es als INFO.
+  ⛔ Bis v5.118.0 stand hier `globs: ["**/*"]` (always-on) — Cursor-Feld, wirkungslos, taeuschte eine Ladebedingung vor. `check` meldet es als INFO.
 - **Inhalt = WANN + WIE**, nicht nur WAS: konkreter Trigger ("vor Mass-Delete", "nach
   Feature-Fertigstellung"), der genaue CLI-Aufruf, und die 2-3 load-bearing Fallen.
-- **Grund (ehrlich):** Eine glob-Rule laedt auto, sobald Claude eine passende Datei anfasst,
-  und macht das Tool *erreichbar* — sie garantiert NICHT dass es genutzt wird (Prosa =
-  schwaechste Enforcement-Stufe). Aber ein totes `.py` im Ordner -> eine geladene Anweisung
-  ist eine echte Verbesserung. `docs/*.md` (Menschen-Doku) wird NICHT auto-geladen und zaehlt nicht.
+- **Grund (ehrlich):** Eine glob-Rule laedt auto beim Anfassen einer passenden Datei und macht das Tool *erreichbar*, garantiert NICHT die Nutzung (Prosa = schwaechste Enforcement-Stufe) — aber besser als ein totes `.py`. `docs/*.md` (Menschen-Doku) wird NICHT auto-geladen und zaehlt nicht.
 
 mind-files nutzt fertige Companion-Rule-Templates aus `references/rule-templates/`
 (`backup-usage.md`, `release-hygiene.md`, `release-build.md`, `wissenstransfer-pruefen.md`) —
 diese hier sind die Vorlage/Muster fuer handgeschriebene Companion-Rules.
 
-⚠ **Diese Liste zieht nicht automatisch mit.** Es gibt im Plugin **keine maschinenlesbare
-Registry** installierbarer Tools; sie steht als Prosa an genau zwei Stellen — hier und in der
-Step-5-Struktur von `mind-files/SKILL.md`. Wer ein Bundle ergaenzt, traegt es in **beide** ein,
-sonst ist es an einer Stelle unsichtbar.
+⚠ **Diese Liste zieht nicht automatisch mit.** Es gibt **keine maschinenlesbare Registry** installierbarer Tools; sie steht als Prosa an genau zwei Stellen — hier und in der Step-5-Struktur von `mind-files/SKILL.md`. Ein neues Bundle in **beide** eintragen, sonst ist es an einer Stelle unsichtbar.
 
 ---
 
 ### Subcommand: migrate
 
-⛔ **v5.118.0: die Richtung ist `globs:` → `paths:`** — gemessen (Zustellplan 16.09.2026: 13 Rules
-mit `paths:` laden nicht beim Start, `path_glob_match` 11x, Dauerkontext 961 → 131 kB). Der Tausch
-selbst laeuft ueber `cleaner_paths_sonde.py --start` (Sicherung, Merker, Messung in der naechsten
-Sitzung) — dieser Schritt MELDET, welche Rules noch `globs:` tragen, und schreibt nichts um.
+⛔ **v5.118.0: die Richtung ist `globs:` → `paths:`** — gemessen (Zustellplan 16.09.2026: 13 Rules mit `paths:` laden nicht beim Start, `path_glob_match` 11x, Dauerkontext 961 → 131 kB). Der Tausch laeuft ueber `cleaner_paths_sonde.py --start` (Sicherung, Merker, Messung in der naechsten Sitzung); dieser Schritt MELDET nur, welche Rules noch `globs:` tragen, und schreibt nichts um.
 
 1. Find all rule files with `globs:` frontmatter (die Kandidaten fuer `paths:`).
-   ⭐ v5.119.0: traegt eine Rule `globs: ["**/*"]`, ist der Vorschlag **„Feld entfernen"** —
-   nicht `paths: ["**/*"]`. Sie laedt ohne Feld genauso bei jedem Start; das Feld ist
-   wirkungslos. Vorgeschlagen wird, geschrieben nichts (Punkt 3).
+   ⭐ v5.119.0: traegt eine Rule `globs: ["**/*"]`, lautet der Vorschlag **„Feld entfernen"**, nicht `paths: ["**/*"]` (ohne Feld laedt sie genauso; das Feld ist wirkungslos). Nur vorgeschlagen (Punkt 3).
 2. For each file, show diff:
 
 ```
@@ -407,16 +340,13 @@ After:
 [Apply / Skip]
 ```
 
-3. ⛔ **SCHREIBT NICHTS UM (seit v5.43.0).** Der Ablauf endet hier: gemeldet wird,
-   welches Feld jede Regel traegt. Der Tausch `globs:` → `paths:` geht ueber die Sonde
-   (`/mind-cleaner --paths-sonde`), damit die Ladung danach GEMESSEN wird.
+3. ⛔ **SCHREIBT NICHTS UM (seit v5.43.0).** Gemeldet wird nur, welches Feld jede Regel traegt; der Tausch `globs:` → `paths:` geht ueber die Sonde (`/mind-cleaner --paths-sonde`), damit die Ladung GEMESSEN wird.
 4. Summary: "N Regeln mit `paths:` (bei Beruehrung), M mit `globs:` (laden immer — Kandidaten), davon G mit `globs: ["**/*"]` (Vorschlag: Feld entfernen), K ohne Feld (= laden immer)."
-   ⚠ Dazu der Satz, was daran gemessen ist und was nicht — eine blosse Zahl
-   verleitet zur naechsten Umschreibung.
+   ⚠ Dazu der Satz, was gemessen ist und was nicht — eine blosse Zahl verleitet zur naechsten Umschreibung.
 
 ### ⛔ Pflichtschritt `cleaner_duplikate` — der Aufruf (NEU v5.146.0, Etappe 56 §3)
 
-Bis v5.145.0 stand dieser Schritt im Pflichtkasten und in der Startzeile, aber **nirgends als Aufruf** — erwartet, nie gelaufen. So entstand Noras `FEHLT: mind-rules/cleaner_duplikate` (Palvedo, 20.09.2026), und so wurden Schritte von Hand nachgeholt. Teil von `check`: steht eine Regel schon in einer anderen Ablage (Frage B1 des Kontext-Tors)?
+Bis v5.145.0 stand der Schritt im Pflichtkasten und in der Startzeile, aber **nirgends als Aufruf** — nie gelaufen (Noras `FEHLT: mind-rules/cleaner_duplikate`, Palvedo, 20.09.2026; Schritte wurden von Hand nachgeholt). Teil von `check`: steht eine Regel schon in einer anderen Ablage (Frage B1 des Kontext-Tors)?
 
 ```bash
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/05-pflichtschritt-cleaner.sh"
@@ -426,9 +356,7 @@ ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/05-pf
 
 **Eine Ergaenzung ohne Ruecknahme der alten Aussage ist ein WIDERSPRUCH, kein Update.**
 
-Bevor eine Aussage hinzugefuegt oder korrigiert wird, wird die Datei nach dem
-**KERNBEGRIFF** durchsucht — nicht nach der Ueberschrift, unter der die Ergaenzung
-landen soll:
+Vor jedem Hinzufuegen oder Korrigieren die Datei nach dem **KERNBEGRIFF** durchsuchen — nicht nach der Ueberschrift, unter der die Ergaenzung landen soll:
 
 ```bash
 grep -n "<kernbegriff>" <datei>        # z.B. den Bezeichner, den Dateinamen, die Zahl
@@ -442,11 +370,9 @@ zulaessige Ausgaenge:
 | **Ruecknahme** | die alte Stelle wird durchgestrichen und datiert: `✅ ~~alte Aussage~~ — BEHOBEN in vX.Y.Z` |
 | **Aufloesung** | ein Satz sagt ausdruecklich, welche Fassung ab wann gilt: `Bis v5.6.0 stand hier ...` |
 
-⛔ **Beides stehenlassen ist KEINE Option.** Zwei Stellen, die sich widersprechen,
-sind gleich glaubwuerdig — und der naechste Leser waehlt die falsche.
+⛔ **Beides stehenlassen ist KEINE Option:** zwei widersprechende Stellen sind gleich glaubwuerdig, der naechste Leser waehlt die falsche.
 
-**Der Anlass ist gemessen.** Der `/mind-all`-Lauf im Projekt `Creator` fand am
-24.08.2026 **sieben Halb-Korrekturen** an einem Tag:
+**Anlass:** `/mind-all` im Projekt `Creator` fand am 24.08.2026 **sieben Halb-Korrekturen**:
 
 ```
 stimme.md:93     "⛔ NOCH NICHT IM CODE"  (der Echo-Vorabschnitt)
@@ -454,17 +380,9 @@ stimme.md:1193   "`VORAB_MS = 150` ... ist fuer Qwen richtig"  — setzt ihn vor
                  1100 Zeilen auseinander, beide gleich glaubwuerdig
 ```
 
-Der Lauf nannte auch die Bilanz: **sechs von sieben** waeren mit einem `grep` auf
-den Kernbegriff vor dem Anhaengen aufgefallen. `doku-veraltet` ist mit **25
-Vorkommen** die haeufigste Projekt-Klasse im Debug-Ordner ueberhaupt.
+**Sechs von sieben** waeren mit einem `grep` auf den Kernbegriff vor dem Anhaengen aufgefallen. `doku-veraltet` ist mit **25 Vorkommen** die haeufigste Projekt-Klasse im Debug-Ordner.
 
-⚠ **Der Detektor ersetzt die Suche NICHT.**
-`references/cleaner_duplikate.py` findet solche Widersprueche nachtraeglich
-(`--widersprueche`), aber nur, wenn beide Stellen eine **gemeinsame Marke**
-tragen — einen Bezeichner, Pfad oder Zahlenwert. Ein Widerspruch, bei dem die eine
-Seite den Bezeichner nennt und die andere ihn nur umschreibt, ist fuer ihn
-unsichtbar. **Die Suche vor dem Schreiben ist die tragende Massnahme, das Werkzeug
-das Netz darunter.**
+⚠ **Der Detektor ersetzt die Suche NICHT.** `references/cleaner_duplikate.py` findet Widersprueche nachtraeglich (`--widersprueche`), aber nur mit **gemeinsamer Marke** (Bezeichner, Pfad, Zahlenwert); umschreibt die eine Seite den Bezeichner nur, ist der Widerspruch unsichtbar. **Die Suche vor dem Schreiben ist die tragende Massnahme, das Werkzeug das Netz darunter.**
 
 ## Hard Constraints
 
@@ -482,15 +400,9 @@ das Netz darunter.**
 entweder die ganze Datei als Frontmatter oder gar keines — beides macht die Regel unwirksam,
 und **keine** der bisherigen Pruefungen bemerkte es.
 
-Gemeldet am 21.08.2026 aus dem Projekt **APP - Zustellplan**, nicht von hier. Der Befund
-kam ueber den zentralen Debug-Ordner (`MIND_DEBUG_DIR`) zurueck — der erste Fall, in dem ein
-anderes Projekt einen Fehler in diesem Skill gefunden hat.
+Gemeldet 21.08.2026 aus **APP - Zustellplan** ueber den Debug-Ordner (`MIND_DEBUG_DIR`) — der erste Fall, in dem ein anderes Projekt einen Fehler in diesem Skill fand.
 
-⚠ **Die dort genannte Zahl „6 von 12 Regeldateien" ist hier NICHT mehr nachpruefbar.**
-Nachgemessen am 21.08.2026 um 08:00: alle 12 Dateien haben vollstaendiges Frontmatter —
-derselbe Lauf, der den Befund meldete, hat ihn offenbar auch repariert. **Die Zahl steht
-deshalb als Meldung da, nicht als Tatsache.** Der Check bleibt trotzdem richtig: er faengt
-einen realen Fehlermodus, den kein anderer sieht.
+⚠ **Die Zahl „6 von 12 Regeldateien" ist hier NICHT mehr nachpruefbar:** am 21.08.2026 um 08:00 hatten alle 12 Dateien vollstaendiges Frontmatter (offenbar im selben Lauf repariert). **Sie steht als Meldung da, nicht als Tatsache.** Der Check bleibt richtig: er faengt einen realen Fehlermodus, den kein anderer sieht.
 
 ```bash
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/06-der-schwerste.sh"
@@ -501,10 +413,7 @@ alwaysApply-Weg und laedt korrekt. Eine Datei mit **einem** `---` ist kaputt.
 
 ## ⛔ `paths:` gegen `globs:` — Stand der Belege (NEU v5.7.0) — HISTORIE, entschieden in v5.118.0 (P1)
 
-Die Migrations-Empfehlung dieses Skills stuetzte sich bis v5.6.0 **ausschliesslich** auf
-Community-Recherche (`Wissen/block-4-community.md`), nicht auf die offizielle Doku. Am
-21.08.2026 in der CLI-Binaerdatei nachgesehen (dieselbe Technik, die die
-Auto-Kompaktierungs-Formel geliefert hat):
+Die Migrations-Empfehlung stuetzte sich bis v5.6.0 **ausschliesslich** auf Community-Recherche (`Wissen/block-4-community.md`), nicht auf die offizielle Doku. Am 21.08.2026 in der CLI-Binaerdatei nachgesehen:
 
 | Befund | Zahl |
 |---|---|
@@ -520,18 +429,11 @@ globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
 alwaysApply: false
 ```
 
-⚠ **Das beweist NICHT, dass `paths:` scheitert.** Gefunden sind Beispiel- und Dokumenttexte,
-nicht der Parser. Belegt ist nur: Claude Code liefert selbst Regeln mit `globs:` aus und
-keine mit `paths:`.
+⚠ **Das beweist NICHT, dass `paths:` scheitert.** Gefunden sind Beispiel- und Dokumenttexte, nicht der Parser; belegt ist nur, dass Claude Code selbst Regeln mit `globs:` ausliefert, keine mit `paths:`.
 
-⛔ **Die zweite offene Haelfte bleibt offen:** ein `globs:`-Muster **ohne einen einzigen
-Treffer** verhindert das Laden NICHT (gemessen an CC 2.1.237). Die Tabelle oben stuft das
-weiterhin als „rule never loads" ein — das ist **falsch** und wird bis zur Klaerung nur als
-Hinweis ausgegeben, nie als Grund fuer eine Aenderung.
+⛔ **Die zweite offene Haelfte bleibt offen:** ein `globs:`-Muster **ohne einen einzigen Treffer** verhindert das Laden NICHT (gemessen an CC 2.1.237). Die Tabelle oben fuehrt das weiter als „rule never loads" — **falsch**; bis zur Klaerung nur Hinweis, nie Grund fuer eine Aenderung.
 
-**Das Experiment, das beides entscheiden wuerde:** je eine Testregel mit `paths:` und mit
-`globs:` anlegen, den `InstructionsLoaded`-Hook registrieren und nachsehen, welche geladen
-wird. *(Das Experiment ist seit v5.118.0 gemacht, P1; `migrate` schreibt seit v5.43.0 ohnehin nichts.)*
+**Das Experiment, das beides entscheiden wuerde:** je eine Testregel mit `paths:` und `globs:`, `InstructionsLoaded`-Hook registrieren, nachsehen, welche laedt. *(Das Experiment ist seit v5.118.0 gemacht, P1; `migrate` schreibt seit v5.43.0 ohnehin nichts.)*
 
 ---
 
@@ -542,13 +444,9 @@ wird. *(Das Experiment ist seit v5.118.0 gemacht, P1; `migrate` schreibt seit v5
 selbsterklärend, ist es im Code schon erklärt. … in den Context-Dateien soll
 kein unwichtiger Müll stehen, er ist begrenzt, wertvoll und kostet Geld."*
 
-Bis v5.25.0 arbeitete dieser Command nur **rückwärts** — er prüfte, was schon da
-ist. **Es gab kein Tor beim Hineinschreiben.** Deshalb wächst alles.
+Bis v5.25.0 arbeitete dieser Command nur **rückwärts** (prüfte, was da ist); **es gab kein Tor beim Hineinschreiben.** Deshalb wächst alles.
 
-**Die vollständige Vorschrift steht in
-[references/kontext-tor.md](../../references/kontext-tor.md)** — die Pruefliste
-A1–D10, beide Richtungen, die Quittung, die Grenzen. **Lies sie**, bevor du
-diesen Schritt ausführst. Hier steht nur, was für **diesen** Command gilt:
+**Vollständige Vorschrift: [references/kontext-tor.md](../../references/kontext-tor.md)** — Pruefliste A1–D10, beide Richtungen, Quittung, Grenzen. **Lies sie** vor diesem Schritt. Hier nur, was für **diesen** Command gilt:
 
 | | |
 |---|---|
@@ -577,10 +475,7 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_einordnung.py" --wohin "$ZIEL_RUL
 ## ⛔ D1 — die neunte Frage: WOHIN gehoert diese Aussage?
 
 **Die Pruefliste oben prueft, OB etwas hinein darf; B4 fragt nur, wie OFT es gebraucht wird. WOHIN genau, sagt D1.**
-B3 prueft, ob eine Aussage am **schon gewaehlten** Ort wirkt — es kann zustimmen
-oder ablehnen, nicht umleiten. Ein Tuersteher, kein Wegweiser. Wer durchkommt,
-landet dort, wo der Schreiber gerade steht, und das ist fast immer eine
-immer-ladende Datei.
+B3 prueft, ob eine Aussage am **schon gewaehlten** Ort wirkt — zustimmen oder ablehnen, nicht umleiten (ein Tuersteher, kein Wegweiser). Wer durchkommt, landet dort, wo der Schreiber steht, fast immer in einer immer-ladenden Datei.
 
 | Klasse | wann man es braucht | Ort |
 |---|---|---|
@@ -589,44 +484,29 @@ immer-ladende Datei.
 | **BELEG** | nur wenn jemand die Regel anzweifelt | Archiv oder `docs/`, laedt nie |
 | **UNBESTIMMT** | kein Formmerkmal greift | ⛔ **Ort bleibt, wo er war** |
 
-⛔ **D1 MELDET, es entscheidet nicht.** Die Merkmale sind Formmerkmale und liefern
-**Kandidaten** — dieselbe Doktrin wie `cleaner_leitplanke.py` und wie `art()` in
-`debug_auswertung.py`. Ist BREMSE gegen ANLEITUNG nicht eindeutig, kommt
-**UNBESTIMMT** heraus und der Ort **bleibt unveraendert**. Die wahrscheinlichere
-Zelle zu raten ist verboten: eine geratene Zuordnung wird spaeter zitiert.
+⛔ **D1 MELDET, es entscheidet nicht.** Formmerkmale liefern **Kandidaten** (wie `cleaner_leitplanke.py` und `art()` in `debug_auswertung.py`). Ist BREMSE gegen ANLEITUNG nicht eindeutig, kommt **UNBESTIMMT** heraus und der Ort **bleibt unveraendert**. Die wahrscheinlichere Zelle zu raten ist verboten: eine geratene Zuordnung wird spaeter zitiert.
 
 ⭐ **Der haeufigste echte Fall ist TEILBAR** — ein Absatz mit einer Bremse UND
 ihrem Beleg. Dann geht der Beleg ins Archiv und die Bremse bleibt.
 
-⚠ **Bekannte Schwaeche, nicht verschwiegen:** „wann brauche ich es" ist eine
-Aussage ueber den **Leser**. Gemessen 07.09.2026 brauchte der Manager `hooks.md`
-8x und `architecture.md` 7x — Dateien, die nach der Rollentabelle dem Arbeiter
-gehoeren. Ob das mechanisch entscheidbar ist, ist **UNGEMESSEN**.
+⚠ **Bekannte Schwaeche:** „wann brauche ich es" ist eine Aussage ueber den **Leser**. Gemessen 07.09.2026 brauchte der Manager `hooks.md` 8x und `architecture.md` 7x — Dateien des Arbeiters. Ob das mechanisch entscheidbar ist, ist **UNGEMESSEN**.
 
-⛔ **Die Quittung wird um `D1` erweitert** — sonst ist nicht unterscheidbar, ob D1
-lief und nichts fand oder gar nicht lief:
+⛔ **Die Quittung wird um `D1` erweitert** — sonst ist nicht unterscheidbar, ob D1 lief und nichts fand oder nicht lief:
 
 ```
 tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>
 ```
 
 
-⛔ **Die Quittung MUSS in den Self-Check-Block des Berichts**, eine Zeile je
-`ADD`. Fehlt sie, ist der Lauf ein **Teilsync** — dieselbe Kopplung wie
-Bestands-Pass (v5.22.0) und Schritt-Quittung (v5.25.0).
+⛔ **Die Quittung MUSS in den Self-Check-Block des Berichts**, eine Zeile je `ADD`. Fehlt sie, ist der Lauf ein **Teilsync** (wie Bestands-Pass v5.22.0 und Schritt-Quittung v5.25.0).
 
 ```
 tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10
 ```
 
-⛔ **A1 (Code, andere Datei), B4, C8 und D10 beantwortet `cleaner_tor` NICHT — es nennt sie.** Dafür gibt es
-`cleaner_duplikate`, `cleaner_aussagen --code` und `cleaner_grenzen`. Die Klasse
-`instrument-nachgebaut` steht mit 7 Vorkommen im Debug-Ordner, und **kein
-einziger Nachbau war besser als das Original** (`werkzeuge-zuerst.md`).
+⛔ **A1 (Code, andere Datei), B4, C8 und D10 beantwortet `cleaner_tor` NICHT — es nennt sie.** Dafür gibt es `cleaner_duplikate`, `cleaner_aussagen --code` und `cleaner_grenzen`. `instrument-nachgebaut`: 7 Vorkommen im Debug-Ordner, **kein einziger Nachbau war besser als das Original** (`werkzeuge-zuerst.md`).
 
-⚠ **A1, A2, A3, B6, C7b und C9 bleiben Urteile.** Das Tor erzwingt eine **Antwort**, nicht die
-richtige — wie die Agent-Quittung (v5.19.0), die keinen Agenten zur Arbeit
-zwingt, sondern sein Fehlen sichtbar macht.
+⚠ **A1, A2, A3, B6, C7b und C9 bleiben Urteile.** Das Tor erzwingt eine **Antwort**, nicht die richtige — wie die Agent-Quittung (v5.19.0), die das Fehlen eines Agenten sichtbar macht, statt ihn zur Arbeit zu zwingen.
 
 
 ## Step 9: ⛔ Der Bestands-Pass — PFLICHT, auch bei leerem Befund (NEU v5.22.0)
@@ -640,13 +520,10 @@ und 138 Anweisungen — bei einer Schwelle von ~400 Zeilen und ~100–150 Anweis
 `/mind-all` trägt nach, **niemand sieht zurück**. Dieser Schritt sieht zurück.
 
 ⛔ **Er MELDET. Er schneidet nicht, verschiebt nicht, löscht nicht** — mit **einer** Ausnahme
-seit v5.78.0, Step 9b unten. Der tiefe Schnitt bleibt `/mind-cleaner`, dessen
-Nicht-Autonomie (Nutzer-Entscheidung 24.08.2026) unberührt bleibt.
+seit v5.78.0, Step 9b unten. Der tiefe Schnitt bleibt `/mind-cleaner`
+(seit v5.159.0 autonom, Nutzer 29.10.2026 — mit Snapshot, Gates und Stopp am ersten Bruch).
 
-**Die vollständige Vorschrift steht in
-[references/bestands-pass.md](../../references/bestands-pass.md)** — Bilanz, Stichprobe, die
-drei Fragen, Urteilsbuch, Quittung, Fehlerszenarien, Risiko. **Lies sie**, bevor du diesen
-Schritt ausführst. Hier steht nur, was für **diesen** Skill gilt:
+**Vollständige Vorschrift: [references/bestands-pass.md](../../references/bestands-pass.md)** — Bilanz, Stichprobe, drei Fragen, Urteilsbuch, Quittung, Fehlerszenarien, Risiko. **Lies sie** vor diesem Schritt. Hier nur, was für **diesen** Skill gilt:
 
 | | |
 |---|---|
@@ -657,8 +534,7 @@ Schritt ausführst. Hier steht nur, was für **diesen** Skill gilt:
 ⛔ **v5.106.0 — im ROLLEN-AUFBAU gehoeren die Unterordner zum Bestand.** Ist `$PROJ` eine
 Rollen-Wurzel (`rollen.md`), zaehlen die `CLAUDE.md` und `.claude/rules/*.md` der Ordner aus
 der Spalte `Ordner` des Rosters mit (fehlt die Spalte: jeder direkte Unterordner mit
-`CLAUDE.md`) — das ist der Dauerkontext der Arbeiter-Sitzungen. Gemessen 14.09.2026 (Creator,
-Doro): sieben Unterordner, fuenf CLAUDE.md und 17 Rules, in keinem Bericht genannt.
+`CLAUDE.md`) — das ist der Dauerkontext der Arbeiter-Sitzungen. Gemessen 14.09.2026 (Creator, Doro): sieben Unterordner, fuenf CLAUDE.md, 17 Rules, in keinem Bericht genannt.
 ```bash
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/07-step9-der-bestands.sh"
 ```
@@ -693,13 +569,9 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_stichprobe.py" "$PROJ" \
 ```
 
 ⭐ **Hier ist der Hebel am größten.** Regeldateien ohne `paths:` (oder mit dem wirkungslosen `globs: ["**/*"]`) laden
-**vollständig, bei jeder Anfrage, ohne Obergrenze** — anders als Memory-Topics, die
-ein Auswähler auf 5 begrenzt. Gemessen trugen drei Dateien dieses Projekts zusammen
-**79 KB**, davon 79–88 % Versions-Historie statt Anweisung.
+**vollständig, bei jeder Anfrage, ohne Obergrenze** — anders als Memory-Topics (Auswähler: 5). Gemessen trugen drei Dateien dieses Projekts zusammen **79 KB**, davon 79–88 % Versions-Historie statt Anweisung.
 
-⚠ `cleaner_einordnung` beantwortet dazu die Frage, die nur hier auftritt:
-**gehört das überhaupt in eine Regel** — oder ist es ein Hook, ein Skill, oder
-Wissen, das nach `docs/` gehört?
+⚠ `cleaner_einordnung` beantwortet die nur hier auftretende Frage: **gehört das überhaupt in eine Regel** — oder ist es Hook, Skill oder Wissen für `docs/`?
 
 **PFLICHT im Bericht — dieser Skill hat als einziger keinen Self-Check-Block, also steht die Vorlage hier:**
 
@@ -711,10 +583,7 @@ Wissen, das nach `docs/` gehört?
   Beleg: Bash-Tool-Call #<N>
 ```
 
-⛔ **Ein FEHLENDER Block macht den Lauf zum Teilsync.** `(nichts)` ist eine gültige
-Antwort — leerer Bestand, neues Projekt, Laufbudget erschöpft. **Schweigen ist es nicht.**
-Ein Skill, der schweigt weil sein Bestand sauber ist, und einer, der schweigt weil der Pass
-ausfiel, sehen von außen identisch aus. Dieselbe Lehre wie v5.3.1 und die Agent-Quittung.
+⛔ **Ein FEHLENDER Block macht den Lauf zum Teilsync.** `(nichts)` ist gültig (leerer Bestand, neues Projekt, Laufbudget erschöpft), **Schweigen nicht**: sauberer Bestand und ausgefallener Pass sehen von außen identisch aus (Lehre wie v5.3.1 und Agent-Quittung).
 
 ⚠ **Fail-open:** fehlt ein Werkzeug oder stürzt es ab, wird `UNGEPRUEFT: <werkzeug>`
 gemeldet und der Skill **läuft weiter**. Ein Bestands-Pass darf nie einen Sync töten.
@@ -729,9 +598,7 @@ und genauer"* — und: *„es soll nicht alles vollpumpen"*.
 Projekt-Rules = **61 %** des Dauerkontexts (56 100 von 92 100 Token, gemessen 10.09.2026).
 Die anderen vier Skills folgen, wenn dieser Schritt hier steht.
 
-**Die vollständige Vorschrift — Agent, Kasten, Gate, Bericht — steht in
-[references/bestands-pass.md](../../references/bestands-pass.md), Abschnitt „VERDICHTEN".
-Lies sie.** Hier nur, was für diesen Skill gilt:
+**Vollständige Vorschrift (Agent, Kasten, Gate, Bericht): [references/bestands-pass.md](../../references/bestands-pass.md), Abschnitt „VERDICHTEN". Lies sie.** Hier nur, was für diesen Skill gilt:
 
 | | |
 |---|---|
@@ -749,9 +616,7 @@ ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-rules/bloecke/08-st
 die Zeile `verworfen: <grund>`. **Kein Bericht = der Schritt lief nicht** (Quittung:
 `mind_schritt verdichten fehler:...`).
 
-⚠ **Was dieser Schritt nicht ist:** kein Umzug nach ANLEITUNG/BELEG auf D1-Basis — die
-Klassen sind durchgefallen (`docs/plugin/d1-trefferquote.md`). Der Agent verschiebt nur
-Belege, und nur mit Doppelzeiger an den Ort aus `docs/plugin/wohin-gehoert-es.md`.
+⚠ **Was dieser Schritt nicht ist:** kein Umzug nach ANLEITUNG/BELEG auf D1-Basis (Klassen durchgefallen, `docs/plugin/d1-trefferquote.md`). Der Agent verschiebt nur Belege, nur mit Doppelzeiger an den Ort aus `docs/plugin/wohin-gehoert-es.md`.
 
 ⛔ **Eine Sync-Schuld (`OPEN`) tilgt NUR `/mind-all`** — dieser Lauf nicht, auch nicht mit
 vollständiger Quittung (`OPEN` = „in ALLE fünf Bereiche eingearbeitet", nicht „gelesen").

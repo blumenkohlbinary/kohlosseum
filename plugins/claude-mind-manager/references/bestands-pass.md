@@ -63,8 +63,8 @@ Leitplanken-Absätze `ANLEITUNG`, also *„gehört in den Command"*. Genau die h
 selbst als Leitplanke stehengelassen. **Eine Hand, die nach `ANLEITUNG` umzieht, räumt
 seine Bremsen aus.**
 
-⛔ **Der tiefe Schnitt bleibt `/mind-cleaner`**, dessen Nicht-Autonomie unberührt ist
-(Bericht → OK → Plan → OK, 24.08.2026). Was die fünf dürfen, ist der flache Schnitt an
+⛔ **Der tiefe Schnitt bleibt `/mind-cleaner`** (seit v5.159.0 autonom, Nutzer 29.10.2026;
+bis dahin Bericht → OK → Plan → OK, 24.08.2026). Was die fünf dürfen, ist der flache Schnitt an
 einem Absatz, den ein **gedecktes** Merkmal ausweist.
 
 ⭐ **Das Erfolgsmaß ist neu:** nicht die Zeilenzahl der Wurzeldatei, sondern der **immer

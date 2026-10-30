@@ -43,7 +43,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.160.0"
+MIND_SKILL_VERSION="5.161.0"
 mind_schritt_start "$PROJ" mind-files bestandszahlen_kandidaten cleaner_stichprobe cleaner_tor mind_check_tools_have_rules mind_hook_health mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -67,9 +67,7 @@ mind_schritt verdichten gelaufen --datei "$PROJ/.claude-mind/verdichten-<skill>.
 mind_schritt verdichten "uebersprungen:kein-kandidat" 0 "$PROJ"   # schweigen = FEHLT
 ```
 
-⛔ **`uebersprungen` ist ein gueltiger Status und braucht einen GRUND.** Ein Schritt,
-der legitim entfaellt (kein Git, kein Quellbaum), ist kein Fehler — aber
-sein Entfallen gehoert in den Bericht statt zu verschwinden.
+⛔ **`uebersprungen` ist ein gueltiger Status und braucht einen GRUND.** Ein legitim entfallender Schritt (kein Git, kein Quellbaum) ist kein Fehler, gehoert aber in den Bericht.
 
 ⛔ **v5.67.0: EINEN PFLICHTSCHRITT AUSZULASSEN, WEIL ER TEUER AUSSIEHT, IST VERBOTEN.**
 Nutzer-Auftrag 10.09.2026: *„die sollen alles fahren"*. ⭐ Die Trennlinie:
@@ -79,17 +77,9 @@ Nutzer-Auftrag 10.09.2026: *„die sollen alles fahren"*. ⭐ Die Trennlinie:
 | ⛔ **verboten** | gar nicht **starten**, aus Ruecksicht auf Kontext, Zeit oder Kosten |
 | ✅ **erlaubt** | starten und **scheitern lassen** — `bytes:0` faengt die Bilanz |
 
-Ein gestarteter Agent, der stirbt, ist ein **Befund**. Ein nie gestarteter ist eine
-**Luecke, die wie ein Ergebnis aussieht**. ⚠ „Ressourcengrund" ist deshalb **kein**
-zulaessiger `uebersprungen:`-Grund — er stand in keinem Skill und ist beim Lauf
-entstanden. Seit v5.67.0 macht eine Teilabdeckung den Lauf zum **Teilsync**: die
-Schuld bleibt liegen, bis wirklich alles gefahren ist.
+Ein gestarteter, gestorbener Agent ist ein **Befund**; ein nie gestarteter eine **Luecke, die wie ein Ergebnis aussieht**. ⚠ „Ressourcengrund" ist **kein** zulaessiger `uebersprungen:`-Grund. Seit v5.67.0 macht eine Teilabdeckung den Lauf zum **Teilsync**: die Schuld bleibt liegen, bis alles gefahren ist.
 
-⭐ **`gelaufen:5/11` ist die TEILABDECKUNG und der Anlass dieses Baus.** Am 30.08.2026
-lief `cleaner_leitplanke.py` ueber 5 von 11 Dateien und wurde als **Bereichspruefung**
-berichtet. Der Fehler war nicht ein fehlender Aufruf, sondern ein gelaufener, der
-weniger abdeckte als der Bericht behauptete. `5/11` ist eine gueltige Antwort;
-sie als `11/11` zu berichten ist es nicht.
+⭐ **`gelaufen:5/11` ist die TEILABDECKUNG.** Am 30.08.2026 lief `cleaner_leitplanke.py` ueber 5 von 11 Dateien und wurde als **Bereichspruefung** berichtet. `5/11` ist eine gueltige Antwort; sie als `11/11` zu berichten nicht.
 ⚠ **`X/Y` mit X=Y (`1/1`) zaehlt seit v5.113.0 als voll** — vollstaendig heisst trotzdem
 `gelaufen`, nicht `1/1` (Noras Lauf 11, 16.09.2026). ⛔ **Nachquittieren geht nur im SELBEN
 Block:** die Bilanz nimmt den letzten Eintrag je Block×Name; ein Nachtrag in einem spaeteren
@@ -99,10 +89,8 @@ gefahren** (v5.116.0, Doros Creator-Lauf 16.09.2026: 39 Schritte in 5 s nachgeti
 Die Bilanz erkennt getippte Bloecke (Starts < `MIND_SCHRITT_MIN_S` = 60 s auseinander, >= 5 Schritte
 in 10 s) als FORMAL, der Lauf ist teil.
 
-⛔ **Die Bytezahl ist Pflicht, wo ein Schritt etwas ausgeben MUSS.** Am selben Tag
-lief `cleaner_belege.py` und seine Ausgabe wurde weggegreppt — aus Sicht einer
-naiven Quittung waere das „gelaufen". `0` meldet die Bilanz als **LEER**; `-1`
-heisst „nicht gemessen" und zaehlt nicht.
+⛔ **Die Bytezahl ist Pflicht, wo ein Schritt etwas ausgeben MUSS.** Am 30.08.2026
+wurde die Ausgabe von `cleaner_belege.py` weggegreppt — fuer eine naive Quittung „gelaufen". `0` meldet die Bilanz als **LEER**; `-1` heisst „nicht gemessen" und zaehlt nicht.
 
 **Im Bericht, als erste Zeile des Self-Checks:**
 
@@ -112,11 +100,9 @@ ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/01-pf
 
 ⛔ **Fehlt diese Zeile oder nennt sie `FEHLT`, ist der Bericht unvollstaendig** und
 darf zurueckgewiesen werden. Rueckgabe **2 heisst: gar keine Quittung** — der Lauf
-hat nie begonnen zu quittieren, und das ist NICHT „nichts zu melden".
+hat nie quittiert, das ist NICHT „nichts zu melden".
 
-⚠ **Was die Quittung nicht kann:** sie erzwingt keinen Schritt, sie macht sein Fehlen
-sichtbar — wie `decision:block` und die Agent-Quittung. Und sie misst nicht die GUETE:
-ein Werkzeug, das laeuft und Unsinn liefert, quittiert als `gelaufen`.
+⚠ **Was die Quittung nicht kann:** sie erzwingt keinen Schritt (macht nur sein Fehlen sichtbar, wie `decision:block` und die Agent-Quittung) und misst nicht die GUETE: ein Werkzeug, das Unsinn liefert, quittiert als `gelaufen`.
 
 Projekttyp erkennen -> Soll-Zustand definieren -> Ist pruefen -> User-OK -> Erstellen/Verbessern.
 
@@ -175,12 +161,7 @@ Zusaetzlich (PFLICHT, via `test -e`/Glob konkret pruefen — Exist/Missing pro P
 Gib die 6 Bereiche als eigene Exist-vs-Missing-Sektion zurueck."
 ```
 
-> **v3.3.3 (Weg B):** Frueher liefen hier 4 zusaetzliche `context-analyzer`-Agents
-> (build/backup/tests/secrets). Sie pruefen nur Datei-Existenz (`test -e`) — der
-> project-scanner (hat Bash) erledigt das im selben Durchgang. Die 4 Agents waren
-> redundant und wurden **entfernt** (statt einen ueberspringbaren Redundanz-Schritt
-> zu erzwingen). Kein Verlust an Abdeckung — die 4 Bereiche stehen jetzt im
-> project-scanner-Auftrag oben.
+> **v3.3.3 (Weg B):** Die 4 frueheren `context-analyzer`-Agents (build/backup/tests/secrets) prueften nur Datei-Existenz (`test -e`) und wurden **entfernt**; der project-scanner (hat Bash) deckt die 4 Bereiche im Auftrag oben ab, ohne Abdeckungsverlust.
 
 ## Step 2: Referenzen laden
 
@@ -383,13 +364,9 @@ For each confirmed action:
 
 ### Improving existing files:
 
-**Pre-Edit Read (MUST, praezisiert v3.2.2):** **1× Read der Ziel-Datei VOR dem
-ersten Edit** — reicht fuer N sequentielle Edits (Edit-Tool garantiert
-"file state is current"). **Re-Read nur** wenn anderes Tool die Datei zwischendurch
-modifiziert. Step 4 Best-Practice-Checks zaehlen nicht — Read muss im SELBEN
-Tool-Call-Kontext wie Edit erfolgen.
+**Pre-Edit Read (MUST, v3.2.2):** **1× Read der Ziel-Datei VOR dem ersten Edit** reicht fuer N sequentielle Edits. **Re-Read nur**, wenn ein anderes Tool die Datei modifiziert. Step-4-Checks zaehlen nicht — Read im SELBEN Tool-Call-Kontext wie Edit.
 
-Fuer NEUE Files mit Write ist KEIN vorheriger Read noetig.
+Fuer NEUE Files mit Write ist KEIN Read noetig.
 
 | Improvement | Tool | Aktion |
 |---|---|---|
@@ -440,15 +417,7 @@ export BACKUP_TEST_TIMEOUT=300
 
 **5. Companion-Rule schreiben (PFLICHT — "No Dead Tools"):**
 
-Ohne diese Rule liegen die `tools/*.py` tot im Ordner — Claude weiss nicht WANN er sie
-aufrufen soll (`BACKUP_USAGE.md` ist Menschen-Doku, wird nicht auto-geladen). Die Rule
-mit `paths:`-Frontmatter laedt, sobald Claude eine passende Datei anfasst (gemessen v5.118.0). Die
-Vorlage `backup-usage.md` traegt seit v5.119.0 **KEIN Feld** — sie laedt bei jedem Start, damit das
-Werkzeug vom Start an erreichbar ist; eine Kommentarzeile im Frontmatter sagt, dass das Absicht ist
-(bis v5.118.0 stand dort `globs: ["**/*"]`, das Cursor-Feld, wirkungslos —
-Etappe 27 §1). Gleiches gilt fuer `release-hygiene.md`, `wissenstransfer-pruefen.md`,
-`zaehlwerte-pruefen.md`; `release-build.md` und `werkzeuge-zuerst.md` tragen `paths:`. Die Rule
-und macht das Backup-Tool **erreichbar**.
+Ohne diese Rule liegen die `tools/*.py` tot im Ordner — Claude weiss nicht WANN er sie aufrufen soll (`BACKUP_USAGE.md` ist Menschen-Doku, wird nicht auto-geladen). Die Rule mit `paths:`-Frontmatter laedt, sobald Claude eine passende Datei anfasst (gemessen v5.118.0). Die Vorlage `backup-usage.md` traegt seit v5.119.0 **KEIN Feld** und laedt bei jedem Start (eine Kommentarzeile im Frontmatter sagt: Absicht); bis v5.118.0 stand dort `globs: ["**/*"]`, das Cursor-Feld, wirkungslos (Etappe 27 §1). Gleiches gilt fuer `release-hygiene.md`, `wissenstransfer-pruefen.md`, `zaehlwerte-pruefen.md`; `release-build.md` und `werkzeuge-zuerst.md` tragen `paths:`. Die Rule macht das Backup-Tool **erreichbar**.
 
 ```bash
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/04-backup-system.sh"
@@ -483,13 +452,7 @@ Doku: docs/BACKUP_USAGE.md
 **Wann:** Projekt ist ein Git-Repo (`test -d .git`) **UND** hat ein Versions-Signal
 (`VERSION` / `pyproject.toml` / `package.json` / `*.csproj` / Git-Tags) **UND** User bestaetigt.
 
-⛔ **Das Versions-Signal ist seit v5.7.0 Pflicht.** Bis dahin genuegte `test -d .git` allein —
-und damit wurde das Bundle auch dort angeboten, wo es nie einen Changelog geben kann.
-`update_changelog.py` erzeugt ihn aus **Git-Tags**; ein Doku- oder Workspace-Repo ohne Tags
-bekaeme ein Werkzeug, das per Konstruktion nichts zu tun hat. Genau der Dead-Tool-Fall, den
-Step 5c mit seinem Gate laengst vermeidet und den dieser Skill an anderer Stelle als
-KERN-Invariante durchsetzt. Gemessen am 21.08.2026 im Claude-Mind-Manager-Workspace: Git-Repo,
-kein Remote, kein Versions-Signal — das Angebot waere gekommen.
+⛔ **Das Versions-Signal ist seit v5.7.0 Pflicht** (vorher genuegte `test -d .git`). `update_changelog.py` erzeugt den Changelog aus **Git-Tags**; ein Repo ohne Tags bekaeme ein Dead Tool (KERN-Invariante). Gemessen 21.08.2026 im Claude-Mind-Manager-Workspace: Git-Repo, kein Remote, kein Versions-Signal — das Angebot waere gekommen.
 
 ```bash
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/05-step5b-release-hygiene.sh"
@@ -530,10 +493,7 @@ ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/07-st
 
 Dann **1 Pointer-Zeile** in `CLAUDE.md`: `- Versionierung: \`python tools/version.py show|bump|release\` — siehe \`.claude/rules/release-build.md\``
 
-**Changelog-Kopplung (ehrlich):** `version.py release --changelog` ruft `tools/update_changelog.py`
-auf — das liefert das Release-Hygiene-Bundle (Step 5b), das aber ein **Git-Repo** braucht
-(der Changelog wird aus Git-Tags generiert). Daher **NICHT** in 5c mit-installieren (in einem
-Nicht-Git-Repo waere update_changelog.py selbst ein totes Tool). Zwei Faelle:
+**Changelog-Kopplung:** `version.py release --changelog` ruft `tools/update_changelog.py` auf (Release-Hygiene-Bundle, Step 5b; braucht ein **Git-Repo**, Changelog aus Git-Tags). Daher **NICHT** in 5c mit-installieren (ohne Git waere es ein totes Tool). Zwei Faelle:
 - **Git-Repo:** Step 5b lief bereits (gleiche Setup-Runde) -> `--changelog` funktioniert.
 - **Kein Git-Repo:** `version.py release` ohne `--changelog` nutzen. Wird `--changelog` doch
   gesetzt und das Tool fehlt, **degradiert version.py sauber**: WARN "update_changelog.py nicht
@@ -541,10 +501,7 @@ Nicht-Git-Repo waere update_changelog.py selbst ein totes Tool). Zwei Faelle:
 
 ### Step 5d: Doku-Gate installieren (NEU v5.3.0 — Projekte mit nennenswerter Doku)
 
-**Wozu:** `coverage_gate.py` beantwortet die Frage „ist beim Uebertragen wirklich alles
-angekommen?" **messend statt schaetzend** — Quelldateien rein, Zieldokument rein, belegte
-Pruefpunkte raus. Relevant, sobald Wissen aus mehreren Dateien in ein Dokument wandert
-(Referenzen -> Leitfaden, Recherche -> Notiz, Rohmaterial -> Doku).
+**Wozu:** `coverage_gate.py` beantwortet „ist beim Uebertragen alles angekommen?" **messend statt schaetzend** (Quellen + Zieldokument rein, belegte Pruefpunkte raus), sobald Wissen aus mehreren Dateien in ein Dokument wandert.
 
 **Gating (alle Bedingungen aus dem project-scanner-Report, sonst NICHT anbieten):**
 1. **Python vorhanden** (`python`/`python3`/`.venv` — Bereich RELEASE/DOCS), UND
@@ -570,18 +527,9 @@ das Bundle anbietet, nennt es auch im Report.
 
 ### Step 5e: Zaehl-Gate installieren (NEU v5.11.0 — Projekte mit Zahlen in der Doku)
 
-**Wozu:** Eine Context-Datei, die eine **Anzahl** behauptet (`7 Hooks`, `12 Referenzen`,
-`84 Prueffaelle`), veraltet lautlos — und wird trotzdem geglaubt, **gerade weil** die Zahl
-praezise aussieht. `zaehl_gate.py` liest eine Tabelle, in der neben jeder Zahl ihr
-Zaehlbefehl steht, fuehrt die Befehle aus und vergleicht.
+**Wozu:** Eine behauptete **Anzahl** (`7 Hooks`, `12 Referenzen`, `84 Prueffaelle`) veraltet lautlos und wird geglaubt, **gerade weil** sie praezise aussieht. `zaehl_gate.py` liest eine Tabelle mit Zaehlbefehl je Zahl, fuehrt die Befehle aus und vergleicht.
 
-⛔ **Der Beleg dafuer ist das Plugin selbst.** Seine Tabelle fuehrte **seit v5.2.2** zu
-jeder Zahl den Zaehlbefehl mit — und war trotzdem **sechsmal** falsch (`lib.sh` 7 -> 12 ->
-13 -> 16 -> 17 -> 22; `.py` 2, dann 5, tatsaechlich 8; Skills 8 statt 9). Die Datei notierte
-den Grund ab dem zweiten Mal selbst: *"Eine Lehre aufzuschreiben verhindert ihren
-Wiedereintritt nicht — nur ein Check tut das. Hier waere er billig."* Gebaut hatte ihn
-niemand. **Zwischen "wir wissen es" und "es kann nicht mehr passieren" liegt ein
-ausfuehrbares Skript, sonst nichts.**
+⛔ **Beleg ist das Plugin selbst:** seine Tabelle fuehrte **seit v5.2.2** Zaehlbefehle mit und war trotzdem **sechsmal** falsch (`lib.sh` 7 -> 12 -> 13 -> 16 -> 17 -> 22; `.py` 2, dann 5, tatsaechlich 8; Skills 8 statt 9). Die Datei notierte selbst: *"Eine Lehre aufzuschreiben verhindert ihren Wiedereintritt nicht — nur ein Check tut das. Hier waere er billig."* Gebaut hatte ihn niemand. **Zwischen "wir wissen es" und "es kann nicht mehr passieren" liegt ein ausfuehrbares Skript, sonst nichts.**
 
 **Gating (alle Bedingungen, sonst NICHT anbieten):**
 1. **Python vorhanden** (`python`/`python3`/`.venv` — Bereich RELEASE/DOCS), UND
@@ -598,16 +546,13 @@ keinen Gegenstand"*.
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/09-step5e-zaehl-gate.sh"
 ```
 
-**Danach im Bericht nennen** — und den ersten Lauf gleich mitliefern, sonst weiss niemand,
-ob die Zahlen ueberhaupt stimmen:
+**Danach im Bericht nennen**, samt erstem Lauf (sonst weiss niemand, ob die Zahlen stimmen):
 
 ```bash
 python tools/zaehl_gate.py .claude/rules/<datei-mit-der-tabelle>.md
 ```
 
-⚠ **Findet das Gate keine Zeilen, meldet es Rueckgabewert 2 — kein Ergebnis, statt eines
-zu erfinden.** Das ist der Normalfall bei einem Projekt, das die Tabelle erst noch anlegen
-muss; dann gehoert in den Bericht, **welche** Zahlen dafuer in Frage kaemen.
+⚠ **Findet das Gate keine Zeilen, meldet es Rueckgabewert 2 — kein erfundenes Ergebnis.** Normalfall, wenn die Tabelle noch fehlt; dann gehoert in den Bericht, **welche** Zahlen dafuer in Frage kaemen.
 
 ## Step 5d: ⛔ Das Kontext-Tor — PFLICHT vor jedem `ADD` (NEU v5.26.0)
 
@@ -616,13 +561,10 @@ muss; dann gehoert in den Bericht, **welche** Zahlen dafuer in Frage kaemen.
 selbsterklärend, ist es im Code schon erklärt. … in den Context-Dateien soll
 kein unwichtiger Müll stehen, er ist begrenzt, wertvoll und kostet Geld."*
 
-Bis v5.25.0 arbeitete dieser Command nur **rückwärts** — er prüfte, was schon da
-ist. **Es gab kein Tor beim Hineinschreiben.** Deshalb wächst alles.
+Bis v5.25.0 arbeitete dieser Command nur **rückwärts**; **es gab kein Tor beim Hineinschreiben.** Deshalb wuchs alles.
 
-**Die vollständige Vorschrift steht in
-[references/kontext-tor.md](../../references/kontext-tor.md)** — die Pruefliste
-A1–D10, beide Richtungen, die Quittung, die Grenzen. **Lies sie**, bevor du
-diesen Schritt ausführst. Hier steht nur, was für **diesen** Command gilt:
+**Die vollständige Vorschrift (Pruefliste A1–D10, beide Richtungen, Quittung, Grenzen) steht in
+[references/kontext-tor.md](../../references/kontext-tor.md)** — **lies sie** vor diesem Schritt. Hier nur, was für **diesen** Command gilt:
 
 | | |
 |---|---|
@@ -650,11 +592,8 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_einordnung.py" --wohin "$PROJ/CLA
 
 ## ⛔ D1 — die neunte Frage: WOHIN gehoert diese Aussage?
 
-**Die Pruefliste oben prueft, OB etwas hinein darf; B4 fragt nur, wie OFT es gebraucht wird. WOHIN genau, sagt D1.**
-B3 prueft, ob eine Aussage am **schon gewaehlten** Ort wirkt — es kann zustimmen
-oder ablehnen, nicht umleiten. Ein Tuersteher, kein Wegweiser. Wer durchkommt,
-landet dort, wo der Schreiber gerade steht, und das ist fast immer eine
-immer-ladende Datei.
+**Die Pruefliste oben prueft, OB etwas hinein darf; B4 nur, wie OFT es gebraucht wird. WOHIN genau, sagt D1.**
+B3 prueft nur am **schon gewaehlten** Ort — ein Tuersteher, kein Wegweiser; wer durchkommt, landet meist in einer immer-ladenden Datei.
 
 | Klasse | wann man es braucht | Ort |
 |---|---|---|
@@ -663,22 +602,14 @@ immer-ladende Datei.
 | **BELEG** | nur wenn jemand die Regel anzweifelt | Archiv oder `docs/`, laedt nie |
 | **UNBESTIMMT** | kein Formmerkmal greift | ⛔ **Ort bleibt, wo er war** |
 
-⛔ **D1 MELDET, es entscheidet nicht.** Die Merkmale sind Formmerkmale und liefern
-**Kandidaten** — dieselbe Doktrin wie `cleaner_leitplanke.py` und wie `art()` in
-`debug_auswertung.py`. Ist BREMSE gegen ANLEITUNG nicht eindeutig, kommt
-**UNBESTIMMT** heraus und der Ort **bleibt unveraendert**. Die wahrscheinlichere
-Zelle zu raten ist verboten: eine geratene Zuordnung wird spaeter zitiert.
+⛔ **D1 MELDET, es entscheidet nicht.** Formmerkmale liefern **Kandidaten** (Doktrin wie `cleaner_leitplanke.py`, `art()` in `debug_auswertung.py`). Ist BREMSE gegen ANLEITUNG nicht eindeutig, kommt **UNBESTIMMT** und der Ort **bleibt unveraendert**. Die wahrscheinlichere Zelle zu raten ist verboten: eine geratene Zuordnung wird spaeter zitiert.
 
 ⭐ **Der haeufigste echte Fall ist TEILBAR** — ein Absatz mit einer Bremse UND
 ihrem Beleg. Dann geht der Beleg ins Archiv und die Bremse bleibt.
 
-⚠ **Bekannte Schwaeche, nicht verschwiegen:** „wann brauche ich es" ist eine
-Aussage ueber den **Leser**. Gemessen 07.09.2026 brauchte der Manager `hooks.md`
-8x und `architecture.md` 7x — Dateien, die nach der Rollentabelle dem Arbeiter
-gehoeren. Ob das mechanisch entscheidbar ist, ist **UNGEMESSEN**.
+⚠ **Bekannte Schwaeche:** „wann brauche ich es" ist eine Aussage ueber den **Leser**; gemessen 07.09.2026 brauchte der Manager `hooks.md` 8x und `architecture.md` 7x, obwohl sie nach der Rollentabelle dem Arbeiter gehoeren. Mechanisch entscheidbar? **UNGEMESSEN**.
 
-⛔ **Die Quittung wird um `D1` erweitert** — sonst ist nicht unterscheidbar, ob D1
-lief und nichts fand oder gar nicht lief:
+⛔ **Die Quittung wird um `D1` erweitert** (sonst nicht unterscheidbar, ob D1 nichts fand oder nicht lief):
 
 ```
 tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>
@@ -686,28 +617,23 @@ tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10:D1=<bremse>/<anleitung>/<beleg>/<unbe
 
 
 ⛔ **Die Quittung MUSS in den Self-Check-Block des Berichts**, eine Zeile je
-`ADD`. Fehlt sie, ist der Lauf ein **Teilsync** — dieselbe Kopplung wie
-Bestands-Pass (v5.22.0) und Schritt-Quittung (v5.25.0).
+`ADD`. Fehlt sie, ist der Lauf ein **Teilsync** (wie Bestands-Pass v5.22.0, Schritt-Quittung v5.25.0).
 
 ```
 tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10
 ```
 
 ⛔ **A1 (Code, andere Datei), B4, C8 und D10 beantwortet `cleaner_tor` NICHT — es nennt sie.** Dafür gibt es
-`cleaner_duplikate`, `cleaner_aussagen --code` und `cleaner_grenzen`. Die Klasse
-`instrument-nachgebaut` steht mit 7 Vorkommen im Debug-Ordner, und **kein
-einziger Nachbau war besser als das Original** (`werkzeuge-zuerst.md`).
+`cleaner_duplikate`, `cleaner_aussagen --code` und `cleaner_grenzen`. `instrument-nachgebaut`: 7 Vorkommen im Debug-Ordner, **kein Nachbau war besser als das Original** (`werkzeuge-zuerst.md`).
 
 ⚠ **A1, A2, A3, B6, C7b und C9 bleiben Urteile.** Das Tor erzwingt eine **Antwort**, nicht die
-richtige — wie die Agent-Quittung (v5.19.0), die keinen Agenten zur Arbeit
-zwingt, sondern sein Fehlen sichtbar macht.
+richtige — wie die Agent-Quittung (v5.19.0), die nur das Fehlen sichtbar macht.
 
 
 ## Step 5e: Der Roster — anbieten und pruefen (NEU v5.46.0)
 
 Ein Projekt, in dem **mehrere Sitzungen** arbeiten, braucht `.claude/rules/rollen.md`.
-Ohne ihn wirkt `~/.claude/rules/manager-chats.md` nicht — sie sagt das in ihrer
-dritten Zeile selbst: *„Ohne Roster gilt nichts davon."*
+Ohne ihn wirkt `~/.claude/rules/manager-chats.md` nicht (*„Ohne Roster gilt nichts davon."*).
 
 ### ⛔ Das Gate — gemessen am 09.09.2026, nicht geraten
 
@@ -716,20 +642,11 @@ dritten Zeile selbst: *„Ohne Roster gilt nichts davon."*
 | Sitzungen mit **ueberlappenden Laufzeitfenstern** | 9 von 22 Projekten |
 | schlicht **>= 2 Sitzungen** je Projekt | **9 von 22 Projekten** |
 
-⭐ **Beide liefern DIESELBE Menge.** Jedes Projekt, das je zwei Sitzungen hatte,
-hatte auch ueberlappende. **Also gilt das einfache Merkmal** — ein aufwendiges
-Instrument, das dasselbe misst wie ein triviales, ist eine Last und keine Zusatzsicherheit.
+⭐ **Beide liefern DIESELBE Menge.** **Also gilt das einfache Merkmal** — ein aufwendiges Instrument, das dasselbe misst wie ein triviales, ist eine Last.
 
-⚠ **Die naheliegenden Kandidaten aus dem Auftrag taugen alle nicht**, und zwar aus
-demselben Grund: `.claude-mind/sessions/`, verschiedene `session_id` im Hook-Zaehler und
-mehrere `OPEN.seen-<sid>` zaehlen Sitzungen **ueber die Zeit**. Ein Projekt, an dem seit
-Maerz jede Woche eine neue Sitzung arbeitet, saehe damit aus wie ein Manager-Aufbau.
+⚠ **Die Kandidaten aus dem Auftrag taugen alle nicht:** `.claude-mind/sessions/`, verschiedene `session_id` im Hook-Zaehler und mehrere `OPEN.seen-<sid>` zaehlen Sitzungen **ueber die Zeit**; ein Projekt mit seit Maerz woechentlich neuer Sitzung saehe aus wie ein Manager-Aufbau.
 
-⛔ **Die Messung selbst hatte einen Fehler, der sie fast unbrauchbar gemacht haette:**
-die erste Fassung las nur den **ersten** Datensatz je Transkript — und der traegt keinen
-Zeitstempel. Von 15 Transkripten wurde eines gewertet, und **dieses** Projekt meldete
-*„1 Sitzung, 0 gleichzeitig"*, waehrend drei Sitzungen darin liefen. Gefunden nur, weil der
-bekannt wahre Fall in der Ausgabe stand.
+⛔ **Die Messung hatte einen Fehler, der sie fast unbrauchbar gemacht haette:** die erste Fassung las nur den **ersten** Datensatz je Transkript (ohne Zeitstempel); von 15 Transkripten wurde eines gewertet, und **dieses** Projekt meldete *„1 Sitzung, 0 gleichzeitig"* bei drei laufenden Sitzungen. Gefunden nur am bekannt wahren Fall.
 
 ```bash
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/10-das-gate.sh"
@@ -747,16 +664,13 @@ ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/11-da
 ⛔ **Verbindlich ist Joplin `🧭 Manager-Chats` §10a** (ID
 `6e27ab4e46f94884b88f56a1e7c46f27`): Abschnittsfolge, Ueberschriften, **vier Saetze, die
 woertlich stehen muessen**. Der Skill baut **genau** dieses Geruest. Sonst gaebe es zwei
-Wahrheiten — eine fuer Projekte, die die Kopiervorlage benutzt haben, und eine fuer die,
-in denen `/mind-files` lief.
+Wahrheiten (Kopiervorlage vs. `/mind-files`).
 
 ⛔ **LEERE NAMEN BLEIBEN LEER.** Namen vergibt der Nutzer. Ein erfundener Name ist
-schlimmer als eine Luecke: die Adressierung trifft dann ins Leere, und das faellt erst auf,
-wenn jemand eine Nachricht schickt.
+schlimmer als eine Luecke: die Adressierung trifft ins Leere, erst beim Senden bemerkt.
 
 ⛔ **Die Eigentuemer-Tabelle kommt aus dem TATSAECHLICHEN Bestand**, nie aus einer festen
-Liste — und `~/.claude/projects/<slug>/memory/` steht immer drin, weil es **ausserhalb**
-des Projektordners liegt und sonst zum Streitfall wird.
+Liste — und `~/.claude/projects/<slug>/memory/` steht immer drin (liegt **ausserhalb** des Projektordners, sonst Streitfall).
 
 ⭐ **Unterordner-Aufbau (v5.92.0, §10a Stand 11.09.2026):** liegt in der Wurzel ein
 Unterordner mit eigenem `.claude/`, `.claude-mind/` oder `CLAUDE.md`, traegt die
@@ -783,17 +697,13 @@ nur daran, ob dafuer ein Pflichtabschnitt **fehlt**: fehlt einer, ist der fremde
 verdaechtig; fehlt keiner, ist er eine Zugabe.
 
 ⚠ **Umlaute sind tolerant, alles andere nicht.** `gehoert` und `gehört` gelten als
-dieselbe Ueberschrift. Gefunden an echtem Material: die erste Fassung meldete die
-handgeschriebene `rollen.md` dieses Projekts als *„umbenannt"*, weil sie ASCII schreibt.
-Ein Pruefer, der eine Schreibkonvention fuer eine Umbenennung haelt, erzeugt in jedem
-ASCII-schreibenden Projekt einen Fehlalarm.
+dieselbe Ueberschrift; die erste Fassung meldete die ASCII-geschriebene `rollen.md` dieses Projekts als *„umbenannt"* (Fehlalarm in jedem ASCII-Projekt).
 
 ### ⛔ Was NICHT mechanisch geht — und deshalb im Bericht dazugesagt wird
 
 Ob der **Zuschnitt** der Rollen sinnvoll ist · ob die **Namen** zu den laufenden
 Sitzungen passen · ob sich jemand an den Roster **haelt**. Der Bericht nennt diese drei,
-statt sie wegzulassen — sonst liest sich ein gruener Lauf wie eine Zusicherung, die er
-nicht ist.
+sonst liest sich ein gruener Lauf wie eine Zusicherung, die er nicht ist.
 
 ## Step 5f: ⛔ Der Bestands-Pass — PFLICHT, auch bei leerem Befund (NEU v5.22.0)
 
@@ -806,12 +716,10 @@ und 138 Anweisungen — bei einer Schwelle von ~400 Zeilen und ~100–150 Anweis
 `/mind-all` trägt nach, **niemand sieht zurück**. Dieser Schritt sieht zurück.
 
 ⛔ **Er MELDET. Er schneidet nicht, verschiebt nicht, löscht nicht.** Handeln bleibt
-`/mind-cleaner`, dessen Nicht-Autonomie (Nutzer-Entscheidung 24.08.2026) unberührt bleibt.
+`/mind-cleaner` (seit v5.159.0 autonom, Nutzer 29.10.2026 — mit Snapshot, Gates und Stopp am ersten Bruch).
 
-**Die vollständige Vorschrift steht in
-[references/bestands-pass.md](../../references/bestands-pass.md)** — Bilanz, Stichprobe, die
-drei Fragen, Urteilsbuch, Quittung, Fehlerszenarien, Risiko. **Lies sie**, bevor du diesen
-Schritt ausführst. Hier steht nur, was für **diesen** Skill gilt:
+**Die vollständige Vorschrift (Bilanz, Stichprobe, drei Fragen, Urteilsbuch, Quittung, Fehlerszenarien, Risiko) steht in
+[references/bestands-pass.md](../../references/bestands-pass.md)** — **lies sie** vor diesem Schritt. Hier nur, was für **diesen** Skill gilt:
 
 | | |
 |---|---|
@@ -850,12 +758,11 @@ noch benutzt?** `cleaner_belege` misst genau das — Belege statt Selbsteinschä
 
 ⛔ **Die Kern-Invariante bleibt unberührt:** kein Werkzeug ohne glob-getriggerte
 Companion-Rule. Der Pass darf eine Rule **melden**, nie entfernen — sonst entstünde
-genau das tote Werkzeug, das die Invariante verhindern soll.
+ein totes Werkzeug.
 
 ⛔ **Ein FEHLENDER Block macht den Lauf zum Teilsync.** `(nichts)` ist eine gültige
-Antwort — leerer Bestand, neues Projekt, Laufbudget erschöpft. **Schweigen ist es nicht.**
-Ein Skill, der schweigt weil sein Bestand sauber ist, und einer, der schweigt weil der Pass
-ausfiel, sehen von außen identisch aus. Dieselbe Lehre wie v5.3.1 und die Agent-Quittung.
+Antwort — leerer Bestand, neues Projekt, Laufbudget erschöpft. **Schweigen ist es nicht**:
+sauberer Bestand und ausgefallener Pass sehen von außen identisch aus (Lehre wie v5.3.1, Agent-Quittung).
 
 ⚠ **Fail-open:** fehlt ein Werkzeug oder stürzt es ab, wird `UNGEPRUEFT: <werkzeug>`
 gemeldet und der Skill **läuft weiter**. Ein Bestands-Pass darf nie einen Sync töten.
@@ -926,9 +833,7 @@ Die **woertliche Ausgabe** kommt in den Block — nicht paraphrasiert, nicht gek
 `TOOLCHECK_RC=1` MUSS der Report das als **verletzte Invariante** ausweisen und die fehlende
 Rule nachtragen.
 
-**Warum das den alten Prosa-Block ersetzt:** Bis v5.2.0 stand hier eine Tabelle, die der Skill
-selbst ausfuellte — also eine Behauptung ueber die eigene Arbeit. Gemeldet 2026-08-16 als
-„Self-Check-Block nicht durchsetzbar", und das war berechtigt. `mind_check_tools_have_rules`
+**Warum das den alten Prosa-Block ersetzt:** Bis v5.2.0 fuellte der Skill die Tabelle selbst aus — eine Behauptung ueber die eigene Arbeit (gemeldet 2026-08-16: „Self-Check-Block nicht durchsetzbar"). `mind_check_tools_have_rules`
 prueft stattdessen am Dateisystem: Nennt eine `.claude/rules/*.md` das Tool **namentlich**, und
 traegt sie `paths:` (bei Beruehrung) oder `globs:`/kein Feld (laedt immer)? Die Pruefung kann scheitern —
 ein Tool ohne Rule ergibt nachweislich `FAIL`.
@@ -964,14 +869,13 @@ Project readiness: Good (all critical files present)
 - For CLAUDE.md generation: ALWAYS use project-scanner results, NEVER guess
 - For settings.json: ALWAYS include .env* in deny patterns (security baseline)
 - NEVER include secrets, API keys, or credentials in any generated file
-- **Ein Agent-Dispatch (v3.3.3):** NUR project-scanner (Step 1) deckt Typ-Erkennung + alle 4 Setup-Bereiche (build/backup/tests/secrets) in EINEM Durchgang ab. Die frueheren 4 separaten context-analyzer-Agents (Step 1.5) waren reine Datei-Existenz-Redundanz und sind entfernt — kein zweiter Dispatch, nichts zum Ueberspringen.
+- **Ein Agent-Dispatch (v3.3.3):** NUR project-scanner (Step 1) deckt Typ-Erkennung + alle 4 Setup-Bereiche (build/backup/tests/secrets) in EINEM Durchgang ab. Die 4 frueheren context-analyzer-Agents (Step 1.5) waren Redundanz und sind entfernt.
 - **Backup-System Direktive H (v5.0.0 typ-gated, Befund 8):** Vorschlag nur bei Primary
   `code_app`/`library`/`plugin`/`mcp`/`scripts`. Bei **`workspace`/`docs`/`data`/`config`**
   NICHT anbieten, sondern **INFO**: "reiner Doku-/Datenordner — PreCompact-Hook + globale
   Backups decken das ab; Python-Tools waeren hier totes Gewicht". Zusaetzlich: enthaelt die
   Projekt-CLAUDE.md eine Abhaengigkeits-/Tool-Sperre (z.B. "zero dependencies", "keine
-  Fremd-Tools"), **melden statt vorschlagen**. Grund: "backups schaden nie" stimmt, aber ein
-  nie genutztes Tool im Ordner ist genau der Dead-Tool-Fall, den v4.0 abgeschafft hat.
+  Fremd-Tools"), **melden statt vorschlagen**. Grund: ein nie genutztes Tool im Ordner ist der Dead-Tool-Fall, den v4.0 abgeschafft hat.
 - **Templates plugin-unabhaengig:** Nach Installation kein Plugin-Bezug — Tools laufen autonom im Projekt. Keine Hardcodes von Plugin-Pfaden in den installierten Files (Direktive C)
 - **Python-Detection vor Backup-Installation:** Wenn `python --version` UND `python3 --version` fehlschlagen: Installation laeuft trotzdem (User-OK gegeben) ABER mit WARN "nicht lauffaehig bis Python da ist"
 - **"No Dead Tools"-Invariante (NEU v4.0, KERN):** JEDES Tool das dieser Skill ins Projekt installiert (`tools/backup_tools.py`, `tools/rollback.py`, `tools/mutation_guard.py`, `tools/update_changelog.py`, `tools/version.py`, `tools/coverage_gate.py`) MUSS zusammen mit einer glob-getriggerten Companion-`.claude/rules/*.md` installiert werden, die Claude sagt WANN + WIE er's nutzt + 1 Pointer-Zeile in CLAUDE.md. **Kein Tool-Install ohne Rule** — sonst liegt das Tool tot im Ordner (`docs/*.md` ist Menschen-Doku, wird nicht auto-geladen). Ehrlich: die Rule macht das Tool *erreichbar*, nicht garantiert-genutzt (Prosa-Enforcement) — aber totes `.py` -> geladene Anweisung ist eine echte Verbesserung.
