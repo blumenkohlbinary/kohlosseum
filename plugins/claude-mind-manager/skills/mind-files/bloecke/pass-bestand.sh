@@ -8,3 +8,4 @@ mind_block_umgebung
 mind_pass_schritt mind-files mind_kontext_bilanz mind_kontext_bilanz "$PROJ" --vergleichen
 mind_pass_schritt mind-files bestandszahlen_kandidaten python "$CLAUDE_PLUGIN_ROOT/references/bestandszahlen_kandidaten.py" "$PROJ"
 mind_pass_schritt mind-files cleaner_stichprobe python "$CLAUDE_PLUGIN_ROOT/references/cleaner_stichprobe.py" "$PROJ" --skill mind-files --verzeichnis "$PROJ/.claude/rules"
+mind_pass_offen mind-files   # v5.164.0: Teil 3+4 bleiben beim Modell — die Zeile nennt den Aufruf

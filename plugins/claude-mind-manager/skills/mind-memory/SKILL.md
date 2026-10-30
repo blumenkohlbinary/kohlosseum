@@ -46,7 +46,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.163.0"
+MIND_SKILL_VERSION="5.164.0"
 mind_schritt_start "$PROJ" mind-memory bestandszahlen_kandidaten cleaner_stichprobe cleaner_tor mind_debug_write mind_kontext_bilanz mind_scan_poisoning mind_snapshot verdichten
 ```
 
@@ -650,6 +650,8 @@ Gemessen: der **immer geladene** Kontext wuchs an EINEM Tag um **+21 %** auf 2 6
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/pass-bestand.sh"
 # Teil 1+2: mind_kontext_bilanz --vergleichen (PFLICHTZEILE woertlich in den Self-Check-Block), bestandszahlen_kandidaten,
 #           cleaner_stichprobe — der Block quittiert alle drei SELBST mit Artefakt (v5.163.0). NICHT nachtippen.
+# ⛔ Teil 3+4 bleiben PFLICHT (v5.164.0): die drei Fragen je PRUEFEN-Eintrag, dann `cleaner_stichprobe.py --quittung`
+#   (unten) — die letzte Zeile des Blocks nennt den Aufruf mit der Stichprobenzahl. Ohne sie fehlt bestand=, der Lauf bleibt teil.
 ```
 
 ```bash

@@ -35,6 +35,7 @@ mv "$ST/hooks/lib.sh" "$ST/hooks/lib_echt.sh"
 cat > "$ST/hooks/lib.sh" <<'EOF'
 . "${BASH_SOURCE[0]%/*}/lib_echt.sh"
 mind_lauf_voll()        { cat "$PROJ/stub-voll" 2>/dev/null || echo teil; }
+mind_voll_aus()         { cat "$PROJ/stub-voll" 2>/dev/null || echo teil; }   # v5.164.0: der Block urteilt hierueber
 mind_umfang_bilden()    { echo "5/5 skills 4/4 agents 5/5 bestand 5/5 abdeckung 5/5 echt"; }
 mind_ungepruef_bilden() { :; }
 mind_teilsync_meldung() { echo "$*" > "$PROJ/stub-meldung"; }

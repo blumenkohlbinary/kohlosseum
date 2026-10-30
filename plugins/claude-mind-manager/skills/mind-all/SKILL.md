@@ -57,7 +57,7 @@ mind_kontingent_pruefen "$PROJ" mind-all '$ARGUMENTS' "<5h>" "<woche>" || exit 1
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.163.0"
+MIND_SKILL_VERSION="5.164.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 ```
 
@@ -414,6 +414,11 @@ Schuld bestand:
 ### ⛔ v5.19.0: `SYNC_LIEF` wird ABGELEITET, nicht behauptet
 
 Bis v5.18.0 stand hier `[ "$SYNC_LIEF" = "ja" ]`, **kein Code** wies die Variable zu (24.08.2026: 2 Lesezugriffe, **0 Zuweisungen**); das Modell setzte sie aus Absicht — Selbsteinschaetzung, die `cleaner_belege.py` seit v5.18.0 sonst ersetzt.
+
+⛔ **Diesen Block mit `timeout: 600000` aufrufen (v5.164.0).** Er rechnet ~30–60 s und wartet ab Reparatur-Pass 3
+bis zu 600 s. Mit der Vorgabe von 120 s schiebt ihn das Bash-Werkzeug in den Hintergrund. Im A/B-Lauf vom 30.10.2026
+(`claude -p`) endete die Sitzung dann mit „warte auf Block-Ende“, und es wurde kein `sync-stand` geschrieben.
+**Nie auf einen Hintergrund-Block warten und den Turn beenden.** Ist er doch dort gelandet, seine Ausgabedatei lesen, bis `ABSCHLUSS:` darin steht.
 
 ```bash
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step2.96-abschluss.sh"

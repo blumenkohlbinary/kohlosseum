@@ -12,5 +12,6 @@ mind_block_umgebung
 # Teil 1+2 ueber mind_pass_schritt (lib.sh, v5.163.0) — dieselbe Funktion wie in den vier Einzel-Skills.
 mind_pass_schritt mind-update mind_kontext_bilanz mind_kontext_bilanz "$PROJ" --vergleichen
 mind_pass_schritt mind-update bestandszahlen_kandidaten python "$CLAUDE_PLUGIN_ROOT/references/bestandszahlen_kandidaten.py" "$PROJ" --global
-mind_pass_schritt mind-update cleaner_stichprobe python "$CLAUDE_PLUGIN_ROOT/references/cleaner_stichprobe.py" "$PROJ" \n     --skill mind-update --verzeichnis "$PROJ/.claude/rules"
-echo "=== quittiert: mind_kontext_bilanz bestandszahlen_kandidaten cleaner_stichprobe — NICHT nachtippen."
+mind_pass_schritt mind-update cleaner_stichprobe python "$CLAUDE_PLUGIN_ROOT/references/cleaner_stichprobe.py" "$PROJ" --skill mind-update --verzeichnis "$PROJ/.claude/rules"
+echo "=== quittiert: mind_kontext_bilanz bestandszahlen_kandidaten cleaner_stichprobe — diese drei NICHT nachtippen."
+mind_pass_offen mind-update   # v5.164.0: Teil 3+4 bleiben beim Modell — die Zeile nennt den Aufruf

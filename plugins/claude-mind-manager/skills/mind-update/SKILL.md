@@ -56,7 +56,7 @@ mind_kontingent_pruefen "$PROJ" mind-update '$ARGUMENTS' "<5h>" "<woche>" || exi
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.163.0"
+MIND_SKILL_VERSION="5.164.0"
 mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe cleaner_tor mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
@@ -621,6 +621,13 @@ ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step
 
 ### 4 Agent-Dispatches — sequenziell bzw. in 2 Wellen à 2 (NIE ≥3 gleichzeitig)
 
+⛔ **ZUERST der Block, DANN der Agent (v5.164.0).** Vor jeder Welle wird `agent-schritt.sh` aufgerufen, Aufrufe
+weiter unten: zuerst `start claude-md,memory`, danach `<fertig> <naechste>`. Der Block quittiert den Dispatch
+und nennt den Bericht-Pfad. Jeder Agent-Aufruf traegt `run_in_background: false`.
+Gemessen im A/B-Lauf vom 30.10.2026: vier Agents wurden ohne den Block und ohne das Flag gestartet. Danach wurden
+dispatch und ergebnis in einer Sekunde nachgetragen. Die Bilanz hat das als UNGEPRUEFT erkannt; diese Bereiche
+muessen in 2.96a-R noch einmal laufen, das kostet doppelt.
+
 **NICHT alle 4 in EINER Tool-Call-Message** (das wäre der ≥3-Burst, der das Server-Rate-Limit
 trippt — v4.0.1). Stattdessen: **einzeln nacheinander**, ODER in 2 Wellen à 2 (Welle 1 =
 Agent 1+2 in einem Tool-Call, Welle 2 = Agent 3+4 im nächsten). Alle 4 laufen — nur nie 3-4 auf einmal.
@@ -1057,6 +1064,8 @@ Schritt ausführst. Hier steht nur, was für **diesen** Skill gilt:
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step5d-pass.sh"
 # Teil 1+2: mind_kontext_bilanz --vergleichen (PFLICHTZEILE woertlich in den Self-Check-Block), bestandszahlen_kandidaten,
 #           cleaner_stichprobe — der Block quittiert alle drei SELBST mit Artefakt (v5.163.0). NICHT nachtippen.
+# ⛔ Teil 3+4 bleiben PFLICHT (v5.164.0): die drei Fragen je PRUEFEN-Eintrag, dann `cleaner_stichprobe.py --quittung`
+#   (unten) — die letzte Zeile des Blocks nennt den Aufruf mit der Stichprobenzahl. Ohne sie fehlt bestand=, der Lauf bleibt teil.
 ```
 
 ```bash

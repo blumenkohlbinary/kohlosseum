@@ -120,7 +120,7 @@ UMFANG=$(mind_umfang_bilden "$PROJ" "${LAUF:-}" "${AGENT_SOLL:-4}")
 #    ⛔ NIE `UNGEPRUEFT="..."` aus Schleifen bauen. Was der Lauf SELBST weiss (z. B. ein
 #    Bereich, den kein Werkzeug sieht), haengt er in UNGEPRUEFT_HAND an — es wird als
 #    `hand:<text>` ANGEHAENGT, ersetzt nichts und kann nichts wegnehmen.
-UNGEPRUEFT=$(mind_ungepruef_bilden "$PROJ" "${LAUF:-}")
+UNGEPRUEFT=$(mind_ungepruef_bilden "$PROJ" "${LAUF:-}"); _UG_WERKZEUG="$UNGEPRUEFT"
 if [ -n "${UNGEPRUEFT_HAND:-}" ]; then
   UNGEPRUEFT="${UNGEPRUEFT:+$UNGEPRUEFT,}hand:${UNGEPRUEFT_HAND//,/;}"
 fi
@@ -147,25 +147,29 @@ PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT
 #    erneuten Aufruf wieder bei 0 — die Meldung nach Pass 2 und das Warten ab Pass 3 traten nie ein.
 _PASSF="$PROJ/.claude-mind/reparatur-pass-${LAUF:-ohne-lauf}"
 _PASS=$(cat "$_PASSF" 2>/dev/null); case "${_PASS:-}" in ''|*[!0-9]*) _PASS=0 ;; esac
-while [ "$(mind_lauf_voll "$PROJ" "${LAUF:-}" "${AGENT_SOLL:-4}")" = "teil" ]; do
+# ⛔ v5.164.0: umfang= und ungepruef= aus Zeile oben, nicht neu gerechnet (je ~15 s). Fuenfmal gerechnet waren es
+#    ~143 s, mehr als die 120 s, nach denen das Bash-Werkzeug den Block in den Hintergrund schiebt (A/B-Lauf 30.10.2026).
+#    Geurteilt wird ueber die WERKZEUG-Werte ohne hand: — wie bisher mind_lauf_voll; und wie bisher geht hand: nicht
+#    in den Merker (die zweite Rechnung unten ueberschrieb UNGEPRUEFT ohne hand:, das Verhalten bleibt).
+_VOLL=$(mind_voll_aus "$UMFANG" "$_UG_WERKZEUG")
+UNGEPRUEFT="$_UG_WERKZEUG"
+while [ "$_VOLL" = "teil" ]; do
   _PASS=$((_PASS + 1))
   printf '%s\n' "$_PASS" > "$_PASSF" 2>/dev/null
-  echo "⚠ Lauf ist teil — Reparatur-Pass $_PASS: $(mind_ungepruef_bilden "$PROJ" "${LAUF:-}")"
+  echo "⚠ Lauf ist teil — Reparatur-Pass $_PASS: $UNGEPRUEFT"
   # Anton 16.09.2026: ab Pass 3 WARTEN, nie abbrechen — 60 s je Pass, Deckel 10 min. Kein Stopp,
   # aber kein Haemmern auf ein Rate-Limit. (python statt `sleep`: das Bash-Werkzeug der
   # Desktop-App blockt ein Vordergrund-sleep laut seiner Werkzeugbeschreibung.)
   if [ "$_PASS" -ge 3 ]; then _W=$((60 * _PASS)); [ "$_W" -gt 600 ] && _W=600
     echo "   warte ${_W}s vor Pass $_PASS — warten, nie abbrechen"; python -c "import time; time.sleep($_W)"; fi
-  [ "$_PASS" -eq 2 ] && mind_teilsync_meldung "$PROJ" "$(mind_ungepruef_bilden "$PROJ" "${LAUF:-}")" "$(mind_umfang_bilden "$PROJ" "${LAUF:-}" "${AGENT_SOLL:-4}")"
+  [ "$_PASS" -eq 2 ] && mind_teilsync_meldung "$PROJ" "$UNGEPRUEFT" "$UMFANG"
   #   -> nach dem ZWEITEN Pass: Kennung aus .claude-mind/rescued/teilsync-meldung (manager=), per
   #      mcp__ccd_session_mgmt__list_sessions die local_-Kennung, send_message mit der satz=-Zeile —
   #      als INFORMATION. Der Lauf laeuft weiter; er wartet nicht auf eine Antwort.
   # ... hier die Eintraege ABARBEITEN (oben) ...
   break   # ⛔ der Skill fuehrt die Reparatur als Werkzeugaufrufe aus und ruft diesen Block danach ERNEUT — so lange, bis mind_lauf_voll voll sagt
 done
-UMFANG=$(mind_umfang_bilden "$PROJ" "${LAUF:-}" "${AGENT_SOLL:-4}")
-UNGEPRUEFT=$(mind_ungepruef_bilden "$PROJ" "${LAUF:-}")
-if [ "$(mind_lauf_voll "$PROJ" "${LAUF:-}" "${AGENT_SOLL:-4}")" = "voll" ]; then SYNC_LIEF="ja"; elif [ "$SYNC_LIEF" != "nein" ]; then SYNC_LIEF="teil"; fi
+if [ "$_VOLL" = "voll" ]; then SYNC_LIEF="ja"; elif [ "$SYNC_LIEF" != "nein" ]; then SYNC_LIEF="teil"; fi
 [ "$SYNC_LIEF" = "ja" ] && rm -f "$_PASSF" 2>/dev/null
 # ⛔ Mit SYNC_LIEF=teil geht es hier NICHT weiter: kein sync-stand, kein Bericht, kein Ende —
 #    zurueck in die Schleife oben. Ein Teilsync wird nie mehr geschrieben.

@@ -1821,10 +1821,18 @@ mind_kopf_epoch() {
 #    mind_ungepruef_bilden, durch mind_sync_voll. Ausgabe `voll` (rc 0) oder `teil` (rc 1).
 #    Step 2.96a fragt es VOR dem Schreiben von sync-stand und nach jedem Reparatur-Pass.
 mind_lauf_voll() {
-  local proj="${1:-}" lauf="${2:-}" soll="${3:-4}" tmp u g rc
+  local proj="${1:-}" lauf="${2:-}" soll="${3:-4}"
+  mind_voll_aus "$(mind_umfang_bilden "$proj" "$lauf" "$soll" 2>/dev/null)" \
+                "$(mind_ungepruef_bilden "$proj" "$lauf" 2>/dev/null)"
+}
+
+# mind_voll_aus <umfang> <ungepruef>   -> `voll` (rc 0) oder `teil` (rc 1), dasselbe Urteil wie mind_lauf_voll
+# ⛔ v5.164.0 (Etappe 65 §2): fuer einen Block, der umfang= und ungepruef= ohnehin braucht. Beide kosten
+#    gemessen je ~15 s (A/B-Lauf 30.10.2026); Step 2.96 rechnete sie fuenfmal, ~143 s > 120 s Bash-Vorgabe —
+#    der Block lief in den Hintergrund, unter `claude -p` endete der Lauf dort ohne sync-stand.
+mind_voll_aus() {
+  local u="${1:-}" g="${2:-}" tmp rc
   tmp="${TMPDIR:-/tmp}/.mind_lauf_voll_$$"
-  u=$(mind_umfang_bilden "$proj" "$lauf" "$soll" 2>/dev/null)
-  g=$(mind_ungepruef_bilden "$proj" "$lauf" 2>/dev/null)
   printf 'ts=%s\numfang=%s\nungepruef=%s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$u" "$g" > "$tmp"
   mind_sync_voll "$tmp" >/dev/null 2>&1; rc=$?
   rm -f "$tmp"
@@ -2369,6 +2377,22 @@ mind_pass_schritt() {
   echo "=== $name (rc $rc, $(wc -c < "$f" | tr -d ' ') B, $f)"
   cat "$f"
   return 0
+}
+
+# mind_pass_offen <skill>   (v5.164.0, Etappe 65 §2) — letzte Zeile jedes Bestands-Pass-Blocks
+#   Nennt die Pflicht, die beim Modell bleibt: die drei Fragen je PRUEFEN-Eintrag und die Pass-Quittung
+#   `cleaner_stichprobe.py --quittung` — mit der Stichprobenzahl aus dem Artefakt des Blocks eingesetzt.
+#   ⛔ Gemessen im A/B-Lauf vom 30.10.2026 (5.163.0): in allen fuenf Skills fehlte `bestand=`. Der Block hatte
+#   „quittiert SELBST — NICHT nachtippen“ gesagt, die Quittung mit <n> stand nur weiter unten im Text.
+mind_pass_offen() {
+  local skill="${1:-}" n
+  case "$skill" in mind-[a-z]*) ;; *) echo "⛔ mind_pass_offen <skill>" >&2; return 2 ;; esac
+  # leere Stichprobe: das Werkzeug hat bestand=<skill>:0/0 schon selbst geschrieben (v5.140.0)
+  grep -q "bestand=$skill:" "$PROJ/.claude-mind/pass-$skill/cleaner_stichprobe.txt" 2>/dev/null \
+    && { echo "=== bestand=$skill schon quittiert (leere Stichprobe) — nichts offen."; return 0; }
+  n=$(sed -n 's/.*Stichprobe: \([0-9][0-9]*\).*/\1/p' "$PROJ/.claude-mind/pass-$skill/cleaner_stichprobe.txt" 2>/dev/null | head -1)
+  echo "⛔ PFLICHT OFFEN ($skill): die drei Fragen je PRUEFEN-Eintrag, DANN die Pass-Quittung — ohne sie fehlt bestand=$skill, der Lauf bleibt teil:"
+  echo "   python \"\$CLAUDE_PLUGIN_ROOT/references/cleaner_stichprobe.py\" \"\$PROJ\" --quittung --skill $skill --geprueft <n> --stichprobe ${n:-<n>}"
 }
 
 # mind_agent_bericht_pfad <bereich> [projekt] [skill]   (v5.162.0, Etappe 63 N3 §1; skill v5.163.0)
