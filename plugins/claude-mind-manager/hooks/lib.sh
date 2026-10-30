@@ -3057,6 +3057,45 @@ _mind_schritt_pfad() {
 #       vor dem mind-all Step 2.9 warnt), waechst die Datei sonst ewig.
 #       ⛔ Das Leeren wird dann PROTOKOLLIERT — eine stille Notbremse waere
 #       von einem Datenverlust nicht zu unterscheiden.
+# mind_kontingent_pruefen <projekt> <skill> <argumente> <5h-prozent> <woche-prozent> [weitere-prozent…]   (v5.163.0)
+#   rc 0 = darf starten · rc 1 = ein Wert >= MIND_KONTINGENT_MAX (Vorgabe 80) · rc 3 = NICHT MESSBAR, kein Start
+# ⛔ Nutzer 29.10.2026: „in zukunft soll mind nicht laufen wenn kontigent an der grenze ist — sollen die vorher
+#    pruefen". Ein Hook kann kein Werkzeug rufen — die Werte kommen aus get_usage (5-hour limit, Weekly · all
+#    models), das Modell setzt sie im Kopf-Block ein. Ein stehengebliebener Platzhalter ist keine Zahl: rc 3.
+# ⭐ Ohne Werte rc 0: in der Kette (mind-all.lock liegt — der mind-all-Kopf hat geprueft; NIE fuer mind-all selbst,
+#    ein liegengebliebener Lock entbindet ihn nicht), bei mind-update --quick (kein Knowledge-Sync) und mit dem Notausgang --trotz-kontingent (geloggt). Setzt MIND_KONTINGENT_STAND,
+#    das mind_schritt_start fuer die vier teuren Skills verlangt.
+mind_kontingent_pruefen() {
+  local proj="${1:-$(mind_projekt_wurzel)}" skill="${2:-}" args="${3:-}" max="${MIND_KONTINGENT_MAX:-80}" v n werte="" ueber=""
+  shift 3 2>/dev/null || shift $#
+  case "$max" in ''|*[!0-9]*) max=80 ;; esac
+  if printf '%s' "$args" | grep -qE '(^|[[:space:]])--trotz-kontingent([[:space:]]|$)'; then
+    MIND_KONTINGENT_STAND=trotz; echo "⚠ KONTINGENT: --trotz-kontingent — nicht geprueft (Notausgang)." >&2
+    mind_log WARN "mind_kontingent_pruefen: --trotz-kontingent"; return 0
+  fi
+  if [ "$skill" != "mind-all" ] && [ -e "$proj/.claude-mind/mind-all.lock" ]; then
+    MIND_KONTINGENT_STAND=kette; return 0
+  fi
+  if [ "$skill" = "mind-update" ] && printf '%s' "$args" | grep -qE '(^|[[:space:]])--quick([[:space:]]|$)'; then
+    MIND_KONTINGENT_STAND=quick; return 0
+  fi
+  [ "$#" -ge 2 ] || { echo "⛔ KONTINGENT NICHT MESSBAR: zwei Werte noetig (5-hour limit, Weekly · all models) — es startet nichts." >&2; return 3; }
+  for v in "$@"; do
+    n="${v%\%}"; n="${n%%[.,]*}"
+    case "$n" in ''|*[!0-9]*)
+      echo "⛔ KONTINGENT NICHT MESSBAR: '$v' ist kein Prozentwert (get_usage nicht lesbar?) — es startet nichts." >&2
+      mind_log WARN "mind_kontingent_pruefen: nicht messbar ($v)"; return 3 ;;
+    esac
+    werte="$werte ${n}%"; [ "$n" -ge "$max" ] && ueber="$ueber ${n}%"
+  done
+  if [ -n "$ueber" ]; then
+    echo "⛔ KONTINGENT AN DER GRENZE:${werte} (5h, Woche) — Schwelle ${max}% (MIND_KONTINGENT_MAX). Es startet NICHTS." >&2
+    echo "   Ruecksetzzeit steht in get_usage; nach dem Ruecksetzen erneut, oder bewusst mit --trotz-kontingent." >&2
+    mind_log WARN "mind_kontingent_pruefen: ueber der Schwelle (${werte# })"; return 1
+  fi
+  MIND_KONTINGENT_STAND=ok; echo "Kontingent:${werte} (5h, Woche) — unter ${max}%."; return 0
+}
+
 mind_schritt_start() {
   local q; q=$(_mind_schritt_pfad "${1:-}")
   local proj="${1:-$(mind_projekt_wurzel)}"
@@ -3075,6 +3114,17 @@ mind_schritt_start() {
     echo "   VERSIONSBRUCH fuer $skill nie feuern (v5.125.0, Etappe 37 §3)." >&2
     mind_log WARN "mind_schritt_start $skill: MIND_SKILL_VERSION fehlt — Kopf-Block abgewiesen"
     return 1
+  fi
+  # ⛔ v5.163.0 (Etappe 65 §3, Nutzer 29.10.2026): die vier TEUREN Skills starten nur, wenn
+  #    mind_kontingent_pruefen in DERSELBEN Bash lief — fehlt die Zeile im Kopf, rc 1, keine Startzeile.
+  #    ⚠ Nur mit Stempel (echte Kopf-Bloecke); MIND_KONTINGENT_PFLICHT=aus schaltet ab (tests/lib_test.sh).
+  if [ -n "${MIND_SKILL_VERSION:-}" ] && [ "${MIND_KONTINGENT_PFLICHT:-an}" != "aus" ] && [ -z "${MIND_KONTINGENT_STAND:-}" ]; then
+    case "$skill" in mind-all|mind-update|mind-cleaner|mind-learnings)
+      echo "⛔ KONTINGENT UNGEPRUEFT: im Kopf-Block von $skill fehlt mind_kontingent_pruefen (vor mind_schritt_start, dieselbe Bash)." >&2
+      echo "   Erst get_usage aufrufen, die Werte einsetzen, den Kopf-Block als Ganzes neu fahren (v5.163.0). Nichts geschrieben." >&2
+      mind_log WARN "mind_schritt_start $skill: Kontingent nicht geprueft — Kopf-Block abgewiesen"
+      return 1 ;;
+    esac
   fi
   mkdir -p "$(dirname "$q")" 2>/dev/null || return 1
   local kette=0 zeilen=0

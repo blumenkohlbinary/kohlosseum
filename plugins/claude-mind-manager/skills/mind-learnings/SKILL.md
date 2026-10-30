@@ -26,6 +26,8 @@ learnings_scan
 mind_debug_write
 ```
 
+⛔ **ZUERST das Kontingent (v5.163.0, Nutzer 29.10.2026):** das Werkzeug `get_usage` (`mcp__ccd_session_mgmt__get_usage`) aufrufen und im Kopf-Block `<5h>` und `<woche>` durch `percentUsed` von „5-hour limit“ und „Weekly · all models“ ersetzen — nicht lesbar: `unbekannt`, dann startet nichts. Ab `MIND_KONTINGENT_MAX` (Vorgabe 80 %) startet nichts; Werte und Ruecksetzzeit gehoeren in die Antwort. Notausgang: `--trotz-kontingent`.
+
 **Vor dem ersten Schritt, ohne Ausnahme:**
 
 ```bash
@@ -34,12 +36,13 @@ mind_debug_write
 export CLAUDE_PLUGIN_ROOT   # v5.163.0: sonst sehen die Bloecke sie leer (Ritas Lauf 30.10.)
 source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
+mind_kontingent_pruefen "$PROJ" mind-learnings '$ARGUMENTS' "<5h>" "<woche>" || exit 1   # v5.163.0: VOR mind_schritt_start, dieselbe Bash
 # ⛔ v5.77.0: DIE VERSION DIESES SKILL-TEXTS. lib.sh vergleicht sie mit
 #    basename "$CLAUDE_PLUGIN_ROOT" und meldet VERSIONSBRUCH, wenn ein alter
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.162.0"
+MIND_SKILL_VERSION="5.163.0"
 mind_schritt_start "$PROJ" mind-learnings learnings_quellen learnings_scan mind_debug_write
 ```
 
