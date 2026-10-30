@@ -91,6 +91,34 @@ pruef "Agent: Read im Werkzeugsatz" "$(sed -n '/^tools:/,/^disallowedTools:/p' "
 pruef "mind-update: UNDISPATCHED heisst Block fahren, nicht nachtragen" "$(grep -c 'UNDISPATCHED: …' "$R/skills/mind-update/SKILL.md")" "1"
 pruef "agent-schritt.sh dispatcht VOR dem Agent (mind_agent_dispatch im Block)" "$(grep -c 'mind_agent_dispatch "\$n" "\$PROJ"' "$R/skills/mind-update/bloecke/agent-schritt.sh")" "1"
 
+echo "=== 8) v5.167.0: agent-schritt.sh gibt den AUFTRAG woertlich aus, mit Bestands-Pruefung und kurzer Lese-Liste ==="
+# Voller Lauf 30.10.2026: Agenten ohne run_in_background, keine Bestands-Pruefung, custom-context bekam 412 Dateien.
+P8="$TMP/ks projekt"; mkdir -p "$P8/.claude-mind" "$P8/docs"
+printf '# P\nzuerst `ZIEL.md` und `docs/x.md` lesen; Auftraege `Auftraege/*.md`\n' > "$P8/CLAUDE.md"
+echo z > "$P8/ZIEL.md"; echo x > "$P8/docs/x.md"; echo a > "$P8/a.md"
+AS() { ( cd "$P8" && env -u PROJ -u LAUF CLAUDE_CODE_SESSION_ID=aaaa1111-0000-0000-0000-00000000beef CLAUDE_PROJECT_DIR="$P8" \
+         MIND_LOG_FILE="$TMP/log" bash "$R/skills/mind-update/bloecke/agent-schritt.sh" "$@" 2>&1 ); }
+CCF=$( ( cd "$P8"; . "$R/hooks/lib.sh"; export CLAUDE_CODE_SESSION_ID=aaaa1111-0000-0000-0000-00000000beef; PROJ="$P8"; mind_sampler_pfad "$P8" mind-update-ccf.txt ) )
+mkdir -p "$(dirname "$CCF")"; printf './ZIEL.md\n./docs/x.md\n./a.md\n' > "$CCF"
+O1=$(AS start claude-md,memory)
+pruef "Welle 1: zwei woertliche Auftraege" "$(printf '%s\n' "$O1" | grep -c '^----- AUFTRAG ')" "2"
+pruef "   ... je Auftrag run_in_background: false im Aufruf" "$(printf '%s\n' "$O1" | grep -c 'Agent(subagent_type: "claude-mind-manager:context-analyzer", run_in_background: false')" "2"
+pruef "   ... Bestands-Pruefung genannt" "$(printf '%s\n' "$O1" | grep -c 'BESTAND gegen seine Quellen')" "2"
+pruef "   ... memory: Zitat-Pruefung und Fehlplatzierung" "$(printf '%s\n' "$O1" | grep -cE 'ZITAT, das einer Datei zugeschrieben|Fehlplatzierung nach')" "2"
+B8() { ( cd "$P8"; . "$R/hooks/lib.sh"; export CLAUDE_CODE_SESSION_ID=aaaa1111-0000-0000-0000-00000000beef; PROJ="$P8"; mind_agent_bericht_pfad "$1" "$P8" ); }
+for n in claude-md memory; do printf '## Befunde\n- INFO nichts\n' > "$(B8 $n)"; done
+O2=$(AS claude-md,memory rules,custom-context)
+pruef "Welle 2: rules mit Werkzeug-Pruefung" "$(printf '%s\n' "$O2" | grep -c 'Rule aelter als Werkzeug')" "1"
+pruef "   ... custom-context: ZIEL.md auf der Lese-Liste" "$(printf '%s\n' "$O2" | grep -c '^    ZIEL.md$')" "1"
+pruef "   ... docs/x.md auf der Lese-Liste" "$(printf '%s\n' "$O2" | grep -c '^    docs/x.md$')" "1"
+pruef "   ... a.md (nicht genannt) NICHT auf der Lese-Liste" "$(printf '%s\n' "$O2" | grep -c '^    a.md$')" "0"
+pruef "   ... der Rest nur per Grep" "$(printf '%s\n' "$O2" | grep -c 'Dateien der Liste .* NUR per Grep')" "1"
+printf '## Befunde\n1. UPDATE `.claude/rules/x.md:3` — veraltet\n' > "$(B8 rules)"; printf '## Befunde\n- ENRICH ZIEL.md:2\n' > "$(B8 custom-context)"
+O3=$(AS rules,custom-context)
+pruef "letzte Welle: Befunde stehen im Kontext" "$(printf '%s\n' "$O3" | grep -c '^=== BEFUNDE zum Anwenden')" "1"
+pruef "   ... die UPDATE-Zeile aus rules" "$(printf '%s\n' "$O3" | grep -c 'UPDATE `.claude/rules/x.md:3`')" "1"
+pruef "   ... die ENRICH-Zeile aus custom-context" "$(printf '%s\n' "$O3" | grep -c 'ENRICH ZIEL.md:2')" "1"
+
 echo ""
 echo "  $ok gruen · $rot rot"
 [ "$rot" -eq 0 ] || exit 1

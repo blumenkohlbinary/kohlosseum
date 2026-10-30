@@ -16,5 +16,8 @@ _MD=$(find "$PROJ" -name '*.md' -not -path '*/node_modules/*' -not -path '*/.git
 if ! { command -v python >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1; } || { [ ! -d "$PROJ/docs" ] && [ "${_MD:-0}" -lt 10 ]; }; then
   echo "NICHT ANGELEGT: Doku-Gate — Python oder Doku-Flaeche fehlt (docs/ $([ -d "$PROJ/docs" ] && echo ja || echo nein), .md ${_MD:-0})"; exit 0
 fi
+# ⛔ v5.167.0: Tool-Bundles bleiben ein ANGEBOT, auch autonom (SKILL.md, Abschnitt Autonomie) — angelegt nur mit
+#    --anlegen, das nach Bestaetigung (--ask) uebergeben wird. 5.166.0 legte bei erfuellter Bedingung an; 5.151.0 nie.
+case " $* " in *" --anlegen "*) ;; *) echo "ANGEBOT (nicht angelegt): Doku-Gate — Bedingung erfuellt, angelegt nur mit --anlegen nach Bestaetigung"; exit 0 ;; esac
 mind_vorlage_anlegen "$CLAUDE_PLUGIN_ROOT/references/doc-templates/coverage_gate.py" "tools/coverage_gate.py"
 mind_vorlage_anlegen "$CLAUDE_PLUGIN_ROOT/references/rule-templates/wissenstransfer-pruefen.md" ".claude/rules/wissenstransfer-pruefen.md"

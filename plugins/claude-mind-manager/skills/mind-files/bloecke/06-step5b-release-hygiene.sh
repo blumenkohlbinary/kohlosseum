@@ -21,6 +21,9 @@ ls "$PROJ"/*.csproj >/dev/null 2>&1 && HAT_VERSION="ja"
 if [ ! -d "$PROJ/.git" ] || [ "$HAT_VERSION" = "nein" ]; then
   echo "NICHT ANGELEGT: Release-Hygiene — Git-Repo $([ -d "$PROJ/.git" ] && echo ja || echo nein), Versions-Signal $HAT_VERSION"; exit 0
 fi
+# ⛔ v5.167.0: Tool-Bundles bleiben ein ANGEBOT, auch autonom (SKILL.md, Abschnitt Autonomie) — angelegt nur mit
+#    --anlegen, das nach Bestaetigung (--ask) uebergeben wird. 5.166.0 legte bei erfuellter Bedingung an; 5.151.0 nie.
+case " $* " in *" --anlegen "*) ;; *) echo "ANGEBOT (nicht angelegt): Release-Hygiene — Bedingung erfuellt, angelegt nur mit --anlegen nach Bestaetigung"; exit 0 ;; esac
 command -v python >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1 || echo "WARN: Python nicht gefunden. update_changelog.py installiert aber NICHT lauffaehig."
 mind_vorlage_anlegen "$CLAUDE_PLUGIN_ROOT/references/backup-system-templates/tools/update_changelog.py" "tools/update_changelog.py"
 mind_vorlage_anlegen "$CLAUDE_PLUGIN_ROOT/references/rule-templates/release-hygiene.md" ".claude/rules/release-hygiene.md"

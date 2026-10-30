@@ -14,4 +14,7 @@ mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 if [ ! -f "$PROJ/tools/backup_tools.py" ]; then
   echo "NICHT ANGELEGT: backup-usage.md — kein tools/backup_tools.py"; exit 0
 fi
+# ⛔ v5.167.0: Tool-Bundles bleiben ein ANGEBOT, auch autonom (SKILL.md, Abschnitt Autonomie) — angelegt nur mit
+#    --anlegen, das nach Bestaetigung (--ask) uebergeben wird. 5.166.0 legte bei erfuellter Bedingung an; 5.151.0 nie.
+case " $* " in *" --anlegen "*) ;; *) echo "ANGEBOT (nicht angelegt): backup-usage.md — Bedingung erfuellt, angelegt nur mit --anlegen nach Bestaetigung"; exit 0 ;; esac
 mind_vorlage_anlegen "$CLAUDE_PLUGIN_ROOT/references/rule-templates/backup-usage.md" ".claude/rules/backup-usage.md"

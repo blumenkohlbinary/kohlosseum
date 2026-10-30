@@ -46,7 +46,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.166.0"
+MIND_SKILL_VERSION="5.167.0"
 mind_schritt_start "$PROJ" mind-files bestandszahlen_kandidaten cleaner_stichprobe cleaner_tor mind_check_tools_have_rules mind_hook_health mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -380,7 +380,7 @@ UND User Backup-Vorschlag bestaetigt: Backup-System ins Projekt installieren.
 **Vorgehen:**
 
 ```bash
-ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/03-backup-system.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/03-backup-system.sh"   # v5.167.0: ohne --anlegen nur ANGEBOT; --anlegen erst nach Bestaetigung (--ask)
 ```
 
 **Test-Cmd-Detection fuer `.backuprc`** (project-scanner-Output nutzen):
@@ -416,7 +416,7 @@ export BACKUP_TEST_TIMEOUT=300
 Ohne diese Rule liegen die `tools/*.py` tot im Ordner — Claude weiss nicht WANN er sie aufrufen soll (`BACKUP_USAGE.md` ist Menschen-Doku, wird nicht auto-geladen). Die Rule mit `paths:`-Frontmatter laedt, sobald Claude eine passende Datei anfasst (gemessen v5.118.0). Die Vorlage `backup-usage.md` traegt seit v5.119.0 **KEIN Feld** und laedt bei jedem Start (eine Kommentarzeile im Frontmatter sagt: Absicht); bis v5.118.0 stand dort `globs: ["**/*"]`, das Cursor-Feld, wirkungslos (Etappe 27 §1). Gleiches gilt fuer `release-hygiene.md`, `wissenstransfer-pruefen.md`, `zaehlwerte-pruefen.md`; `release-build.md` und `werkzeuge-zuerst.md` tragen `paths:`. Die Rule macht das Backup-Tool **erreichbar**.
 
 ```bash
-ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/04-backup-system.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/04-backup-system.sh"   # v5.167.0: ohne --anlegen nur ANGEBOT; --anlegen erst nach Bestaetigung (--ask)
 ```
 
 Dann **1 Pointer-Zeile** in `CLAUDE.md` (via Edit, unter einem `## Tooling`/`## Backup`-Abschnitt
@@ -460,7 +460,7 @@ Node/C#/Python/etc. (Bump laeuft ueber die native Toolchain bzw. das Versioning-
 installiert, nie allein.
 
 ```bash
-ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/06-step5b-release-hygiene.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/06-step5b-release-hygiene.sh"   # v5.167.0: ohne --anlegen nur ANGEBOT; --anlegen erst nach Bestaetigung (--ask)
 ```
 
 Dann **1 Pointer-Zeile** in `CLAUDE.md`: `- Release-Hygiene: Conventional Commits + \`python tools/update_changelog.py\` — siehe \`.claude/rules/release-hygiene.md\``
@@ -484,7 +484,7 @@ totes Tool — genau der Bug den v4.0 killt). User bestaetigt ("notwendig").
 ohne `release-build.md` installiert:
 
 ```bash
-ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/07-step5c-versioning-pack.sh" "<Primary aus dem project-scanner, z. B. code_app>"   # v5.166.0: ohne Argument legt er NICHTS an
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/07-step5c-versioning-pack.sh" "<Primary aus dem project-scanner, z. B. code_app>"   # v5.166.0: ohne Argument legt er NICHTS an   # v5.167.0: ohne --anlegen nur ANGEBOT; --anlegen erst nach Bestaetigung (--ask)
 ```
 
 Dann **1 Pointer-Zeile** in `CLAUDE.md`: `- Versionierung: \`python tools/version.py show|bump|release\` — siehe \`.claude/rules/release-build.md\``
@@ -511,7 +511,7 @@ statt Angebot: *"zu wenig Doku-Flaeche, das Gate haette hier keinen Gegenstand"*
 **Immer detect-and-OFFER, nie erzwungen.** User bestaetigt.
 
 ```bash
-ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/08-step5d-doku-gate.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/08-step5d-doku-gate.sh"   # v5.167.0: ohne --anlegen nur ANGEBOT; --anlegen erst nach Bestaetigung (--ask)
 ```
 
 Dann **1 Pointer-Zeile** in `CLAUDE.md`: `- Wissenstransfer messen: \`python tools/coverage_gate.py <ziel.md> <quelle...>\` — siehe \`.claude/rules/wissenstransfer-pruefen.md\``
@@ -539,7 +539,7 @@ keinen Gegenstand"*.
 **Immer detect-and-OFFER, nie erzwungen.** User bestaetigt.
 
 ```bash
-ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/09-step5e-zaehl-gate.sh"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-files/bloecke/09-step5e-zaehl-gate.sh"   # v5.167.0: ohne --anlegen nur ANGEBOT; --anlegen erst nach Bestaetigung (--ask)
 ```
 
 **Danach im Bericht nennen**, samt erstem Lauf (sonst weiss niemand, ob die Zahlen stimmen):

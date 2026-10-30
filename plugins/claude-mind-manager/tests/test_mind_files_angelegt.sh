@@ -19,12 +19,12 @@ pruef() {
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 B="$R/skills/mind-files/bloecke"
 dateien() { ( cd "$1" && find . -type f -not -path './.claude-mind/*' -not -path './.git/*' | sed 's#^\./##' | sort ); }
-fahre() {  # <projekt> [primary fuer 07]
-  local p="$1" b
+fahre() {  # <projekt> [argumente fuer die Bloecke]
+  local p="$1" b; shift
   for b in 03-backup-system 04-backup-system 05-step5b-release-hygiene 06-step5b-release-hygiene \
            07-step5c-versioning-pack 08-step5d-doku-gate 09-step5e-zaehl-gate; do
     ( cd "$p" && env -u PROJ -u LAUF CLAUDE_PROJECT_DIR="$p" MIND_LOG_FILE="$TMP/log" \
-        bash "$B/$b.sh" ${2:+"$2"} >> "$p/.claude-mind/aus" 2>&1 )
+        bash "$B/$b.sh" "$@" >> "$p/.claude-mind/aus" 2>&1 )
   done
 }
 liste() { sort "$1/.claude-mind/mind-files-angelegt-ohne-lauf.txt" 2>/dev/null; }
@@ -44,11 +44,22 @@ pruef "   ... .backupignore nicht ueberschrieben" "$(cat "$A/.backupignore")" "e
 pruef "   ... Release-Hygiene nennt den Grund" "$(grep -c 'NICHT ANGELEGT: Release-Hygiene' "$A/.claude-mind/aus")" "1"
 pruef "   ... Zaehl-Gate: schon da (Learnings/)" "$(grep -c 'NICHT ANGELEGT: Zaehl-Gate — schon da: Learnings/zaehl_gate.py' "$A/.claude-mind/aus")" "1"
 
-echo "=== 2) Python-App mit Versions-Signal, leer: angelegt == gemeldet ==="
+echo "=== 2a) v5.167.0: dieselbe App OHNE --anlegen: Tool-Bundles bleiben ein Angebot ==="
+P0="$TMP/app ohne zusage"; mkdir -p "$P0/docs" "$P0/.claude-mind"; git -C "$P0" init -q 2>/dev/null
+printf '[project]
+version = "1.0"
+' > "$P0/pyproject.toml"; printf '# App
+3 Fenster, 4 Dialoge, 5 Tabellen
+' > "$P0/CLAUDE.md"
+VOR=$(dateien "$P0"); fahre "$P0" code_app
+pruef "nichts angelegt" "$(diff <(echo "$VOR") <(dateien "$P0") | grep -c '^>')" "0"
+pruef "   ... FUENF Bundles als ANGEBOT gemeldet (Backup, Release, Versioning, Doku, Zaehl; die Backup-Rule folgt dem Werkzeug)" "$(grep -c '^ANGEBOT (nicht angelegt): ' "$P0/.claude-mind/aus")" "5"
+
+echo "=== 2) Python-App mit Versions-Signal, leer, MIT --anlegen: angelegt == gemeldet ==="
 P="$TMP/app mit leer"; mkdir -p "$P/docs" "$P/.claude-mind"
 git -C "$P" init -q 2>/dev/null
 printf '[project]\nversion = "1.0"\n' > "$P/pyproject.toml"; printf '# App\n3 Fenster, 4 Dialoge, 5 Tabellen\n' > "$P/CLAUDE.md"
-VOR=$(dateien "$P"); fahre "$P" code_app
+VOR=$(dateien "$P"); fahre "$P" code_app --anlegen
 NEU=$(diff <(echo "$VOR") <(dateien "$P") | sed -n 's/^> //p' | sort)
 pruef "es wurde etwas angelegt" "$([ -n "$NEU" ] && echo ja || echo nein)" "ja"
 pruef "⛔ angelegte Dateien == gemeldete Liste" "$([ "$NEU" = "$(liste "$P")" ] && echo gleich || echo "verschieden: $(echo $NEU) / $(echo $(liste "$P"))")" "gleich"

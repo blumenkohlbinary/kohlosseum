@@ -55,13 +55,57 @@ else
   [ "$RC" = 0 ] || { echo "⛔ naechste Welle NICHT dispatcht — erst die fehlenden Berichte." ; exit 3; }
 fi
 
+# ⛔ v5.167.0 (Etappe 65 Nachtrag 2): der Block gibt den AUFTRAG je Bereich woertlich aus. Bis 5.166.0 nannte er nur
+#    den Bericht-Pfad; das Modell formulierte den Auftrag aus der Prosa-Tabelle selbst. Gemessen im vollen Lauf
+#    30.10.2026: alle Agenten ohne run_in_background, keine Bestands-Pruefung, custom-context bekam 412 Dateien
+#    (5 MB) fuer 25 Turns und schrieb zweimal keinen Bericht — 12 von 17 echten Befunden des alten Ablaufs fehlten.
+auftrag() {  # <bereich>
+  local n="$1" f prio
+  f=$(mind_agent_bericht_pfad "$n" "$PROJ")
+  echo "----- AUFTRAG $n (woertlich als prompt uebergeben) -----"
+  echo "Agent(subagent_type: \"claude-mind-manager:context-analyzer\", run_in_background: false, description: \"knowledge-sync $n\", prompt: <alles bis ----- ENDE>)"
+  echo "scope: $n · mode: knowledge-sync · Projekt: $PROJ"
+  echo "Session-Auszug: $(mind_sampler_pfad "$PROJ" mind-update.json) (leer = keine neuen Ereignisse; dann zaehlt der Bestand allein)"
+  echo "Pruefe ZWEI Richtungen: (1) Session gegen Context-Dateien (UPDATE/ENRICH/ADD/NEW_FILE/INFO) und (2) BESTAND gegen seine Quellen:"
+  case "$n" in
+    claude-md) echo "- Jede NEVER/Gotcha-Zeile: nennt ihre Alternative noch den heutigen Weg? Vergleiche mit den juengsten 15 Eintraegen von docs/plugin/design-history.md (falls vorhanden) — betrifft eine neuere Faehigkeit denselben Gegenstand: ENRICH."
+                echo "- Jeder Zeiger (\"Begruendung: X\", \"Details: X\"): steht der Gegenstand noch in X? Sonst UPDATE mit dem heutigen Ort." ;;
+    memory)    echo "- Memory-Verzeichnis: ${MEMORY_DIR:-<get_memory_dir>}. Jedes ZITAT, das einer Datei zugeschrieben ist: steht der Wortlaut dort noch (auch ~/.claude/rules/)? Sonst UPDATE."
+                echo "- Fehlplatzierung nach ~/.claude/rules/file-handling.md (Abschnitt Context files): Architektur, Pfade, Debug-Fixes, Versionshistorie gehoeren NICHT ins Memory — je Datei Ziel nennen (INFO, Klasse misplaced)." ;;
+    rules)     echo "- Jede Rule, die ein Werkzeug nennt (tools/*.py, Learnings/*.py, references/*.py): lies dessen Aufruf-Kopf/Docstring. Fehlen dort dokumentierte Optionen, Stufen oder Rueckgabewerte in der Rule: UPDATE (Rule aelter als Werkzeug)."
+                echo "- Jeder zitierte Wortlaut einer anderen Datei: steht er dort noch? Zahlen mit Messbefehl daneben: Befehl NICHT fahren, nur als INFO melden." ;;
+    custom-context)
+      prio=$(grep -oE '`[^`*?]*\.md`' "$PROJ/CLAUDE.md" 2>/dev/null | tr -d '`' | sed 's#^\./##' | awk '!g[$0]++' \
+             | while IFS= read -r p; do [ -f "$PROJ/$p" ] && grep -qxF "./$p" "$(mind_sampler_pfad "$PROJ" mind-update-ccf.txt)" 2>/dev/null && echo "$p"; done | head -15)
+      echo "- ZUERST ganz lesen (von CLAUDE.md namentlich genannt, hoechstens 15):"
+      printf '%s\n' "$prio" | sed '/^$/d; s/^/    /'
+      echo "  Darin: als offen markierte Kriterien, die laut Bestand erledigt sind · Zeiger auf Auftraege/Etappen, die nicht mehr die juengsten sind · Zahlen ohne Messbefehl: UPDATE."
+      echo "- Die uebrigen $(grep -c . "$(mind_sampler_pfad "$PROJ" mind-update-ccf.txt)" 2>/dev/null) Dateien der Liste $(mind_sampler_pfad "$PROJ" mind-update-ccf.txt) NUR per Grep, nicht einzeln lesen." ;;
+  esac
+  echo "Nenne zu JEDEM Zitat die Datei und die Zeilennummer, aus der du es gelesen hast. Was du ohne Fundstelle schreibst, kennzeichne als UNGEPRUEFT."
+  echo "Schreibe deinen VOLLEN Bericht mit Write nach $f — genau diese eine Datei, sonst nichts. Hoere erst auf, wenn er geschrieben ist."
+  echo "----- ENDE $n -----"
+}
+
 if [ -n "$B" ]; then
   while IFS= read -r n; do
     mind_agent_dispatch "$n" "$PROJ" || exit 2
     echo "dispatch $n — Bericht-Pfad fuer den Auftrag: $(mind_agent_bericht_pfad "$n" "$PROJ")"
+    auftrag "$n"
   done < <(liste "$B")
-  echo "Jetzt die Welle starten: $(anzahl "$B") Agent(s) in EINER Nachricht, run_in_background: false."
+  echo "Jetzt die Welle starten: $(anzahl "$B") Agent(s) in EINER Nachricht, run_in_background: false — die Auftraege oben WOERTLICH."
   echo "⛔ Nicht mit ScheduleWakeup/sleep warten — die Rueckmeldung kommt von selbst."
 else
   echo "Alle Bereiche quittiert — weiter mit der Agent-Bilanz."
+  # ⛔ v5.167.0: die Befunde in den KONTEXT. Seit 5.162.0 stehen sie nur in Dateien; der volle Lauf 30.10.2026 wendete
+  #    0 an (alt 4) — Step 4 hatte nichts vor sich. Rollen-Aufbau aendert das nicht: angewendet wird, was der Skill
+  #    vorschreibt (manager-chats.md: die Linie ist die VORSCHRIFT).
+  echo "=== BEFUNDE zum Anwenden (Step 4, AUTO_MODE=yes: UPDATE/ENRICH/ADD/NEW_FILE anwenden, DESIGN nicht) ==="
+  for n in claude-md memory rules custom-context; do
+    f=$(mind_agent_bericht_pfad "$n" "$PROJ" 2>/dev/null) || continue
+    [ -s "$f" ] || continue
+    echo "--- $n ($f)"
+    grep -nE '\b(UPDATE|ENRICH|ADD|NEW_FILE)\b' "$f" 2>/dev/null | head -15 | cut -c1-240
+  done
+  echo "Je Befund: Ziel-Datei lesen, anwenden oder mit Grund als nicht angewendet melden — Schweigen zaehlt nicht."
 fi

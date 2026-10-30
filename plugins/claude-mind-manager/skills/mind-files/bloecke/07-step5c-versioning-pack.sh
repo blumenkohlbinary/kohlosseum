@@ -12,12 +12,15 @@ mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 #    kopierten bedingungslos, das Gating stand nur im SKILL-Text — 6 Dateien angelegt, berichtet „keine“.
 # Bedingung (Step 5c, v4.0): Python UND Primary code_app (Argument 1, aus dem project-scanner) UND Build-/Versions-Signal.
 # Ohne Argument wird NICHTS angelegt — der Typ ist ein Urteil des Scanners, kein Dateimerkmal.
-PRIMARY="${1:-}"
+PRIMARY=""; for _a in "$@"; do case "$_a" in --*) ;; *) PRIMARY="$_a"; break ;; esac; done   # erstes Nicht-Flag-Argument
 _SIG="nein"
 for _s in build.py pyproject.toml VERSION; do [ -f "$PROJ/$_s" ] && _SIG="ja"; done
 ls "$PROJ"/*.spec >/dev/null 2>&1 && _SIG="ja"
 if ! { command -v python >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1; } || [ "$PRIMARY" != "code_app" ] || [ "$_SIG" = "nein" ]; then
   echo "NICHT ANGELEGT: Versioning-Pack — Primary '${PRIMARY:-(kein Argument)}', Signal $_SIG"; exit 0
 fi
+# ⛔ v5.167.0: Tool-Bundles bleiben ein ANGEBOT, auch autonom (SKILL.md, Abschnitt Autonomie) — angelegt nur mit
+#    --anlegen, das nach Bestaetigung (--ask) uebergeben wird. 5.166.0 legte bei erfuellter Bedingung an; 5.151.0 nie.
+case " $* " in *" --anlegen "*) ;; *) echo "ANGEBOT (nicht angelegt): Versioning-Pack — Bedingung erfuellt, angelegt nur mit --anlegen nach Bestaetigung"; exit 0 ;; esac
 mind_vorlage_anlegen "$CLAUDE_PLUGIN_ROOT/references/release-templates/version.py" "tools/version.py"
 mind_vorlage_anlegen "$CLAUDE_PLUGIN_ROOT/references/rule-templates/release-build.md" ".claude/rules/release-build.md"

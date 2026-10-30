@@ -14,6 +14,9 @@ mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 if [ -f "$PROJ/tools/backup_tools.py" ]; then
   echo "NICHT ANGELEGT: Backup-System — tools/backup_tools.py ist schon da"; exit 0
 fi
+# ⛔ v5.167.0: Tool-Bundles bleiben ein ANGEBOT, auch autonom (SKILL.md, Abschnitt Autonomie) — angelegt nur mit
+#    --anlegen, das nach Bestaetigung (--ask) uebergeben wird. 5.166.0 legte bei erfuellter Bedingung an; 5.151.0 nie.
+case " $* " in *" --anlegen "*) ;; *) echo "ANGEBOT (nicht angelegt): Backup-System — Bedingung erfuellt, angelegt nur mit --anlegen nach Bestaetigung"; exit 0 ;; esac
 mkdir -p "$PROJ/.claude-mind/backups"
 # Overwrite-Guard: existiert eine Datei schon -> SKIP, NIE ueberschreiben.
 # (update_changelog.py gehoert NICHT hierher — Release-Hygiene, Step 5b.)

@@ -29,7 +29,7 @@ echo "=== 1) Welle 1: Quittung anlegen, zwei Dispatches, Pfade mit Lauf-ID ==="
 A=$(S start claude-md,memory)
 pruef "Quittung erwartet 4" "$(grep -c '"erwartet":4' "$Q")" "1"
 pruef "zwei Dispatches" "$(grep -c '"ereignis":"dispatch"' "$Q")" "2"
-pruef "Bericht-Pfad traegt die Lauf-ID" "$(printf '%s\n' "$A" | grep -c "agent/$L-mind-update-memory.md")" "1"
+pruef "Bericht-Pfad traegt die Lauf-ID" "$(printf '%s\n' "$A" | grep -c "^dispatch memory — Bericht-Pfad .*agent/$L-mind-update-memory.md")" "1"   # v5.167.0: der Auftrag nennt ihn ein zweites Mal
 pruef "⛔ sagt: nicht mit ScheduleWakeup warten" "$(printf '%s\n' "$A" | grep -c 'ScheduleWakeup')" "1"
 
 echo "=== 2) Welle 2: beide Berichte da -> quittiert, naechste Welle dispatcht ==="
