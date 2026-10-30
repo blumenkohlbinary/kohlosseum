@@ -48,7 +48,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.171.0"
+MIND_SKILL_VERSION="5.172.0"
 mind_schritt_start "$PROJ" mind-claudemd bestandszahlen_kandidaten claudemd_pipeline cleaner_duplikate cleaner_stichprobe cleaner_tor cleaner_urteile mind_check_tools_have_rules mind_kontext_bilanz mind_snapshot verdichten
 ```
 
@@ -726,7 +726,7 @@ laesst, ist **UNGEMESSEN**.
 D1 lief und nichts fand oder gar nicht lief:
 
 ```
-tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>
+tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>:W1=<hier>/<memory>/<vorliebe>/<auftrag>/<joplin>/<code>
 ```
 
 ⛔ **Die Quittung MUSS in den Self-Check-Block des Berichts**, eine Zeile je

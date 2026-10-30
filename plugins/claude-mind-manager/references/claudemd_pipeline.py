@@ -34,6 +34,9 @@ import os
 import re
 import sys
 
+# v5.172.0: Check 17 and the code-comment pre-selection (cleaner_einordnung) share ONE pattern.
+GEHEIMNIS = re.compile(r"sk-ant-|AKIA|BEGIN .*PRIVATE KEY|password=")
+
 sys.stdout.reconfigure(encoding="utf-8", newline="")
 
 
@@ -709,7 +712,7 @@ def pruefe(pfad, projekt):
 
     # --- 17 · Secrets --------------------------------------------------------
     for i, z in enumerate(zeilen, 1):
-        if re.search(r"sk-ant-|AKIA|BEGIN .*PRIVATE KEY|password=", z):
+        if GEHEIMNIS.search(z):
             befund(17, i, "Secret-Muster")
 
     # --- 18 · Modularity messbar --------------------------------------------

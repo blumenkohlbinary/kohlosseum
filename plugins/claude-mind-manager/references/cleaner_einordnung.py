@@ -222,6 +222,51 @@ _D1_UNTEILBAR = re.compile(
     re.M)
 
 
+# ⭐ v5.172.0 (Etappe 64 §2): CODE-KOMMENTAR — eine Aussage ueber EINE Code-Stelle gehoert als Kommentar an die
+#    Stelle (0 Dauerkontext, laedt nur mit der Datei, driftet nicht: `hooks.md` zitierte `session-start.sh:39-63`,
+#    am Code stand es laengst bei 142-161). Erkannt NUR an der engen Form `datei.ext:NNN` — Neustichprobe 30.10.2026:
+#    ~15 von 23 echt (Workspace 2/5, Zustellplan ~13/18); die Bezeichner-Variante und Q3 (Zwischenstand, 0/4) nicht.
+#    ⚠ Vorschlag, kein Schnitt: das Urteil „gilt es NUR dort?“ bleibt beim Menschen.
+_D1_CODESTELLE = re.compile(r"\b[\w./-]+\.(?:sh|py|js|ts|cs|ps1):\d+(?:-\d+)?\b")
+_D1_NICHT_CODE = re.compile(r"Deckel", re.I)
+# ⛔ Nichts Vertrauliches in Code: Geheimnis-Muster (geteilt mit claudemd_pipeline Check 17), Nutzerpfad, Kennung.
+_D1_VERTRAULICH_EXTRA = re.compile(r"[A-Za-z]:[/\\]Users[/\\][^/\\\s`]+|\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b")
+
+
+def code_stellen(absatz):
+    u"""-> Liste der `datei.ext:NNN`-Stellen, wenn der Absatz als CODE-KOMMENTAR in Frage kommt, sonst []."""
+    if _D1_UNTEILBAR.search(absatz) or _D1_NICHT_CODE.search(absatz):
+        return []
+    return [m.group(0) for m in _D1_CODESTELLE.finditer(absatz)][:3]
+
+
+def vertraulich(text):
+    try:
+        from claudemd_pipeline import GEHEIMNIS
+    except ImportError:          # Paket unvollstaendig: lieber vorsichtig
+        return True
+    return bool(GEHEIMNIS.search(text) or _D1_VERTRAULICH_EXTRA.search(text))
+
+
+_KOMMENTAR = {".sh": ("#",), ".py": ("#",), ".ps1": ("#",), ".js": ("//",), ".ts": ("//",), ".cs": ("//",)}
+
+
+def nur_kommentarzeilen(alt, neu, endung):
+    u"""Gate fuer einen Regel->Kommentar-Zug: aendert der Diff NUR Kommentarzeilen?
+    -> (True|False, [abweichende Zeilen]) · (None, []) fuer eine Sprache ohne sicher bekannte Kommentarsyntax."""
+    zeichen = _KOMMENTAR.get(endung)
+    if not zeichen:
+        return None, []
+    import difflib
+    schlecht = []
+    for z in difflib.ndiff(alt.splitlines(), neu.splitlines()):
+        if z[:2] in ("+ ", "- "):
+            inhalt = z[2:].strip()
+            if inhalt and not inhalt.startswith(zeichen):
+                schlecht.append(z)
+    return (not schlecht), schlecht
+
+
 # ⛔ DIE LAENGE TRENNT, DAS ZEICHEN ALLEIN NICHT — Positivkontrolle 07.09.2026.
 #    Die erste Fassung nahm ⛔/NIE/MUSS als alleiniges Merkmal. Sie fiel durch:
 #
@@ -298,15 +343,17 @@ def d1_datei(pfad):
         teilbar = ((k == "BREMSE" and bool(_D1_BELEG.search(a)))
                    or (k == "ANLEITUNG" and bool(_D1_BREMSE.search(a)))
                    or b_und_a)
+        cs = code_stellen(a)
         zeilen.append({"nr": i, "klasse": k, "teilbar": teilbar,
                        "zeilen": a.count("\n") + 1,
-                       "kurz": " ".join(a.split())[:64]})
+                       "kurz": " ".join(a.split())[:64],
+                       "code_stelle": cs, "vertraulich": bool(cs) and vertraulich(a)})
     return {"pfad": pfad, "zeilen": zeilen, "code": code, "zaun_offen": zaun}
 
 
 def d1_bericht(dateien):
     ges = {"BREMSE": 0, "ANLEITUNG": 0, "BELEG": 0, "UNBESTIMMT": 0}
-    teil = 0
+    teil = code = 0
     print("=" * 92)
     print("  D1 — wohin gehoert diese AUSSAGE?   (Formmerkmale: KANDIDATEN, keine Urteile)")
     print("=" * 92)
@@ -322,6 +369,10 @@ def d1_bericht(dateien):
             # (38 %). Die ZAEHLEINHEIT war der Fehler, nicht nur das Merkmal.
             ges[z["klasse"]] += 1
             marke = "  ⭐TEILBAR" if z["teilbar"] else ""
+            if z.get("code_stelle"):
+                code += 1
+                marke += ("  ⛔CODE-STELLE, aber vertraulich: %s" if z["vertraulich"]
+                          else "  ⭐CODE-KOMMENTAR? %s") % ", ".join(z["code_stelle"])
             if z["teilbar"]:
                 teil += 1
             print("    %3d  %-10s %2dZ  %s%s"
@@ -337,6 +388,9 @@ def d1_bericht(dateien):
     print()
     print("  ⭐ %d Absaetze sind TEILBAR: eine Bremse mit eingebautem Beleg." % teil)
     print("     Der Beleg kann ins Archiv, die Bremse bleibt. Das ist der haeufigste Fall.")
+    print("  ⭐ %d Absaetze nennen eine Code-Stelle (`datei.ext:NNN`) — CODE-KOMMENTAR?: als englischer Kommentar" % code)
+    print("     an die Stelle verschieben, die Regelzeile entfaellt oder wird Zeiger. Gates: nur Kommentarzeilen im Diff")
+    print("     (`nur_kommentarzeilen`), Marken erhalten, nichts Vertrauliches. Urteil „gilt es NUR dort?“ beim Menschen.")
     print("  ⚠ UNBESTIMMT ist KEIN Mangel. Es heisst: kein Formmerkmal greift,")
     print("     ein Mensch entscheidet. Eine geratene Zelle waere schlimmer als eine leere.")
     return 0

@@ -232,6 +232,23 @@ for _ap in sorted(_glob.glob(os.path.join(PROJEKT, ".claude", "archiv", "*.archi
           % (_n, _erlaubt, len(_fehl2), len(_brems2)), len(_fehl2) <= _erlaubt,
           "(neu ohne Marker: %s)" % _fehl2[:2])
 
+print("=== v5.172.0) CODE-KOMMENTAR: enge Form datei.ext:NNN, Ausnahmen, Vertraulichkeit, Gate ===")
+from cleaner_einordnung import code_stellen, vertraulich, nur_kommentarzeilen  # noqa: E402
+pruef("Absatz mit `ui.py:177` -> Code-Stelle", code_stellen("Laeuft 300 ms nach dem Start (`ui.py:177`).") == ["ui.py:177"])
+pruef("   ... Bereich `session-start.sh:39-63`", code_stellen("Drei Teilzustaende (`session-start.sh:39-63`).") == ["session-start.sh:39-63"])
+pruef("Bezeichner ohne Zeile -> KEINE Code-Stelle", code_stellen("`mind_snapshot` sichert nur das Projekt.") == [])
+pruef("Tabellenzeile -> KEINE (unteilbar)", code_stellen("| Zoom | 23 | `map_widget.py:34` |") == [])
+pruef("Deckel-Ausweis -> KEINE", code_stellen("Deckel-Ausweis: `negativfall_gate.py:69` liest nur lib.sh") == [])
+pruef("Kennung im Absatz -> vertraulich", vertraulich("sid 45b37c64-19cb-4564-b29e-63bb5b39e762 in `a.py:3`"))
+pruef("Nutzerpfad -> vertraulich", vertraulich("liegt unter C:/Users/HackJ/x (`a.py:3`)"))
+pruef("Geheimnis-Muster (geteilt mit Check 17) -> vertraulich", vertraulich("password=xyz `a.py:3`"))
+pruef("harmloser Absatz -> nicht vertraulich", not vertraulich("Ersetzt nur {x}/{y}/{z} (`map_widget.py:495`)."))
+pruef("Gate: nur ein Kommentar dazu -> True",
+      nur_kommentarzeilen("a=1\nb=2", "a=1\n# drei Teilzustaende\nb=2", ".sh") == (True, []))
+pruef("Gate: Code geaendert -> False",
+      nur_kommentarzeilen("a=1", "a=2\n# x", ".py")[0] is False)
+pruef("Gate: Sprache ohne sichere Syntax -> None (nur melden)", nur_kommentarzeilen("a", "b", ".md") == (None, []))
+
 print()
 print("  %d gruen · %d rot" % (gruen, rot))
 sys.exit(1 if rot else 0)

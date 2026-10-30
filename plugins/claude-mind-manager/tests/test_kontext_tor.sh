@@ -145,10 +145,12 @@ printf 'Python ist eine Programmiersprache.\nMan sollte vorher sichern.\n' > "$T
 _ZW=$(python "$TORW" --datei "$(w "$TMP/zw.md")" 2>/dev/null)
 janein "die Ausgabe hat einen Abschnitt je Zeile" "1" "$(printf '%s' "$_ZW" | grep -c '── je Zeile')"
 janein "  ... Z1 traegt A1, Z2 traegt C7" "2" "$(printf '%s' "$_ZW" | grep -cE '^  Z(1 +A1|2 +C7) ')"
-for k in A2 A3 B4 B6 C8 C9 D10; do
+for k in A2 A3 B4 B6 C8 C9 D10 W1; do
   janein "  Frage $k wird als Urteil/Zeiger genannt" "1" "$(printf '%s' "$_ZW" | grep -cE "^  ▸ $k ")"
 done
 _Q=$(python "$TORW" --text "Man sollte vorher sichern." 2>/dev/null)
+janein "W1 (Wohin) steht in der Liste (v5.172.0)" "1" "$(grep -c '^| \*\*W1\*\* | Wohin gehoert es?' "$CLAUDE_PLUGIN_ROOT/references/kontext-tor.md")"
+janein "   ... und alle fuenf Skills haengen :W1= an die Quittung" "5" "$(grep -l ':D10:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>:W1=' "$CLAUDE_PLUGIN_ROOT"/skills/mind-{claudemd,files,memory,rules,update}/SKILL.md | wc -l | tr -d ' ')"
 janein "die Quittung traegt die neuen Kuerzel" "1" "$(printf '%s' "$_Q" | grep -c 'tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10')"
 
 # A1 (Code, andere Datei), B4, C8, D10 werden NICHT nachgebaut — sie werden GENANNT (werkzeuge-zuerst.md)
