@@ -36,25 +36,25 @@
 
 | Field | Status |
 |-------|--------|
-| `paths:` | Documented but BUGGY |
-| `globs:` | Undocumented but WORKS reliably |
+| `paths:` | Documented — FILTERS project rules (measured 16.09.2026: 13 of 13 not loaded at start, `path_glob_match` 11x) |
+| `globs:` | Cursor field — filters NOTHING in Claude Code (measured: `path_glob_match` 0x in 3667 load events); such a rule loads ALWAYS |
 | `description:` | Not documented for rules |
 | `priority:` / `enabled:` | Not supported |
 | `alwaysApply:` | Continue ecosystem only, not Claude Code |
 
-### CRITICAL BUG: paths vs globs
+### paths vs globs — corrected v5.174.0 (this section said the opposite until then)
 
 ```yaml
-# BROKEN -- documented but fails silently:
+# FILTERS (project rules, measured):
 paths:
   - "src/**/*.ts"
 
-# WORKS -- undocumented but reliable:
+# FILTERS NOTHING in Claude Code -- the rule loads always:
 globs: src/**/*.ts, tests/**/*.ts
 ```
 
-Additional bugs:
-- `paths:` does NOT work in user-level rules (`~/.claude/rules/`), only project-level
+Additional notes:
+- `paths:` in user-level rules (`~/.claude/rules/`) is UNMEASURED (issues #21858/#22170) — only a fresh session decides it
 - No defined priority order when multiple rules match the same path
 - Rule without `paths:`/`globs:` frontmatter -> always loaded
 

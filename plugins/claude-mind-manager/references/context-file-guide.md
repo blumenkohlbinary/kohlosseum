@@ -11,8 +11,8 @@ All context files Claude Code loads, organized by load timing and scope.
 | Local CLAUDE.md | `./CLAUDE.local.md` | Personal (gitignored) | — | ⛔ **NICHT deprecated** (Doku 08.09.2026): *"It loads alongside CLAUDE.md and is treated the same way."* Der frueher empfohlene Ersatz `@import` spart ausserdem KEINEN Kontext. |
 | Enterprise CLAUDE.md | `/Library/Application Support/ClaudeCode/CLAUDE.md` (macOS), `%PROGRAMDATA%\ClaudeCode\CLAUDE.md` (Win) | Org-wide | — | Highest priority, read-only |
 | MEMORY.md | `~/.claude/projects/<hash>/memory/MEMORY.md` | Per-project | **200 lines hard limit** | Truncated from bottom silently |
-| Rules (matching) | `.claude/rules/*.md` | Team (Git) | — | Only when `globs:` matches current files |
-| User Rules | `~/.claude/rules/*.md` | Personal | — | `paths:` field does NOT work here — use `globs:` |
+| Rules (matching) | `.claude/rules/*.md` | Team (Git) | — | Only when `paths:` matches (project rules, measured); `globs:` filters nothing — loads always |
+| User Rules | `~/.claude/rules/*.md` | Personal | — | `paths:` here UNMEASURED (issues #21858/#22170); `globs:` filters nothing |
 
 ## Loaded On-Demand (Lazy)
 

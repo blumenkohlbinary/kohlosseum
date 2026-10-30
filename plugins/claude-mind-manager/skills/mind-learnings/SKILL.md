@@ -210,6 +210,15 @@ Ausgeschlossen: `.claude-mind` · `_claude_backups` · `Beispiele` · `cache` ·
 ```bash
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
+# ⛔ v5.174.0 (ZIEL 15): Scanner-Zeilen (`lauf=mind-learnings`) beschreiben den Zustand JETZT — die alten raus,
+#    bevor die neuen angehaengt werden. Bis 5.173.0 rief niemand `debug_aufraeumen.py`: behobene Scanner-Befunde
+#    blieben stehen und zaehlten in BEFUNDE.md als Wiederholung. Historische Laufberichte bleiben unberuehrt.
+PY=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)
+if [ -n "${MIND_DEBUG_DIR:-}" ] && [ -f "$MIND_DEBUG_DIR/index.jsonl" ]; then
+  : > "$TMP/scanner-leer.jsonl"
+  "$PY" "$CLAUDE_PLUGIN_ROOT/references/debug_aufraeumen.py" "$MIND_DEBUG_DIR" --scanner-neu "$TMP/scanner-leer.jsonl"
+  [ -s "$TMP/befunde.jsonl" ] || "$PY" "$CLAUDE_PLUGIN_ROOT/references/debug_auswertung.py" "$MIND_DEBUG_DIR" >/dev/null
+fi
 if [ -n "${MIND_DEBUG_DIR:-}" ] && [ -s "$TMP/befunde.jsonl" ]; then
   mind_debug_write "$WURZEL" "mind-learnings" "$TMP/bericht.md" "$TMP/befunde.jsonl"
   echo "Zentral gemeldet: $MIND_DEBUG_DIR/laeufe/ + index.jsonl"
