@@ -139,6 +139,27 @@ done
 pruef "mind-claudemd waehlt eine FESTE Datei (deshalb kein Leser noetig)" "ja" \
   "$(grep -q '^DATEI="\$ZIEL_MD"' "$(skill_text_datei "$R" mind-claudemd)" && echo ja || echo nein)"
 
+echo "=== v5.174.0 (Etappe 67 N2e): BENANNTE Kandidaten — ohne sie entfaellt der Schritt ==="
+B="$TMP/benannt"; mkdir -p "$B/.claude-mind/agent" "$B/.claude/rules"
+printf '# Regel\nalt\n' > "$B/.claude/rules/hooks.md"
+: > "$B/.claude-mind/analyzed-scopes"; touch -d '-1 hour' "$B/.claude-mind/analyzed-scopes"
+pruef "ohne Bericht und ohne Deckel-Ausweis: rc 1 (kein Kandidat)" "1" \
+  "$(mind_verdicht_benannt "$B" "$B/.claude/rules/hooks.md" >/dev/null; echo $?)"
+printf '| 1 | UPDATE | `hooks.md:174` nennt eine falsche Zeile |\n| 2 | INFO | `env-vars.md` ok |\n' > "$B/.claude-mind/agent/20261030-rules.md"
+printf '> Deckel-Ausweis 03.10.: GETILGT 28.10.2026\n' >> "$B/.claude/rules/hooks.md"
+A=$(mind_verdicht_benannt "$B" "$B/.claude/rules/hooks.md"); RC=$?
+pruef "mit Analyzer-UPDATE und GETILGT-Ausweis: rc 0" "0" "$RC"
+pruef "   ... nennt den Analyzer-Befund zur Datei" "1" "$(printf '%s\n' "$A" | grep -c 'hooks.md:174')"
+pruef "   ... nennt den getilgten Ausweis" "1" "$(printf '%s\n' "$A" | grep -c 'GETILGT')"
+pruef "   ... nicht den Befund zu einer ANDEREN Datei" "0" "$(printf '%s\n' "$A" | grep -c 'env-vars.md')"
+touch -d '-2 hours' "$B/.claude-mind/agent/20261030-rules.md"
+pruef "Bericht aus einem FRUEHEREN Lauf zaehlt nicht (nur der Ausweis bleibt)" "0" \
+  "$(mind_verdicht_benannt "$B" "$B/.claude/rules/hooks.md" | grep -c 'hooks.md:174')"
+pruef "alle fuenf Verdichten-Bloecke fragen die benannten Kandidaten ab" "5" \
+  "$(grep -l 'mind_verdicht_benannt "\$PROJ" "\$DATEI"' "$R"/skills/*/bloecke/*verdichten*.sh | wc -l | tr -d ' ')"
+pruef "   ... und quittieren sonst uebersprungen" "5" \
+  "$(grep -l 'uebersprungen:keine-benannten-kandidaten' "$R"/skills/*/bloecke/*verdichten*.sh | wc -l | tr -d ' ')"
+
 echo
 echo "  $GRUEN gruen · $ROT rot"
 [ "$ROT" -eq 0 ]

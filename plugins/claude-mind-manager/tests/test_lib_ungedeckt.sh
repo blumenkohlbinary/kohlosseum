@@ -136,6 +136,17 @@ pruefe "vollstaendig: NICHT mehr UNVOLLSTAENDIG" "$(printf '%s' "$AUS" | grep -c
 pruefe "aber kein Herzschlag: gemeldet" "$(printf '%s' "$AUS" | grep -c 'KEIN HERZSCHLAG')" "1"
 pruefe "kein Herzschlag: Rueckgabe 1" "$RC" "1"
 
+# ⛔ v5.174.0 (Etappe 67 N2a, Ritas Lauf 30.10.2026): beide Bloecke QUITTIEREN den Schritt selbst — bis
+#    5.173.0 stand mind_hook_health in der Schrittliste, aber kein Block schrieb die Quittung.
+pruefe "mind-all- und mind-files-Block fahren mind_hook_health ueber mind_pass_schritt" \
+  "$(grep -l 'mind_pass_schritt mind-[a-z]* mind_hook_health mind_hook_health "\$PROJ"' \
+     "$WURZEL/skills/mind-all/bloecke/step0-snapshot.sh" "$WURZEL/skills/mind-files/bloecke/02-step0-modus-snapshot.sh" | wc -l | tr -d ' ')" "2"
+AUS=$( ( PROJ="$P"; mind_pass_schritt mind-all mind_hook_health mind_hook_health "$P" ) 2>&1 )
+pruefe "   ... das Artefakt traegt den Befund (KEIN HERZSCHLAG)" \
+  "$(grep -c 'KEIN HERZSCHLAG' "$P/.claude-mind/pass-mind-all/mind_hook_health.txt" 2>/dev/null)" "1"
+pruefe "   ... und die Quittung steht mit Artefakt" \
+  "$(grep -c '"name":"mind_hook_health","status":"gelaufen".*"quelle":"datei"' "$P/.claude-mind/schritt-quittung.jsonl" 2>/dev/null)" "1"
+
 echo
 echo "=== $fehler Abweichung(en) ==="
 exit $((fehler > 0 ? 1 : 0))

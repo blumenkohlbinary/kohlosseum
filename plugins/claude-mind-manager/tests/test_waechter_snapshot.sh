@@ -49,6 +49,21 @@ echo "=== 4) gekippte Datei wird gefunden (Instrument misst) ==="
 scopes "$P/.claude-mind/analyzed-scopes.done" "$LAUF"; printf 'x\r\ny\r\n' > "$P/CLAUDE.md"
 pruef "GEKIPPT=1" "$(waechter | grep -c 'GEKIPPT=1')" "1"
 
+echo "=== 5) ⛔ der Start-Snapshot eines laufenden Laufs rotiert nicht weg (v5.174.0, Ritas Lauf 30.10.2026) ==="
+# Vier Teil-Snapshots der Kette bei KEEP=3: vorher fiel der aelteste — der Start-Snapshot — heraus.
+Q="$TMP/rotation"; mkdir -p "$Q/.claude-mind/snapshots/20261030_225139_pre-mind-all" "$Q/.claude/rules"
+printf 'x\n' > "$Q/CLAUDE.md"
+touch -d '2026-10-30 22:51:39' "$Q/.claude-mind/snapshots/20261030_225139_pre-mind-all"
+printf 'snapshot=%s\n' "$Q/.claude-mind/snapshots/20261030_225139_pre-mind-all" > "$Q/.claude-mind/analyzed-scopes"
+for l in pre-rules pre-verdichten pre-update pre-memory; do
+  ( . "$R/hooks/lib.sh"; MIND_SNAPSHOT_KEEP_COUNT=3 mind_snapshot "$Q" "$l" >/dev/null 2>&1 )
+done
+pruef "Start-Snapshot steht noch" "$([ -d "$Q/.claude-mind/snapshots/20261030_225139_pre-mind-all" ] && echo ja || echo nein)" "ja"
+pruef "   ... die Rotation wirkt trotzdem (hoechstens KEEP + Start)" "$(ls -d "$Q/.claude-mind/snapshots"/*/ | wc -l | tr -d ' ')" "4"
+rm -f "$Q/.claude-mind/analyzed-scopes"
+( . "$R/hooks/lib.sh"; MIND_SNAPSHOT_KEEP_COUNT=3 mind_snapshot "$Q" pre-files >/dev/null 2>&1 )
+pruef "Gegenprobe: ohne laufende Kette rotiert er wie bisher" "$([ -d "$Q/.claude-mind/snapshots/20261030_225139_pre-mind-all" ] && echo ja || echo nein)" "nein"
+
 echo ""
 echo "  $ok gruen · $rot rot"
 [ "$rot" -eq 0 ] || exit 1

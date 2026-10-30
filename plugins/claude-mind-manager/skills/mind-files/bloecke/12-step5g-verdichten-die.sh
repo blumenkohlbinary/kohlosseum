@@ -40,3 +40,11 @@ $f
 #    weist ein Deponat unter `.claude-mind/` ab — Rita hat zweimal `$ERGEBNIS` gebucht
 #    statt `$DATEI`, und nichts hat den Pfad geprueft. rc 2 ist KEIN Laufabbruch.
 mind_verdichtet_merken "$PROJ" "$DATEI" || true
+# ⛔ v5.174.0 (Etappe 67 N2e): ohne BENANNTE Kandidaten entfaellt der Schritt — Ertrag ~5 % (bestands-pass.md)
+if [ -n "$DATEI" ]; then
+  echo "BENANNTE UEBERHOLT-KANDIDATEN fuer $(basename "$DATEI") (woertlich an den Agenten):"
+  if ! mind_verdicht_benannt "$PROJ" "$DATEI"; then
+    echo "VERDICHTEN: keine benannten Kandidaten — Schritt entfaellt, kein Agent."
+    mind_schritt verdichten "uebersprungen:keine-benannten-kandidaten" 0 "$PROJ"
+  fi
+fi

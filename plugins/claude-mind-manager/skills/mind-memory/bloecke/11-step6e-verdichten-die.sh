@@ -14,6 +14,14 @@ PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT
 DATEI=$(ls -S "$MEMORY_DIR"/*.md 2>/dev/null | grep -v '/MEMORY\.md$' \
         | mind_verdicht_kandidat "$PROJ" mind-memory merken)
 [ -n "$DATEI" ] || { echo "VERDICHTEN: keine Kandidatin"; }
+# ⛔ v5.174.0 (Etappe 67 N2e): ohne BENANNTE Kandidaten entfaellt der Schritt — Ertrag ~5 % (bestands-pass.md)
+if [ -n "$DATEI" ]; then
+  echo "BENANNTE UEBERHOLT-KANDIDATEN fuer $(basename "$DATEI") (woertlich an den Agenten):"
+  if ! mind_verdicht_benannt "$PROJ" "$DATEI"; then
+    echo "VERDICHTEN: keine benannten Kandidaten — Schritt entfaellt, kein Agent."
+    mind_schritt verdichten "uebersprungen:keine-benannten-kandidaten" 0 "$PROJ"
+  fi
+fi
 # ... dann exakt der Lauf aus bestands-pass.md: Snapshot (pre-memory sichert das Memory)
 #     ⛔ v5.100.0: der Agent schreibt $PROJ/.claude-mind/verdichten-mind-memory.nachher.md (Zeilenenden
 #        der Quelle); Anwenden ist `cp` nach Stufe 3 — NIE nachtippen (bestands-pass.md, Schritt 1)

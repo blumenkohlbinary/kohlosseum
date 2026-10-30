@@ -29,7 +29,10 @@ PROJ=$(mind_projekt_wurzel 2>/dev/null) || PROJ="${CLAUDE_PROJECT_DIR:-$(pwd)}" 
 # Hook-Gesundheit (NEU v5.2.1) — meldet den stillen Hook-Tod nach einem Plugin-Update.
 # Kein Abbruchgrund: /mind-all laeuft auch ohne Hooks. Aber es MUSS im Bericht stehen,
 # sonst haelt der naechste Befundlauf ein totes Netz fuer ein gespanntes.
-mind_hook_health "$PROJ" || HOOK_WARN="ja"
+# ⛔ v5.174.0 (Etappe 67 N2a): der Block QUITTIERT den Schritt selbst, mit Artefakt — bis 5.173.0 stand
+#    mind_hook_health in der Schrittliste, aber kein Block quittierte es; Rita tippte die Quittung nach.
+mind_pass_schritt mind-all mind_hook_health mind_hook_health "$PROJ"
+grep -q '^Hook-Gesundheit: OK' "$PROJ/.claude-mind/pass-mind-all/mind_hook_health.txt" 2>/dev/null || HOOK_WARN="ja"
 
 # ⛔ v5.64.0: HIER STAND EIN TOKEN-GATE, DAS DEN LAUF ABBRACH. Es ist WEG.
 #    Nutzer-Entscheidung 10.09.2026: "die sollen garnicht mehr tokens messen

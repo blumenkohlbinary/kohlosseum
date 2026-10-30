@@ -39,7 +39,9 @@ fi
 if [ -n "$CLAUDE_PLUGIN_ROOT" ] && [ -f "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" ]; then
   source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-  mind_hook_health "$PROJ" || HOOK_WARN="ja"
+  # v5.174.0 (Etappe 67 N2a): quittiert sich selbst, mit Artefakt (vorher nachgetippt)
+  mind_pass_schritt mind-files mind_hook_health mind_hook_health "$PROJ"
+  grep -q '^Hook-Gesundheit: OK' "$PROJ/.claude-mind/pass-mind-files/mind_hook_health.txt" 2>/dev/null || HOOK_WARN="ja"
 fi
 
 if [ "$CHAIN" = "no" ]; then

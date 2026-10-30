@@ -228,6 +228,9 @@ das alte Gate war zufrieden.
 Kandidaten: −5,65 %. `hooks.md` mit acht benannten Überholt-Kandidaten: −14,9 %,
 `env-vars.md` mit sieben: −16,3 % (11.09.2026). Der Agent darf nicht raten, was überholt
 ist — wer den Lauf startet, gibt die Kandidaten mit, oder er bekommt 5 %.
+⛔ **Seit v5.174.0 liefert der Block sie** (`mind_verdicht_benannt`: Analyzer-Befunde dieses Laufs zur Datei +
+getilgte Deckel-Ausweise darin). **Keine benannten Kandidaten → der Schritt entfällt**, quittiert
+`uebersprungen:keine-benannten-kandidaten` (Ritas Lauf 30.10.2026: ohne Kandidaten kaum Ertrag).
 
 ⛔ **STUFE 3 IST PFLICHT, KEIN ANGEBOT.** Gemessen an beiden echten Läufen, je einmal bei
 **100 % Stufe 1 und grünem Marker-Gate:** in `hooks.md` stand `833 431` am falschen Satz

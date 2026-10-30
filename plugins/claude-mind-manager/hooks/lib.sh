@@ -536,7 +536,9 @@ mind_heartbeat() {
 #   dass die Update-Prozedur das in Benutzung stehende Versionsverzeichnis stehen laesst.
 # Gibt Zeilen fuer den Bericht aus; Rueckgabe 1, wenn etwas faul ist.
 mind_hook_health() {
-  local project_dir="$1" hb rc=0 now age epoch ver root
+  # ⛔ v5.174.0 (Etappe 67 N2a): `f` MUSS lokal sein — die Schleife unten ueberschrieb sonst das `f` von
+  #    mind_pass_schritt (Artefakt-Pfad) mit `stop.sh`: Ritas Lauf 30.10.2026 „stop.sh: No such file“.
+  local project_dir="$1" hb rc=0 now age epoch ver root f
   hb="$project_dir/.claude-mind/hook-heartbeat"
   root="${CLAUDE_PLUGIN_ROOT:-}"
 
@@ -1109,7 +1111,14 @@ EOF_GSKILLS
   # 5) Rotation
   # M2-Fix: KEIN xargs — jeder Pfad hier enthaelt Leerzeichen ("Plugin - Entwicklung").
   # xargs wortsplittet und feuerte rm -rf auf Fragmente relativ zum CWD.
+  # ⛔ v5.174.0 (Etappe 67 N2b, Ritas Lauf 30.10.2026): der Start-Snapshot eines LAUFENDEN /mind-all
+  #    (`snapshot=` in analyzed-scopes) rotiert nie — sonst rotierten die Teil-Snapshots der Kette
+  #    (pre-rules, pre-verdichten, pre-update) ihn bei KEEP=3 weg, und Waechter 2.95 meldete UNGUELTIG.
+  local _start=""
+  _start=$(grep '^snapshot=' "$project_dir/.claude-mind/analyzed-scopes" 2>/dev/null | tail -1 | cut -d= -f2-)
+  _start=$(basename "${_start%/}" 2>/dev/null)
   ls -td "$snap_root"/*/ 2>/dev/null | tail -n +$((keep + 1)) | while IFS= read -r d; do
+    [ -n "$_start" ] && [ "$(basename "${d%/}")" = "$_start" ] && continue
     [ -n "$d" ] && [ -d "$d" ] && rm -rf "$d"
   done
 
@@ -2382,18 +2391,46 @@ mind_agent_dispatch() {
 #   ⛔ Gemessen 30.10.2026 (Ritas Messlauf): 9–10 Pflichtquittungen je Einzel-Skill von Hand mit Bytezahl getippt —
 #   je eine ein eigener Schritt und eine Fehlerquelle. Braucht PROJ (mind_block_umgebung).
 mind_pass_schritt() {
-  local skill="${1:-}" name="${2:-}" f rc
-  case "$skill" in mind-[a-z]*) ;; *) echo "⛔ mind_pass_schritt <skill> <name> <befehl …>" >&2; return 2 ;; esac
-  [ -n "$name" ] && [ $# -ge 3 ] || { echo "⛔ mind_pass_schritt <skill> <name> <befehl …>" >&2; return 2; }
+  # ⛔ v5.174.0 (Etappe 67 N2a): eigene Namen (_mps_*) — eine gerufene Funktion mit nicht-lokalem `f`/`rc`/`name`
+  #    ueberschrieb sonst Artefakt-Pfad und Schrittname (dynamischer Scope; mind_hook_health setzte f=stop.sh).
+  local _mps_skill="${1:-}" _mps_name="${2:-}" _mps_f _mps_rc
+  case "$_mps_skill" in mind-[a-z]*) ;; *) echo "⛔ mind_pass_schritt <skill> <name> <befehl …>" >&2; return 2 ;; esac
+  [ -n "$_mps_name" ] && [ $# -ge 3 ] || { echo "⛔ mind_pass_schritt <skill> <name> <befehl …>" >&2; return 2; }
   shift 2
-  mkdir -p "$PROJ/.claude-mind/pass-$skill" 2>/dev/null
-  f="$PROJ/.claude-mind/pass-$skill/$name.txt"
-  "$@" > "$f" 2>&1; rc=$?
-  if [ -s "$f" ]; then mind_schritt "$name" gelaufen --datei "$f" "$PROJ"
-  else mind_schritt "$name" "fehler:rc$rc-ohne-ausgabe" -1 "$PROJ"; fi
-  echo "=== $name (rc $rc, $(wc -c < "$f" | tr -d ' ') B, $f)"
-  cat "$f"
+  mkdir -p "$PROJ/.claude-mind/pass-$_mps_skill" 2>/dev/null
+  _mps_f="$PROJ/.claude-mind/pass-$_mps_skill/$_mps_name.txt"
+  "$@" > "$_mps_f" 2>&1; _mps_rc=$?
+  if [ -s "$_mps_f" ]; then mind_schritt "$_mps_name" gelaufen --datei "$_mps_f" "$PROJ"
+  else mind_schritt "$_mps_name" "fehler:rc$_mps_rc-ohne-ausgabe" -1 "$PROJ"; fi
+  echo "=== $_mps_name (rc $_mps_rc, $(wc -c < "$_mps_f" | tr -d ' ') B, $_mps_f)"
+  cat "$_mps_f"
   return 0
+}
+
+# mind_verdicht_benannt <projekt> <datei>   (v5.174.0, Etappe 67 N2e)
+#   Gibt die BENANNTEN Ueberholt-Kandidaten fuer <datei> aus — der Ertrag haengt am Aufrufer
+#   (bestands-pass.md: ohne Kandidaten -5,65 %, mit acht -14,9 %). Quellen: Agentenberichte des
+#   laufenden Laufs (`.claude-mind/agent/*.md`, juenger als `analyzed-scopes`; ohne Kette die der
+#   letzten 24 h), deren Zeile den Dateinamen und UPDATE/stale/veraltet/ueberholt/tot nennt; dazu
+#   Deckel-Ausweise in <datei> mit GETILGT/ERLEDIGT. rc 0 = mindestens ein Kandidat, rc 1 = keiner.
+#   ⛔ Gemessen 30.10.2026 (Ritas Lauf 225134): ohne Kandidaten brachte Verdichten kaum Ertrag — die
+#   Analyzer-Befunde erreichten den Agenten nicht.
+mind_verdicht_benannt() {
+  local proj="${1:-}" datei="${2:-}" n=0 b f z
+  [ -d "$proj" ] && [ -f "$datei" ] || return 1
+  b=$(basename "$datei")
+  while IFS= read -r f; do
+    [ -f "$f" ] || continue
+    while IFS= read -r z; do
+      printf '  %s:%s\n' "$(basename "$f")" "$(printf '%s' "$z" | cut -c1-220)"; n=$((n + 1))
+    done < <(grep -nF -- "$b" "$f" 2>/dev/null | grep -iE 'UPDATE|stale|veraltet|ueberholt|überholt|\btot\b|DEAD' | head -8)
+  done < <(if [ -f "$proj/.claude-mind/analyzed-scopes" ]; then
+             find "$proj/.claude-mind/agent" -maxdepth 1 -name '*.md' -newer "$proj/.claude-mind/analyzed-scopes" 2>/dev/null
+           else find "$proj/.claude-mind/agent" -maxdepth 1 -name '*.md' -mmin -1440 2>/dev/null; fi)
+  while IFS= read -r z; do
+    printf '  %s:%s\n' "$b" "$(printf '%s' "$z" | cut -c1-220)"; n=$((n + 1))
+  done < <(grep -nE 'GETILGT|ERLEDIGT' "$datei" 2>/dev/null | head -8)
+  [ "$n" -gt 0 ]
 }
 
 # mind_pass_offen <skill>   (v5.164.0, Etappe 65 §2) — letzte Zeile jedes Bestands-Pass-Blocks
@@ -3140,6 +3177,9 @@ mind_kontingent_pruefen() {
   [ "$#" -ge 2 ] || { echo "⛔ KONTINGENT NICHT MESSBAR: zwei Werte noetig (5-hour limit, Weekly · all models) — es startet nichts." >&2; return 3; }
   for v in "$@"; do
     n="${v%\%}"; n="${n%%[.,]*}"
+    # v5.174.0 (Etappe 67 N2c): ein Fenster, das get_usage nicht listet, heisst `fehlt` — nie 0
+    [ "$n" = "fehlt" ] && { echo "⛔ KONTINGENT NICHT MESSBAR: get_usage listet ein Fenster nicht (fehlt) — fehlt ist nicht 0, es startet nichts (Notausgang --trotz-kontingent)." >&2
+      mind_log WARN "mind_kontingent_pruefen: Fenster fehlt"; return 3; }
     case "$n" in ''|*[!0-9]*)
       echo "⛔ KONTINGENT NICHT MESSBAR: '$v' ist kein Prozentwert (get_usage nicht lesbar?) — es startet nichts." >&2
       mind_log WARN "mind_kontingent_pruefen: nicht messbar ($v)"; return 3 ;;

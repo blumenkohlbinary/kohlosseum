@@ -34,6 +34,12 @@ echo "=== 2) ⛔ nicht messbar heisst: es startet nichts ==="
 pruef "stehengebliebener Platzhalter" "$(K mind-all '' '<5h>' '<woche>')" "3"
 pruef "unbekannt" "$(K mind-cleaner '' unbekannt 5)" "3"
 pruef "nur ein Wert" "$(K mind-learnings '' 5)" "3"
+# v5.174.0 (Etappe 67 N2c): Ritas Lauf 30.10.2026 — get_usage listete das 5-h-Fenster nicht, 0 wurde eingesetzt
+pruef "fehlendes Fenster (fehlt): startet nicht" "$(K mind-all '' fehlt 23)" "3"
+M=$( ( . "$R/hooks/lib.sh"; mind_kontingent_pruefen "$P" mind-all '' fehlt 23 2>&1 ) )
+pruef "   ... und die Meldung sagt: fehlt ist nicht 0" "$(printf '%s\n' "$M" | grep -c 'fehlt ist nicht 0')" "1"
+pruef "der Kopftext verbietet die 0 in allen vier Skills" \
+  "$(grep -l 'nie `0` einsetzen' "$R"/skills/mind-{all,cleaner,learnings,update}/SKILL.md | wc -l | tr -d ' ')" "4"
 
 echo "=== 3) Notausgang, Kette, --quick ==="
 pruef "--trotz-kontingent: darf, Stand trotz" "$(ST mind-all '--trotz-kontingent' 99 99)" "trotz"

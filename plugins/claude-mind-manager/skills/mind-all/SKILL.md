@@ -41,7 +41,7 @@ mind_snapshot
 mind_zeilenenden_waechter
 ```
 
-⛔ **ZUERST das Kontingent (v5.163.0, Nutzer 29.10.2026):** das Werkzeug `get_usage` (`mcp__ccd_session_mgmt__get_usage`) aufrufen und im Kopf-Block `<5h>` und `<woche>` durch `percentUsed` von „5-hour limit“ und „Weekly · all models“ ersetzen — nicht lesbar: `unbekannt`, dann startet nichts. Ab `MIND_KONTINGENT_MAX` (Vorgabe 80 %) startet nichts; Werte und Ruecksetzzeit gehoeren in die Antwort. Notausgang: `--trotz-kontingent`. Die fuenf Skills der Kette pruefen nicht erneut (der Lock sagt es ihnen).
+⛔ **ZUERST das Kontingent (v5.163.0, Nutzer 29.10.2026):** das Werkzeug `get_usage` (`mcp__ccd_session_mgmt__get_usage`) aufrufen und im Kopf-Block `<5h>` und `<woche>` durch `percentUsed` von „5-hour limit“ und „Weekly · all models“ ersetzen — nicht lesbar: `unbekannt`; ein Fenster, das `get_usage` NICHT listet: `fehlt` — ⛔ nie `0` einsetzen (30.10.2026 lief die Sperre so blind) — dann startet nichts. Ab `MIND_KONTINGENT_MAX` (Vorgabe 80 %) startet nichts; Werte und Ruecksetzzeit gehoeren in die Antwort. Notausgang: `--trotz-kontingent`. Die fuenf Skills der Kette pruefen nicht erneut (der Lock sagt es ihnen).
 
 **Vor dem ersten Schritt, ohne Ausnahme:**
 
@@ -57,7 +57,7 @@ mind_kontingent_pruefen "$PROJ" mind-all '$ARGUMENTS' "<5h>" "<woche>" || exit 1
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.173.0"
+MIND_SKILL_VERSION="5.174.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
 ```
 
