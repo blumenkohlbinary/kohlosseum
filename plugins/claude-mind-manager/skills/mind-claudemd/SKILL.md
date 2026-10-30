@@ -17,6 +17,8 @@ allowed-tools: Read Glob Grep Edit Write Bash Agent
 
 # CLAUDE.md Vollverwaltung
 
+> ⛔ **Warum ein Block so gebaut ist** (Vorfaelle, Messungen, fruehere Fassungen): lies `references/historie/mind-claudemd.md`, BEVOR du einen Block aenderst oder wenn ein Schritt rot ist.
+
 ## ⛔ PFLICHTSCHRITTE — dieser Skill fuehrt aus, was hier steht (NEU v5.25.0)
 
 ```
@@ -45,27 +47,20 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.161.0"
+MIND_SKILL_VERSION="5.162.0"
 mind_schritt_start "$PROJ" mind-claudemd bestandszahlen_kandidaten claudemd_pipeline cleaner_duplikate cleaner_stichprobe cleaner_tor cleaner_urteile mind_check_tools_have_rules mind_kontext_bilanz mind_snapshot verdichten
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt <name> gelaufen              "$(wc -c < "$AUSGABE")" "$PROJ"
 mind_schritt <name> "gelaufen:5/11"       "$BYTES" "$PROJ"   # TEILABDECKUNG
 mind_schritt <name> "uebersprungen:<grund>" 0      "$PROJ"
 mind_schritt <name> "fehler:<grund>"      -1       "$PROJ"
-# ⛔ v5.97.0 — VERDICHTEN und die fuenf Context-Skills NUR mit ARTEFAKT: ohne --datei
-#    wird `gelaufen` zu `uebersprungen:kein-artefakt`, und die Bilanz zaehlt FORMAL.
-#    Drei Laeufe (10.–12.09.2026) trugen dieselben getippten Bytes; Zahlen tippt die Hand.
 mind_schritt verdichten gelaufen --datei "$PROJ/.claude-mind/verdichten-<skill>.txt" "$PROJ"  # die 3 Zeilen von mind_verdichtung_pruefen
-  # ⛔ v5.135.0: die Datei wird GEPRUEFT, nicht nur genannt — Pfad und Byte-Zahl stehen in der
-  #    Quittung, und ein schneller Block gilt damit nicht mehr als nachgetippt
-  #    (`references/bestands-pass.md`: „Ein pruefbares Artefakt schlaegt die Zeitregel").
 mind_schritt verdichten "uebersprungen:kein-kandidat" 0 "$PROJ"   # schweigen = FEHLT
 ```
 
@@ -689,8 +684,6 @@ python "$TOR" --text "<die geplante Zeile>"
 # 2) RUECKWAERTS — ueber die Zieldatei dieses Laufs
 python "$TOR" --datei "$ZIEL_MD"
 
-# 3) D1 "WOHIN?" — NEU v5.39.0, eingehaengt v5.40.0.
-#    Das Tor oben sagt OB etwas hinein darf. D1 sagt WOHIN es gehoert.
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_einordnung.py" --wohin "$ZIEL_MD"
 ```
 

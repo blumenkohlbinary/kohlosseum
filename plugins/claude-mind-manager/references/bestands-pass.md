@@ -1,5 +1,7 @@
 # Der Bestands-Pass — jeder Skill sieht sich seinen eigenen Bestand an
 
+> ⛔ **Warum ein Block so gebaut ist** (Vorfaelle, Messungen, fruehere Fassungen): lies `references/historie/bestands-pass.md`, BEVOR du einen Block aenderst oder wenn ein Schritt rot ist.
+
 > Gemeinsame Vorschrift für `mind-claudemd`, `mind-memory`, `mind-rules`, `mind-files`
 > und `mind-update`. Jeder Skill nennt in seinem eigenen Block nur noch **seinen Bereich**
 > und zeigt hierher. **NEU v5.22.0.**
@@ -162,13 +164,6 @@ Auftraggebers anschwärzt, weil sie es verdient, ist eines, dem man trauen kann.
 SNAP=$(mind_snapshot "$PROJ" "pre-verdichten") || exit 1
 VORHER=$(mind_kontext_bilanz "$PROJ" | sed -n 's/.*BYTES=\([0-9]*\).*/\1/p')
 
-# 0b ⛔ v5.123.0 (Etappe 33 §2): STUFE-3-KORREKTUREN aus frueheren Laeufen mitgeben — der Agent
-#    sieht sie sonst nicht. Gemessen 17.09.2026: zum ZWEITEN Mal „die SUMME kann wachsen, waehrend"
-#    → „waechst" in backup-usage.md, obwohl Etappe 24 §1 es korrigiert hatte. Merker je Datei:
-#    <projekt>/.claude/archiv/<name>.stufe3.md, Zeilen `unantastbar: „<Wortlaut>"  # Datum, Grund`.
-#    Jede Zeile geht WOERTLICH in den Auftrag: „NICHT anfassen, byteweise erhalten: „…"" —
-#    und mind_verdichtung_pruefen ist rot, wenn ein Wortlaut im Ergebnis fehlt (Schritt 2).
-#    Wer in Stufe 3 einen Satz korrigiert, traegt ihn dort ein — sonst korrigiert er ihn wieder.
 STUFE3=$(mind_stufe3_zeilen "$DATEI")     # leer, wenn es keine Datei gibt
 # 1  EIN Agent je Datei: model sonnet, Denkstufe low, EIN Auftrag, die Datei benannt.
 #    Traegt $STUFE3 Zeilen: je Zeile „NICHT anfassen, byteweise erhalten: „<Wortlaut>"".
@@ -183,9 +178,6 @@ STUFE3=$(mind_stufe3_zeilen "$DATEI")     # leer, wenn es keine Datei gibt
 #       (`C:\CD\KOHLEKTIV` -> `C:\KOHLEKTIV`), CRLF gekippt, gefangen erst am Byte-Diff.
 #       ⛔ NIE NACHTIPPEN: Anwenden ist `cp "$ERGEBNIS" "$DATEI"` nach Stufe 3, sonst nichts.
 
-# 2  Das Gate — entscheidet, ob angewendet wird. Seine Ausgabe IST das Deponat (verdichten-<skill>.txt,
-#    angehaengt); seit v5.125.0 traegt sie die Zeile „Vorher-Fassung  md5 <hash>  <pfad>" — der
-#    Fingerabdruck der Fassung, gegen die Stufe 1/2 gemessen haben (Schritt 4 prueft ihn).
 DEPONAT="$PROJ/.claude-mind/verdichten-<skill>.txt"
 mind_verdichtung_pruefen "$DATEI" "$ERGEBNIS" "$BERICHT" 2>&1 | tee -a "$DEPONAT"
 [ "${PIPESTATUS[0]}" -eq 0 ] || { echo "verworfen"; exit 0; }     # die Pipe verschluckt den rc — PIPESTATUS
@@ -203,13 +195,6 @@ mind_verdichtung_pruefen "$DATEI" "$ERGEBNIS" "$BERICHT" 2>&1 | tee -a "$DEPONAT
 #       lehnte Ritas neues Ergebnis aus dessen Inhalt ab. Stufe 3 liest .nachher.md UND den
 #       frisch erzeugten Diff — nie einen, der schon da lag.
 git diff --no-index --word-diff "$DATEI" "$ERGEBNIS" > "$PROJ/.claude-mind/verdichten-<skill>.wortdiff.$(date +%Y%m%d-%H%M).txt"
-# 4  Anwenden — NUR ueber mind_verdichtung_anwenden (v5.125.0, Etappe 37 §2). Es vergleicht die
-#    Live-Datei mit dem md5 aus dem Deponat und kopiert nur bei Gleichheit; weicht er ab: rc 1
-#    „Deponat veraltet — Datei seit dem Deponieren geaendert, neu verdichten", KEIN cp.
-#    ⛔ Ritas Lauf 18.09.2026: .nachher.md von 22:51, CLAUDE.md danach zweimal geaendert (23:41,
-#       `Auftraege/`-Zeile und ihre eigene `CLAUDE_PROJECT_DIR`-Korrektur); das Deponat sagte trotzdem
-#       „✅ anwenden", weil Stufe 1/2 gegen die Fassung von 22:51 massen — ein cp haette den Fix
-#       zurueckgedreht und die Zeile geloescht. Ein blankes `cp` steht hier deshalb nicht mehr.
 mind_verdichtung_anwenden "$DATEI" "$ERGEBNIS" "$DEPONAT" || exit 1
 NACHHER=$(mind_kontext_bilanz "$PROJ" | sed -n 's/.*BYTES=\([0-9]*\).*/\1/p')
 if [ "$NACHHER" -ge "$VORHER" ]; then

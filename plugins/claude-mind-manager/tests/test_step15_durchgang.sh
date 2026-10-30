@@ -72,8 +72,10 @@ pruef "⛔ kein geretteter Chat als Custom Context"     "$(printf '%s\n' "$L" | 
 
 echo "=== 5) ⛔ v5.153.0: die Agent-Quittung (3.5) LIEST die Liste — im eigenen Prozess war das Array leer ==="
 if [ -f "$SKRIPT" ]; then
-  pruef "3.5 laedt CUSTOM_CONTEXT_FILES aus der Sitzungsdatei" \
-    "$(grep -c 'mapfile -t CUSTOM_CONTEXT_FILES < "$(mind_sampler_pfad "$PROJ" mind-update-ccf.txt)"' "$(skill_text_datei "$R" mind-update)")" "1"
+  # v5.162.0 (Etappe 63 N3): das Laden wanderte aus dem abgetippten Fence in den Block agent-schritt.sh —
+  #   die GARANTIE (3.5 liest die Sitzungsdatei, nicht ein leeres Array) wird jetzt dort geprueft.
+  pruef "3.5 laedt CUSTOM_CONTEXT_FILES aus der Sitzungsdatei (Block agent-schritt.sh)" \
+    "$(grep -c 'mapfile -t CCF < "$(mind_sampler_pfad "$PROJ" mind-update-ccf.txt)"' "$R/skills/mind-update/bloecke/agent-schritt.sh")" "1"
   pruef "der Agenten-Auftrag serialisiert die Datei, nicht das leere Array" \
     "$(grep -c '^cat "$(mind_sampler_pfad "$PROJ" mind-update-ccf.txt)"' "$(skill_text_datei "$R" mind-update)")" "1"
 fi

@@ -41,3 +41,12 @@ mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
     echo "ABBRUCH: Snapshot fehlgeschlagen — es wird NICHTS editiert." >&2; exit 1; }
   echo "Snapshot: $SNAPSHOT"
 fi
+
+# ⛔ v5.162.0 (Etappe 63 N3 §3): der Block quittiert SELBST, mit Artefakt (MANIFEST) — bis v5.161.0 tippte das
+#    Modell jede Quittung nach, ein eigener Schritt je Werkzeug (Ritas Lauf 30.10.: 21 Quittungs-Aufrufe).
+_QS="${SNAPSHOT:-${_SNAP:-}}"
+if [ -n "$_QS" ] && [ -f "$_QS/MANIFEST.sha256" ]; then
+  mind_schritt mind_snapshot gelaufen --datei "$_QS/MANIFEST.sha256" "$PROJ"
+else
+  mind_schritt mind_snapshot "fehler:kein-snapshot" -1 "$PROJ"
+fi

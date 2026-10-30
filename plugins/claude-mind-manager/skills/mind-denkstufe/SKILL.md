@@ -20,6 +20,8 @@ allowed-tools: Bash, Read, Glob, Grep, Agent, WebFetch
 
 # Modell und Denkstufe fuer eine wiederkehrende Aufgabe
 
+> ⛔ **Warum ein Block so gebaut ist** (Vorfaelle, Messungen, fruehere Fassungen): lies `references/historie/mind-denkstufe.md`, BEVOR du einen Block aenderst oder wenn ein Schritt rot ist.
+
 ## ⛔ PFLICHTSCHRITTE — dieser Skill fuehrt aus, was hier steht
 
 ```
@@ -44,7 +46,7 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.161.0"
+MIND_SKILL_VERSION="5.162.0"
 mind_schritt_start "$PROJ" mind-denkstufe antwort_zuerst aufgabe_verstehen ablage_lesen eigene_erfahrung gegenprobe antwort_speichern
 
 ARGS='$ARGUMENTS'   # v5.159.0: Claude Code ersetzt beim Laden nur das blanke Argument-Token, nie die Form mit Klammern
@@ -61,7 +63,6 @@ PY=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt <name> gelaufen                "$BYTES" "$PROJ"
@@ -106,7 +107,6 @@ Gruendlichkeitsbeweis.
 ## Step 1 · `antwort_zuerst` — die gespeicherte Antwort (PFLICHT, zuerst)
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 # ⛔ DER AUFGABENNAME GEHT UEBER stdin, NICHT ALS ARGUMENT. Gemessen 03.10.2026
@@ -187,7 +187,6 @@ der Zahl, ist die Zahl beim ersten Zitieren eine Behauptung.**
 ## Step 4 · `eigene_erfahrung` — das Projekt hat Messwerte, nicht nur Meinungen
 
 ```bash
-# Befunde je Denkstufe — seit v5.141.0 traegt JEDE neue Zeile `stufe` und `modell`.
 if [ -n "${MIND_DEBUG_DIR:-}" ] && [ -f "$MIND_DEBUG_DIR/index.jsonl" ]; then
   jq -r 'select(.stufe != null) | "\(.stufe)\t\(.klasse)"' "$MIND_DEBUG_DIR/index.jsonl" \
     2>/dev/null | sort | uniq -c | sort -rn
@@ -304,7 +303,6 @@ printf '%s' "$AUFGABE" | "$PY" "$ABLAGE" --schreiben - --json "$TMP/antwort.json
 ## Step 7 · Die Schritt-Bilanz — erste Zeile des Self-Checks (PFLICHT)
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt_bilanz "$PROJ"

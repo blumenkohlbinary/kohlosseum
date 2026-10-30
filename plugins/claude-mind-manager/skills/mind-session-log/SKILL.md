@@ -16,6 +16,8 @@ allowed-tools: Read Glob Grep Bash Write
 
 # Session-Log Generator
 
+> ⛔ **Warum ein Block so gebaut ist** (Vorfaelle, Messungen, fruehere Fassungen): lies `references/historie/mind-session-log.md`, BEVOR du einen Block aenderst oder wenn ein Schritt rot ist.
+
 ## ⛔ PFLICHTSCHRITTE — dieser Skill fuehrt aus, was hier steht (NEU v5.25.0)
 
 ```
@@ -35,14 +37,13 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.161.0"
+MIND_SKILL_VERSION="5.162.0"
 mind_schritt_start "$PROJ" mind-session-log 
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt <name> gelaufen              "$(wc -c < "$AUSGABE")" "$PROJ"
@@ -91,7 +92,6 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt_bilanz "$PROJ"
@@ -145,11 +145,8 @@ case "$ARGS" in
   *\ full\ *|*full,*) MODE="full" ;;   # explizit "full" → mit 5000-Cap (Backward-Compat)
 esac
 
-# v3.3.0 NEU: `combined` Arg → altes Verhalten (1 File ab letztem Command)
 echo "$ARGS" | grep -qE '(^|[[:space:]])combined([[:space:]]|$)' && SPLIT_MODE="combined"
 
-# v3.3.1 NEU: `all-commands` oder `--all-commands` Arg → alle Slash-Commands (nicht nur mind-*)
-# H1-Fix Skill-Review: Regex toleriert sowohl bare als auch --prefix-Form
 echo "$ARGS" | grep -qE '(^|[[:space:]])(--)?all-commands([[:space:]]|$)' && ALL_COMMANDS="yes"
 
 # `komplett` -> ab Zeile 1 + combined (alte Semantik: 1 File ab Anfang)
@@ -166,8 +163,6 @@ START_PATTERN=$(echo "$ARGS" | grep -oE 'ab /[A-Za-z0-9:_-]+' | sed 's|^ab ||')
 START_TIMESTAMP=$(echo "$ARGS" | grep -oE 'ab [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}' | sed 's|^ab ||')
 [ -n "$START_TIMESTAMP" ] && SPLIT_MODE="combined"
 
-# Thema (optional, fuer Output-Filename im combined-Mode)
-# Default: aus letztem gefundenen Slash-Command-Namen ableiten (Step 3)
 ```
 
 **Optionen Uebersicht:**
@@ -188,9 +183,6 @@ unter `~/.claude/projects/<C--CD-KOHLEKTIV-...>` ab — Drive-Letter `C` GROSS,
 fuehrender `C--`, Spaces als `-`, Doppel-Bindestriche fuer ` - `.
 
 ```bash
-# Slug + Projects-Dir (v3.2.2: zentralisiert in lib.sh)
-# hash_project_dir() in lib.sh kapselt cygpath
-# M3-Fix: $CLAUDE_PLUGIN_ROOT Guard
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
 if [ -z "$CLAUDE_PLUGIN_ROOT" ] || [ ! -f "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" ]; then
   echo "ERROR: \$CLAUDE_PLUGIN_ROOT nicht gesetzt oder lib.sh nicht gefunden" >&2
@@ -201,24 +193,6 @@ mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 SLUG=$(hash_project_dir)
 PROJECTS_DIR="$HOME/.claude/projects/$SLUG"
 
-# ⛔ v5.69.0: HIER STAND EIN RUECKFALL AUF DAS NEUESTE PROJEKT.
-#    `[ ! -d "$PROJECTS_DIR" ] && PROJECTS_DIR=$(ls -td .../projects/*/ | head -1)`
-#    Fehlte der Slug-Ordner, schob er IRGENDEIN anderes Projekt unter — und
-#    der Sync haette den Chat eines FREMDEN PROJEKTS als Quelle genommen.
-#    ⭐ Nachgestellt 10.09.2026: 25 Projekt-Ordner lagen dort, gewaehlt wurde
-#       der nach Aenderungszeit juengste. `mind_transkript_pfad` faengt das
-#       NICHT — sie rechnet ihren Slug selbst, kommt leer zurueck, und der
-#       Rueckfall las dann aus dem fremden Ordner.
-#
-# ⛔ STREICHEN FUEGT KEIN VERHALTEN HINZU. Der Abbruch steht schon weiter
-#    unten (`kein Session-JSONL` -> exit 1); der Rueckfall hat ihn nur
-#    verhindert. ⭐ Ein ausgefallener Lauf hinterlaesst NICHTS, ein falsch
-#    gespeister hinterlaesst FALSCHES.
-#
-# ⚠ Der Ausloeser ist KEIN kaputter Slug: `slug_regression.py` bestand alle
-#   12 Faelle, und live trafen 3 von 3 echten Projekten. Es ist ein Projekt,
-#   in dem NIE eine Sitzung lief — dort gibt es nichts zu syncen, und der
-#   Abbruch ist die richtige Antwort, nicht die harte.
 if [ ! -d "$PROJECTS_DIR" ]; then
   echo "ABBRUCH: kein Transkript-Ordner fuer dieses Projekt." >&2
   echo "  erwartet: $PROJECTS_DIR" >&2
@@ -249,9 +223,6 @@ if [ -z "$JSONL" ] || [ ! -f "$JSONL" ]; then
   _JQUELLE=rueckfall
 elif [ -z "${CLAUDE_CODE_SESSION_ID:-}" ] \
      || [ "$JSONL" != "$PROJECTS_DIR/$CLAUDE_CODE_SESSION_ID.jsonl" ]; then
-  # ⚠ Ein Treffer, der NICHT aus der eigenen Kennung stammt (Hook-Vorgabe
-  #   oder die alte cwd-Heuristik), ist ebenfalls ein Rueckfall — er kann
-  #   richtig sein, belegt ist er nicht.
   _JQUELLE=rueckfall
 fi
 if [ "$_JQUELLE" = rueckfall ]; then
@@ -307,7 +278,6 @@ Python-Helper extrahiert ALLE `<command-name>` Marker (robust gegen JSON-Strings
 siehe v3.2.2 Lessons — grep-Pattern matchte ueber JSON-Inhalt hinaus).
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 if [ "$SPLIT_MODE" = "per-command" ]; then
@@ -393,12 +363,10 @@ PYEOF
     PYTHON="python"
   fi
 
-  # v3.3.1: ALL_COMMANDS Arg ans Python-Script weitergeben (Default "no" → Filter mind-*)
   RANGE_STATS_BASH=$(mind_sampler_pfad "$PROJ" range_stats.txt)     # v5.126.0: je Sitzung
   RANGES_TXT=$("$PYTHON" "$RANGES_WIN" "$JSONL_WIN" "$ALL_COMMANDS" 2>"$RANGE_STATS_BASH")
   RANGE_STATS=$(cat "$RANGE_STATS_BASH" 2>/dev/null | grep '^# STATS:' | head -1)
 
-  # Fallback: keine Commands gefunden -> ganze JSONL als 1 Range (mode=combined)
   if [ -z "$RANGES_TXT" ]; then
     echo "INFO: Keine Slash-Commands in JSONL -> falle zurueck auf combined-Mode"
     SPLIT_MODE="combined"
@@ -417,9 +385,6 @@ Im combined-Mode brauchen wir noch den letzten Command-Namen fuer den Filename �
 bestehende v3.2.2 Logik (jq mit Python-Fallback, robust gegen lange JSON-Strings):
 
 ```bash
-# Thema aus letztem Slash-Command ableiten falls nicht aus Args gesetzt
-# v3.2.2: jq oder Python-Fallback statt grep — robust gegen lange JSON-Strings.
-# Alter Pattern `[^<]+` matched ueber JSON-Inhalt hinaus (Bug aus Session 2026-05-29 Log 3).
 if [ "$SPLIT_MODE" = "combined" ] && [ -z "$THEMA" ]; then
   CMD=""
   if command -v jq &>/dev/null; then
@@ -429,7 +394,6 @@ if [ "$SPLIT_MODE" = "combined" ] && [ -z "$THEMA" ]; then
           grep -oE '<command-name>/[A-Za-z0-9:_-]+' | tail -1 | \
           sed 's|<command-name>/||; s|.*:||')
   fi
-  # N1-Fix v3.2.2: Fallthrough zu Python wenn jq fehlte ODER leeres Resultat lieferte
   if [ -z "$CMD" ]; then
     # Python-Fallback (in Datei, kein -c Backtick-Issue)
     cat > /tmp/extract_cmd.py << 'PYEOF'
@@ -474,7 +438,6 @@ findet Python das Script nicht.
 pro Range im Loop. Step 4 setzt nur die Pfade + schreibt den Python-Parser einmalig.
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 # Bash-Pfade (fuer Write/Read/awk im Skill — IMMER /tmp/... egal welche Plattform)
@@ -785,8 +748,6 @@ for ((i=0; i<N; i++)); do
     THEMA_USE="${THEMA_USE:-session}"
     OUTPUT=".claude-mind/sessions/${DATE}_${THEMA_USE}_${SUFFIX}.md"
   else
-    # v3.3.0 per-command: HHMM-Prefix fuer Eindeutigkeit bei Mehrfach-Aufruf
-    # TS-Format: 2026-05-30T14:23:45.123Z -> HHMM=1423
     HHMM=$(echo "$TS" | grep -oE 'T[0-9]{2}:[0-9]{2}' | tr -d 'T:')
     [ -z "$HHMM" ] && HHMM="0000"
     OUTPUT=".claude-mind/sessions/${DATE}_${HHMM}_${CMD}_${SUFFIX}.md"
@@ -809,7 +770,6 @@ done
 ### Bilanz (im Chat, NICHT in Output-Datei)
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 echo ""
@@ -817,7 +777,6 @@ echo "=== Bilanz ==="
 echo "Erzeugt:    ${#CREATED_FILES[@]} File(s)"
 echo "Skipped:    $SKIPPED_COUNT Range(s) (self-exclusion oder leer)"
 echo "Mode:       $MODE | Split: $SPLIT_MODE | Filter: $([ "$ALL_COMMANDS" = "yes" ] && echo "all-commands" || echo "mind-* only (Default v3.3.1)")"
-# v3.3.1: Filter + Dedup Stats aus Python-Helper
 if [ -n "$RANGE_STATS" ]; then
   echo "Range-Stats: $RANGE_STATS" | sed 's|^# STATS: ||'
 fi

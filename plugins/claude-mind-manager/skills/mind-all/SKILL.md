@@ -17,6 +17,8 @@ allowed-tools: Read Glob Grep Edit Write Bash Agent
 
 # Alle Context-Commands autonom nacheinander
 
+> ⛔ **Warum ein Block so gebaut ist** (Vorfaelle, Messungen, fruehere Fassungen): lies `references/historie/mind-all.md`, BEVOR du einen Block aenderst oder wenn ein Schritt rot ist.
+
 ⛔ **Ein Teilsync ist kein Ergebnis und kein Endzustand. Der Lauf endet NUR mit `voll` —
 er repariert, bis es voll ist, und stoppt nicht** (Nutzer 10.09.2026 „keine Ausreden",
 16.09.2026 woertlich: „teilsync komplett raus aus dem plugin, verboten zu stoppen … es darf
@@ -51,17 +53,13 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.161.0"
+MIND_SKILL_VERSION="5.162.0"
 mind_schritt_start "$PROJ" mind-all arbeitsstand_render debug_auswertung mind_agent_bilanz mind_check_tools_have_rules mind_debug_write mind_hook_health mind_snapshot mind_zeilenenden_waechter
-# ⛔ v5.98.0: die fuenf Skills sind KEINE Schritte von mind-all — jeder hat seinen EIGENEN
-#    Start-Block (Step 2, Punkt 1). Bis v5.97.0 standen sie hier, Ritas Kalibrierlauf hakte
-#    sie als Schritte ab, und context-analyzer/project-scanner liefen nie: FORMAL=5.
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt <name> gelaufen              "$(wc -c < "$AUSGABE")" "$PROJ"
@@ -453,7 +451,7 @@ Hier bat `/mind-all` bei `COMPACT-FAELLIG` um ein `/compact`; der Merker war tok
 ⚠ **Preis:** das war das **einzige**, was je um eine Kompaktierung bat. Folgenlos bei scharfer Auto-Kompaktierung; ohne sie feuert `pre-compact.sh` nie — keine Chat-Rettung, kein `RESUME.md`, kein Arbeitsstand.
 
 ⛔ Eine Kompaktierung ist **nicht ausloesbar** — weder aus einem Hook (nur `decision:block`) noch vom Assistenten (kein Werkzeug fuer `/compact`); nur der Mensch tippt sie.
-⛔ **Nicht** umformulieren zu *„die Kompaktierung kommt von selbst"*: so stand es bis v5.7.4, das war der Fehler.
+⛔ Und **nicht** umformulieren zu *„die Kompaktierung kommt von selbst"*: so stand es bis v5.7.4, das war der Fehler.
 
 ## Step 2.96: Schuld begleichen (PFLICHT, NEU v5.2.1)
 

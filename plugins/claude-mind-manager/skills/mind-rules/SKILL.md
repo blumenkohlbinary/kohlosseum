@@ -16,6 +16,8 @@ allowed-tools: Read Glob Grep Edit Write Bash
 
 # Rules Management
 
+> ⛔ **Warum ein Block so gebaut ist** (Vorfaelle, Messungen, fruehere Fassungen): lies `references/historie/mind-rules.md`, BEVOR du einen Block aenderst oder wenn ein Schritt rot ist.
+
 ## ⛔ PFLICHTSCHRITTE — dieser Skill fuehrt aus, was hier steht (NEU v5.25.0)
 
 ```
@@ -43,27 +45,20 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.161.0"
+MIND_SKILL_VERSION="5.162.0"
 mind_schritt_start "$PROJ" mind-rules bestandsaufnahme bestandszahlen_kandidaten cleaner_duplikate cleaner_stichprobe cleaner_tor ladeprotokoll_auswertung mind_kontext_bilanz mind_snapshot verdichten
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt <name> gelaufen              "$(wc -c < "$AUSGABE")" "$PROJ"
 mind_schritt <name> "gelaufen:5/11"       "$BYTES" "$PROJ"   # TEILABDECKUNG
 mind_schritt <name> "uebersprungen:<grund>" 0      "$PROJ"
 mind_schritt <name> "fehler:<grund>"      -1       "$PROJ"
-# ⛔ v5.97.0 — VERDICHTEN und die fuenf Context-Skills NUR mit ARTEFAKT: ohne --datei
-#    wird `gelaufen` zu `uebersprungen:kein-artefakt`, und die Bilanz zaehlt FORMAL.
-#    Drei Laeufe (10.–12.09.2026) trugen dieselben getippten Bytes; Zahlen tippt die Hand.
 mind_schritt verdichten gelaufen --datei "$PROJ/.claude-mind/verdichten-<skill>.txt" "$PROJ"  # die 3 Zeilen von mind_verdichtung_pruefen
-  # ⛔ v5.135.0: die Datei wird GEPRUEFT, nicht nur genannt — Pfad und Byte-Zahl stehen in der
-  #    Quittung, und ein schneller Block gilt damit nicht mehr als nachgetippt
-  #    (`references/bestands-pass.md`: „Ein pruefbares Artefakt schlaegt die Zeitregel").
 mind_schritt verdichten "uebersprungen:kein-kandidat" 0 "$PROJ"   # schweigen = FEHLT
 ```
 
@@ -323,7 +318,7 @@ diese hier sind die Vorlage/Muster fuer handgeschriebene Companion-Rules.
 ⛔ **v5.118.0: die Richtung ist `globs:` → `paths:`** — gemessen (Zustellplan 16.09.2026: 13 Rules mit `paths:` laden nicht beim Start, `path_glob_match` 11x, Dauerkontext 961 → 131 kB). Der Tausch laeuft ueber `cleaner_paths_sonde.py --start` (Sicherung, Merker, Messung in der naechsten Sitzung); dieser Schritt MELDET nur, welche Rules noch `globs:` tragen, und schreibt nichts um.
 
 1. Find all rule files with `globs:` frontmatter (die Kandidaten fuer `paths:`).
-   ⭐ v5.119.0: traegt eine Rule `globs: ["**/*"]`, lautet der Vorschlag **„Feld entfernen"**, nicht `paths: ["**/*"]` (ohne Feld laedt sie genauso; das Feld ist wirkungslos). Nur vorgeschlagen (Punkt 3).
+   ⭐ v5.119.0: traegt eine Rule `globs: ["**/*"]`, ist der Vorschlag **„Feld entfernen"**, nicht `paths: ["**/*"]` (ohne Feld laedt sie genauso; das Feld ist wirkungslos). Vorgeschlagen wird, geschrieben nichts (Punkt 3).
 2. For each file, show diff:
 
 ```
@@ -467,8 +462,6 @@ python "$TOR" --text "<die geplante Zeile>"
 # 2) RUECKWAERTS — ueber die Zieldatei dieses Laufs
 python "$TOR" --datei "$ZIEL_RULES"/*.md
 
-# 3) D1 "WOHIN?" — NEU v5.39.0, eingehaengt v5.40.0.
-#    Das Tor oben sagt OB etwas hinein darf. D1 sagt WOHIN es gehoert.
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_einordnung.py" --wohin "$ZIEL_RULES"/*.md
 ```
 

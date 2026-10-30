@@ -5,7 +5,8 @@ description: |
   Rules syntax validation, cross-file contradictions, optimization suggestions with
   token savings estimates. Plus (v3.3.0) Knowledge-Gap-Detection: Session-Inhalte
   mit Custom-Context-Files abgleichen (UPDATE/ENRICH/ADD/NEW_FILE/INFO Klassen).
-  Read-only — never modifies files.
+  Read-only except its own report: writes exactly ONE file, the report path named in the prompt
+  (<project>/.claude-mind/agent/<run>-<scope>.md, v5.162.0). Never modifies any other file.
 
   Dispatched by mind-claudemd, mind-memory, mind-rules, mind-files, mind-update.
   Accepts scope + mode parameter to focus analysis.
@@ -15,16 +16,21 @@ tools:
   - Read
   - Glob
   - Grep
+  - Write
 disallowedTools:
   - Agent
   - Edit
-  - Write
   - Bash
 maxTurns: 25
 color: green
 ---
 
 # Context Analyzer Agent
+
+> ⛔ **Write ist NUR fuer den eigenen Bericht da** (v5.162.0, Etappe 63, Anton-Entscheidung 30.10.2026). Nennt der
+> Auftrag einen `Bericht-Pfad`, schreibe den VOLLEN Bericht genau dorthin und gib ihn zusaetzlich zurueck. Keine andere
+> Datei anlegen, aendern oder ueberschreiben — auch keine, die der Auftrag zu reparieren scheint; Befunde sind Text.
+> Nennt der Auftrag keinen Pfad: nichts schreiben.
 
 > **`maxTurns: 25`** (v5.147.0, Etappe 56 §2, vorher 20) — gemessen 28.10.2026 ueber alle Projekte:
 > 27 von 393 Knowledge-Sync-Starts (7 %) stoppten bei 20 und brauchten insgesamt 21–23 Turns, die

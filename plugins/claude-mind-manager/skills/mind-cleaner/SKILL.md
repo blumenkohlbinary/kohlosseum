@@ -18,6 +18,8 @@ allowed-tools: Bash, Read, Glob, Grep, Edit, Write
 
 # /mind-cleaner — Regelbestände aufräumen
 
+> ⛔ **Warum ein Block so gebaut ist** (Vorfaelle, Messungen, fruehere Fassungen): lies `references/historie/mind-cleaner.md`, BEVOR du einen Block aenderst oder wenn ein Schritt rot ist.
+
 ## ⛔ PFLICHTSCHRITTE — dieser Skill fuehrt aus, was hier steht (NEU v5.25.0)
 
 ```
@@ -49,14 +51,13 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.161.0"
+MIND_SKILL_VERSION="5.162.0"
 mind_schritt_start "$PROJ" mind-cleaner bestandsaufnahme cleaner_audit cleaner_einordnung cleaner_grenzen cleaner_leitplanke cleaner_ratsche cleaner_rebuild cleaner_tor cleaner_umzug cleaner_wirkung ladeprotokoll_auswertung mind_debug_write mind_snapshot
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt <name> gelaufen              "$(wc -c < "$AUSGABE")" "$PROJ"
@@ -105,7 +106,6 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt_bilanz "$PROJ"
@@ -368,7 +368,6 @@ Gehört die Datei nicht dem Nutzer (Upstream, Fremdklon), wird sie **gelistet, n
 
 ```bash
 python "$CLAUDE_PLUGIN_ROOT/references/bestandsaufnahme.py" --ordner <verzeichnis>
-# oder positional: ... bestandsaufnahme.py <verzeichnis>   (beides seit v5.20.1)
 ```
 
 Größe, Dateizahl, Zusammensetzung. Die Kontrolle des Werkzeugs ist ein **synthetischer
@@ -521,7 +520,6 @@ steht hier keine mehr. Wer zählt, zählt die Tabelle.
 ```bash
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_umzug.py" \
   --alt <snapshot/alt.md> --kurz <neue-kurz.md> --skill <skills/<name>/SKILL.md>
-# v5.108.0 — Umzug nach docs/ (Klasse DOCS): <s.md> ist die Datei unter docs/
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_umzug.py" \
   --alt <snapshot/alt.md> --kurz <neue-kurz.md> --skill <docs/<name>.md> --ziel docs
 ```
@@ -811,15 +809,6 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_paths_sonde.py" --start "$PROJ" [
 #    -> „neue Sitzung starten, dann /mind-cleaner erneut"  ⛔ die Sitzung startet der Mensch
 # 2  im naechsten Lauf, wenn der Merker liegt
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_paths_sonde.py" --auswerten "$PROJ"
-#    ⛔ v5.115.0: OHNE Merker (Tausch lief von Hand, wie im Zustellplan 15.09.) geht es auch:
-#       --auswerten "$PROJ" --seit "YYYY-MM-DD HH:MM:SS" [--datei <rule.md>]
-#       ohne --datei ALLE Rules mit paths: — je Rule ein Urteil, eines fuer den Bestand,
-#       Satz fuer file-handling.md („paths: filtert — gemessen <Datum>, <Projekt>, n Rules,
-#       Nachladen bei Dateiberuehrung"). Der Satz kommt erst mit dem ZWEITEN Projekt.
-#    Ladeprotokoll SEIT dem Merker aus einer ANDEREN Sitzung: geladen mit session_start ->
-#    filtert NICHT (rc 1) · geladen nur mit path_glob_match -> filtert (rc 0) · neue Sitzung,
-#    Rule fehlt -> filtert (rc 0) · keine neue Sitzung -> noch nicht messbar (rc 3)
-#    Ergebnis: $MIND_DEBUG_DIR/paths-sonde-<ts>.md + der Satz fuer file-handling.md (mit Datum)
 ```
 
 ⛔ **Rückweg ist die Sicherung** (der Merker nennt sie: `cp "<sicherung>" "<datei>"`); die Sonde
@@ -869,7 +858,6 @@ Aufruf — mit Prüffall, und ohne Eintrag in `hooks.json`, bis der Prüffall gr
 ### ⛔ Step 8: Protokollieren — PFLICHT (NEU v5.21.0)
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_debug_write "$PROJ" "mind-cleaner" "$ABSCHNITT" "$BEFUNDE"

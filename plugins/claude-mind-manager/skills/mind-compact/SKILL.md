@@ -16,6 +16,8 @@ allowed-tools: Read Glob Grep Edit Bash
 
 # /compact Vorlage-Generator
 
+> ⛔ **Warum ein Block so gebaut ist** (Vorfaelle, Messungen, fruehere Fassungen): lies `references/historie/mind-compact.md`, BEVOR du einen Block aenderst oder wenn ein Schritt rot ist.
+
 ## ⛔ PFLICHTSCHRITTE — dieser Skill fuehrt aus, was hier steht (NEU v5.25.0)
 
 ```
@@ -35,14 +37,13 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.161.0"
+MIND_SKILL_VERSION="5.162.0"
 mind_schritt_start "$PROJ" mind-compact session_sampler
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt <name> gelaufen              "$(wc -c < "$AUSGABE")" "$PROJ"
@@ -91,7 +92,6 @@ heisst „nicht gemessen" und zaehlt nicht.
 **Im Bericht, als erste Zeile des Self-Checks:**
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt_bilanz "$PROJ"
@@ -119,7 +119,6 @@ Bei Aufruf in Desktop-Kontext: Skill bricht mit klarer Meldung ab.
 ## Step 1: JSONL finden (gleicher Code wie mind-session-log Step 2)
 
 ```bash
-# Slug + Projects-Dir (v3.2.2: zentralisiert in lib.sh)
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
 if [ -z "$CLAUDE_PLUGIN_ROOT" ] || [ ! -f "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh" ]; then
   echo "ERROR: \$CLAUDE_PLUGIN_ROOT nicht gesetzt oder lib.sh nicht gefunden" >&2
@@ -130,24 +129,6 @@ mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
 SLUG=$(hash_project_dir)
 PROJECTS_DIR="$HOME/.claude/projects/$SLUG"
 
-# ⛔ v5.69.0: HIER STAND EIN RUECKFALL AUF DAS NEUESTE PROJEKT.
-#    `[ ! -d "$PROJECTS_DIR" ] && PROJECTS_DIR=$(ls -td .../projects/*/ | head -1)`
-#    Fehlte der Slug-Ordner, schob er IRGENDEIN anderes Projekt unter — und
-#    der Sync haette den Chat eines FREMDEN PROJEKTS als Quelle genommen.
-#    ⭐ Nachgestellt 10.09.2026: 25 Projekt-Ordner lagen dort, gewaehlt wurde
-#       der nach Aenderungszeit juengste. `mind_transkript_pfad` faengt das
-#       NICHT — sie rechnet ihren Slug selbst, kommt leer zurueck, und der
-#       Rueckfall las dann aus dem fremden Ordner.
-#
-# ⛔ STREICHEN FUEGT KEIN VERHALTEN HINZU. Der Abbruch steht schon weiter
-#    unten (`kein Session-JSONL` -> exit 1); der Rueckfall hat ihn nur
-#    verhindert. ⭐ Ein ausgefallener Lauf hinterlaesst NICHTS, ein falsch
-#    gespeister hinterlaesst FALSCHES.
-#
-# ⚠ Der Ausloeser ist KEIN kaputter Slug: `slug_regression.py` bestand alle
-#   12 Faelle, und live trafen 3 von 3 echten Projekten. Es ist ein Projekt,
-#   in dem NIE eine Sitzung lief — dort gibt es nichts zu syncen, und der
-#   Abbruch ist die richtige Antwort, nicht die harte.
 if [ ! -d "$PROJECTS_DIR" ]; then
   echo "ABBRUCH: kein Transkript-Ordner fuer dieses Projekt." >&2
   echo "  erwartet: $PROJECTS_DIR" >&2
@@ -178,9 +159,6 @@ if [ -z "$JSONL" ] || [ ! -f "$JSONL" ]; then
   _JQUELLE=rueckfall
 elif [ -z "${CLAUDE_CODE_SESSION_ID:-}" ] \
      || [ "$JSONL" != "$PROJECTS_DIR/$CLAUDE_CODE_SESSION_ID.jsonl" ]; then
-  # ⚠ Ein Treffer, der NICHT aus der eigenen Kennung stammt (Hook-Vorgabe
-  #   oder die alte cwd-Heuristik), ist ebenfalls ein Rueckfall — er kann
-  #   richtig sein, belegt ist er nicht.
   _JQUELLE=rueckfall
 fi
 if [ "$_JQUELLE" = rueckfall ]; then
@@ -203,8 +181,6 @@ echo "JSONL: $JSONL"
 ## Step 2: Args parsen
 
 ```bash
-# v3.3.0: keine Args definiert (--save-to-claudemd in v3.3.1 geplant, siehe Step 6)
-# Skill akzeptiert beliebige Args ohne Verarbeitung — defensive
 ARGS='$ARGUMENTS'   # v5.159.0: Claude Code ersetzt beim Laden nur das blanke Argument-Token, nie die Form mit Klammern
 ```
 
@@ -223,7 +199,6 @@ echte Transkripte (287 / 9 062 / 4 587 Bytes, alle identisch).
 **Path-Setup (cygpath Hard Requirement):**
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 if ! command -v cygpath &>/dev/null; then
@@ -232,14 +207,11 @@ if ! command -v cygpath &>/dev/null; then
   exit 1
 fi
 
-# v5.6.0: ausgelieferte Datei statt /tmp-Heredoc (Befund 9)
 SAMPLER_BASH="$CLAUDE_PLUGIN_ROOT/references/session_sampler.py"
 [ -f "$SAMPLER_BASH" ] || { echo "ERROR: session_sampler.py fehlt: $SAMPLER_BASH" >&2; exit 1; }
 SAMPLER_WIN=$(cygpath -w "$SAMPLER_BASH")
 JSONL_WIN=$(cygpath -w "$JSONL")
 
-# Output-Datei fuer JSON-Zwischenergebnis — v5.126.0: je Sitzung im Projekt, nicht fest /tmp
-# (kollidierte zwischen Sitzungen, Etappe 38 §2); Aufraeumen nach Step 5.
 EXTRACT_JSON_BASH=$(mind_sampler_pfad "$PROJ" mind-compact)
 EXTRACT_JSON_WIN=$(cygpath -w "$EXTRACT_JSON_BASH")
 ```
@@ -269,7 +241,6 @@ fi
 ## Step 5: Vorlage rendern (Markdown-Block fuer User-Copy)
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 RENDER_BASH="/tmp/mind_compact_render.py"

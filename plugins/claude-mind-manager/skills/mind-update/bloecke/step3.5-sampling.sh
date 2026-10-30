@@ -151,6 +151,9 @@ _BIS=""; _LTS=$(cat "$PROJ/.claude-mind/mind-all.lock/ts" 2>/dev/null)
 case "$_LTS" in ''|*[!0-9]*) ;; *) _BIS=$(date -u -d "@$_LTS" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null) ;; esac
 "$PYTHON" "$SAMPLER_WIN" "$JSONL_WIN" "$SESSION_SAMPLE_WIN" ${_VON:+--von "$_VON"} ${_BIS:+--bis "$_BIS"}
 echo "Sampler-Fenster: von ${_VON:-(Anfang)} bis ${_BIS:-(Selbst-Ausschluss)}"
+# v5.162.0 (Etappe 63 N3 §3): selbst quittiert, mit Artefakt — nicht nachtippen.
+if [ -s "$SESSION_SAMPLE_BASH" ]; then mind_schritt session_sampler gelaufen --datei "$SESSION_SAMPLE_BASH" "$PROJ"
+else mind_schritt session_sampler "fehler:keine-stichprobe" -1 "$PROJ"; fi
 
 # Hinweis bei sehr langer Session
 TOTAL=$(grep -oE '"total_events":\s*[0-9]+' "$SESSION_SAMPLE_BASH" | grep -oE '[0-9]+')

@@ -2351,6 +2351,21 @@ mind_agent_dispatch() {
     "$bereich" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$q"
 }
 
+# mind_agent_bericht_pfad <bereich> [projekt]   (v5.162.0, Etappe 63 N3 §1)
+#   Die EINE Datei, die der context-analyzer schreiben darf: <projekt>/.claude-mind/agent/<LAUF>-<bereich>.md.
+#   Bis v5.161.0 tippte das Modell jeden Bericht per Write ab (Ritas Lauf: 8 Write-Schritte, ~30 KB doppelt).
+#   ⛔ Laufkennung im NAMEN (Klasse „projektweiter Merker meint einen Abschnitt", hooks.md) — ohne Kopfzeile
+#   `ohne-lauf-<sid8>`, nie ein geteilter Name. Legt nur den Ordner an, schreibt keine Datei.
+mind_agent_bericht_pfad() {
+  local bereich="${1:-}" proj lauf sid
+  _mind_args_pruefen mind_agent_bericht_pfad 'mind_agent_bericht_pfad <bereich> [projekt]' "$bereich" "${2:-}" "$_MIND_AGENT_BEREICHE" || return 2
+  proj="${2:-$(mind_projekt_wurzel)}"
+  lauf="${LAUF:-$(mind_kopf_lauf "$proj" 2>/dev/null)}"
+  if [ -z "$lauf" ]; then sid="${CLAUDE_CODE_SESSION_ID:-unbekannt}"; lauf="ohne-lauf-${sid%%-*}"; fi
+  mkdir -p "$proj/.claude-mind/agent" 2>/dev/null
+  printf '%s/.claude-mind/agent/%s-%s.md\n' "$proj" "$lauf" "$bereich"
+}
+
 # mind_agent_uebersprungen <bereich> <anzahl-dateien> [projekt]
 # ⛔ v5.104.0 (Etappe 12): ein Projekt OHNE Custom-Context-Dateien konnte NIE voll
 #    syncen — `erwartet=4` stand fest, das erlaubte Ueberspringen (mind-update Step 3.5)

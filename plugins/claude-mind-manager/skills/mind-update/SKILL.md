@@ -23,6 +23,8 @@ allowed-tools: Read Glob Grep Edit Bash Agent
 
 # Context-Sweep + Knowledge-Sync
 
+> ⛔ **Warum ein Block so gebaut ist** (Vorfaelle, Messungen, fruehere Fassungen): lies `references/historie/mind-update.md`, BEVOR du einen Block aenderst oder wenn ein Schritt rot ist.
+
 ## ⛔ PFLICHTSCHRITTE — dieser Skill fuehrt aus, was hier steht (NEU v5.25.0)
 
 ```
@@ -50,29 +52,24 @@ PROJ=$(mind_projekt_wurzel)    # v5.80.0: der Ordner mit rollen.md, sonst cwd
 #    Text gegen neuen Code laeuft (Rita bekam am 10.09.2026 den Text aus 5.2.0).
 #    ⚠ Wird beim Release nachgezogen; das Zaehl-Gate prueft alle elf.
 #    ⛔ v5.125.0: DIESELBE Bash wie mind_schritt_start — sonst rc 1, keine Startzeile (Etappe 37 §3).
-MIND_SKILL_VERSION="5.161.0"
+MIND_SKILL_VERSION="5.162.0"
 mind_schritt_start "$PROJ" mind-update bestandszahlen_kandidaten claudemd_pipeline cleaner_stichprobe cleaner_tor mind_agent_bilanz mind_kontext_bilanz mind_snapshot session_sampler verdichten
 ```
 
 **Nach JEDEM Schritt** — auch nach einem, der entfaellt:
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_schritt <name> gelaufen              "$(wc -c < "$AUSGABE")" "$PROJ"
 mind_schritt <name> "gelaufen:5/11"       "$BYTES" "$PROJ"   # TEILABDECKUNG
 mind_schritt <name> "uebersprungen:<grund>" 0      "$PROJ"
 mind_schritt <name> "fehler:<grund>"      -1       "$PROJ"
-# ⛔ v5.97.0 — VERDICHTEN und die fuenf Context-Skills NUR mit ARTEFAKT: ohne --datei
-#    wird `gelaufen` zu `uebersprungen:kein-artefakt`, und die Bilanz zaehlt FORMAL.
-#    Drei Laeufe (10.–12.09.2026) trugen dieselben getippten Bytes; Zahlen tippt die Hand.
 mind_schritt verdichten gelaufen --datei "$PROJ/.claude-mind/verdichten-<skill>.txt" "$PROJ"  # die 3 Zeilen von mind_verdichtung_pruefen
-  # ⛔ v5.135.0: die Datei wird GEPRUEFT, nicht nur genannt — Pfad und Byte-Zahl stehen in der
-  #    Quittung, und ein schneller Block gilt damit nicht mehr als nachgetippt
-  #    (`references/bestands-pass.md`: „Ein pruefbares Artefakt schlaegt die Zeitregel").
 mind_schritt verdichten "uebersprungen:kein-kandidat" 0 "$PROJ"   # schweigen = FEHLT
 ```
+
+⛔ **Selbst quittiert, NICHT nachtippen (v5.162.0):** `mind_snapshot` (Step 0), `session_sampler` (Step 3.5), `mind_kontext_bilanz` · `bestandszahlen_kandidaten` · `cleaner_stichprobe` (Step 5d) und `mind_agent_bilanz` quittiert ihr Block mit Artefakt. Gemessen 30.10.2026: 21 nachgetippte Quittungen in einem Lauf, jede ein eigener Schritt.
 
 ⛔ **`uebersprungen` ist ein gueltiger Status und braucht einen GRUND.** Ein Schritt,
 der legitim entfaellt (kein Git, kein Quellbaum), ist kein Fehler — aber
@@ -333,7 +330,6 @@ sonst als DEAD durch und werden **autonom geloescht**. Real gemessen: 5 echte Tr
 `/releases/44/`, `/releases/test/`, ein relativ geschriebener existierender Pfad).
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 # ⛔ NICHT NACHBAUEN — die Funktion liegt seit v5.11.0 in lib.sh und heisst
@@ -347,11 +343,6 @@ PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT
 # lib.sh ist in Step 1 bereits gesourct.
 klasse=$(mind_classify_path "$p")
 
-# ⛔ Existenz NUR ueber `mind_pfad_lebt` pruefen, NIE mit blossem `test -e`.
-# Bash expandiert `~` in Anfuehrungszeichen NICHT: `test -e "~/.claude/rules/x.md"`
-# ist immer falsch, die Datei mag mit 68 Zeilen dort liegen. Ergebnis war DEAD,
-# und bei <=5 DEAD wird AUTONOM GELOESCHT. Gemessen und reproduziert 21.08.2026
-# (`tests/test_lib_v511.sh`, Befund aus `APP - Palvedo`).
 [ "$klasse" = "CHECK" ] && { mind_pfad_lebt "$p" || echo "DEAD: $p"; }
 ```
 
@@ -396,24 +387,13 @@ ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step
   **CLAUDE.md UND MEMORY.md** greppen.
 
 ```bash
-# Commit-Coverage: welche Feature-Commits sind NICHT in den Context-Dateien?
-# Stichwort-Wahl (N1-Fix): zuerst dev.NN, dann der conventional-commit-SCOPE
-# (feat(SCOPE):), erst zuletzt ein Subject-Token — Stopwords ausgeschlossen.
-# Grep-Ziele als ARRAY, nie als Zeichenkette: ein Pfad mit Leerzeichen zerfaellt sonst in
-# Stuecke — derselbe Fehler, der in v5.2.1 die Rotation lahmlegte (xargs +
-# "Plugin - Entwicklung"). Die Zusatzziele kommen aus der CLAUDE.md SELBST; es wird nicht
-# geraten, welche Datei "kanonisch" ist. Gemessen: 2 -> 17 Ziele im Zustellplan-Projekt.
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-# v5.153.0: MEMORY_MAIN kam aus Step 1 — einem anderen Prozess. Leer war das zweite Ziel "".
 MEMORY_MAIN="${MEMORY_MAIN:-$(get_memory_dir 2>/dev/null)/MEMORY.md}"
 ZIELE=("CLAUDE.md" "$MEMORY_MAIN")
 while IFS= read -r z; do
   [ -n "$z" ] && [ -f "$z" ] && ZIELE+=("$z")
 done < <(grep -oE '`[A-Za-z0-9_./-]+\.md`' CLAUDE.md 2>/dev/null | tr -d '`' | sort -u)
 
-# ⛔ v5.147.0 (Etappe 56 §5, CK3): OHNE CONVENTIONAL COMMITS MISST DAS GATE NICHTS — und sagt es.
-#    CK3: 0 von 30 (deutsche Commits), Palvedo ebenso; dann kam gar keine Zeile, und das las
-#    sich wie „keine Luecken“. Jetzt steht NICHT ANWENDBAR da, keine Zahl.
 _KC=$(git log --oneline -30 2>/dev/null | wc -l | tr -d ' ')
 _KK=$(git log --oneline -30 2>/dev/null | grep -ciE '^[0-9a-f]+ (feat|fix|refactor|perf|docs)(\(|:)')
 [ "${_KK:-0}" -eq 0 ] && echo "NICHT ANWENDBAR: 0 von ${_KC:-0} Commits im Conventional-Format (feat:/fix:/...) — Commit-Coverage misst hier NICHTS (keine Zahl, kein 'keine Luecken')"
@@ -424,12 +404,7 @@ git log --oneline -30 | grep -iE '^[0-9a-f]+ (feat|fix|refactor|perf|docs)(\(|:)
   key=$(echo "$subj" | grep -oiE 'v?[0-9]+\.[0-9]+\.[0-9]+' | head -1 | sed 's/^[vV]//')
   [ -z "$key" ] && key=$(echo "$subj" | grep -oiE 'dev\.[0-9]+' | head -1)
   [ -z "$key" ] && key=$(echo "$subj" | sed -nE 's/^[a-z]+\(([a-z0-9_.-]{3,})\).*/\1/p' | head -1)
-  # KEIN -F: grep -iF auf UTF-8 (deutsche Umlaute in MEMORY.md) wirft auf Git-Bash/MSYS
-  # "Aborted (core dumped)" -> non-zero -> falsche GAPs (real 2026-07-15: 24 Fake-GAPs aus
-  # dem Crash). grep -qi (ohne -F) ist verifiziert crash-frei; Keys sind regex-safe. v4.1.0-Fix.
   if [ -z "$key" ]; then
-    # Sichtbar machen statt verschweigen: ohne belastbares Stichwort ist der Commit
-    # UNGEPRUEFT, nicht unauffaellig. Genau diese Stille war der Defekt bis v5.5.1.
     echo "KEIN-STICHWORT: $hash '$subj' — ungeprueft, kein belastbares Stichwort"
   # ⚠ v5.147.0: Umlaut-Schreibweisen (CK3: Fehl-GAPs) — beide Formen gelten als Treffer.
   elif ! grep -qi "$key" "${ZIELE[@]}" 2>/dev/null \
@@ -655,8 +630,13 @@ gleichzeitig, getrennte Nachrichten = nacheinander.
 ```
 Agent(subagent_type: "claude-mind-manager:context-analyzer", run_in_background: false,
       description: "Knowledge-sync <scope>", prompt: <Auftrag aus der Tabelle>
-      + "Nenne zu JEDEM Zitat die Datei und die Zeilennummer, aus der du es gelesen hast. Was du ohne Fundstelle schreibst, kennzeichne als UNGEPRUEFT.")
+      + "Nenne zu JEDEM Zitat die Datei und die Zeilennummer, aus der du es gelesen hast. Was du ohne Fundstelle schreibst, kennzeichne als UNGEPRUEFT."
+      + "Schreibe deinen VOLLEN Bericht mit Write nach <Bericht-Pfad> — genau diese eine Datei, sonst nichts.")
 ```
+
+`<Bericht-Pfad>` nennt `agent-schritt.sh` je Bereich (v5.162.0). ⛔ **Je Welle EIN Block-Aufruf, dann die Agenten
+der Welle in EINER Nachricht** — gemessen 30.10.2026 kostete der Zyklus dispatch → Agent → Bericht abtippen → ergebnis
+vier Schritte je Bereich, jeder bezahlt den ganzen Verlauf. ⛔ Nicht mit `ScheduleWakeup`/`sleep` warten.
 
 | Agent | scope | mode | Input |
 |---|---|---|---|
@@ -731,49 +711,19 @@ komplett raus“*.
 ### ⛔ Agent-Quittung — PFLICHT, vor UND nach jedem Agent (NEU v5.14.0)
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
-# v5.19.0: NUR anlegen, wenn keine existiert. In der Kette hat mind-all sie
-# schon in Step 0 angelegt — ein blindes `start` wuerde sie hier LOESCHEN und
-# genau die Spur vernichten, die den Teilsync belegt. Bei einem Einzelaufruf
-# von /mind-update gibt es keine, und dann legt dieser Zweig sie an.
-# ⛔ v5.21.3: die 4 ist PFLICHT — siehe mind-all Step 0. Ohne sie meldet die
-#    Bilanz `DISPATCH=0` und behauptet damit, der Fan-out habe nicht
-#    stattgefunden. Bei nur 3 Bereichen (custom-context entfaellt mangels
-#    Dateien) hier 3 uebergeben, nicht 4.
-# ⛔ v5.104.0: 3 bei 0 Custom-Context-Dateien — Step 1.5 hat gezaehlt — und das
-#    Ueberspringen wird QUITTIERT; sonst heisst es "nur 3 von 4" und der Lauf ist Teilsync.
-[ "${#CUSTOM_CONTEXT_FILES[@]}" -gt 0 ] || mapfile -t CUSTOM_CONTEXT_FILES < "$(mind_sampler_pfad "$PROJ" mind-update-ccf.txt)" 2>/dev/null   # v5.153.0
-if [ "${#CUSTOM_CONTEXT_FILES[@]}" -eq 0 ]; then
-  [ -f "$PROJ/.claude-mind/agent-quittung.jsonl" ] || mind_agent_quittung_start "$PROJ" 3
-  mind_agent_uebersprungen custom-context 0 "$PROJ"
-else
-  [ -f "$PROJ/.claude-mind/agent-quittung.jsonl" ] || mind_agent_quittung_start "$PROJ" 4
-fi
-mind_agent_dispatch "<bereich>" "$PROJ"    # VOR dem Start — ⛔ Reihenfolge: <bereich> <projekt>. v5.125.0: vertauscht
-                                            #   oder unbekannt = rc 2, nichts geschrieben (18.09.: vier Streuner-Ordner im cwd)
-# ... Agent laeuft (run_in_background: false — der tool_result IST die Rueckgabe) ...
-# ⛔ v5.94.0: die Bytes kommen aus einer DATEI, nie aus dem Kopf. Den tool_result
-#    mit `Write` nach $PROJ/.claude-mind/agent-<bereich>.md legen, dann:
-mind_agent_ergebnis "<bereich>" --datei "$PROJ/.claude-mind/agent-<bereich>.md" "$PROJ"
-#    ⛔ v5.126.0: OHNE den dispatch oben (derselbe Lauf, seit der letzten Start-Zeile) ist das
-#       rc 2 und schreibt nichts — „dispatch fehlt“. Vergessen heisst: Agent erneut MIT Quittung
-#       fahren, nicht nachtragen (03.09., 13.09., 18.09.: DISPATCH=0 bei gelaufenen Agents).
-# Kein tool_result (Agent gestorben, Aufruf abgebrochen)? Dann OHNE Datei quittieren —
-# `--datei` auf eine fehlende Datei schreibt bytes:0, und 0 heisst `ungepruef=`.
-# ⛔ v5.97.0 — DREI DINGE, die die Bilanz seither SELBST prueft (Ritas Lauf 22:05, 11.09.):
-#    · die Zahlform `mind_agent_ergebnis <bereich> <n>` schreibt bytes:0 — nur --datei misst
-#    · traegt die Datei das Hintergrund-Ack („Async agent launched"), ist das bytes:0
-#    · ⛔ v5.145.0: ein ROHDUMP (Datei beginnt mit `{"`/`[` oder hat JSONL-Zeilen) ist bytes:0 —
-#      abgelegt wird der tool_result, nie das Transkript des Agenten (Veras Befund M-J)
-#    · ⚠ eine `.output`-Datei der Harness gibt es NUR bei Hintergrund-Agenten. Wer sie bei einem
-#      blockierenden Agenten quittiert, quittiert eine fehlende Datei: bytes:0 → `ungepruef=`
-#    · liegen dispatch und ergebnis unter 30 s auseinander, gilt der Bereich als
-#      UNGEPRUEFT: ein blockierender Agent braucht 60–130 s, dieselbe Sekunde heisst
-#      „beide Zeilen nachgetragen". Deshalb: mind_agent_dispatch VOR dem Aufruf, in
-#      einer EIGENEN Bash — nicht am Ende alles auf einmal.
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/agent-schritt.sh" start claude-md,memory
+# Welle 1 starten (zwei Agenten, EINE Nachricht). Sind beide zurueck:
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/agent-schritt.sh" claude-md,memory rules,custom-context
+# Welle 2 starten. Sind beide zurueck:
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/agent-schritt.sh" rules,custom-context
 ```
+
+Der Block legt die Quittung an (3 Bereiche bei 0 Custom-Context-Dateien, das Ueberspringen quittiert), ruft
+`mind_agent_dispatch "<bereich>" "$PROJ"` VOR jedem Start und `mind_agent_ergebnis "<bereich>" --datei <Bericht-Pfad> "$PROJ"`
+nach der Rueckkehr. Bei 3 Bereichen entfaellt `custom-context` in den Listen. ⛔ Kein tool_result (Agent gestorben):
+`agent-schritt.sh <bereich> --ohne-bericht` — bytes:0, `ungepruef=`. Fehlt der Bericht, dispatcht der Block die
+naechste Welle NICHT (rc 3). Ohne `mind_agent_dispatch` vorher ist `mind_agent_ergebnis` rc 2 („dispatch fehlt“) — Agent erneut MIT Quittung fahren, nicht nachtragen. Die Bilanz prueft weiter selbst: Zahlform = bytes:0 · Hintergrund-Ack = bytes:0 ·
+Rohdump (`{"`/JSONL) = bytes:0 · dispatch und ergebnis unter 30 s auseinander = UNGEPRUEFT.
 
 ⛔ **Ein geschaetzter Bytewert ist die Fehlzahl, an der Lauf 14:50 (10.09.2026) als
 vollstaendig durchging:** `claude-md` hatte kein gelesenes Ergebnis, die Quittung trug
@@ -1022,8 +972,6 @@ python "$TOR" --text "<die geplante Zeile>"
 # 2) RUECKWAERTS — ueber die Zieldatei dieses Laufs
 python "$TOR" --datei "$PROJ/CLAUDE.md"
 
-# 3) D1 "WOHIN?" — NEU v5.39.0, eingehaengt v5.40.0.
-#    Das Tor oben sagt OB etwas hinein darf. D1 sagt WOHIN es gehoert.
 python "$CLAUDE_PLUGIN_ROOT/references/cleaner_einordnung.py" --wohin "$PROJ/CLAUDE.md"
 ```
 
@@ -1102,22 +1050,9 @@ Schritt ausführst. Hier steht nur, was für **diesen** Skill gilt:
 | **neu in diesem Schritt** | `cleaner_belege` · `cleaner_aussagen --code` |
 
 ```bash
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { CLAUDE_PLUGIN_ROOT=$(jq -r '.plugins["claude-mind-manager@kohlosseum"][0].installPath // empty' "$HOME/.claude/plugins/installed_plugins.json" 2>/dev/null); [ -n "$CLAUDE_PLUGIN_ROOT" ] && { CLAUDE_PLUGIN_ROOT=$(cygpath -u "$CLAUDE_PLUGIN_ROOT" 2>/dev/null || printf '%s' "$CLAUDE_PLUGIN_ROOT"); echo "WARN: CLAUDE_PLUGIN_ROOT war leer — Rueckfall auf installed_plugins.json: $CLAUDE_PLUGIN_ROOT (v5.107.0)" >&2; }; }   # v5.107.0 Rueckfall
-[ -n "$CLAUDE_PLUGIN_ROOT" ] || { echo "ERROR: $CLAUDE_PLUGIN_ROOT fehlt" >&2; exit 1; }
-source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-
-# 1) PFLICHTZEILE — sie MUSS woertlich in den Self-Check-Block des Berichts.
-#    ⛔ Nicht nur erwaehnen: die Zeile selbst, mit beiden Zahlenpaaren.
-mind_kontext_bilanz "$PROJ" --vergleichen
-
-# 1b) Art 6 (v5.90.0): ungegatete BESTANDSZAHLEN als Kandidaten — mind-update ist der
-#     haeufigste Lauf, deshalb hier ueber Projekt UND ~/.claude. ⛔ Er urteilt nie, rc 0.
-python "$CLAUDE_PLUGIN_ROOT/references/bestandszahlen_kandidaten.py" "$PROJ" --global
-
-# 2) Stichprobe: 3 Einträge, die am längsten ungeprüft sind (max. 15 je Kettenlauf)
-python "$CLAUDE_PLUGIN_ROOT/references/cleaner_stichprobe.py" "$PROJ" \
-       --skill mind-update --verzeichnis "$PROJ/.claude/rules"
+ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-update/bloecke/step5d-pass.sh"
+# faehrt 1) mind_kontext_bilanz --vergleichen (PFLICHTZEILE woertlich in den Self-Check-Block), bestandszahlen_kandidaten
+#      2) cleaner_stichprobe — und quittiert alle drei SELBST mit Artefakt (v5.162.0). NICHT nachtippen.
 
 # 3) je Eintrag die drei Fragen — siehe Referenz, EINE Berichtszeile je Eintrag
 
@@ -1280,7 +1215,6 @@ Total-Context-Zeile.
 Kennung, fremde Sitzungen bleiben unberuehrt:
 
 ```bash
-# v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 mind_sampler_aufraeumen "$PROJ"    # loescht .claude-mind/sampler/*.<sid>.*
