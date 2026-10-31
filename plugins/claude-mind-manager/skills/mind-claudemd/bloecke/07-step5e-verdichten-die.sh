@@ -5,6 +5,9 @@ CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.
 #    deshalb leitet mind_block_umgebung PROJ, SCOPES_FILE, LAUF und AGENT_SOLL selbst her.
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 mind_block_umgebung
+# ⭐ Etappe 68: `bash <dieser Block> ende pruefen|anwenden` — Gates + frischer Wortdiff (Stufe 3) bzw. anwenden + Bilanz + Quittung.
+#    Der Stand liegt in .claude-mind/verdichten-mind-claudemd.stand (mind_verdicht_start); ohne ihn bricht mind_verdicht_ende mit rc 2 ab.
+if [ "${1:-}" = "ende" ]; then mind_verdicht_ende "$PROJ" mind-claudemd "${2:-}"; exit $?; fi
 . "$CLAUDE_PLUGIN_ROOT/skills/mind-claudemd/bloecke/_ziele.sh"   # v5.154.0: BEREICH/ZIEL_* aus Step 1
 # v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
@@ -32,9 +35,13 @@ python "$PIPE" "$DATEI" --projekt "${ZIEL_WURZEL}" > "$PROJ/.claude-mind/pipelin
 #    statt `$DATEI`, und nichts hat den Pfad geprueft. rc 2 ist KEIN Laufabbruch.
 mind_verdichtet_merken "$PROJ" "$DATEI" || true
 # ⛔ v5.174.0 (Etappe 67 N2e): ohne BENANNTE Kandidaten entfaellt der Schritt — Ertrag ~5 % (bestands-pass.md)
+# ⭐ Etappe 68 (VERDICHTEN als Buendel): MIT ihnen gibt mind_verdicht_start den Agenten-Auftrag WOERTLICH (Kasten, Datei,
+#    benannte Kandidaten, Stufe-3-Zeilen, ERGEBNIS-/BERICHT-Pfad) und den naechsten Aufruf aus. Snapshot, VORHER-Bytes und der
+#    Stand (`.claude-mind/verdichten-mind-claudemd.stand`) entstehen dort. bestands-pass.md nur bei rotem Gate lesen.
 if [ -n "$DATEI" ]; then
-  echo "BENANNTE UEBERHOLT-KANDIDATEN fuer $(basename "$DATEI") (woertlich an den Agenten):"
-  if ! mind_verdicht_benannt "$PROJ" "$DATEI"; then
+  if mind_verdicht_benannt "$PROJ" "$DATEI" >/dev/null; then
+    mind_verdicht_start "$PROJ" mind-claudemd "$DATEI"
+  else
     echo "VERDICHTEN: keine benannten Kandidaten — Schritt entfaellt, kein Agent."
     mind_schritt verdichten "uebersprungen:keine-benannten-kandidaten" 0 "$PROJ"
   fi

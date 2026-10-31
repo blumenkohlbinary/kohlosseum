@@ -4916,6 +4916,305 @@ mind_verdichtung_anwenden() {
 
 
 # =============================================================================
+# mind_verdicht_start / mind_verdicht_ende — VERDICHTEN als Buendel (Etappe 68)
+# =============================================================================
+# ⛔ WOZU. Jeder Schritt der steuernden Sitzung kostet den ganzen Verlauf (~280k Tokens). In Ritas
+#    /mind-all-Lauf (30.10.2026) kostete VERDICHTEN je Skill 5-7 Schritte: bestands-pass.md von Hand
+#    lesen, Snapshot/Bilanz/Stufe-3-Zeilen tippen, den Auftrag selbst formulieren, pruefen (teils 3x),
+#    anwenden, merken, Bilanz, Quittung. Jetzt, ab dem Kandidaten-Block:
+#      Agent  ·  `ende pruefen` (Gates + frischer Wortdiff, Stufe 3 liest)  ·  `ende anwenden` (cp, Bilanz, Quittung)
+#    Der Kandidaten-Block ruft `mind_verdicht_start`, das gibt den Agenten-Auftrag WOERTLICH und den naechsten
+#    Aufruf aus; `ende` laeuft ueber denselben Block (`bash <block> ende pruefen|anwenden`).
+# ⛔ Jeder Block ist ein eigener Bash-Prozess: Werte ueberleben NUR in `$PROJ/.claude-mind/verdichten-<skill>.stand`
+#    (key=value, der LETZTE Eintrag je Schluessel gilt; `start` leert ihn und die Deponate des Vorlaufs — sonst
+#    liest Stufe 3 einen alten Wortdiff oder cp't ein altes Ergebnis).
+# ⛔ Die Vorschrift selbst (Kasten, drei Stufen, Kosten) steht weiter in references/bestands-pass.md, Abschnitt
+#    VERDICHTEN — hier ist sie nur ausgefuehrt, nicht ersetzt. Bestehende Funktionen werden aufgerufen, nicht geaendert.
+# ⚠ Stufe 3 (der Leser) bleibt Pflicht: `anwenden` verlangt, dass `pruefen` DIESES Ergebnis (md5) gruen gesehen hat —
+#    ob jemand den Diff las, kann keine Funktion pruefen.
+
+_vd_wert() { sed -n "s/^$2=//p" "$1" 2>/dev/null | tail -1; }          # <stand> <schluessel> -> letzter Wert
+_vd_win() { cygpath -w "$1" 2>/dev/null || printf '%s' "$1"; }         # python.exe kennt keinen MSYS-Pfad
+_vd_dauerkontext_b() { mind_kontext_bilanz "$1" 2>/dev/null | sed -n 's/.*BYTES=\([0-9]*\).*/\1/p' | head -1; }
+_vd_befund_nr() { sed -n '/--- BEFUNDE/,/--- HINWEISE/p' "$1" 2>/dev/null | grep -oE '\[Check +[0-9]+' | grep -oE '[0-9]+' | sort -un; }
+_vd_ist_claudemd() { [ "$(basename "${1:-}")" = "CLAUDE.md" ]; }
+_vd_frontmatter() { awk 'NR==1 && /^---/ {f=1; print; next} f && /^---/ {print; exit} f {print}' "$1" 2>/dev/null; }
+_vd_pipeline() {   # <datei> <wurzel> <ausgabe> -> rc 0 = gemessen (Ausgabe traegt einen Kopf), 1 = nicht messbar
+  local pipe="${CLAUDE_PLUGIN_ROOT:-}/references/claudemd_pipeline.py"
+  [ -f "$pipe" ] || return 1
+  python "$pipe" "$(_vd_win "$1")" --projekt "$(_vd_win "$2")" > "$3" 2>&1
+  grep -q '^=== ' "$3" 2>/dev/null
+}
+
+# Die Regeln dieser Datei, die ein Programm liest — aus den Tabellen der fuenf SKILL.md (Zeile „unantastbar“).
+_vd_unantastbar() {   # <skill> <datei>
+  local skill="${1:-}" datei="${2:-}"
+  if _vd_ist_claudemd "$datei"; then
+    cat <<'EOF'
+- jeder ```-Codeblock (Befehle werden getippt, nicht gelesen)
+- jede Zeile mit einer Versionsnummer (`Version **x.y.z**`, `v5.x.y`)
+- jede Zeile, die eine Datei als ADRESSE nennt (`Details: …`, `siehe …`, `→ …`) — der Zeiger ist der ganze Wert
+- ein Programm (`claudemd_pipeline.py`, 24 Checks) laeuft vorher und nachher: ein Check, der vorher gruen war und nachher rot ist, verwirft das Ergebnis
+EOF
+    return 0
+  fi
+  case "$skill" in
+    mind-memory) cat <<'EOF'
+- das Frontmatter (`---` … `---`: `name`, `description`, `type`) — die `description` ist das EINZIGE Signal des Auswaehlers
+- jeder [[wikilink]] und jede Index-Zeile
+- NIE MEMORY.md anfassen
+EOF
+      ;;
+    mind-files) cat <<'EOF'
+- jede Zeile mit `tools/<name>.py` / `tools/<name>.sh` (die Aufrufform, die `mind_check_tools_have_rules` verlangt)
+- das Frontmatter (`globs:` / `paths:`) byteweise
+EOF
+      ;;
+    mind-update) cat <<'EOF'
+- jede gegatete Tabellenzeile (`**<n>** |`, das Format von `zaehl_gate.py`) byteweise
+- jedes Quittungs- oder Merker-Format, das ein Hook parst
+EOF
+      ;;
+    *) echo "- (keine Sonderzeilen fuer diesen Skill; die als NICHT-ANFASSEN genannten Wortlaute gelten immer)" ;;
+  esac
+}
+
+# Der Auftrag an den Agenten, WOERTLICH — die Regeln aus dem Kasten in bestands-pass.md.
+_vd_auftrag() {   # <proj> <skill> <datei> <ergebnis> <bericht>
+  local proj="$1" skill="$2" datei="$3" erg="$4" ber="$5" s3 benannt
+  s3=$(mind_stufe3_zeilen "$datei")
+  benannt=$(mind_verdicht_benannt "$proj" "$datei" 2>/dev/null)
+  printf 'AUFTRAG: verdichte EINE Datei, ohne dass eine Einzelaussage verloren geht. Starte KEINE eigenen Agenten, keine Websuche.\n'
+  printf 'DATEI: %s\n' "$datei"
+  printf 'ERGEBNIS (du SCHREIBST die GANZE verdichtete Datei dorthin, mit den Zeilenenden der Quelle — CRLF bleibt CRLF, LF bleibt LF; kein Auszug, keine Beschreibung): %s\n' "$erg"
+  printf 'BERICHT (du SCHREIBST ihn dorthin): %s\n' "$ber"
+  cat <<'EOF'
+  Inhalt des Berichts: je entferntem Absatz mit ⛔/⚠/⭐ eine Zeile `entfernt: ⛔ „<Wortlaut-Anfang>"`; am Ende die Zaehlung der Zeichen ⛔ ⚠ ⭐ (jedes Zeichen, auch in Codebloecken und Tabellen) vorher -> nachher. Nichts entfernt: schreibe `entfernt: keine`.
+  Eine Benennung zaehlt nur, wenn ihr Zitat im Ergebnis nicht mehr vorkommt.
+
+DU DARFST:
+- Saetze umformulieren und kuerzen — auch in ⛔/⚠/⭐-Absaetzen
+- Doppelungen zusammenziehen
+- Herleitungen auf Datum + Zahl eindampfen
+- einen ⛔/⚠/⭐-Absatz ganz entfernen, wenn er ueberholt ist — NUR benannt: `entfernt: ⛔ „…"` im Bericht
+- die BENANNTEN Ueberholt-Kandidaten unten entfernen (benannt). Was nur in einer ANDEREN Datei steht, kannst du nicht wissen: ein Absatz mit eigener Aussage bleibt.
+- einen Absatz ins Archiv geben: seine Code-Spans (`…`), Zahlen und ALLCAPS-Woerter BLEIBEN im ZEIGER-Satz („Herleitung (`x`, 833 431): `.claude/archiv/…`") — Stufe 1 zaehlt jede Marke der Quelle.
+
+DU DARFST NICHT:
+- Zahlen, Daten, Code-Spans, Pfade, Nutzer-Zitate aendern
+- ALLCAPS-Verbote (NIE, NUR, MUSS, KEIN …) entfernen oder klein schreiben
+- die ANZAHL von ⛔ ⚠ ⭐ verringern (zaehle am Ende nach) oder einen ⛔-Absatz in einen Nachbarn einschmelzen
+- raten, was ueberholt ist
+- Kriterium fuer eine Bremse ist das ⛔ am Absatzanfang, nicht das Wort NUR/KEIN irgendwo im Absatz
+
+DIESE ZEILEN LIEST EIN PROGRAMM — byteweise stehen lassen:
+EOF
+  _vd_unantastbar "$skill" "$datei"
+  printf '\nBENANNTE UEBERHOLT-KANDIDATEN (darfst du entfernen, benannt):\n'
+  if [ -n "$benannt" ]; then printf '%s\n' "$benannt"; else echo "  (keine)"; fi
+  if [ -n "$s3" ]; then
+    printf '\nNICHT ANFASSEN, byteweise erhalten (das Gate prueft jeden Wortlaut):\n'
+    printf '%s\n' "$s3" | while IFS= read -r _z; do printf '  NICHT anfassen, byteweise erhalten: „%s"\n' "$_z"; done
+  fi
+  printf '\nRueckgabe an mich: ein Satz — ERGEBNIS und BERICHT geschrieben, Byte-Zahl vorher -> nachher.\n'
+}
+
+# mind_verdicht_start <projekt> <skill> <datei>
+#   Snapshot `pre-verdichten` (Fehler: rc 1, kein Agent), VORHER-Bytes, Stand-Datei, Auftrag + naechster Aufruf auf stdout.
+mind_verdicht_start() {
+  local proj="${1:-}" skill="${2:-}" datei="${3:-}" d stand snap vorher wurzel root block erg ber dep
+  case "$skill" in mind-claudemd|mind-rules|mind-memory|mind-files|mind-update) ;;
+    *) echo "⛔ mind_verdicht_start <projekt> <skill> <datei>: '$skill' ist keiner der fuenf Traeger." >&2; return 2 ;; esac
+  if [ ! -d "$proj" ] || [ ! -f "$datei" ]; then
+    echo "⛔ mind_verdicht_start: Projekt '$proj' oder Datei '$datei' fehlt — nichts getan." >&2; return 2
+  fi
+  d="$proj/.claude-mind"; mkdir -p "$d" 2>/dev/null || { echo "⛔ mind_verdicht_start: '$d' nicht anlegbar." >&2; return 1; }
+  stand="$d/verdichten-$skill.stand"; erg="$d/verdichten-$skill.nachher.md"
+  ber="$d/verdichten-$skill.bericht.md"; dep="$d/verdichten-$skill.txt"
+  # frischer Lauf: die Deponate des Vorlaufs weg (ein altes Ergebnis oder ein alter Wortdiff darf nie gelesen werden)
+  rm -f "$stand" "$erg" "$ber" "$dep" "$d/verdichten-$skill.vorher.md" \
+        "$d/verdichten-$skill.pipeline-vorher.txt" "$d/verdichten-$skill.pipeline-nachher.txt" \
+        "$d/verdichten-$skill.wortdiff."*.txt 2>/dev/null
+  snap=$(mind_snapshot "$proj" "pre-verdichten") || {
+    echo "⛔ VERDICHTEN $skill: Snapshot fehlgeschlagen — KEIN Agent, nichts weiter getan (kein Rueckweg)."
+    mind_schritt verdichten "fehler:snapshot" 0 "$proj"
+    return 1
+  }
+  cp "$datei" "$d/verdichten-$skill.vorher.md" 2>/dev/null
+  vorher=$(_vd_dauerkontext_b "$proj")
+  wurzel="$proj"; [ "$datei" = "$HOME/.claude/CLAUDE.md" ] && wurzel="$HOME"
+  if _vd_ist_claudemd "$datei"; then
+    _vd_pipeline "$datei" "$wurzel" "$d/verdichten-$skill.pipeline-vorher.txt" \
+      || echo "⚠ Pipeline vorher nicht messbar — 'ende pruefen' wird verwerfen (nicht messbar ist kein bestandenes Gate)."
+  fi
+  root="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd)}"
+  block=$(ls "$root/skills/$skill/bloecke/"*verdichten*.sh 2>/dev/null | head -1)
+  {
+    printf 'skill=%s\n' "$skill";       printf 'datei=%s\n' "$datei";   printf 'snap=%s\n' "$snap"
+    printf 'vorher=%s\n' "${vorher:-0}"; printf 'ergebnis=%s\n' "$erg"; printf 'bericht=%s\n' "$ber"
+    printf 'deponat=%s\n' "$dep";        printf 'wurzel=%s\n' "$wurzel"; printf 'block=%s\n' "$block"
+    printf 'vorherkopie=%s\n' "$d/verdichten-$skill.vorher.md"
+  } > "$stand"
+  echo "=== VERDICHTEN $skill: $(basename "$datei") — Snapshot $(basename "$snap"), Dauerkontext ${vorher:-0} B"
+  echo ">>>>> AUFTRAG AN DEN AGENTEN (woertlich; EIN Agent, subagent_type general-purpose, model sonnet, effort low) >>>>>"
+  _vd_auftrag "$proj" "$skill" "$datei" "$erg" "$ber"
+  echo "<<<<< ENDE DES AUFTRAGS <<<<<"
+  echo "NAECHSTER AUFRUF nach dem Agenten (woertlich): bash \"$block\" ende pruefen"
+  echo "(bestands-pass.md, Abschnitt VERDICHTEN, nur bei rotem Gate lesen.)"
+  return 0
+}
+
+# Die Gates, die ein Programm fuer DIESE Datei liest (zusaetzlich zu mind_verdichtung_pruefen). rc 0 = bestanden.
+_vd_zusatz() {   # <proj> <skill> <datei> <ergebnis> <stand>
+  local proj="$1" skill="$2" datei="$3" erg="$4" stand="$5" d rc=0 z a b
+  d="$proj/.claude-mind"
+  if _vd_ist_claudemd "$datei"; then
+    local vor="$d/verdichten-$skill.pipeline-vorher.txt" nach="$d/verdichten-$skill.pipeline-nachher.txt" neu
+    if [ ! -s "$vor" ] || ! _vd_pipeline "$erg" "$(_vd_wert "$stand" wurzel)" "$nach"; then
+      echo "               ⛔ Pipeline nicht messbar (vorher oder nachher) — kein bestandenes Gate."; return 1
+    fi
+    neu=$(comm -13 <(_vd_befund_nr "$vor") <(_vd_befund_nr "$nach") | tr '\n' ' ')
+    echo "               Pipeline vorher/nachher: Befund-Checks [$(_vd_befund_nr "$vor" | tr '\n' ' ')] -> [$(_vd_befund_nr "$nach" | tr '\n' ' ')]"
+    if [ -n "${neu// /}" ]; then echo "               ⛔ Pipeline: Check(s) $neu neu rot."; rc=1; fi
+  else
+    case "$skill" in
+      mind-update)   # Rule: gegatete Tabellenzeilen (**<n>** |) muessen byteweise stehen
+        while IFS= read -r z; do
+          [ -n "$z" ] || continue
+          grep -qxF -- "$z" "$erg" || { echo "               ⛔ gegatete Tabellenzeile fehlt/veraendert: ${z:0:90}"; rc=1; }
+        done < <(grep -E '\*\*[0-9]+\*\*[[:space:]]*\\?\|' "$datei") ;;
+    esac
+  fi
+  case "$skill" in
+    mind-memory|mind-files)
+      if ! cmp -s <(_vd_frontmatter "$datei") <(_vd_frontmatter "$erg"); then
+        echo "               ⛔ Frontmatter veraendert (muss byteweise gleich bleiben)."; rc=1
+      fi ;;
+  esac
+  case "$skill" in
+    mind-memory)
+      a=$(grep -o '\[\[[^]]*\]\]' "$datei" 2>/dev/null | sort -u); b=$(grep -o '\[\[[^]]*\]\]' "$erg" 2>/dev/null | sort -u)
+      z=$(comm -23 <(printf '%s\n' "$a") <(printf '%s\n' "$b") | grep -v '^$' | head -3 | tr '\n' ' ')
+      if [ -n "$z" ]; then echo "               ⛔ [[Verweis]] verloren: $z"; rc=1; fi ;;
+    mind-files)
+      a=$(grep -oE 'tools/[A-Za-z0-9_.+-]+\.(py|sh)' "$datei" 2>/dev/null | sort -u); b=$(grep -oE 'tools/[A-Za-z0-9_.+-]+\.(py|sh)' "$erg" 2>/dev/null | sort -u)
+      z=$(comm -23 <(printf '%s\n' "$a") <(printf '%s\n' "$b") | grep -v '^$' | head -3 | tr '\n' ' ')
+      if [ -n "$z" ]; then echo "               ⛔ Aufrufform verloren (Werkzeug laege tot): $z"; rc=1; fi ;;
+  esac
+  [ "$rc" -eq 0 ] && echo "               Zusatz-Gates fuer $skill/$(basename "$datei"): bestanden"
+  return "$rc"
+}
+
+_vd_ende_pruefen() {   # <proj> <skill> <stand>
+  local proj="$1" skill="$2" stand="$3" datei erg ber dep rc=0 grund="" zus zrc wd wrc root block
+  datei=$(_vd_wert "$stand" datei); erg=$(_vd_wert "$stand" ergebnis); ber=$(_vd_wert "$stand" bericht)
+  dep=$(_vd_wert "$stand" deponat); block=$(_vd_wert "$stand" block)
+  [ -f "$datei" ] || { echo "⛔ VERDICHTEN ende pruefen: Datei '$datei' fehlt." >&2; return 2; }
+  if [ ! -f "$erg" ]; then
+    grund="Ergebnis fehlt ($erg) — der Agent hat die Datei nicht geschrieben"
+    echo "$grund" | tee -a "$dep" >/dev/null
+  else
+    mind_verdichtung_pruefen "$datei" "$erg" "$ber" 2>&1 | tee -a "$dep"
+    rc=${PIPESTATUS[0]}
+    [ "$rc" -eq 0 ] || grund="Stufe 1/2, nicht kleiner, Stufe-3-Merker oder Zeilenenden (mind_verdichtung_pruefen rc $rc)"
+  fi
+  if [ -z "$grund" ]; then
+    zus=$(_vd_zusatz "$proj" "$skill" "$datei" "$erg" "$stand"); zrc=$?
+    printf '%s\n' "$zus" | tee -a "$dep"
+    [ "$zrc" -eq 0 ] || grund="Zusatz-Gate (Programm, das die Datei liest)"
+  fi
+  if [ -n "$grund" ]; then
+    echo "verworfen: $grund" | tee -a "$dep"
+    mind_schritt verdichten "fehler:verworfen" 0 "$proj"
+    echo "NICHT anwenden, kein cp. Unbenannter Marker (rc 1): die entfernt:-Zeile in $ber nachtragen und 'ende pruefen' erneut fahren — nie von Hand freisprechen. Bleibt es rot: verwerfen und melden."
+    echo "Jetzt (nur jetzt) lesen: references/bestands-pass.md, Abschnitt VERDICHTEN."
+    return 1
+  fi
+  # Stufe 3: der Wortdiff, FRISCH aus DIESEM Ergebnis (nie ein liegender, bestands-pass.md v5.124.0)
+  wd="$proj/.claude-mind/verdichten-$skill.wortdiff.$(date +%Y%m%d-%H%M).txt"
+  git diff --no-index --word-diff "$datei" "$erg" > "$wd" 2>/dev/null; wrc=$?
+  [ "$wrc" -le 1 ] || diff -u "$datei" "$erg" > "$wd" 2>/dev/null
+  printf 'geprueft=%s\n' "$(_md5 "$erg")" >> "$stand"
+  printf 'wortdiff=%s\n' "$wd" >> "$stand"
+  echo "=== ⛔ STUFE 3 — PFLICHT: der Wort-Diff unten wird GANZ gelesen (Datei: $wd; Ergebnis: $erg)."
+  echo "=== Ohne Leser NICHT anwenden: Ergebnis, Bericht und Diff bleiben liegen, Pfad melden, hier aufhoeren."
+  echo "=== Das Gate misst Erwaehnung, nie Treue: Marken da, Aussage verdreht (Zahl am falschen Satz, Richtung umgedreht) sieht nur der Leser."
+  echo "----- WORTDIFF -----"
+  cat "$wd"
+  echo "----- ENDE WORTDIFF -----"
+  echo "NAECHSTER AUFRUF, wenn der Diff sauber ist (woertlich): bash \"$block\" ende anwenden"
+  return 0
+}
+
+_vd_ende_anwenden() {   # <proj> <skill> <stand>
+  local proj="$1" skill="$2" stand="$3" datei erg dep vorher nachher kopie geprueft rc snap pct tr_rc=0
+  datei=$(_vd_wert "$stand" datei); erg=$(_vd_wert "$stand" ergebnis); dep=$(_vd_wert "$stand" deponat)
+  vorher=$(_vd_wert "$stand" vorher); kopie=$(_vd_wert "$stand" vorherkopie); snap=$(_vd_wert "$stand" snap)
+  geprueft=$(_vd_wert "$stand" geprueft)
+  if [ -z "$geprueft" ] || [ ! -f "$erg" ] || [ "$geprueft" != "$(_md5 "$erg")" ]; then
+    echo "⛔ VERDICHTEN ende anwenden: dieses Ergebnis wurde nicht gruen geprueft (oder seit der Pruefung geaendert) — erst 'ende pruefen'. Kein cp." >&2
+    return 3
+  fi
+  mind_verdichtung_anwenden "$datei" "$erg" "$dep" | tee -a "$dep"
+  rc=${PIPESTATUS[0]}
+  if [ "$rc" -ne 0 ]; then
+    echo "verworfen: mind_verdichtung_anwenden rc $rc (Deponat veraltet oder nicht pruefbar) — kein cp, neu verdichten." | tee -a "$dep"
+    mind_schritt verdichten "fehler:anwenden" 0 "$proj"
+    return 1
+  fi
+  nachher=$(_vd_dauerkontext_b "$proj")
+  if [ "$skill" = "mind-memory" ]; then
+    # Topic-Dateien zaehlen im Dauerkontext NICHT mit — das Erfolgsmass ist die Datei selbst (mind_verdichtung_pruefen: kleiner)
+    printf '%-14s Dauerkontext  nicht betroffen (Topic-Datei); Datei %s -> %s B\n' "$(basename "$datei")" "$(wc -c < "$kopie" | tr -d ' ')" "$(wc -c < "$datei" | tr -d ' ')" | tee -a "$dep"
+  elif [ -z "$nachher" ] || [ "${nachher:-0}" -ge "${vorher:-0}" ]; then
+    cp "$kopie" "$datei" 2>/dev/null
+    echo "⛔ Dauerkontext nicht kleiner (${vorher:-?} -> ${nachher:-?} B) — Datei zurueckgespielt (Kopie vor dem Lauf; Snapshot: $snap). Verschoben statt gekuerzt." | tee -a "$dep"
+    mind_schritt verdichten "fehler:dauerkontext-nicht-kleiner" 0 "$proj"
+    return 1
+  else
+    pct=$(awk "BEGIN{printf \"%.1f\", (${nachher}-${vorher})*100/${vorher}}")
+    printf '%-14s Dauerkontext  %s -> %s B  (%+d B, %s %%)\n' "$(basename "$datei")" "$vorher" "$nachher" "$((nachher - vorher))" "$pct" | tee -a "$dep"
+  fi
+  if [ "$skill" = "mind-files" ]; then
+    mind_check_tools_have_rules "$proj" >/dev/null 2>&1; tr_rc=$?
+    if [ "$tr_rc" -ne 0 ]; then
+      cp "$kopie" "$datei" 2>/dev/null
+      echo "⛔ mind_check_tools_have_rules rc $tr_rc nach dem Anwenden — Datei zurueckgespielt (Snapshot: $snap)." | tee -a "$dep"
+      mind_schritt verdichten "fehler:werkzeug-ohne-rule" 0 "$proj"
+      return 1
+    fi
+    echo "Tool->Rule-Nachweis nachher: PASS" | tee -a "$dep"
+  fi
+  grep -qxF "verdichtet=$datei" "$proj/.claude-mind/analyzed-scopes" 2>/dev/null || mind_verdichtet_merken "$proj" "$datei" || true
+  printf 'angewendet=ja\n' >> "$stand"
+  mind_schritt verdichten gelaufen --datei "$dep" "$proj"
+  echo "=== VERDICHTEN $skill: angewendet. Bericht: die Zeilen oben (Dauerkontext · Stufe 1 · Stufe 2) stehen auch in $dep."
+  return 0
+}
+
+# mind_verdicht_ende <projekt> <skill> pruefen|anwenden
+#   pruefen:  mind_verdichtung_pruefen (rc ueber PIPESTATUS, Ausgabe ins Deponat) + Zusatz-Gates; rot -> `verworfen: <grund>` +
+#             Quittung fehler; gruen -> frischer Wortdiff GANZ auf stdout (Stufe 3) + naechster Aufruf.
+#   anwenden: nur nach gruener Pruefung DIESES Ergebnisses: mind_verdichtung_anwenden, Dauerkontext vorher/nachher (nicht kleiner ->
+#             Datei zurueck), mind_verdichtet_merken, Bericht, Quittung `gelaufen --datei`.
+#   rc 0 ok · 1 verworfen · 2 kein Stand/Aufruffehler · 3 nicht geprueft
+mind_verdicht_ende() {
+  local proj="${1:-}" skill="${2:-}" modus="${3:-}" stand
+  case "$modus" in pruefen|anwenden) ;;
+    *) echo "⛔ mind_verdicht_ende <projekt> <skill> pruefen|anwenden (bekam '$modus')" >&2; return 2 ;; esac
+  stand="$proj/.claude-mind/verdichten-$skill.stand"
+  if [ ! -f "$stand" ]; then
+    echo "⛔ VERDICHTEN ende $modus: kein Stand ($stand) — der Kandidaten-Block legt ihn mit mind_verdicht_start an. Nichts getan." >&2
+    return 2
+  fi
+  if [ "$(_vd_wert "$stand" skill)" != "$skill" ]; then
+    echo "⛔ VERDICHTEN ende $modus: der Stand gehoert zu '$(_vd_wert "$stand" skill)', nicht zu '$skill'." >&2; return 2
+  fi
+  if [ "$modus" = "pruefen" ]; then _vd_ende_pruefen "$proj" "$skill" "$stand"; else _vd_ende_anwenden "$proj" "$skill" "$stand"; fi
+}
+
+
+# =============================================================================
 # SAMPLER-PFAD JE SITZUNG (v5.126.0, Etappe 38 §2 — Z271, Z445, Z498)
 # =============================================================================
 # ⛔ WOZU. Bis v5.125.0 schrieb mind-update den Live-Auszug fest nach

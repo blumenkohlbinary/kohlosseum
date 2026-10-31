@@ -686,7 +686,7 @@ gemeldet und der Skill **läuft weiter**. Ein Bestands-Pass darf nie einen Sync 
 und genauer"*. Dritter Träger nach `mind-rules` (v5.78.0) und `mind-claudemd` (v5.85.0).
 
 **Die vollständige Vorschrift — Agent, Kasten, Gate, Stufe 3, Bericht — steht in
-[references/bestands-pass.md](../../references/bestands-pass.md), Abschnitt „VERDICHTEN". Lies sie.** Hier nur Memory:
+[references/bestands-pass.md](../../references/bestands-pass.md), Abschnitt „VERDICHTEN". Der Block führt sie aus: er gibt den Agenten-Auftrag und den nächsten Aufruf selbst aus — bestands-pass.md nur bei rotem Gate lesen.** Hier nur Memory:
 
 | | |
 |---|---|
@@ -701,6 +701,8 @@ und genauer"*. Dritter Träger nach `mind-rules` (v5.78.0) und `mind-claudemd` (
 ```bash
 ARGUMENTS='$ARGUMENTS' bash "$CLAUDE_PLUGIN_ROOT/skills/mind-memory/bloecke/11-step6e-verdichten-die.sh"
 ```
+
+⭐ **Ablauf nach dem Block — drei Schritte, mehr nicht (Etappe 68):** (1) der Auftrag aus der Ausgabe geht WÖRTLICH an EINEN Agenten (`general-purpose`, `model: sonnet`, `effort: low`; er schreibt `ERGEBNIS` und `BERICHT`) — (2) `bash "<Block>" ende pruefen` (den Aufruf nennt der Block selbst): Stufe 1/2, Zeilenenden, Zusatz-Gates; **grün → der frische Wort-Diff steht in der Ausgabe und wird GANZ gelesen (Stufe 3)**; rot → `verworfen: <Grund>` und die Quittung `fehler:verworfen` — (3) `… ende anwenden`: `cp` aus dem geprüften Ergebnis, Dauerkontext vorher/nachher (nicht kleiner → die Datei kommt zurück), Merker, Quittung `gelaufen`. Nichts davon von Hand tippen.
 
 ⛔ **Der Bericht dieses Schritts sind die drei Zeilen aus `mind_verdichtung_pruefen`** — oder
 die Zeile `verworfen: <grund>`. **Kein Bericht = der Schritt lief nicht.**

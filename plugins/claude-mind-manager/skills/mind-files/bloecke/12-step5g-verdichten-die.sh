@@ -5,6 +5,9 @@ CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.
 #    deshalb leitet mind_block_umgebung PROJ, SCOPES_FILE, LAUF und AGENT_SOLL selbst her.
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 mind_block_umgebung
+# ⭐ Etappe 68: `bash <dieser Block> ende pruefen|anwenden` — Gates + frischer Wortdiff (Stufe 3) bzw. anwenden + Bilanz + Quittung.
+#    Der Stand liegt in .claude-mind/verdichten-mind-files.stand (mind_verdicht_start); ohne ihn bricht mind_verdicht_ende mit rc 2 ab.
+if [ "${1:-}" = "ende" ]; then mind_verdicht_ende "$PROJ" mind-files "${2:-}"; exit $?; fi
 # v5.146.0: eigener Bash-Aufruf — lib.sh und PROJ kommen aus frueheren Bloecken NICHT mit
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
@@ -41,9 +44,13 @@ $f
 #    statt `$DATEI`, und nichts hat den Pfad geprueft. rc 2 ist KEIN Laufabbruch.
 mind_verdichtet_merken "$PROJ" "$DATEI" || true
 # ⛔ v5.174.0 (Etappe 67 N2e): ohne BENANNTE Kandidaten entfaellt der Schritt — Ertrag ~5 % (bestands-pass.md)
+# ⭐ Etappe 68 (VERDICHTEN als Buendel): MIT ihnen gibt mind_verdicht_start den Agenten-Auftrag WOERTLICH (Kasten, Datei,
+#    benannte Kandidaten, Stufe-3-Zeilen, ERGEBNIS-/BERICHT-Pfad) und den naechsten Aufruf aus. Snapshot, VORHER-Bytes und der
+#    Stand (`.claude-mind/verdichten-mind-files.stand`) entstehen dort. bestands-pass.md nur bei rotem Gate lesen.
 if [ -n "$DATEI" ]; then
-  echo "BENANNTE UEBERHOLT-KANDIDATEN fuer $(basename "$DATEI") (woertlich an den Agenten):"
-  if ! mind_verdicht_benannt "$PROJ" "$DATEI"; then
+  if mind_verdicht_benannt "$PROJ" "$DATEI" >/dev/null; then
+    mind_verdicht_start "$PROJ" mind-files "$DATEI"
+  else
     echo "VERDICHTEN: keine benannten Kandidaten — Schritt entfaellt, kein Agent."
     mind_schritt verdichten "uebersprungen:keine-benannten-kandidaten" 0 "$PROJ"
   fi
