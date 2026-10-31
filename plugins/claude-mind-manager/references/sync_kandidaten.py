@@ -11,6 +11,7 @@ Aufruf:
     python sync_kandidaten.py --buch <verlauf.md>|<stamm> [--buch ...] --gegen <datei|ordner> [...]
     python sync_kandidaten.py --optionen <rules-ordner> --wurzel <projekt> [--plugin <plugin-root>]
     python sync_kandidaten.py --zitate <memory-ordner> --suche <datei|ordner> [...]
+    python sync_kandidaten.py --zeiger <CLAUDE.md> --wurzel <projekt>
     python sync_kandidaten.py --selbsttest
 
   --buch     Punkte (Aufzaehlungen) der Verlaufsbuch-Abschnitte, deren Marken (`Code-Spans`) in KEINER
@@ -137,6 +138,24 @@ def optionen_kandidaten(rules, wurzel, plugin, maxn):
         print("  (keine)")
 
 
+ZEIGER = re.compile(r"(Begr(?:ü|ue)ndung|Details|Belege?|Herleitung|Vorfall)[^:\n]{0,40}:\s*`?([\w./~-]+\.md)")
+
+
+def zeiger_kandidaten(datei, wurzel, maxn):
+    """Jeder Zeiger ("Begruendung: X", "Details: X") mit Zeile — der Agent prueft, ob der Gegenstand noch in X steht."""
+    aus = []
+    for i, z in enumerate(lies(datei).splitlines(), 1):
+        for m in ZEIGER.finditer(z):
+            ziel = m.group(2)
+            da = any(os.path.isfile(os.path.join(b, ziel)) for b in (wurzel, os.path.dirname(datei)) if b)
+            aus.append("  %s:%d  %s: %s %s" % (os.path.basename(datei), i, m.group(1), ziel, "" if da else "(FEHLT)"))
+    print("ZEIGER — je Zeile urteilen: steht der GEGENSTAND der Zeile (nicht nur ein Stichwort) noch im Ziel? sonst UPDATE mit dem heutigen Ort:")
+    for z in aus[:maxn]:
+        print(z)
+    if not aus:
+        print("  (keine)")
+
+
 def finde_quelle(name, suche):
     base = os.path.basename(name)
     for p in md_dateien(suche):
@@ -227,6 +246,11 @@ def selbsttest():
     pruef("zitate: vorhandener nicht", "report, do not fix" in o, False)
     pruef("zitate: Schluss mit ASCII-Anfuehrung erkannt", "werkzeug repariert etwas" in o, True)
     pruef("zitate: alle drei gezaehlt", "3 Zitate" in o, True)
+    with open(os.path.join(d, "C.md"), "w", encoding="utf-8") as f:
+        f.write("- x\n  Begründung: `rules/r.md`\n- y Details: fehlt.md\n")
+    o = lauf(zeiger_kandidaten, os.path.join(d, "C.md"), d, 40)
+    pruef("zeiger: vorhandenes Ziel mit Zeile", "C.md:2  Begründung: rules/r.md " in o, True)
+    pruef("zeiger: fehlendes Ziel markiert", "fehlt.md (FEHLT)" in o, True)
     print("  %d gruen · %d rot" % (ok, rot))
     return 1 if rot else 0
 
@@ -236,7 +260,7 @@ def main(a):
         return selbsttest()
     maxn = 40
     buecher, gegen, suche = [], [], []
-    opt = wurzel = plugin = zit = ""
+    opt = wurzel = plugin = zit = zei = ""
     i = 0
     try:
         while i < len(a):
@@ -259,14 +283,18 @@ def main(a):
                 plugin = a[i + 1]; i += 2
             elif k == "--zitate":
                 zit = a[i + 1]; i += 2
+            elif k == "--zeiger":
+                zei = a[i + 1]; i += 2
             elif k == "--max":
                 maxn = int(a[i + 1]); i += 2
             else:
                 print(__doc__); return 2
     except (IndexError, ValueError):
         print(__doc__); return 2
-    if not (buecher or opt or zit):
+    if not (buecher or opt or zit or zei):
         print(__doc__); return 2
+    if zei:
+        zeiger_kandidaten(zei, wurzel, maxn)
     if buecher:
         buch_kandidaten(buecher, gegen, maxn)
     if opt:

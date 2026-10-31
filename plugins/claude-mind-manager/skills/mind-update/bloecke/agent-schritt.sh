@@ -104,7 +104,10 @@ auftrag() {  # <bereich>
   echo "Pruefe ZWEI Richtungen: (1) Session gegen Context-Dateien (UPDATE/ENRICH/ADD/NEW_FILE/INFO) und (2) BESTAND gegen seine Quellen:"
   case "$n" in
     claude-md) echo "- Jede NEVER/Gotcha-Zeile: nennt ihre Alternative noch den heutigen Weg? Vergleiche mit den juengsten 15 Eintraegen von docs/plugin/design-history.md (falls vorhanden) — betrifft eine neuere Faehigkeit denselben Gegenstand: ENRICH."
-                echo "- Jeder Zeiger (\"Begruendung: X\", \"Details: X\"): steht der Gegenstand noch in X? Sonst UPDATE mit dem heutigen Ort." ;;
+                echo "- Jeder Zeiger (\"Begruendung: X\", \"Details: X\"): steht der Gegenstand noch in X? Sonst UPDATE mit dem heutigen Ort."
+                # ⛔ v5.175.0 (Etappe 68): isoliert zweimal je 1 Befund — Zeiger und Buch-Routen in CLAUDE.md wurden nicht abgearbeitet.
+                kandidaten --zeiger "$PROJ/CLAUDE.md" --wurzel "$PROJ"
+                [ "${#_BUCH[@]}" -gt 0 ] && kandidaten "${_BUCH[@]}" --gegen "$PROJ/CLAUDE.md" "$PROJ/.claude/rules" ;;
     memory)    echo "- Memory-Verzeichnis: ${MEMORY_DIR:-<get_memory_dir>}. Jedes ZITAT, das einer Datei zugeschrieben ist: steht der Wortlaut dort noch (auch ~/.claude/rules/)? Sonst UPDATE."
                 echo "- Fehlplatzierung nach ~/.claude/rules/file-handling.md (Abschnitt Context files): Architektur, Pfade, Debug-Fixes, Versionshistorie gehoeren NICHT ins Memory — je Datei Ziel nennen (INFO, Klasse misplaced)."
                 # ⛔ v5.175.0 (Etappe 68): zwei Laeufe verwarfen eine Lehre als „steht schon in context-saving.md“ — dort 0 Treffer.
@@ -129,7 +132,7 @@ auftrag() {  # <bereich>
       echo "  Darin: als offen markierte Kriterien, die laut Bestand erledigt sind · Zeiger auf Auftraege/Etappen, die nicht mehr die juengsten sind · Zahlen ohne Messbefehl: UPDATE."
       echo "- Die uebrigen $(grep -c . "$(mind_sampler_pfad "$PROJ" mind-update-ccf.txt)" 2>/dev/null) Dateien der Liste $(mind_sampler_pfad "$PROJ" mind-update-ccf.txt) NUR per Grep, nicht einzeln lesen." ;;
   esac
-  case "$n" in rules|memory)
+  case "$n" in rules|memory|claude-md)
     echo "Der Bericht traegt einen Abschnitt KANDIDATEN: JEDE Zeile der Listen oben mit Urteil (Befund-Nr. | Ziel | INFO Durchgangsstand | bewusst weggelassen) — keine auslassen."
     # ⛔ v5.175.0 (Etappe 68, iso3): beide Agenten erkannten `$ARGUMENTS` und „nicht kumulativ“ und verwarfen sie als
     #    „Mechanik, nicht mein Bereich“ bzw. „steht in docs/“ — ein Wissen, das weiter gilt, kam so nirgends an.
