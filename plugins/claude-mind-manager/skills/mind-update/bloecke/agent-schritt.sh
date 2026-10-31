@@ -130,7 +130,11 @@ auftrag() {  # <bereich>
       echo "- Die uebrigen $(grep -c . "$(mind_sampler_pfad "$PROJ" mind-update-ccf.txt)" 2>/dev/null) Dateien der Liste $(mind_sampler_pfad "$PROJ" mind-update-ccf.txt) NUR per Grep, nicht einzeln lesen." ;;
   esac
   case "$n" in rules|memory)
-    echo "Der Bericht traegt einen Abschnitt KANDIDATEN: JEDE Zeile der Listen oben mit Urteil (Befund-Nr. | Ziel | INFO Durchgangsstand | bewusst weggelassen) — keine auslassen." ;;
+    echo "Der Bericht traegt einen Abschnitt KANDIDATEN: JEDE Zeile der Listen oben mit Urteil (Befund-Nr. | Ziel | INFO Durchgangsstand | bewusst weggelassen) — keine auslassen."
+    # ⛔ v5.175.0 (Etappe 68, iso3): beide Agenten erkannten `$ARGUMENTS` und „nicht kumulativ“ und verwarfen sie als
+    #    „Mechanik, nicht mein Bereich“ bzw. „steht in docs/“ — ein Wissen, das weiter gilt, kam so nirgends an.
+    echo "  \"Durchgangsstand\" NUR, wenn der Punkt nach dieser Sitzung nicht mehr gilt. Gilt er weiter und steht in keiner LADENDEN Datei: ein ZIEL nennen — auch ausserhalb deines Bereichs (CLAUDE.md-Konvention, Rule des Gegenstands, Memory), Klasse ADD mit \"anderer Bereich: <Datei>\"."
+    echo "  Memory \"bleibt\" nur, wenn der Satz NUR in diesem Projekt wahr ist (file-handling.md, Memory) — gilt er auch anderswo oder ist er Architektur/Debug-Fix: misplaced -> Ziel." ;;
   esac
   echo "Nenne zu JEDEM Zitat die Datei und die Zeilennummer, aus der du es gelesen hast. Was du ohne Fundstelle schreibst, kennzeichne als UNGEPRUEFT."
   echo "Lege den Bericht nach SPAETESTENS 10 Werkzeugaufrufen mit Write als Zwischenstand an ($f) und ueberschreibe ihn am Ende mit dem VOLLEN Bericht — genau diese eine Datei, sonst nichts. Hoere erst auf, wenn er geschrieben ist."
