@@ -1,6 +1,6 @@
 {
   "name": "claude-mind-manager",
-  "version": "5.174.0",
+  "version": "5.175.0",
   "description": "Context-Management fuer Claude Code: prueft, raeumt auf und haelt CLAUDE.md, MEMORY.md, Rules und Hooks synchron. /mind-all faehrt die Kette (mind-files, mind-claudemd, mind-memory, mind-rules, mind-update) mit EINEM Snapshot davor; /mind-cleaner ordnet Regelbestaende um, /mind-learnings meldet Probleme aller Projekte, /mind-denkstufe empfiehlt Modell und Denkstufe. Hooks retten Chat und Arbeitsstand vor jeder Kompaktierung. Gates gegen Wissensverlust statt Behauptungen. Benoetigt bash, jq, cygpath.",
   "author": {
     "name": "blumenkohlbinary"
