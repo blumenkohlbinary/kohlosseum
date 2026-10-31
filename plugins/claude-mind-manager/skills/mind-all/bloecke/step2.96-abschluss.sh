@@ -259,3 +259,5 @@ if command -v mind_plan_frei >/dev/null 2>&1 \
   mind_plan_frei "$PROJ" && echo "Plan-Pause aufgehoben (PLAN-AKTIV entfernt)."
 fi
 echo "ABSCHLUSS: SYNC_LIEF=${SYNC_LIEF:-?} — bei teil reparieren (Step 2.96a-R) und dieses Skript ERNEUT aufrufen."
+# v5.175.0 (Etappe 68 N1 Schnitt D): bei voll der naechste Aufruf woertlich.
+[ "${SYNC_LIEF:-}" = "ja" ] && echo "WEITER: bash \"$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/tools-rules.sh\", danach Step 3 (Schlussbericht)"

@@ -22,3 +22,5 @@ LAUF="${LAUF:-$(mind_kopf_lauf "$PROJ" 2>/dev/null)}"
 #      Normalweg und macht die Freigabe im Bericht sichtbar.
 mind_lauf_frei "$PROJ" "${LAUF:-}" \
   && echo "Sperre freigegeben (Lauf ${LAUF:-?})."
+# v5.175.0 (Etappe 68 N1 Schnitt D): der naechste Aufruf woertlich — Ritas Lauf las dafuer SKILL.md von Hand nach.
+echo "WEITER: Abschnitt (Aufbau Step 2.95) mit Write nach .claude-mind/lauf-abschnitt.md, in DERSELBEN Nachricht: bash \"$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step2.95-liste.sh\" \"<Ausloeser>\""

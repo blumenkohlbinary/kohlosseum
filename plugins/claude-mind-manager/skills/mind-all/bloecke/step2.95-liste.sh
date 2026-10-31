@@ -46,3 +46,5 @@ if [ -z "${MIND_DEBUG_DIR:-}" ]; then mind_schritt debug_auswertung "uebersprung
 elif [ -s "$MIND_DEBUG_DIR/BEFUNDE.md" ]; then mind_schritt debug_auswertung gelaufen --datei "$MIND_DEBUG_DIR/BEFUNDE.md" "$PROJ"
 else mind_schritt debug_auswertung "fehler:BEFUNDE.md-fehlt" -1 "$PROJ"; fi
 rm -f "$ABSCHNITT" "$BEFUNDE" 2>/dev/null
+# v5.175.0 (Etappe 68 N1 Schnitt D): der naechste Aufruf woertlich.
+echo "WEITER: bash \"$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step2.95-waechter.sh\""

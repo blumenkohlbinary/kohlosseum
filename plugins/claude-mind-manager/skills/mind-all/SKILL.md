@@ -199,12 +199,15 @@ Fuer jeden der 5 in der Reihenfolge oben:
    seit v5.98.0 **fuenf Start-Bloecke seit der mind-all-Startzeile**; fehlt einer, ist der
    Skill FORMAL und der Lauf ein Teilsync (`formal-<skill>` in `ungepruef=`). Rita 12.09.2026:
    fuenfmal quittiert, Agent-Quittung echt, trotzdem FORMAL=5 (fuenf Schritte EINES Blocks, context-analyzer/project-scanner liefen nie).
-2. **Laufspur schreiben — PFLICHT, nach JEDEM der fuenf** (NEU v5.19.0):
+2. ⭐ **Das Ende jedes Skills ist EIN Block, in DERSELBEN Nachricht wie das `Write` des Berichts** (v5.175.0, Etappe 68):
+   `Write` nach `$PROJ/.claude-mind/bericht-<skill>.md` (sein Self-Check-Block, woertlich), direkt dahinter im selben Zug:
    ```bash
-   [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-   mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-   echo "skill=<name>|$LAUF" >> "$SCOPES_FILE"   # nach jedem der 5, ohne Ausnahme
+   bash "$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/skill-ende.sh" <skill> [<geprueft> <stichprobe>]
    ```
+   Er quittiert Stichprobe (Zahlen aus Teil 3+4, falls PRUEFEN-Eintraege) und Skill (`--datei`), schreibt Laufspur und
+   Scope-Marke, zeigt die Bilanz und nennt den naechsten Skill woertlich (`WEITER:`). Nichts davon von Hand tippen —
+   Ritas Lauf 30.10. kostete das zwei Schritte je Skill. Was er tut und warum, steht in 2b und 3:
+   **Laufspur — PFLICHT, nach JEDEM der fuenf** (NEU v5.19.0), im Block als `echo "skill=<name>|$LAUF" >> "$SCOPES_FILE"`.
    ⛔ **v5.30.0: die Laufkennung `|$LAUF` ist PFLICHT.** Sie macht eine Kollision **erkennbar**, wenn die Sperre versagt; ohne sie schweigt das Instrument im
    Ausfall (`werkzeuge-zuerst.md`).
    ⛔ **Sie kommt aus `basename "$SNAPSHOT"`, NICHT aus `CLAUDE_SESSION_ID`.**
@@ -212,15 +215,9 @@ Fuer jeden der 5 in der Reihenfolge oben:
    Kennung benennt aber den LAUF, nicht die Sitzung; die SITZUNGSkennung der Sperre kommt seit v5.66.0 aus der
    Umgebung. `CLAUDE_SESSION_ID` ist in einer Skill-Bash **leer** (gemessen): ein Waechter darauf zaehlt **alle** Zeilen, auch fremde, und **sieht aus,
    als greife er** — schlimmer als keine Sperre.
-   **2b · Bericht als DATEI, dann die Quittung mit `--datei` (v5.97.0), IM eigenen Block
-   (v5.98.0) — vor dessen `mind_schritt_bilanz`:** den Bericht des Skills (sein
-   Self-Check-Block, woertlich) mit `Write` nach `$PROJ/.claude-mind/bericht-<skill>.md`
-   legen, dann:
-   ```bash
-   [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-   mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-   mind_schritt <skill> gelaufen --datei "$PROJ/.claude-mind/bericht-<skill>.md" "$PROJ"
-   ```
+   **2b · Bericht als DATEI, dann die Quittung mit `--datei` (v5.97.0)** — im Block
+   `mind_schritt <skill> gelaufen --datei "$PROJ/.claude-mind/bericht-<skill>.md" "$PROJ"`; fehlt die Datei, bricht er
+   mit `fehler:kein-bericht` ab.
    ⛔ **Ohne `--datei` schreibt `mind_schritt` `uebersprungen:kein-artefakt`**, und
    `mind_schritt_bilanz --alle` zaehlt den Skill als FORMAL — ebenso ohne
    eigenen Start-Block oder bei zwei Quittungen in derselben Sekunde. Gemessen (10.09. 14:49, 11.09. 21:44,
@@ -230,16 +227,10 @@ Fuer jeden der 5 in der Reihenfolge oben:
    Dedup-Logik in Schritt 5 verbogen.
    **Ohne diese Zeile ist der Lauf nicht zaehlbar**, Step 2.96a kann `SYNC_LIEF` nicht
    ableiten (bis v5.18.0 fehlte sie: Lauf 24.08.2026 ohne Spur, `analyzed-scopes.done` trug den Vortag).
-3. **Scope-Marke schreiben — NUR mit Modus-Angabe** (M3-Fix):
-   ```bash
-   [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && source "$CLAUDE_PLUGIN_ROOT/hooks/lib.sh"
-   mind_block_umgebung   # v5.152.0: Werte frueherer Bloecke sind hier leer
-   echo "claude-md=mind-claudemd:default" >> "$SCOPES_FILE"   # nach mind-claudemd
-   echo "memory=mind-memory:default"      >> "$SCOPES_FILE"   # nach mind-memory
-   # KEINE rules-Marke: mind-rules hat gar keinen `Agent` in allowed-tools und macht
-   # ueberhaupt keine semantische Analyse — eine rules-Marke wuerde den rules-Agent in
-   # Schritt 5 unterdruecken, ohne dass je einer gelaufen waere.
-   ```
+3. **Scope-Marke — NUR mit Modus-Angabe** (M3-Fix), im Block: `claude-md=mind-claudemd:default` nach mind-claudemd,
+   `memory=mind-memory:default` nach mind-memory. KEINE rules-Marke: mind-rules hat gar keinen `Agent` in allowed-tools
+   und macht keine semantische Analyse — eine rules-Marke wuerde den rules-Agent in Schritt 5 unterdruecken, ohne dass je
+   einer gelaufen waere.
 4. **Ergebnis sammeln** (angewendet / DESIGN / offen / Fehler) fuer den Schlussbericht.
 
 **Scope-Dedup in Schritt 5 — nur bei GLEICHEM Modus (M3-Fix, kritisch):**

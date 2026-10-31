@@ -22,3 +22,5 @@ cat "$_WA"
 if [ "$RC" = 2 ]; then mind_schritt mind_zeilenenden_waechter "fehler:ungueltig" -1 "$PROJ"
 else echo "rc=$RC" >> "$_WA"; mind_schritt mind_zeilenenden_waechter gelaufen --datei "$_WA" "$PROJ"; fi
 [ "$RC" = 2 ] && echo "⛔ WAECHTER UNGUELTIG — Zeilenenden in diesem Lauf NICHT geprueft."
+# v5.175.0 (Etappe 68 N1 Schnitt D): der naechste Aufruf woertlich.
+echo "WEITER: bash \"$CLAUDE_PLUGIN_ROOT/skills/mind-all/bloecke/step2.96-abschluss.sh\""
