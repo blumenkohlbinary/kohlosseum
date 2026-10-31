@@ -338,7 +338,7 @@ URTEILE = [
     # v5.172.0 (Etappe 64 §1): the missing kinds from file-handling.md "Context files". Measured 30.10.2026: only the
     # code-spot form (`file.ext:NNN`) is mechanically pre-selectable (~15/23); Q3 work-in-progress 0/4 -> judgement.
     ("W1", "wohin gehoert es? Korrektur nur hier -> Memory · Vorliebe -> ~/.claude/CLAUDE.md · Auftrag/Plan -> .md im Projekt"
-           " · Wissen fuer alle -> Joplin · EINE Code-Stelle -> Kommentar dort",
+           " · Themenwissen ausserhalb des Projekts -> docs/wissen/<thema>.md · EINE Code-Stelle -> Kommentar dort",
      "Urteil  ·  python cleaner_einordnung.py --wohin <datei>  (⭐CODE-KOMMENTAR?)"),
     ("D10", "Deckel: wer anlegt, zahlt aus dem Bestand", "mind_kontext_bilanz <projekt> --vergleichen  ·  cleaner_tor.py --memory <projekt>"),
 ]

@@ -194,6 +194,7 @@ For each suggestion: estimate token savings = (affected_lines × 10)
 - **EC1 NEW_FILE-Konflikt:** Bevor NEW_FILE vorgeschlagen wird: Glob ob File bereits existiert (egal in welchem Subdir) → falls ja, ENRICH statt NEW_FILE
 - **EC2 Leerer Session-Auszug:** Skill hat keinen Session-Inhalt mitgeschickt → Knowledge-Gap-Block skippen, nur Default-Analyse ausgeben
 - **EC3 Session-Auszug zu lang:** Skill hat schon pre-sampled (3-stufiger Algorithmus aus mind-update Step 3.5 EC2) — Agent verarbeitet was kommt, keine eigene Sampling-Logik
+- **EC4 Themenwissen AUSSERHALB des Projekts** (v5.175.0, Nutzer 30.10.2026 — z. B. ein Hobby, nach dem der Nutzer wiederholt fragt): NEW_FILE `docs/wissen/<thema>.md` im Projekt (eine Datei je Thema, klein, Bindestriche; existiert sie: ENRICH). Nie Memory, nie Rule, nie Joplin. Fehlt in `CLAUDE.md` die Zeile „Themenwissen ausserhalb des Projekts: `docs/wissen/`, je Thema eine Datei“, zusaetzlich ADD mit „anderer Bereich: CLAUDE.md“ — genau diese eine Zeile, kein zweiter Zeiger
 
 **Hard Constraints fuer Knowledge-Sync-Mode:**
 - KEINE Freitext-Antworten — alle Findings strukturiert mit Klasse + file:line + Action-Vorschlag

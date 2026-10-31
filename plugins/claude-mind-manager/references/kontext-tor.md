@@ -36,7 +36,7 @@ die Pruefliste A1–D10 ersetzt die acht Fragen vom 30.08.2026. Die alten gehen 
 | **C7** | Hart formuliert, Verbot mit Alternative | `cleaner_tor` (C7 weich, C7b unspezifisch) | ✅ / ⚠ | C1, C2 |
 | **C8** | Kein Widerspruch zum Bestand | `cleaner_duplikate --widersprueche` | ✅ ja | — |
 | **C9** | Workaround mit Messdatum und Ablaufzeichen | Urteil | ✗ | — |
-| **W1** | Wohin gehoert es? — aus einer Korrektur gelernt, nur hier → Memory · persoenliche Vorliebe → `~/.claude/CLAUDE.md` · Auftrag/Plan/Zwischenstand → `.md` im Projekt · Wissen fuer alle → Joplin (Arbeitsmaterial nie) · Aussage ueber EINE Code-Stelle → Kommentar dort (`file-handling.md` → Context files, v5.172.0) | Urteil · Code-Stelle: `cleaner_einordnung --wohin` (`⭐CODE-KOMMENTAR?`) | ⚠ nur die Code-Stelle | — |
+| **W1** | Wohin gehoert es? — aus einer Korrektur gelernt, nur hier → Memory · persoenliche Vorliebe → `~/.claude/CLAUDE.md` · Auftrag/Plan/Zwischenstand → `.md` im Projekt · Themenwissen ausserhalb des Projekts → `docs/wissen/<thema>.md` + EINE Zeile in `CLAUDE.md` (v5.175.0; Arbeitsmaterial nie) · Aussage ueber EINE Code-Stelle → Kommentar dort (`file-handling.md` → Context files, v5.172.0) | Urteil · Code-Stelle: `cleaner_einordnung --wohin` (`⭐CODE-KOMMENTAR?`) | ⚠ nur die Code-Stelle | — |
 | **D10** | Deckel — wer anlegt, zahlt aus dem Bestand | `mind_kontext_bilanz --vergleichen` · `cleaner_tor --memory` | ✅ ja | — |
 | **R1** | Beim Aufraeumen: stimmt es noch? | `cleaner_tor` · `cleaner_belege` | ⚠ teilweise | A2 |
 
@@ -75,7 +75,7 @@ python "$CLAUDE_PLUGIN_ROOT/references/cleaner_tor.py" --datei "<datei.md>"
 
 ```
 tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10
-   (die Skills haengen :D1=… und seit v5.172.0 :W1=<hier>/<memory>/<vorliebe>/<auftrag>/<joplin>/<code> an)
+   (die Skills haengen :D1=… und seit v5.172.0 :W1=<hier>/<memory>/<vorliebe>/<auftrag>/<wissen>/<code> an)
 z.B.  tor=CLAUDE.md:fehlt/oft/noetig:jede/regel/nein:hart/frei/n-a:gezahlt
 ```
 

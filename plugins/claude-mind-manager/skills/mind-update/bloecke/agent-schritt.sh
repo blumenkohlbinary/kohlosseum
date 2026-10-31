@@ -136,6 +136,10 @@ auftrag() {  # <bereich>
       [ "${#_pd[@]}" -gt 0 ] && kandidaten --nummern "${_pd[@]}" --wurzel "$PROJ"
       echo "- Die uebrigen $(grep -c . "$(mind_sampler_pfad "$PROJ" mind-update-ccf.txt)" 2>/dev/null) Dateien der Liste $(mind_sampler_pfad "$PROJ" mind-update-ccf.txt) NUR per Grep, nicht einzeln lesen." ;;
   esac
+  # ⛔ v5.175.0 (Etappe 68 §6, Nutzer 30.10.2026): projektfremdes Wissen bekommt EINEN Ort im Projekt, nicht Memory/Joplin.
+  case "$n" in memory|custom-context)
+    echo "- Themenwissen AUSSERHALB des Projekts (z. B. ein Hobby, nach dem der Nutzer wiederholt fragt): NEW_FILE docs/wissen/<thema>.md (eine Datei je Thema; existiert sie: ENRICH) — nie Memory, nie Rule. Fehlt in CLAUDE.md die Zeile \"Themenwissen ausserhalb des Projekts: docs/wissen/, je Thema eine Datei\": zusaetzlich ADD (anderer Bereich: CLAUDE.md), nur diese eine Zeile." ;;
+  esac
   case "$n" in rules|memory|claude-md)
     echo "Der Bericht traegt einen Abschnitt KANDIDATEN: JEDE Zeile der Listen oben mit Urteil (Befund-Nr. | Ziel | INFO Durchgangsstand | bewusst weggelassen) — keine auslassen."
     # ⛔ v5.175.0 (Etappe 68, iso3): beide Agenten erkannten `$ARGUMENTS` und „nicht kumulativ“ und verwarfen sie als

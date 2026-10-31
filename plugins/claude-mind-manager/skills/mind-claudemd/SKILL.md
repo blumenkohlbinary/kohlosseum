@@ -726,7 +726,7 @@ laesst, ist **UNGEMESSEN**.
 D1 lief und nichts fand oder gar nicht lief:
 
 ```
-tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>:W1=<hier>/<memory>/<vorliebe>/<auftrag>/<joplin>/<code>
+tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>:W1=<hier>/<memory>/<vorliebe>/<auftrag>/<wissen>/<code>
 ```
 
 ⛔ **Die Quittung MUSS in den Self-Check-Block des Berichts**, eine Zeile je

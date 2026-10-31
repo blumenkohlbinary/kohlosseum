@@ -490,7 +490,7 @@ ihrem Beleg. Dann geht der Beleg ins Archiv und die Bremse bleibt.
 ⛔ **Die Quittung wird um `D1` erweitert** — sonst ist nicht unterscheidbar, ob D1 lief und nichts fand oder nicht lief:
 
 ```
-tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>:W1=<hier>/<memory>/<vorliebe>/<auftrag>/<joplin>/<code>
+tor=<datei>:A1/A2/A3:B4/B5/B6:C7/C8/C9:D10:D1=<bremse>/<anleitung>/<beleg>/<unbestimmt>:W1=<hier>/<memory>/<vorliebe>/<auftrag>/<wissen>/<code>
 ```
 
 
