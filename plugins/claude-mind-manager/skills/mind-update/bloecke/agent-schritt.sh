@@ -130,6 +130,10 @@ auftrag() {  # <bereich>
       echo "- ZUERST ganz lesen (von CLAUDE.md namentlich genannt, hoechstens 15):"
       printf '%s\n' "$prio" | sed '/^$/d; s/^/    /'
       echo "  Darin: als offen markierte Kriterien, die laut Bestand erledigt sind · Zeiger auf Auftraege/Etappen, die nicht mehr die juengsten sind · Zahlen ohne Messbefehl: UPDATE."
+      # ⛔ v5.175.0 (Etappe 68): isoliert fand custom-context `ZIEL.md:59` (Zeiger auf nils-etappe-58) nur in einem von zwei Laeufen.
+      local _pd=() _p
+      while IFS= read -r _p; do [ -n "$_p" ] && _pd+=("$PROJ/$_p"); done <<< "$prio"   # Pfade mit Leerzeichen: Array, nie unquotiert
+      [ "${#_pd[@]}" -gt 0 ] && kandidaten --nummern "${_pd[@]}" --wurzel "$PROJ"
       echo "- Die uebrigen $(grep -c . "$(mind_sampler_pfad "$PROJ" mind-update-ccf.txt)" 2>/dev/null) Dateien der Liste $(mind_sampler_pfad "$PROJ" mind-update-ccf.txt) NUR per Grep, nicht einzeln lesen." ;;
   esac
   case "$n" in rules|memory|claude-md)

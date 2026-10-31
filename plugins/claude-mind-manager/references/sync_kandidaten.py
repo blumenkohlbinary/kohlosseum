@@ -12,6 +12,7 @@ Aufruf:
     python sync_kandidaten.py --optionen <rules-ordner> --wurzel <projekt> [--plugin <plugin-root>]
     python sync_kandidaten.py --zitate <memory-ordner> --suche <datei|ordner> [...]
     python sync_kandidaten.py --zeiger <CLAUDE.md> --wurzel <projekt>
+    python sync_kandidaten.py --nummern <datei> [...] --wurzel <projekt>
     python sync_kandidaten.py --selbsttest
 
   --buch     Punkte (Aufzaehlungen) der Verlaufsbuch-Abschnitte, deren Marken (`Code-Spans`) in KEINER
@@ -156,6 +157,34 @@ def zeiger_kandidaten(datei, wurzel, maxn):
         print("  (keine)")
 
 
+NUMMER = re.compile(r"(?<![\w./-])((?:[\w-]+/)*)([A-Za-z][\w-]*?-)(\d+)\.md\b")
+
+
+def nummern_kandidaten(dateien, wurzel, maxn):
+    """Zeiger auf `<ordner>/<name>-<n>.md`, wenn im selben Ordner schon eine hoehere Nummer liegt (veralteter Zeiger)."""
+    aus = []
+    for d in dateien:
+        for i, z in enumerate(lies(d).splitlines(), 1):
+            for m in NUMMER.finditer(z):
+                ordner, stamm, n = m.group(1), m.group(2), int(m.group(3))
+                o = os.path.join(wurzel, ordner) if ordner else os.path.dirname(d)
+                try:
+                    hoeher = [int(x[len(stamm):-3]) for x in os.listdir(o)
+                              if x.startswith(stamm) and x.endswith(".md") and x[len(stamm):-3].isdigit()]
+                except OSError:
+                    continue
+                top = max(hoeher) if hoeher else n
+                if top > n:
+                    aus.append("  %s:%d  %s%s%d.md — juengste: %s%d.md" % (os.path.basename(d), i, ordner, stamm, n, stamm, top))
+    print("ZEIGER AUF NICHT MEHR JUENGSTE NUMMERN — je Zeile urteilen: soll hier der juengste stehen (UPDATE) oder ist der alte gemeint (Historie)?")
+    for z in aus[:maxn]:
+        print(z)
+    if len(aus) > maxn:
+        print("  ... %d weitere" % (len(aus) - maxn))
+    if not aus:
+        print("  (keine)")
+
+
 def finde_quelle(name, suche):
     base = os.path.basename(name)
     for p in md_dateien(suche):
@@ -251,6 +280,14 @@ def selbsttest():
     o = lauf(zeiger_kandidaten, os.path.join(d, "C.md"), d, 40)
     pruef("zeiger: vorhandenes Ziel mit Zeile", "C.md:2  Begründung: rules/r.md " in o, True)
     pruef("zeiger: fehlendes Ziel markiert", "fehlt.md (FEHLT)" in o, True)
+    os.makedirs(os.path.join(d, "Auftraege"))
+    for n in ("a-etappe-58.md", "a-etappe-68.md", "b-9.md"):
+        open(os.path.join(d, "Auftraege", n), "w").close()
+    with open(os.path.join(d, "Z.md"), "w", encoding="utf-8") as f:
+        f.write("Auftrag: `Auftraege/a-etappe-58.md`\nneu: Auftraege/a-etappe-68.md und Auftraege/b-9.md\n")
+    o = lauf(nummern_kandidaten, [os.path.join(d, "Z.md")], d, 40)
+    pruef("nummern: veralteter Zeiger gemeldet", "Z.md:1  Auftraege/a-etappe-58.md — juengste: a-etappe-68.md" in o, True)
+    pruef("nummern: juengster nicht", "Z.md:2" in o, False)
     print("  %d gruen · %d rot" % (ok, rot))
     return 1 if rot else 0
 
@@ -261,6 +298,7 @@ def main(a):
     maxn = 40
     buecher, gegen, suche = [], [], []
     opt = wurzel = plugin = zit = zei = ""
+    nummern = []
     i = 0
     try:
         while i < len(a):
@@ -285,14 +323,20 @@ def main(a):
                 zit = a[i + 1]; i += 2
             elif k == "--zeiger":
                 zei = a[i + 1]; i += 2
+            elif k == "--nummern":
+                i += 1
+                while i < len(a) and not a[i].startswith("--"):
+                    nummern.append(a[i]); i += 1
             elif k == "--max":
                 maxn = int(a[i + 1]); i += 2
             else:
                 print(__doc__); return 2
     except (IndexError, ValueError):
         print(__doc__); return 2
-    if not (buecher or opt or zit or zei):
+    if not (buecher or opt or zit or zei or nummern):
         print(__doc__); return 2
+    if nummern:
+        nummern_kandidaten(nummern, wurzel, maxn)
     if zei:
         zeiger_kandidaten(zei, wurzel, maxn)
     if buecher:
