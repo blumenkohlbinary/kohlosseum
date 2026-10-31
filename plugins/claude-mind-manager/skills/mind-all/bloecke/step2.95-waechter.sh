@@ -10,9 +10,15 @@ mind_block_umgebung
 PROJ="${PROJ:-$(mind_projekt_wurzel 2>/dev/null || printf '%s' "${CLAUDE_PROJECT_DIR:-$(pwd)}")}"
 # Der Snapshot aus Step 0 ist der Vorher-Stand — er wird hier zum Messinstrument.
 MEMDIR=$(get_memory_dir "$PROJ" 2>/dev/null) || MEMDIR=""
-mind_zeilenenden_waechter "$MIND_SNAPSHOT_DIR" "$PROJ" "$MEMDIR"
 # ⚠ v5.109.0: der Waechter vergleicht das WURZEL-Memory (Snapshot memory/). Die Memorys der
 #   Roster-Ordner liegen unter memory-unterordner/<ordner>/ und werden hier NICHT verglichen —
 #   ausgewiesen, nicht behoben (Etappe 18, Allbetroffenheit); ihr Rueckweg ist die Kopie.
+# ⛔ v5.175.0 (Etappe 68 N1): quittiert sich selbst; rc 2 (ungueltig) als fehler, nie als gelaufen.
+mkdir -p "$PROJ/.claude-mind/pass-mind-all" 2>/dev/null
+_WA="$PROJ/.claude-mind/pass-mind-all/mind_zeilenenden_waechter.txt"
+mind_zeilenenden_waechter "$MIND_SNAPSHOT_DIR" "$PROJ" "$MEMDIR" > "$_WA" 2>&1
 RC=$?
+cat "$_WA"
+if [ "$RC" = 2 ]; then mind_schritt mind_zeilenenden_waechter "fehler:ungueltig" -1 "$PROJ"
+else echo "rc=$RC" >> "$_WA"; mind_schritt mind_zeilenenden_waechter gelaufen --datei "$_WA" "$PROJ"; fi
 [ "$RC" = 2 ] && echo "⛔ WAECHTER UNGUELTIG — Zeilenenden in diesem Lauf NICHT geprueft."

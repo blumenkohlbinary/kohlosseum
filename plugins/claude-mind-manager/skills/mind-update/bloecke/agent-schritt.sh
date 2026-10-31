@@ -67,7 +67,7 @@ fi
 #    ⛔ Nur Pfade und Zaehlungen, nie Inhalt: die Flut-Sperre fuer `*_chat.md` gilt im Hauptkontext weiter.
 quellen() {
   local r v
-  _N=1
+  _N=1; _BUCH=()
   _R=$(mind_rettungen "$PROJ" 2>/dev/null) || _R=""
   echo "Session-Quellen (mind-update/SKILL.md Step 3.5) — in dieser Reihenfolge lesen:"
   [ -n "$_R" ] || return 0
@@ -75,6 +75,7 @@ quellen() {
   while IFS= read -r r; do
     v=$(mind_verlauf_fuer "$PROJ" "$r") || continue
     r=$(basename "$r"); echo "   - $v ($(wc -c < "$v" | tr -d ' ') B) — Abschnitt rettung=${r%%_*}"
+    _BUCH+=(--buch "$v|${r%%_*}")
   done <<< "$_R"
   _N=$((_N + 1))
   echo "$_N. Danach die Rettungen, NUR gezielt per Grep (Groessen-Guard: ueber 600 Zeilen oder 60 KB nicht ganz lesen, ±40 Zeilen um Treffer) — ohne Verlaufsbuch-Abschnitt die einzige Quelle:"
@@ -82,6 +83,14 @@ quellen() {
     echo "   - $r ($(wc -c < "$r" | tr -d ' ') B, $(grep -c '^## \[' "$r") Beitraege)"
   done <<< "$_R"
   _N=$((_N + 1))
+}
+
+# ⛔ v5.175.0 (Etappe 68): die Kandidaten MECHANISCH vorlegen, der Agent urteilt je Zeile. Isolierter Einzeltest
+#    31.10.2026 (cwd = Kopie e66): rules pruefte die Optionen nur einer Werkzeug-Rule (`--entfernt` verloren), memory
+#    das Zitat in rotes-gate nicht und uebersah „nicht kumulativ“ im Buch. Fehlt Python, entfaellt nur die Liste.
+kandidaten() {
+  local py; py=$(command -v python3 2>/dev/null || command -v python 2>/dev/null) || return 0
+  "$py" "$CLAUDE_PLUGIN_ROOT/references/sync_kandidaten.py" "$@" 2>/dev/null | sed 's/^/  /'
 }
 
 auftrag() {  # <bereich>
@@ -97,11 +106,21 @@ auftrag() {  # <bereich>
     claude-md) echo "- Jede NEVER/Gotcha-Zeile: nennt ihre Alternative noch den heutigen Weg? Vergleiche mit den juengsten 15 Eintraegen von docs/plugin/design-history.md (falls vorhanden) — betrifft eine neuere Faehigkeit denselben Gegenstand: ENRICH."
                 echo "- Jeder Zeiger (\"Begruendung: X\", \"Details: X\"): steht der Gegenstand noch in X? Sonst UPDATE mit dem heutigen Ort." ;;
     memory)    echo "- Memory-Verzeichnis: ${MEMORY_DIR:-<get_memory_dir>}. Jedes ZITAT, das einer Datei zugeschrieben ist: steht der Wortlaut dort noch (auch ~/.claude/rules/)? Sonst UPDATE."
-                echo "- Fehlplatzierung nach ~/.claude/rules/file-handling.md (Abschnitt Context files): Architektur, Pfade, Debug-Fixes, Versionshistorie gehoeren NICHT ins Memory — je Datei Ziel nennen (INFO, Klasse misplaced)." ;;
+                echo "- Fehlplatzierung nach ~/.claude/rules/file-handling.md (Abschnitt Context files): Architektur, Pfade, Debug-Fixes, Versionshistorie gehoeren NICHT ins Memory — je Datei Ziel nennen (INFO, Klasse misplaced)."
+                # ⛔ v5.175.0 (Etappe 68): zwei Laeufe verwarfen eine Lehre als „steht schon in context-saving.md“ — dort 0 Treffer.
+                [ -d "${MEMORY_DIR:-}" ] && kandidaten --zitate "$MEMORY_DIR" --suche "$HOME/.claude/rules" "$PROJ/.claude/rules" "$PROJ" "$HOME/.claude"
+                [ "${#_BUCH[@]}" -gt 0 ] && kandidaten "${_BUCH[@]}" --gegen "${MEMORY_DIR:-}" "$PROJ/CLAUDE.md" "$PROJ/.claude/rules" "$HOME/.claude/rules" "$HOME/.claude/CLAUDE.md"
+                echo "- JEDE Topic-Datei bekommt ein Urteil (bleibt | misplaced -> Ziel), auch wenn es \"bleibt\" lautet."
+                echo "- Richtung (1): jede Lehre/Korrektur aus Verlaufsbuch oder Rettung. \"Steht schon in <Datei>\" gilt NUR mit Datei:Zeile aus einem Grep nach ihrem Kernbegriff, und nur in einer Datei, die LAEDT (CLAUDE.md, .claude/rules/, Memory, ~/.claude/rules/) — docs/, PLAN-*, Historie zaehlen nicht; sonst ADD oder NEW_FILE mit Ziel." ;;
     # ⛔ v5.170.0: auch die Optionen, die das Werkzeug AUSWERTET. Gegentest 30.10.2026: `--entfernt` steht in
     #    `coverage_gate.py` erst ab Z. 152 (Docstring endet Z. 32) — „Aufruf-Kopf lesen“ reichte nicht hin.
-    rules)     echo "- Jede Rule, die ein Werkzeug nennt (tools/*.py, Learnings/*.py, references/*.py): lies dessen Aufruf-Kopf/Docstring UND die Optionen, die es auswertet (grep -nE -- '--[a-z][a-z-]+' <werkzeug>, auch Kommentare und Argument-Teil). Fehlen dort dokumentierte Optionen, Stufen oder Rueckgabewerte in der Rule: UPDATE (Rule aelter als Werkzeug)."
-                echo "- Jeder zitierte Wortlaut einer anderen Datei: steht er dort noch? Zahlen mit Messbefehl daneben: Befehl NICHT fahren, nur als INFO melden." ;;
+    rules)     echo "- Jede Rule, die ein Werkzeug nennt (tools/*.py, Learnings/*.py, references/*.py): lies dessen Aufruf-Kopf/Docstring UND die Optionen, die es auswertet (grep -nE -- '--[a-z][a-z-]+' <werkzeug>, auch Kommentare und Argument-Teil). Dann JE Option grep in der Rule — \"im Werkzeug bestaetigt\" ist nicht \"in der Rule\". Fehlen dort dokumentierte Optionen, Stufen oder Rueckgabewerte in der Rule: UPDATE (Rule aelter als Werkzeug)."
+                echo "- Jeder zitierte Wortlaut einer anderen Datei: steht er dort noch? Zahlen mit Messbefehl daneben: Befehl NICHT fahren, nur als INFO melden."
+                # ⛔ v5.175.0 (Etappe 68): beide Laeufe arbeiteten fast nur Richtung (2) ab — neue Mechanik aus dem Buch fehlte unbemerkt in ihrer Rule.
+                echo "- Richtung (1): jede NEUE oder GEAENDERTE Mechanik aus Verlaufsbuch oder Rettung (Hook, Merker, Variable, Ablauf): steht sie in der Rule ihres Gegenstands? Steht sie nur in docs/, PLAN-* oder der Historie, fehlt sie (das laedt nicht): ENRICH/ADD mit Zieldatei."
+                kandidaten --optionen "$PROJ/.claude/rules" --wurzel "$PROJ" --plugin "$CLAUDE_PLUGIN_ROOT"
+                [ "${#_BUCH[@]}" -gt 0 ] && kandidaten "${_BUCH[@]}" --gegen "$PROJ/CLAUDE.md" "$PROJ/.claude/rules"
+                echo "- Was laut Session ersetzt oder entfallen ist (\"heisst jetzt\", \"statt\", \"ersetzt\", \"entfallen\"): grep den ALTEN Begriff in .claude/rules/ — Treffer ohne Hinweis darauf = UPDATE." ;;
     custom-context)
       prio=$(grep -oE '`[^`*?]*\.md`' "$PROJ/CLAUDE.md" 2>/dev/null | tr -d '`' | sed 's#^\./##' | awk '!g[$0]++' \
              | while IFS= read -r p; do [ -f "$PROJ/$p" ] && grep -qxF "./$p" "$(mind_sampler_pfad "$PROJ" mind-update-ccf.txt)" 2>/dev/null && echo "$p"; done | head -15)
@@ -109,6 +128,9 @@ auftrag() {  # <bereich>
       printf '%s\n' "$prio" | sed '/^$/d; s/^/    /'
       echo "  Darin: als offen markierte Kriterien, die laut Bestand erledigt sind · Zeiger auf Auftraege/Etappen, die nicht mehr die juengsten sind · Zahlen ohne Messbefehl: UPDATE."
       echo "- Die uebrigen $(grep -c . "$(mind_sampler_pfad "$PROJ" mind-update-ccf.txt)" 2>/dev/null) Dateien der Liste $(mind_sampler_pfad "$PROJ" mind-update-ccf.txt) NUR per Grep, nicht einzeln lesen." ;;
+  esac
+  case "$n" in rules|memory)
+    echo "Der Bericht traegt einen Abschnitt KANDIDATEN: JEDE Zeile der Listen oben mit Urteil (Befund-Nr. | Ziel | INFO Durchgangsstand | bewusst weggelassen) — keine auslassen." ;;
   esac
   echo "Nenne zu JEDEM Zitat die Datei und die Zeilennummer, aus der du es gelesen hast. Was du ohne Fundstelle schreibst, kennzeichne als UNGEPRUEFT."
   echo "Lege den Bericht nach SPAETESTENS 10 Werkzeugaufrufen mit Write als Zwischenstand an ($f) und ueberschreibe ihn am Ende mit dem VOLLEN Bericht — genau diese eine Datei, sonst nichts. Hoere erst auf, wenn er geschrieben ist."

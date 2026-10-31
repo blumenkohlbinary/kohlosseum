@@ -39,4 +39,10 @@ BEFUNDE="$PROJ/.claude-mind/lauf-befunde.jsonl"
 
 # 3) zentral melden (still, wenn MIND_DEBUG_DIR nicht gesetzt ist)
 mind_debug_write "$PROJ" "$AUSLOESER" "$ABSCHNITT" "$BEFUNDE"
+# ⛔ v5.175.0 (Etappe 68 N1): beide Pflichtschritte quittieren hier selbst (vorher 2.96a-R-Reparatur in jedem Lauf).
+if [ -s "$ABSCHNITT" ]; then mind_schritt mind_debug_write gelaufen --datei "$ABSCHNITT" "$PROJ"
+else mind_schritt mind_debug_write "fehler:kein-abschnitt" -1 "$PROJ"; fi
+if [ -z "${MIND_DEBUG_DIR:-}" ]; then mind_schritt debug_auswertung "uebersprungen:MIND_DEBUG_DIR-leer" 0 "$PROJ"
+elif [ -s "$MIND_DEBUG_DIR/BEFUNDE.md" ]; then mind_schritt debug_auswertung gelaufen --datei "$MIND_DEBUG_DIR/BEFUNDE.md" "$PROJ"
+else mind_schritt debug_auswertung "fehler:BEFUNDE.md-fehlt" -1 "$PROJ"; fi
 rm -f "$ABSCHNITT" "$BEFUNDE" 2>/dev/null

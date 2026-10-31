@@ -149,6 +149,11 @@ pruef "   ... Live-Auszug als Punkt 3" "$(printf '%s\n' "$O10" | grep -c '^3\. L
 pruef "   ... ⛔ kein Inhalt der Rettung im Auftrag" "$(printf '%s\n' "$O10" | grep -c 'ASSISTANT_TEXT')" "0"
 # v5.170.0: --entfernt steht in coverage_gate.py erst ab Z. 152 — „Aufruf-Kopf lesen“ reichte nicht.
 pruef "rules (P8, Welle 2): auch die ausgewerteten Optionen greppen" "$(printf '%s\n' "$O2" | grep -c "UND die Optionen, die es auswertet (grep -nE -- '--\[a-z\]\[a-z-\]+' <werkzeug>")" "1"
+# v5.175.0 (Etappe 68): Richtung (1) hatte fuer rules und memory keine eigene Zeile — Lehren und neue Mechanik fielen durch.
+pruef "rules: Richtung (1) neue Mechanik in ihrer Rule" "$(printf '%s\n' "$O2" | grep -c '^- Richtung (1): jede NEUE oder GEAENDERTE Mechanik')" "1"
+pruef "rules: ersetzte Begriffe in den Rules greppen" "$(printf '%s\n' "$O2" | grep -c 'grep den ALTEN Begriff in .claude/rules/')" "1"
+pruef "memory: \"steht schon\" nur mit Datei:Zeile" "$(printf '%s\n' "$O1" | grep -c '^- Richtung (1): jede Lehre/Korrektur.*NUR mit Datei:Zeile')" "1"
+pruef "   ... nicht in claude-md/custom-context" "$(printf '%s\n' "$O1" "$O2" | grep -c '^- Richtung (1)')" "2"
 
 echo ""
 echo "  $ok gruen · $rot rot"
